@@ -1,0 +1,1483 @@
+1,9,14,6,101,4.14053,0.0027,3.65,0.92,64,500,500,0,2,0.25,0.5,2
+0,291
+"Banana Plant","A tall plant that makes bananas","T",13,1,69,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+0,377
+"Apple Tree","A big tree that makes apples","^",13,1,537,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+2,37
+"Apple Tree","A big tree that makes apples","^",13,1,1290,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+2,263
+"Banana Plant","A tall plant that makes bananas","T",13,1,467,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+2,289
+"Banana","A curved yellow fruit",")",1,1,0,0,500,70
+2,343
+"Banana","A curved yellow fruit",")",1,1,0,0,500,59
+2,384
+"Banana Plant","A tall plant that makes bananas","T",13,1,295,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+3,75
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,649
+4,255
+"Apple Tree","A big tree that makes apples","^",13,1,1381,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+4,267
+"Banana","A curved yellow fruit",")",1,1,0,0,500,468
+4,284
+"Banana Plant","A tall plant that makes bananas","T",13,1,7,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+4,340
+"Banana Plant","A tall plant that makes bananas","T",13,1,59,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+4,379
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,538
+5,44
+"Banana Plant","A tall plant that makes bananas","T",13,1,514,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+5,70
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,580
+5,72
+"Apple Tree","A big tree that makes apples","^",13,1,1293,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+5,73
+"Apple Tree","A big tree that makes apples","^",13,1,649,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+5,221
+"Apple Tree","A big tree that makes apples","^",13,1,1043,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+5,224
+"Apple Tree","A big tree that makes apples","^",13,1,665,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+6,85
+"Apple Tree","A big tree that makes apples","^",13,1,989,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+6,387
+"Banana","A curved yellow fruit",")",1,1,0,0,500,296
+6,458
+"Banana Plant","A tall plant that makes bananas","T",13,1,81,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+7,53
+"Banana","A curved yellow fruit",")",1,1,0,0,500,145
+8,72
+"Apple Tree","A big tree that makes apples","^",13,1,580,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+8,286
+"Banana","A curved yellow fruit",")",1,1,0,0,500,8
+8,302
+"Banana Plant","A tall plant that makes bananas","T",13,1,866,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+8,460
+"Banana","A curved yellow fruit",")",1,1,0,0,500,82
+9,46
+"Corpse","Dead animal","c",1,1,2,3.94137,2000,907
+9,49
+"Banana Plant","A tall plant that makes bananas","T",13,1,145,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+9,254
+"Apple Tree","A big tree that makes apples","^",13,1,1373,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+9,273
+"Banana Plant","A tall plant that makes bananas","T",13,1,658,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+10,214
+"Banana Plant","A tall plant that makes bananas","T",13,1,502,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+10,437
+"Corpse","Dead animal","c",1,1,2,4.03377,2000,1190
+12,79
+"Apple Tree","A big tree that makes apples","^",13,1,878,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+12,91
+"Banana Plant","A tall plant that makes bananas","T",13,1,788,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+13,382
+"Apple Tree","A big tree that makes apples","^",13,1,1494,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+14,56
+"Banana Plant","A tall plant that makes bananas","T",13,1,211,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+14,304
+"Banana Plant","A tall plant that makes bananas","T",13,1,910,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+14,467
+"Corpse","Dead animal","c",1,1,2,4.17951,2000,1190
+15,446
+"Apple Tree","A big tree that makes apples","^",13,1,1430,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+16,77
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,879
+16,353
+"Apple Tree","A big tree that makes apples","^",13,1,982,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+17,52
+"Banana","A curved yellow fruit",")",1,1,0,0,500,212
+17,224
+"Apple Tree","A big tree that makes apples","^",13,1,177,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+17,270
+"Apple Tree","A big tree that makes apples","^",13,1,1183,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+18,44
+"Apple Tree","A big tree that makes apples","^",13,1,252,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+18,284
+"Apple Tree","A big tree that makes apples","^",13,1,325,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+19,232
+"Apple Tree","A big tree that makes apples","^",13,1,905,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+19,280
+"Apple Tree","A big tree that makes apples","^",13,1,925,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+19,292
+"Apple Tree","A big tree that makes apples","^",13,1,1059,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+20,41
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,253
+20,229
+"Apple Tree","A big tree that makes apples","^",13,1,1168,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+20,230
+"Apple Tree","A big tree that makes apples","^",13,1,321,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+20,265
+"Apple Tree","A big tree that makes apples","^",13,1,1262,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+20,273
+"Apple Tree","A big tree that makes apples","^",13,1,734,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+20,303
+"Banana Plant","A tall plant that makes bananas","T",13,1,204,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+21,276
+"Apple Tree","A big tree that makes apples","^",13,1,394,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+22,215
+"Banana Plant","A tall plant that makes bananas","T",13,1,230,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+22,345
+"Banana Plant","A tall plant that makes bananas","T",13,1,650,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+23,228
+"Apple Tree","A big tree that makes apples","^",13,1,1376,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+24,275
+"Apple Tree","A big tree that makes apples","^",13,1,1067,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+24,305
+"Banana","A curved yellow fruit",")",1,1,0,0,500,205
+24,429
+"Corpse","Dead animal","c",1,1,2,2.47766,2000,1189
+24,450
+"Banana","A curved yellow fruit",")",1,1,0,0,500,141
+25,80
+"Banana Plant","A tall plant that makes bananas","T",13,1,632,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+25,218
+"Banana","A curved yellow fruit",")",1,1,0,0,500,231
+25,345
+"Banana Plant","A tall plant that makes bananas","T",13,1,780,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+27,81
+"Banana Plant","A tall plant that makes bananas","T",13,1,650,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+27,274
+"Apple Tree","A big tree that makes apples","^",13,1,460,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+27,390
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,396
+28,238
+"Apple Tree","A big tree that makes apples","^",13,1,640,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+28,447
+"Banana Plant","A tall plant that makes bananas","T",13,1,141,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+29,245
+"Apple Tree","A big tree that makes apples","^",13,1,1088,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+30,233
+"Apple Tree","A big tree that makes apples","^",13,1,109,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+31,233
+"Apple Tree","A big tree that makes apples","^",13,1,805,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+31,388
+"Apple Tree","A big tree that makes apples","^",13,1,396,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+32,244
+"Apple Tree","A big tree that makes apples","^",13,1,517,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+32,246
+"Apple Tree","A big tree that makes apples","^",13,1,132,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+33,25
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,554
+33,245
+"Apple Tree","A big tree that makes apples","^",13,1,1147,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+33,350
+"Apple Tree","A big tree that makes apples","^",13,1,63,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+36,22
+"Apple Tree","A big tree that makes apples","^",13,1,554,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+36,53
+"Apple Tree","A big tree that makes apples","^",13,1,799,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+36,258
+"Corpse","Dead animal","c",1,1,2,4.06781,2000,485
+36,352
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,64
+37,3
+"Apple Tree","A big tree that makes apples","^",13,1,1388,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+37,217
+"Banana Plant","A tall plant that makes bananas","T",13,1,709,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+37,442
+"Banana Plant","A tall plant that makes bananas","T",13,1,767,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+38,49
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,800
+38,54
+"Apple Tree","A big tree that makes apples","^",13,1,1349,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+38,71
+"Banana Plant","A tall plant that makes bananas","T",13,1,593,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+39,228
+"Apple Tree","A big tree that makes apples","^",13,1,1012,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+41,55
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,510
+42,227
+"Apple Tree","A big tree that makes apples","^",13,1,1134,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+42,257
+"Apple Tree","A big tree that makes apples","^",13,1,255,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+42,260
+"Apple Tree","A big tree that makes apples","^",13,1,1101,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+43,30
+"Apple Tree","A big tree that makes apples","^",13,1,979,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+43,58
+"Apple Tree","A big tree that makes apples","^",13,1,510,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+43,262
+"Apple Tree","A big tree that makes apples","^",13,1,1334,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+43,440
+"Banana Plant","A tall plant that makes bananas","T",13,1,251,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+45,21
+"Banana Plant","A tall plant that makes bananas","T",13,1,454,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+46,263
+"Corpse","Dead animal","c",1,1,2,3.14712,2000,418
+"Corpse","Dead animal","c",1,1,2,3.46817,2000,418
+46,302
+"Apple Tree","A big tree that makes apples","^",13,1,1325,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+46,441
+"Banana Plant","A tall plant that makes bananas","T",13,1,219,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+46,444
+"Banana","A curved yellow fruit",")",1,1,0,0,500,252
+47,439
+"Banana Plant","A tall plant that makes bananas","T",13,1,231,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+48,19
+"Banana","A curved yellow fruit",")",1,1,0,0,500,455
+48,267
+"Apple Tree","A big tree that makes apples","^",13,1,1365,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+49,68
+"Banana Plant","A tall plant that makes bananas","T",13,1,904,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+49,445
+"Banana","A curved yellow fruit",")",1,1,0,0,500,220
+50,69
+"Banana Plant","A tall plant that makes bananas","T",13,1,997,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+50,437
+"Banana","A curved yellow fruit",")",1,1,0,0,500,232
+52,436
+"Banana Plant","A tall plant that makes bananas","T",13,1,573,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+53,262
+"Apple Tree","A big tree that makes apples","^",13,1,652,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+54,245
+"Banana Plant","A tall plant that makes bananas","T",13,1,669,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+54,248
+"Banana Plant","A tall plant that makes bananas","T",13,1,676,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+55,240
+"Banana Plant","A tall plant that makes bananas","T",13,1,359,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+56,268
+"Apple Tree","A big tree that makes apples","^",13,1,1093,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+57,38
+"Apple Tree","A big tree that makes apples","^",13,1,753,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+57,62
+"Apple Tree","A big tree that makes apples","^",13,1,1347,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+57,241
+"Banana","A curved yellow fruit",")",1,1,0,0,500,399
+58,36
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,769
+58,221
+"Banana","A curved yellow fruit",")",1,1,0,0,500,182
+58,238
+"Banana","A curved yellow fruit",")",1,1,0,0,500,360
+59,393
+"Banana Plant","A tall plant that makes bananas","T",13,1,398,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+60,32
+"Banana Plant","A tall plant that makes bananas","T",13,1,724,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+60,40
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,754
+61,237
+"Banana Plant","A tall plant that makes bananas","T",13,1,399,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+62,38
+"Apple Tree","A big tree that makes apples","^",13,1,769,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+62,71
+"Banana Plant","A tall plant that makes bananas","T",13,1,753,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+62,74
+"Banana Plant","A tall plant that makes bananas","T",13,1,507,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+62,218
+"Banana Plant","A tall plant that makes bananas","T",13,1,182,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+62,350
+"Corpse","Dead animal","c",1,1,2,3.67204,2000,702
+62,394
+"Banana Plant","A tall plant that makes bananas","T",13,1,769,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+63,73
+"Banana Plant","A tall plant that makes bananas","T",13,1,961,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+63,396
+"Banana","A curved yellow fruit",")",1,1,0,0,500,399
+66,145
+"Banana Plant","A tall plant that makes bananas","T",13,1,398,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+66,257
+"Banana Plant","A tall plant that makes bananas","T",13,1,872,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+67,73
+"Banana Plant","A tall plant that makes bananas","T",13,1,214,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+67,115
+"Banana","A curved yellow fruit",")",1,1,0,0,500,278
+68,41
+"Apple Tree","A big tree that makes apples","^",13,1,1335,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+68,148
+"Banana","A curved yellow fruit",")",1,1,0,0,500,399
+70,113
+"Banana Plant","A tall plant that makes bananas","T",13,1,278,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+71,43
+"Apple Tree","A big tree that makes apples","^",13,1,1352,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+71,77
+"Banana","A curved yellow fruit",")",1,1,0,0,500,215
+71,223
+"Banana Plant","A tall plant that makes bananas","T",13,1,762,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+71,365
+"Corpse","Dead animal","c",1,1,2,2.71844,2000,723
+72,109
+"Banana","A curved yellow fruit",")",1,1,0,0,500,387
+72,154
+"Banana Plant","A tall plant that makes bananas","T",13,1,660,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+72,225
+"Banana Plant","A tall plant that makes bananas","T",13,1,906,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+73,45
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,805
+73,267
+"Apple Tree","A big tree that makes apples","^",13,1,1227,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+73,354
+"Banana Plant","A tall plant that makes bananas","T",13,1,113,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+74,79
+"Banana","A curved yellow fruit",")",1,1,0,0,500,310
+75,352
+"Banana","A curved yellow fruit",")",1,1,0,0,500,114
+76,42
+"Apple Tree","A big tree that makes apples","^",13,1,805,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+76,106
+"Banana Plant","A tall plant that makes bananas","T",13,1,387,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+77,76
+"Banana Plant","A tall plant that makes bananas","T",13,1,310,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+77,140
+"Apple Tree","A big tree that makes apples","^",13,1,995,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+77,295
+"Apple Tree","A big tree that makes apples","^",13,1,711,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+78,66
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,105
+78,130
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,437
+78,258
+"Banana","A curved yellow fruit",")",1,1,0,0,500,17
+78,259
+"Banana Plant","A tall plant that makes bananas","T",13,1,108,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+79,143
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,333
+80,260
+"Banana Plant","A tall plant that makes bananas","T",13,1,17,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+80,361
+"Apple Tree","A big tree that makes apples","^",13,1,1141,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+81,69
+"Apple Tree","A big tree that makes apples","^",13,1,105,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+81,111
+"Apple Tree","A big tree that makes apples","^",13,1,1094,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+81,123
+"Apple Tree","A big tree that makes apples","^",13,1,1294,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+81,126
+"Apple Tree","A big tree that makes apples","^",13,1,437,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+81,159
+"Banana Plant","A tall plant that makes bananas","T",13,1,334,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+81,300
+"Banana","A curved yellow fruit",")",1,1,0,0,500,277
+82,133
+"Apple Tree","A big tree that makes apples","^",13,1,796,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+82,146
+"Apple Tree","A big tree that makes apples","^",13,1,333,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+82,256
+"Banana","A curved yellow fruit",")",1,1,0,0,500,109
+83,99
+"Banana Plant","A tall plant that makes bananas","T",13,1,476,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+83,156
+"Banana","A curved yellow fruit",")",1,1,0,0,500,335
+85,42
+"Banana Plant","A tall plant that makes bananas","T",13,1,658,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+85,69
+"Apple Tree","A big tree that makes apples","^",13,1,577,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+85,260
+"Banana Plant","A tall plant that makes bananas","T",13,1,644,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+85,298
+"Banana Plant","A tall plant that makes bananas","T",13,1,277,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+86,97
+"Banana","A curved yellow fruit",")",1,1,0,0,500,477
+86,143
+"Apple Tree","A big tree that makes apples","^",13,1,1019,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+87,140
+"Apple Tree","A big tree that makes apples","^",13,1,606,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+87,162
+"Banana Plant","A tall plant that makes bananas","T",13,1,998,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+88,65
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,578
+88,387
+"Apple Tree","A big tree that makes apples","^",13,1,494,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+89,96
+"Banana Plant","A tall plant that makes bananas","T",13,1,644,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+89,132
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,112
+90,146
+"Apple Tree","A big tree that makes apples","^",13,1,692,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+90,150
+"Apple Tree","A big tree that makes apples","^",13,1,1313,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+91,102
+"Apple Tree","A big tree that makes apples","^",13,1,1228,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+91,152
+"Apple Tree","A big tree that makes apples","^",13,1,747,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+91,265
+"Apple Tree","A big tree that makes apples","^",13,1,1034,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+91,391
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,495
+92,134
+"Apple Tree","A big tree that makes apples","^",13,1,112,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+92,138
+"Apple Tree","A big tree that makes apples","^",13,1,1297,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+92,150
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,117
+93,139
+"Apple Tree","A big tree that makes apples","^",13,1,615,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+93,145
+"Apple Tree","A big tree that makes apples","^",13,1,1405,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+94,153
+"Apple Tree","A big tree that makes apples","^",13,1,117,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+94,297
+"Banana Plant","A tall plant that makes bananas","T",13,1,510,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+95,52
+"Apple Tree","A big tree that makes apples","^",13,1,1395,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+95,133
+"Apple Tree","A big tree that makes apples","^",13,1,865,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+95,264
+"Apple Tree","A big tree that makes apples","^",13,1,369,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+97,147
+"Apple Tree","A big tree that makes apples","^",13,1,625,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+98,145
+"Apple Tree","A big tree that makes apples","^",13,1,715,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+99,153
+"Apple Tree","A big tree that makes apples","^",13,1,855,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+99,360
+"Banana Plant","A tall plant that makes bananas","T",13,1,605,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+102,51
+"Banana Plant","A tall plant that makes bananas","T",13,1,746,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+102,97
+"Apple Tree","A big tree that makes apples","^",13,1,1211,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+102,372
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,670
+102,380
+"Apple Tree","A big tree that makes apples","^",13,1,124,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+103,56
+"Banana Plant","A tall plant that makes bananas","T",13,1,298,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+103,136
+"Apple Tree","A big tree that makes apples","^",13,1,501,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+103,367
+"Apple Tree","A big tree that makes apples","^",13,1,161,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+104,375
+"Apple Tree","A big tree that makes apples","^",13,1,670,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+104,383
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,125
+105,52
+"Banana","A curved yellow fruit",")",1,1,0,0,500,299
+105,90
+"Banana Plant","A tall plant that makes bananas","T",13,1,914,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+105,163
+"Banana Plant","A tall plant that makes bananas","T",13,1,425,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+105,264
+"Apple Tree","A big tree that makes apples","^",13,1,258,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+105,386
+"Banana Plant","A tall plant that makes bananas","T",13,1,686,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+106,150
+"Apple Tree","A big tree that makes apples","^",13,1,269,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+106,290
+"Apple Tree","A big tree that makes apples","^",13,1,1409,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+107,183
+"Banana Plant","A tall plant that makes bananas","T",13,1,699,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+107,363
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,162
+108,145
+"Apple Tree","A big tree that makes apples","^",13,1,816,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+108,151
+"Apple Tree","A big tree that makes apples","^",13,1,463,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+108,160
+"Banana","A curved yellow fruit",")",1,1,0,0,500,426
+108,187
+"Banana Plant","A tall plant that makes bananas","T",13,1,473,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+109,135
+"Apple Tree","A big tree that makes apples","^",13,1,746,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+110,140
+"Apple Tree","A big tree that makes apples","^",13,1,1424,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+111,136
+"Apple Tree","A big tree that makes apples","^",13,1,1212,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+111,266
+"Apple Tree","A big tree that makes apples","^",13,1,1056,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+112,172
+"Banana Plant","A tall plant that makes bananas","T",13,1,157,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+112,184
+"Banana","A curved yellow fruit",")",1,1,0,0,500,474
+112,362
+"Banana Plant","A tall plant that makes bananas","T",13,1,367,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+113,285
+"Apple Tree","A big tree that makes apples","^",13,1,453,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+114,258
+"Banana Plant","A tall plant that makes bananas","T",13,1,620,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+114,359
+"Banana","A curved yellow fruit",")",1,1,0,0,500,368
+115,174
+"Banana","A curved yellow fruit",")",1,1,0,0,500,28
+115,282
+"Corpse","Dead animal","c",1,1,2,3.34279,2000,1617
+116,164
+"Banana Plant","A tall plant that makes bananas","T",13,1,823,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+116,176
+"Banana","A curved yellow fruit",")",1,1,0,0,500,158
+116,294
+"Banana Plant","A tall plant that makes bananas","T",13,1,614,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+117,177
+"Banana","A curved yellow fruit",")",1,1,0,0,500,172
+118,159
+"Banana Plant","A tall plant that makes bananas","T",13,1,781,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+118,171
+"Banana Plant","A tall plant that makes bananas","T",13,1,28,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+119,139
+"Apple Tree","A big tree that makes apples","^",13,1,321,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+119,159
+"Banana Plant","A tall plant that makes bananas","T",13,1,401,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+119,173
+"Banana Plant","A tall plant that makes bananas","T",13,1,172,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+120,149
+"Apple Tree","A big tree that makes apples","^",13,1,976,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+120,188
+"Apple Tree","A big tree that makes apples","^",13,1,1107,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+121,129
+"Apple Tree","A big tree that makes apples","^",13,1,822,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+121,201
+"Apple Tree","A big tree that makes apples","^",13,1,281,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+121,283
+"Apple Tree","A big tree that makes apples","^",13,1,1156,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+122,157
+"Banana","A curved yellow fruit",")",1,1,0,0,500,402
+122,297
+"Banana","A curved yellow fruit",")",1,1,0,0,500,254
+123,125
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,130
+123,199
+"Apple Tree","A big tree that makes apples","^",13,1,1323,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+124,120
+"Apple Tree","A big tree that makes apples","^",13,1,1041,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+124,121
+"Apple Tree","A big tree that makes apples","^",13,1,602,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+124,293
+"Banana Plant","A tall plant that makes bananas","T",13,1,254,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+125,205
+"Apple Tree","A big tree that makes apples","^",13,1,968,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+126,121
+"Apple Tree","A big tree that makes apples","^",13,1,130,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+126,150
+"Apple Tree","A big tree that makes apples","^",13,1,644,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+126,286
+"Apple Tree","A big tree that makes apples","^",13,1,151,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+129,116
+"Banana","A curved yellow fruit",")",1,1,0,0,500,126
+129,145
+"Apple Tree","A big tree that makes apples","^",13,1,642,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+131,209
+"Apple Tree","A big tree that makes apples","^",13,1,1380,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+132,372
+"Banana Plant","A tall plant that makes bananas","T",13,1,64,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+133,112
+"Banana Plant","A tall plant that makes bananas","T",13,1,126,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+133,126
+"Banana","A curved yellow fruit",")",1,1,0,0,500,4
+133,209
+"Apple Tree","A big tree that makes apples","^",13,1,309,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+133,273
+"Apple Tree","A big tree that makes apples","^",13,1,426,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+135,129
+"Banana Plant","A tall plant that makes bananas","T",13,1,4,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+135,157
+"Banana Plant","A tall plant that makes bananas","T",13,1,662,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+136,375
+"Banana","A curved yellow fruit",")",1,1,0,0,500,65
+137,181
+"Apple Tree","A big tree that makes apples","^",13,1,71,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+138,144
+"Banana","A curved yellow fruit",")",1,1,0,0,500,270
+140,178
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,72
+141,151
+"Banana Plant","A tall plant that makes bananas","T",13,1,961,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+142,148
+"Banana Plant","A tall plant that makes bananas","T",13,1,270,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+142,150
+"Banana Plant","A tall plant that makes bananas","T",13,1,636,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+143,141
+"Banana Plant","A tall plant that makes bananas","T",13,1,614,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+143,152
+"Banana Plant","A tall plant that makes bananas","T",13,1,936,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+148,181
+"Apple Tree","A big tree that makes apples","^",13,1,802,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+150,211
+"Apple Tree","A big tree that makes apples","^",13,1,717,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+158,190
+"Apple Tree","A big tree that makes apples","^",13,1,1072,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+161,208
+"Apple Tree","A big tree that makes apples","^",13,1,318,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+161,215
+"Banana Plant","A tall plant that makes bananas","T",13,1,327,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+163,213
+"Banana","A curved yellow fruit",")",1,1,0,0,500,328
+163,220
+"Banana","A curved yellow fruit",")",1,1,0,0,500,103
+164,347
+"Banana Plant","A tall plant that makes bananas","T",13,1,328,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+165,218
+"Banana Plant","A tall plant that makes bananas","T",13,1,103,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+168,350
+"Banana","A curved yellow fruit",")",1,1,0,0,500,329
+169,207
+"Apple Tree","A big tree that makes apples","^",13,1,90,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+169,499
+"Banana Plant","A tall plant that makes bananas","T",13,1,831,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+171,333
+"Banana Plant","A tall plant that makes bananas","T",13,1,422,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+172,192
+"Banana Plant","A tall plant that makes bananas","T",13,1,53,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+173,204
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,91
+173,222
+"Banana Plant","A tall plant that makes bananas","T",13,1,797,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+173,330
+"Banana","A curved yellow fruit",")",1,1,0,0,500,423
+174,195
+"Banana","A curved yellow fruit",")",1,1,0,0,500,54
+178,230
+"Banana","A curved yellow fruit",")",1,1,0,0,500,53
+178,325
+"Banana","A curved yellow fruit",")",1,1,0,0,500,421
+180,322
+"Banana Plant","A tall plant that makes bananas","T",13,1,421,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+182,205
+"Banana","A curved yellow fruit",")",1,1,0,0,500,479
+182,226
+"Banana Plant","A tall plant that makes bananas","T",13,1,53,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+183,207
+"Banana Plant","A tall plant that makes bananas","T",13,1,982,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+184,200
+"Banana Plant","A tall plant that makes bananas","T",13,1,718,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+184,211
+"Banana Plant","A tall plant that makes bananas","T",13,1,671,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+185,355
+"Apple Tree","A big tree that makes apples","^",13,1,1078,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+186,209
+"Banana Plant","A tall plant that makes bananas","T",13,1,479,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+188,235
+"Banana Plant","A tall plant that makes bananas","T",13,1,112,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+189,203
+"Banana Plant","A tall plant that makes bananas","T",13,1,957,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+191,205
+"Banana Plant","A tall plant that makes bananas","T",13,1,438,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+191,233
+"Banana","A curved yellow fruit",")",1,1,0,0,500,113
+191,368
+"Banana Plant","A tall plant that makes bananas","T",13,1,802,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+192,211
+"Banana Plant","A tall plant that makes bananas","T",13,1,685,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+192,318
+"Banana Plant","A tall plant that makes bananas","T",13,1,227,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+192,367
+"Banana Plant","A tall plant that makes bananas","T",13,1,309,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+193,207
+"Banana Plant","A tall plant that makes bananas","T",13,1,754,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+193,487
+"Banana Plant","A tall plant that makes bananas","T",13,1,714,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+194,234
+"Banana Plant","A tall plant that makes bananas","T",13,1,201,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+194,320
+"Banana","A curved yellow fruit",")",1,1,0,0,500,228
+195,207
+"Banana","A curved yellow fruit",")",1,1,0,0,500,439
+196,231
+"Banana","A curved yellow fruit",")",1,1,0,0,500,202
+196,363
+"Banana","A curved yellow fruit",")",1,1,0,0,500,310
+197,217
+"Banana Plant","A tall plant that makes bananas","T",13,1,832,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+197,224
+"Banana","A curved yellow fruit",")",1,1,0,0,500,232
+198,471
+"Banana","A curved yellow fruit",")",1,1,0,0,500,229
+198,472
+"Banana Plant","A tall plant that makes bananas","T",13,1,823,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+198,474
+"Banana Plant","A tall plant that makes bananas","T",13,1,682,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+198,490
+"Banana Plant","A tall plant that makes bananas","T",13,1,185,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+199,473
+"Banana Plant","A tall plant that makes bananas","T",13,1,513,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+200,467
+"Banana Plant","A tall plant that makes bananas","T",13,1,229,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+200,471
+"Banana","A curved yellow fruit",")",1,1,0,0,500,143
+201,4
+"Banana Plant","A tall plant that makes bananas","T",13,1,155,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+201,221
+"Banana Plant","A tall plant that makes bananas","T",13,1,232,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+201,394
+"Banana Plant","A tall plant that makes bananas","T",13,1,865,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+202,358
+"Apple Tree","A big tree that makes apples","^",13,1,1205,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+202,480
+"Banana Plant","A tall plant that makes bananas","T",13,1,588,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+202,494
+"Banana","A curved yellow fruit",")",1,1,0,0,500,186
+203,324
+"Banana","A curved yellow fruit",")",1,1,0,0,500,2
+203,473
+"Banana Plant","A tall plant that makes bananas","T",13,1,560,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+203,475
+"Banana Plant","A tall plant that makes bananas","T",13,1,143,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+204,1
+"Banana","A curved yellow fruit",")",1,1,0,0,500,156
+205,320
+"Banana Plant","A tall plant that makes bananas","T",13,1,2,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+208,381
+"Apple Tree","A big tree that makes apples","^",13,1,875,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+209,233
+"Banana Plant","A tall plant that makes bananas","T",13,1,891,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+209,392
+"Apple Tree","A big tree that makes apples","^",13,1,1233,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+209,397
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,647
+211,332
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,509
+212,378
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,876
+213,330
+"Apple Tree","A big tree that makes apples","^",13,1,509,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+213,362
+"Banana Plant","A tall plant that makes bananas","T",13,1,3,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+213,399
+"Apple Tree","A big tree that makes apples","^",13,1,647,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+214,362
+"Banana Plant","A tall plant that makes bananas","T",13,1,437,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+215,359
+"Banana","A curved yellow fruit",")",1,1,0,0,500,4
+216,497
+"Apple Tree","A big tree that makes apples","^",13,1,343,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+217,364
+"Banana","A curved yellow fruit",")",1,1,0,0,500,438
+217,408
+"Apple Tree","A big tree that makes apples","^",13,1,444,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+218,335
+"Apple Tree","A big tree that makes apples","^",13,1,1079,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+218,358
+"Banana Plant","A tall plant that makes bananas","T",13,1,438,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+218,412
+"Apple Tree","A big tree that makes apples","^",13,1,977,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+218,413
+"Apple Tree","A big tree that makes apples","^",13,1,274,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+219,232
+"Banana Plant","A tall plant that makes bananas","T",13,1,846,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+219,358
+"Banana Plant","A tall plant that makes bananas","T",13,1,737,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+220,229
+"Banana Plant","A tall plant that makes bananas","T",13,1,325,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+220,404
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,445
+220,410
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,275
+220,499
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,344
+221,336
+"Apple Tree","A big tree that makes apples","^",13,1,1029,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+221,360
+"Banana","A curved yellow fruit",")",1,1,0,0,500,439
+221,416
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,978
+222,497
+"Apple Tree","A big tree that makes apples","^",13,1,505,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+224,227
+"Banana","A curved yellow fruit",")",1,1,0,0,500,326
+226,418
+"Apple Tree","A big tree that makes apples","^",13,1,981,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+226,499
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,506
+228,231
+"Banana Plant","A tall plant that makes bananas","T",13,1,705,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+229,230
+"Banana Plant","A tall plant that makes bananas","T",13,1,580,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+229,421
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,982
+230,350
+"Banana Plant","A tall plant that makes bananas","T",13,1,389,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+230,433
+"Banana","A curved yellow fruit",")",1,1,0,0,500,212
+230,465
+"Banana","A curved yellow fruit",")",1,1,0,0,500,318
+231,136
+"Banana","A curved yellow fruit",")",1,1,0,0,500,352
+231,229
+"Banana","A curved yellow fruit",")",1,1,0,0,500,330
+231,427
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,913
+233,348
+"Banana","A curved yellow fruit",")",1,1,0,0,500,390
+233,430
+"Banana Plant","A tall plant that makes bananas","T",13,1,212,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+234,125
+"Banana","A curved yellow fruit",")",1,1,0,0,500,379
+234,227
+"Banana Plant","A tall plant that makes bananas","T",13,1,330,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+234,380
+"Apple Tree","A big tree that makes apples","^",13,1,1036,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+234,463
+"Banana Plant","A tall plant that makes bananas","T",13,1,318,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+235,132
+"Banana Plant","A tall plant that makes bananas","T",13,1,352,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+235,223
+"Banana Plant","A tall plant that makes bananas","T",13,1,283,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+235,235
+"Banana Plant","A tall plant that makes bananas","T",13,1,620,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+235,423
+"Apple Tree","A big tree that makes apples","^",13,1,913,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+235,495
+"Banana Plant","A tall plant that makes bananas","T",13,1,493,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+236,497
+"Banana Plant","A tall plant that makes bananas","T",13,1,857,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+238,121
+"Banana Plant","A tall plant that makes bananas","T",13,1,379,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+238,227
+"Banana","A curved yellow fruit",")",1,1,0,0,500,284
+238,497
+"Banana","A curved yellow fruit",")",1,1,0,0,500,494
+239,220
+"Banana Plant","A tall plant that makes bananas","T",13,1,556,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+241,373
+"Banana Plant","A tall plant that makes bananas","T",13,1,724,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+241,461
+"Banana Plant","A tall plant that makes bananas","T",13,1,686,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+242,276
+"Banana","A curved yellow fruit",")",1,1,0,0,500,333
+242,377
+"Banana","A curved yellow fruit",")",1,1,0,0,500,163
+244,231
+"Apple Tree","A big tree that makes apples","^",13,1,737,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+245,272
+"Banana Plant","A tall plant that makes bananas","T",13,1,333,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+245,373
+"Banana Plant","A tall plant that makes bananas","T",13,1,618,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+245,374
+"Banana Plant","A tall plant that makes bananas","T",13,1,721,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+246,149
+"Banana","A curved yellow fruit",")",1,1,0,0,500,396
+246,261
+"Banana Plant","A tall plant that makes bananas","T",13,1,469,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+246,271
+"Banana Plant","A tall plant that makes bananas","T",13,1,625,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+246,374
+"Banana Plant","A tall plant that makes bananas","T",13,1,163,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+247,224
+"Apple Tree","A big tree that makes apples","^",13,1,454,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+247,460
+"Banana Plant","A tall plant that makes bananas","T",13,1,108,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+248,145
+"Banana Plant","A tall plant that makes bananas","T",13,1,396,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+248,226
+"Apple Tree","A big tree that makes apples","^",13,1,424,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+250,265
+"Banana","A curved yellow fruit",")",1,1,0,0,500,470
+251,270
+"Banana Plant","A tall plant that makes bananas","T",13,1,595,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+251,273
+"Banana Plant","A tall plant that makes bananas","T",13,1,484,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+251,437
+"Apple Tree","A big tree that makes apples","^",13,1,111,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+251,463
+"Banana","A curved yellow fruit",")",1,1,0,0,500,109
+252,125
+"Apple Tree","A big tree that makes apples","^",13,1,208,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+253,111
+"Apple Tree","A big tree that makes apples","^",13,1,285,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+253,118
+"Apple Tree","A big tree that makes apples","^",13,1,458,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+253,217
+"Apple Tree","A big tree that makes apples","^",13,1,148,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+253,434
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,112
+254,104
+"Banana Plant","A tall plant that makes bananas","T",13,1,689,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+254,275
+"Banana","A curved yellow fruit",")",1,1,0,0,500,485
+255,373
+"Banana Plant","A tall plant that makes bananas","T",13,1,411,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+256,104
+"Banana","A curved yellow fruit",")",1,1,0,0,500,145
+257,214
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,149
+257,373
+"Banana Plant","A tall plant that makes bananas","T",13,1,626,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+257,377
+"Banana","A curved yellow fruit",")",1,1,0,0,500,412
+258,156
+"Banana Plant","A tall plant that makes bananas","T",13,1,841,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+258,210
+"Banana Plant","A tall plant that makes bananas","T",13,1,952,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+259,452
+"Banana Plant","A tall plant that makes bananas","T",13,1,525,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+259,455
+"Banana","A curved yellow fruit",")",1,1,0,0,500,49
+260,102
+"Banana Plant","A tall plant that makes bananas","T",13,1,145,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+260,458
+"Banana Plant","A tall plant that makes bananas","T",13,1,836,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+261,459
+"Banana Plant","A tall plant that makes bananas","T",13,1,49,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+262,440
+"Apple Tree","A big tree that makes apples","^",13,1,272,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+263,438
+"Apple Tree","A big tree that makes apples","^",13,1,761,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+264,213
+"Apple Tree","A big tree that makes apples","^",13,1,720,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+265,246
+"Apple Tree","A big tree that makes apples","^",13,1,1341,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+265,384
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,357
+267,387
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,90
+269,245
+"Apple Tree","A big tree that makes apples","^",13,1,1423,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+269,381
+"Apple Tree","A big tree that makes apples","^",13,1,357,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+270,17
+"Banana","A curved yellow fruit",")",1,1,0,0,500,290
+270,384
+"Apple Tree","A big tree that makes apples","^",13,1,90,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+271,435
+"Apple Tree","A big tree that makes apples","^",13,1,1168,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+272,426
+"Apple Tree","A big tree that makes apples","^",13,1,736,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+272,488
+"Banana Plant","A tall plant that makes bananas","T",13,1,799,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+273,14
+"Banana Plant","A tall plant that makes bananas","T",13,1,290,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+273,211
+"Apple Tree","A big tree that makes apples","^",13,1,936,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+273,425
+"Apple Tree","A big tree that makes apples","^",13,1,796,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+273,439
+"Apple Tree","A big tree that makes apples","^",13,1,748,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+274,109
+"Apple Tree","A big tree that makes apples","^",13,1,50,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+274,207
+"Banana Plant","A tall plant that makes bananas","T",13,1,206,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+274,472
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,22
+274,489
+"Banana Plant","A tall plant that makes bananas","T",13,1,366,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+275,425
+"Apple Tree","A big tree that makes apples","^",13,1,1355,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+275,432
+"Apple Tree","A big tree that makes apples","^",13,1,279,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+276,7
+"Banana Plant","A tall plant that makes bananas","T",13,1,569,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+276,159
+"Apple Tree","A big tree that makes apples","^",13,1,682,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+276,165
+"Banana Plant","A tall plant that makes bananas","T",13,1,322,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+276,211
+"Banana","A curved yellow fruit",")",1,1,0,0,500,207
+276,246
+"Apple Tree","A big tree that makes apples","^",13,1,567,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+276,472
+"Apple Tree","A big tree that makes apples","^",13,1,383,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+276,495
+"Corpse","Dead animal","c",1,1,2,0.899541,2000,1746
+278,384
+"Apple Tree","A big tree that makes apples","^",13,1,806,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+278,400
+"Corpse","Dead animal","c",1,1,2,3.23231,2000,1770
+278,475
+"Apple Tree","A big tree that makes apples","^",13,1,22,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+278,491
+"Banana","A curved yellow fruit",")",1,1,0,0,500,367
+279,162
+"Banana","A curved yellow fruit",")",1,1,0,0,500,323
+279,242
+"Apple Tree","A big tree that makes apples","^",13,1,1054,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+279,424
+"Apple Tree","A big tree that makes apples","^",13,1,601,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+280,158
+"Apple Tree","A big tree that makes apples","^",13,1,1241,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+280,165
+"Banana Plant","A tall plant that makes bananas","T",13,1,128,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+280,253
+"Banana Plant","A tall plant that makes bananas","T",13,1,63,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+280,386
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,807
+282,158
+"Apple Tree","A big tree that makes apples","^",13,1,609,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+283,155
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,61
+283,167
+"Banana","A curved yellow fruit",")",1,1,0,0,500,129
+283,256
+"Banana","A curved yellow fruit",")",1,1,0,0,500,64
+283,418
+"Apple Tree","A big tree that makes apples","^",13,1,356,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+284,168
+"Banana","A curved yellow fruit",")",1,1,0,0,500,457
+284,216
+"Apple Tree","A big tree that makes apples","^",13,1,1159,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+285,157
+"Apple Tree","A big tree that makes apples","^",13,1,61,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+285,384
+"Apple Tree","A big tree that makes apples","^",13,1,89,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+286,166
+"Banana Plant","A tall plant that makes bananas","T",13,1,457,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+286,417
+"Apple Tree","A big tree that makes apples","^",13,1,327,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+287,108
+"Banana Plant","A tall plant that makes bananas","T",13,1,795,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+287,157
+"Apple Tree","A big tree that makes apples","^",13,1,864,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+288,7
+"Apple Tree","A big tree that makes apples","^",13,1,1458,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+288,156
+"Apple Tree","A big tree that makes apples","^",13,1,464,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+288,246
+"Banana Plant","A tall plant that makes bananas","T",13,1,573,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+288,386
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,90
+291,385
+"Apple Tree","A big tree that makes apples","^",13,1,182,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+291,410
+"Apple Tree","A big tree that makes apples","^",13,1,515,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+291,470
+"Apple Tree","A big tree that makes apples","^",13,1,1267,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+293,381
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,183
+293,408
+"Apple Tree","A big tree that makes apples","^",13,1,497,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+294,157
+"Apple Tree","A big tree that makes apples","^",13,1,427,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+294,443
+"Banana Plant","A tall plant that makes bananas","T",13,1,699,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+294,448
+"Banana Plant","A tall plant that makes bananas","T",13,1,316,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+295,115
+"Banana Plant","A tall plant that makes bananas","T",13,1,133,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+296,379
+"Banana Plant","A tall plant that makes bananas","T",13,1,963,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+296,386
+"Apple Tree","A big tree that makes apples","^",13,1,1254,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+297,227
+"Banana Plant","A tall plant that makes bananas","T",13,1,883,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+297,463
+"Apple Tree","A big tree that makes apples","^",13,1,966,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+298,25
+"Banana Plant","A tall plant that makes bananas","T",13,1,434,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+298,113
+"Banana","A curved yellow fruit",")",1,1,0,0,500,134
+298,123
+"Apple Tree","A big tree that makes apples","^",13,1,268,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+298,229
+"Banana Plant","A tall plant that makes bananas","T",13,1,293,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+298,446
+"Banana","A curved yellow fruit",")",1,1,0,0,500,317
+298,495
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,51
+300,22
+"Banana","A curved yellow fruit",")",1,1,0,0,500,435
+300,471
+"Apple Tree","A big tree that makes apples","^",13,1,1214,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+300,492
+"Apple Tree","A big tree that makes apples","^",13,1,292,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+300,494
+"Apple Tree","A big tree that makes apples","^",13,1,1240,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+301,22
+"Apple Tree","A big tree that makes apples","^",13,1,623,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+301,227
+"Banana","A curved yellow fruit",")",1,1,0,0,500,294
+301,491
+"Apple Tree","A big tree that makes apples","^",13,1,51,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+302,24
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,834
+303,24
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,624
+303,373
+"Corpse","Dead animal","c",1,1,2,4.75875,2000,1622
+304,494
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,45
+305,380
+"Banana Plant","A tall plant that makes bananas","T",13,1,995,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+306,21
+"Apple Tree","A big tree that makes apples","^",13,1,834,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+306,498
+"Apple Tree","A big tree that makes apples","^",13,1,604,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+307,460
+"Banana Plant","A tall plant that makes bananas","T",13,1,295,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+307,498
+"Apple Tree","A big tree that makes apples","^",13,1,45,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+308,405
+"Banana Plant","A tall plant that makes bananas","T",13,1,18,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+308,473
+"Apple Tree","A big tree that makes apples","^",13,1,102,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+310,401
+"Banana","A curved yellow fruit",")",1,1,0,0,500,19
+310,458
+"Banana","A curved yellow fruit",")",1,1,0,0,500,296
+310,470
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,103
+311,462
+"Banana Plant","A tall plant that makes bananas","T",13,1,302,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+311,476
+"Apple Tree","A big tree that makes apples","^",13,1,500,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+312,130
+"Apple Tree","A big tree that makes apples","^",13,1,583,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+313,30
+"Banana Plant","A tall plant that makes bananas","T",13,1,155,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+314,131
+"Apple Tree","A big tree that makes apples","^",13,1,418,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+314,386
+"Banana Plant","A tall plant that makes bananas","T",13,1,872,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+314,395
+"Banana Plant","A tall plant that makes bananas","T",13,1,549,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+314,459
+"Banana","A curved yellow fruit",")",1,1,0,0,500,303
+314,477
+"Apple Tree","A big tree that makes apples","^",13,1,1394,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+315,27
+"Banana","A curved yellow fruit",")",1,1,0,0,500,156
+315,31
+"Banana Plant","A tall plant that makes bananas","T",13,1,134,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+315,127
+"Corpse","Dead animal","c",1,1,2,4.60857,2000,1172
+318,134
+"Apple Tree","A big tree that makes apples","^",13,1,622,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+318,387
+"Banana Plant","A tall plant that makes bananas","T",13,1,840,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+318,470
+"Banana Plant","A tall plant that makes bananas","T",13,1,414,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+319,29
+"Banana","A curved yellow fruit",")",1,1,0,0,500,135
+320,142
+"Apple Tree","A big tree that makes apples","^",13,1,353,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+321,141
+"Apple Tree","A big tree that makes apples","^",13,1,262,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+321,467
+"Banana","A curved yellow fruit",")",1,1,0,0,500,415
+321,479
+"Apple Tree","A big tree that makes apples","^",13,1,1039,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+327,39
+"Banana Plant","A tall plant that makes bananas","T",13,1,96,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+328,132
+"Banana","A curved yellow fruit",")",1,1,0,0,500,305
+330,43
+"Banana","A curved yellow fruit",")",1,1,0,0,500,97
+330,134
+"Banana Plant","A tall plant that makes bananas","T",13,1,305,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+331,142
+"Banana Plant","A tall plant that makes bananas","T",13,1,360,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+331,379
+"Banana Plant","A tall plant that makes bananas","T",13,1,590,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+331,388
+"Banana Plant","A tall plant that makes bananas","T",13,1,193,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+332,487
+"Apple Tree","A big tree that makes apples","^",13,1,938,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+334,144
+"Banana","A curved yellow fruit",")",1,1,0,0,500,361
+335,391
+"Banana","A curved yellow fruit",")",1,1,0,0,500,194
+336,384
+"Banana Plant","A tall plant that makes bananas","T",13,1,559,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+339,393
+"Banana Plant","A tall plant that makes bananas","T",13,1,938,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+339,499
+"Apple Tree","A big tree that makes apples","^",13,1,1501,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+340,498
+"Apple Tree","A big tree that makes apples","^",13,1,290,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+343,498
+"Corpse","Dead animal","c",1,1,2,2.25776,2000,1623
+346,308
+"Banana Plant","A tall plant that makes bananas","T",13,1,538,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+346,384
+"Banana Plant","A tall plant that makes bananas","T",13,1,689,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+347,491
+"Banana Plant","A tall plant that makes bananas","T",13,1,893,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+348,379
+"Banana Plant","A tall plant that makes bananas","T",13,1,76,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+350,377
+"Banana","A curved yellow fruit",")",1,1,0,0,500,77
+352,496
+"Banana Plant","A tall plant that makes bananas","T",13,1,776,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+353,304
+"Apple Tree","A big tree that makes apples","^",13,1,1293,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+355,314
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,63
+356,317
+"Banana Plant","A tall plant that makes bananas","T",13,1,382,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+357,278
+"Banana","A curved yellow fruit",")",1,1,0,0,500,260
+358,321
+"Banana","A curved yellow fruit",")",1,1,0,0,500,383
+359,311
+"Apple Tree","A big tree that makes apples","^",13,1,63,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+360,281
+"Banana Plant","A tall plant that makes bananas","T",13,1,260,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+361,45
+"Banana Plant","A tall plant that makes bananas","T",13,1,791,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+362,491
+"Corpse","Dead animal","c",1,1,2,3.52414,2000,751
+364,45
+"Banana Plant","A tall plant that makes bananas","T",13,1,622,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+365,285
+"Apple Tree","A big tree that makes apples","^",13,1,1367,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+366,48
+"Banana","A curved yellow fruit",")",1,1,0,0,500,270
+366,491
+"Corpse","Dead animal","c",1,1,2,4.29268,2000,751
+"Corpse","Dead animal","c",1,1,2,2.0357,2000,751
+368,44
+"Banana Plant","A tall plant that makes bananas","T",13,1,270,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+368,317
+"Apple Tree","A big tree that makes apples","^",13,1,1229,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+368,322
+"Corpse","Dead animal","c",1,1,2,2.48054,2000,959
+369,322
+"Banana Plant","A tall plant that makes bananas","T",13,1,995,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+370,316
+"Apple Tree","A big tree that makes apples","^",13,1,444,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+371,33
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,3
+371,39
+"Apple Tree","A big tree that makes apples","^",13,1,1279,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+372,39
+"Apple Tree","A big tree that makes apples","^",13,1,412,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+373,319
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,445
+375,36
+"Apple Tree","A big tree that makes apples","^",13,1,3,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+375,74
+"Banana Plant","A tall plant that makes bananas","T",13,1,659,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+379,36
+"Apple Tree","A big tree that makes apples","^",13,1,416,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+379,320
+"Banana Plant","A tall plant that makes bananas","T",13,1,516,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+382,13
+"Apple Tree","A big tree that makes apples","^",13,1,564,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+382,282
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,959
+382,283
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,111
+383,26
+"Apple Tree","A big tree that makes apples","^",13,1,1362,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+384,285
+"Apple Tree","A big tree that makes apples","^",13,1,111,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+385,3
+"Banana Plant","A tall plant that makes bananas","T",13,1,10,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+386,75
+"Apple Tree","A big tree that makes apples","^",13,1,1149,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+386,87
+"Banana Plant","A tall plant that makes bananas","T",13,1,358,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+386,285
+"Apple Tree","A big tree that makes apples","^",13,1,959,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+386,319
+"Banana Plant","A tall plant that makes bananas","T",13,1,928,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+387,5
+"Banana","A curved yellow fruit",")",1,1,0,0,500,11
+387,72
+"Apple Tree","A big tree that makes apples","^",13,1,767,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+387,79
+"Apple Tree","A big tree that makes apples","^",13,1,1099,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+388,264
+"Banana","A curved yellow fruit",")",1,1,0,0,500,465
+389,89
+"Banana","A curved yellow fruit",")",1,1,0,0,500,359
+391,91
+"Banana Plant","A tall plant that makes bananas","T",13,1,744,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+391,494
+"Banana Plant","A tall plant that makes bananas","T",13,1,843,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+392,5
+"Banana Plant","A tall plant that makes bananas","T",13,1,760,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+392,261
+"Banana Plant","A tall plant that makes bananas","T",13,1,465,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+392,492
+"Banana Plant","A tall plant that makes bananas","T",13,1,635,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+393,88
+"Banana","A curved yellow fruit",")",1,1,0,0,500,277
+394,6
+"Banana Plant","A tall plant that makes bananas","T",13,1,871,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+394,288
+"Apple Tree","A big tree that makes apples","^",13,1,922,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+395,292
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,765
+396,269
+"Banana","A curved yellow fruit",")",1,1,0,0,500,152
+396,284
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,923
+396,487
+"Banana Plant","A tall plant that makes bananas","T",13,1,509,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+396,497
+"Apple Tree","A big tree that makes apples","^",13,1,1387,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+396,498
+"Apple Tree","A big tree that makes apples","^",13,1,1076,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+397,92
+"Banana Plant","A tall plant that makes bananas","T",13,1,277,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+397,247
+"Apple Tree","A big tree that makes apples","^",13,1,1415,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+397,488
+"Banana Plant","A tall plant that makes bananas","T",13,1,345,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+397,498
+"Apple Tree","A big tree that makes apples","^",13,1,10,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+398,289
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,327
+399,9
+"Banana","A curved yellow fruit",")",1,1,0,0,500,167
+399,295
+"Apple Tree","A big tree that makes apples","^",13,1,765,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+399,496
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,11
+400,272
+"Banana Plant","A tall plant that makes bananas","T",13,1,152,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+400,282
+"Banana Plant","A tall plant that makes bananas","T",13,1,984,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+400,291
+"Apple Tree","A big tree that makes apples","^",13,1,327,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+401,7
+"Banana Plant","A tall plant that makes bananas","T",13,1,167,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+401,282
+"Banana Plant","A tall plant that makes bananas","T",13,1,400,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+401,307
+"Banana Plant","A tall plant that makes bananas","T",13,1,220,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+401,492
+"Banana","A curved yellow fruit",")",1,1,0,0,500,346
+402,279
+"Corpse","Dead animal","c",1,1,2,2.47504,2000,959
+403,309
+"Banana","A curved yellow fruit",")",1,1,0,0,500,221
+405,285
+"Banana","A curved yellow fruit",")",1,1,0,0,500,401
+406,483
+"Banana Plant","A tall plant that makes bananas","T",13,1,673,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+409,58
+"Apple Tree","A big tree that makes apples","^",13,1,1216,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+410,92
+"Apple Tree","A big tree that makes apples","^",13,1,350,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+411,266
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,720
+413,55
+"Banana","A curved yellow fruit",")",1,1,0,0,500,63
+413,98
+"Banana Plant","A tall plant that makes bananas","T",13,1,708,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+413,240
+"Apple Tree","A big tree that makes apples","^",13,1,1390,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+413,486
+"Apple Tree","A big tree that makes apples","^",13,1,826,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+414,102
+"Banana","A curved yellow fruit",")",1,1,0,0,500,45
+414,268
+"Apple Tree","A big tree that makes apples","^",13,1,720,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+415,52
+"Banana Plant","A tall plant that makes bananas","T",13,1,63,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+416,241
+"Apple Tree","A big tree that makes apples","^",13,1,737,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+418,99
+"Banana Plant","A tall plant that makes bananas","T",13,1,45,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+419,483
+"Banana Plant","A tall plant that makes bananas","T",13,1,322,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+420,244
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,738
+420,496
+"Corpse","Dead animal","c",1,1,2,2.70134,2000,1357
+422,481
+"Banana","A curved yellow fruit",")",1,1,0,0,500,323
+422,496
+"Corpse","Dead animal","c",1,1,2,3.58034,2000,1357
+423,56
+"Apple Tree","A big tree that makes apples","^",13,1,133,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+423,95
+"Apple Tree","A big tree that makes apples","^",13,1,972,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+427,56
+"Apple Tree","A big tree that makes apples","^",13,1,688,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+427,273
+"Banana Plant","A tall plant that makes bananas","T",13,1,531,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+431,95
+"Apple Tree","A big tree that makes apples","^",13,1,360,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+435,100
+"Banana Plant","A tall plant that makes bananas","T",13,1,791,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+440,412
+"Banana Plant","A tall plant that makes bananas","T",13,1,215,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+441,74
+"Apple Tree","A big tree that makes apples","^",13,1,836,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+441,239
+"Apple Tree","A big tree that makes apples","^",13,1,676,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+441,266
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,564
+443,235
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,677
+443,236
+"Corpse","Dead animal","c",1,1,2,2.86651,2000,960
+443,498
+"Apple Tree","A big tree that makes apples","^",13,1,82,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+444,263
+"Apple Tree","A big tree that makes apples","^",13,1,564,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+444,415
+"Banana","A curved yellow fruit",")",1,1,0,0,500,216
+446,409
+"Banana Plant","A tall plant that makes bananas","T",13,1,10,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+446,496
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,83
+447,90
+"Apple Tree","A big tree that makes apples","^",13,1,1426,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+448,407
+"Banana","A curved yellow fruit",")",1,1,0,0,500,11
+451,86
+"Apple Tree","A big tree that makes apples","^",13,1,653,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+452,267
+"Banana Plant","A tall plant that makes bananas","T",13,1,40,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+453,416
+"Banana","A curved yellow fruit",")",1,1,0,0,500,353
+453,498
+"Banana Plant","A tall plant that makes bananas","T",13,1,385,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+455,495
+"Banana","A curved yellow fruit",")",1,1,0,0,500,386
+456,270
+"Banana","A curved yellow fruit",")",1,1,0,0,500,41
+456,412
+"Banana Plant","A tall plant that makes bananas","T",13,1,15,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+457,231
+"Apple Tree","A big tree that makes apples","^",13,1,1077,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+457,414
+"Banana Plant","A tall plant that makes bananas","T",13,1,353,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+459,91
+"Banana Plant","A tall plant that makes bananas","T",13,1,783,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+460,230
+"Apple Tree","A big tree that makes apples","^",13,1,476,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+460,416
+"Banana","A curved yellow fruit",")",1,1,0,0,500,16
+464,234
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,477
+465,265
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,612
+468,262
+"Apple Tree","A big tree that makes apples","^",13,1,612,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+470,395
+"Banana Plant","A tall plant that makes bananas","T",13,1,867,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+480,228
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,233
+481,227
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,489
+481,411
+"Banana Plant","A tall plant that makes bananas","T",13,1,427,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+483,231
+"Apple Tree","A big tree that makes apples","^",13,1,489,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+483,389
+"Banana Plant","A tall plant that makes bananas","T",13,1,635,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+484,231
+"Apple Tree","A big tree that makes apples","^",13,1,233,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+484,414
+"Banana","A curved yellow fruit",")",1,1,0,0,500,428
+485,230
+"Banana","A curved yellow fruit",")",1,1,0,0,500,135
+485,236
+"Apple Tree","A big tree that makes apples","^",13,1,491,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+487,238
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,492
+487,404
+"Banana Plant","A tall plant that makes bananas","T",13,1,213,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+488,266
+"Banana Plant","A tall plant that makes bananas","T",13,1,868,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+489,228
+"Banana Plant","A tall plant that makes bananas","T",13,1,135,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+489,253
+"Apple","A delicious red apple","*",1,1,1,0.6,1000,55
+490,387
+"Banana Plant","A tall plant that makes bananas","T",13,1,595,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+490,402
+"Banana","A curved yellow fruit",")",1,1,0,0,500,214
+492,113
+"Banana","A curved yellow fruit",")",1,1,0,0,500,351
+493,256
+"Apple Tree","A big tree that makes apples","^",13,1,55,1500,2,4,"Apple","A delicious red apple","*",1,1,1,0.6,1000,0
+495,117
+"Banana Plant","A tall plant that makes bananas","T",13,1,404,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+496,109
+"Banana Plant","A tall plant that makes bananas","T",13,1,445,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+496,111
+"Banana Plant","A tall plant that makes bananas","T",13,1,351,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+496,236
+"Banana Plant","A tall plant that makes bananas","T",13,1,974,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+497,114
+"Banana","A curved yellow fruit",")",1,1,0,0,500,405
+497,126
+"Banana Plant","A tall plant that makes bananas","T",13,1,767,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+497,127
+"Banana Plant","A tall plant that makes bananas","T",13,1,978,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+497,396
+"Banana Plant","A tall plant that makes bananas","T",13,1,834,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+497,400
+"Banana Plant","A tall plant that makes bananas","T",13,1,903,1000,2,4,"Banana","A curved yellow fruit",")",1,1,0,0,500,0
+498,112
+"Banana","A curved yellow fruit",")",1,1,0,0,500,446
