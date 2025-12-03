@@ -1,0 +1,14 @@
+# macOS
+.DS_Store
+*.DS_Store
+
+# Build artifacts
+*.dSYM/
+EcoSim
+err
+.err.swp
+
+# IDE
+.vscode/
+*.swp
+*.swo
