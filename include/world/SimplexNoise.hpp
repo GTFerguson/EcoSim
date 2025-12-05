@@ -53,4 +53,4 @@ private:
     float mPersistence; ///< Persistence is the loss of amplitude between successive octaves (usually 1/lacunarity)
 };
 
-#endif
+#endif  // ECOSIM_WORLD_SIMPLEXNOISE_HPP

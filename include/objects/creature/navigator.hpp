@@ -11,14 +11,34 @@
 #include <vector>
 #include <random>
 #include <set>
+#include <unordered_set>
 #include "creature.hpp"
 
-//  Movement Costs
-#define NORM_COST   10
-#define DIAG_COST   14
-#define MAX_NODES   200
-
 class Creature;
+
+// CREATURE-018 fix: Convert macros to type-safe constexpr constants
+// These are now properly scoped and type-safe
+namespace NavigatorConstants {
+  constexpr int NORM_COST = 10;   // Cost for orthogonal movement
+  constexpr int DIAG_COST = 14;   // Cost for diagonal movement (approx sqrt(2) * 10)
+  constexpr int MAX_NODES = 200;  // Maximum nodes to expand in A* search
+}
+
+// For backward compatibility with existing code using the old macro names
+constexpr int NORM_COST = NavigatorConstants::NORM_COST;
+constexpr int DIAG_COST = NavigatorConstants::DIAG_COST;
+constexpr int MAX_NODES = NavigatorConstants::MAX_NODES;
+
+// Hash function for coordinate pairs (for O(1) lookup in A* search)
+struct CoordHash {
+    std::size_t operator()(const std::pair<int, int>& coord) const {
+        // Combine hashes using a common technique
+        return std::hash<int>()(coord.first) ^ (std::hash<int>()(coord.second) << 16);
+    }
+};
+
+// Type alias for coordinate set with O(1) lookup
+using CoordSet = std::unordered_set<std::pair<int, int>, CoordHash>;
 
 //  Node for A* Search
 class Node {
@@ -110,27 +130,27 @@ class Navigator {
     //============================================================================
     //  Helper methods
     //============================================================================
-    static bool  nodeInSet      (std::set<Node, nodeCompare> &set,
-                                 const Node &node);
+    static bool  nodeInCoordSet (const CoordSet &coordSet, int x, int y);
     static void  validateNode   (std::set<Node, nodeCompare> &openSet,
-                                 std::set<Node,nodeCompare> closedSet, 
+                                 CoordSet &openCoords,
+                                 const CoordSet &closedCoords,
                                  const Tile &curTile, const Node *parent,
-                                 const int &gCost, 
+                                 const int &gCost,
                                  const int &curX,
                                  const int &curY,
                                  const int &endX,
                                  const int &endY);
     static bool boundaryCheck   (const int &x,
-                                 const int &y, 
+                                 const int &y,
                                  const int &rows,
                                  const int &cols);
-    static void checkNeighbours (const std::vector<std::vector<Tile>> &map, 
+    static void checkNeighbours (const std::vector<std::vector<Tile>> &map,
                                  const Node &curNode,
-                                 std::set<Node, nodeCompare> &openSet, 
-                                 const std::set<Node,
-                                 nodeCompare> &closedSet,
+                                 std::set<Node, nodeCompare> &openSet,
+                                 CoordSet &openCoords,
+                                 const CoordSet &closedCoords,
                                  const int &rows,
-                                 const int &cols, 
+                                 const int &cols,
                                  const int &endX,
                                  const int &endY);
     static void movementCost    (Creature &c, const int &x,const int &y);

@@ -161,18 +161,49 @@ unsigned Genome::getPursue   () const { return _pursue;        }
 //================================================================================
 //  Setters
 //================================================================================
-void Genome::setLifespan  (unsigned lifespan)   { _lifespan       = lifespan;   }   
-void Genome::setSight     (unsigned sight)      { _sight          = sight;      }
-void Genome::setTHunger   (float t_hunger)      { _needs.hunger   = t_hunger;   }
-void Genome::setTThirst   (float t_thirst)      { _needs.thirst   = t_thirst;   }   
-void Genome::setTFatigue  (float t_fatigue)     { _needs.fatigue  = t_fatigue;  }   
-void Genome::setTMate     (float t_mate)        { _needs.mate     = t_mate;     }
-void Genome::setComfInc   (float comfInc)       { _comfInc        = comfInc;    }
-void Genome::setComfDec   (float comfDec)       { _comfDec        = comfDec;    }
+// CREATURE-024 fix: Add validation against Limits in setters to prevent invalid gene values
+void Genome::setLifespan  (unsigned lifespan)   {
+  _lifespan = (lifespan < Limits::lifespan[0]) ? Limits::lifespan[0] :
+              (lifespan > Limits::lifespan[1]) ? Limits::lifespan[1] : lifespan;
+}
+void Genome::setSight     (unsigned sight)      {
+  _sight = (sight < Limits::sight[0]) ? Limits::sight[0] :
+           (sight > Limits::sight[1]) ? Limits::sight[1] : sight;
+}
+void Genome::setTHunger   (float t_hunger)      {
+  _needs.hunger = (t_hunger < Limits::needs[0]) ? Limits::needs[0] :
+                  (t_hunger > Limits::needs[1]) ? Limits::needs[1] : t_hunger;
+}
+void Genome::setTThirst   (float t_thirst)      {
+  _needs.thirst = (t_thirst < Limits::needs[0]) ? Limits::needs[0] :
+                  (t_thirst > Limits::needs[1]) ? Limits::needs[1] : t_thirst;
+}
+void Genome::setTFatigue  (float t_fatigue)     {
+  _needs.fatigue = (t_fatigue < Limits::needs[0]) ? Limits::needs[0] :
+                   (t_fatigue > Limits::needs[1]) ? Limits::needs[1] : t_fatigue;
+}
+void Genome::setTMate     (float t_mate)        {
+  _needs.mate = (t_mate < Limits::needs[0]) ? Limits::needs[0] :
+                (t_mate > Limits::needs[1]) ? Limits::needs[1] : t_mate;
+}
+void Genome::setComfInc   (float comfInc)       {
+  _comfInc = (comfInc < Limits::comfort[0]) ? Limits::comfort[0] :
+             (comfInc > Limits::comfort[1]) ? Limits::comfort[1] : comfInc;
+}
+void Genome::setComfDec   (float comfDec)       {
+  _comfDec = (comfDec < Limits::comfort[0]) ? Limits::comfort[0] :
+             (comfDec > Limits::comfort[1]) ? Limits::comfort[1] : comfDec;
+}
 void Genome::setDiet      (Diet diet)           { _diet           = diet;       }
 void Genome::setFlocks    (bool flocks)         { _flocks         = flocks;     }
-void Genome::setFlee      (unsigned int flee)   { _flee           = flee;       }
-void Genome::setPursue    (unsigned int pursue) { _pursue         = pursue;     }
+void Genome::setFlee      (unsigned int flee)   {
+  _flee = (flee < Limits::flock[0]) ? Limits::flock[0] :
+          (flee > Limits::flock[1]) ? Limits::flock[1] : flee;
+}
+void Genome::setPursue    (unsigned int pursue) {
+  _pursue = (pursue < Limits::flock[0]) ? Limits::flock[0] :
+            (pursue > Limits::flock[1]) ? Limits::flock[1] : pursue;
+}
 
 /**
  *  Completely randomises all the genes.
@@ -187,7 +218,9 @@ void Genome::randomise () {
   _comfInc        = mutation (Limits::comfort);
   _comfDec        = mutation (Limits::comfort);
   _diet           = Diet     (mutation(Limits::diet));
-  _flocks         = rand()%2;
+  // CREATURE-012 fix: Use mt19937 engine instead of rand() for consistent random quality
+  std::uniform_int_distribution<int> boolDist(0, 1);
+  _flocks         = static_cast<bool>(boolDist(_gen));
   _flee           = mutation (Limits::flock);
   _pursue         = mutation (Limits::flock);
 }
@@ -267,8 +300,8 @@ unsigned int Genome::spliceGene (const unsigned &gene1, const unsigned &gene2,
   unsigned method = spliceDist (Genome::_gen);
 
   //  Mutation
-	if (method <= MUTATION_CHANCE) {
-    mutation(limits);
+ if (method <= MUTATION_CHANCE) {
+    return mutation(limits);
 
   } else if (method <= AVG_CHANCE) {
     unsigned avg = (gene1 + gene2) / 2;
@@ -305,10 +338,10 @@ float Genome::spliceGene (const float &gene1, const float &gene2,
   unsigned method = spliceDist (Genome::_gen);
 
 	if (method <= MUTATION_CHANCE) {
-    mutation(limits);
+	   return mutation(limits);
 
-  } else if (method <= AVG_CHANCE) {
-    return (gene1 + gene2) / 2;
+	 } else if (method <= AVG_CHANCE) {
+	   return (gene1 + gene2) / 2;
 
   } else if (method <= AVG_CREEP_CHANCE) {
     float avg = (gene1 + gene2) / 2;
@@ -435,7 +468,7 @@ float Genome::compare (const Genome &g2) const {
         similarity += geneSimilarity (_needs.fatigue, g2.getTFatigue(), Limits::needs);
         similarity += geneSimilarity (_needs.mate,    g2.getTMate(),    Limits::needs);
         similarity += geneSimilarity (_comfInc,       g2.getComfInc(),  Limits::comfort);
-        similarity += geneSimilarity (_comfInc,       g2.getComfDec(),  Limits::comfort);
+        similarity += geneSimilarity (_comfDec,       g2.getComfDec(),  Limits::comfort);
         similarity += geneSimilarity (_sight,         g2.getSight(),    Limits::sight);
         similarity += geneSimilarity (_flocks,        g2.ifFlocks());
         similarity += geneSimilarity (_flee,          g2.getFlee(),     Limits::flock);

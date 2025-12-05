@@ -4,9 +4,16 @@
 
 # Build artifacts
 *.dSYM/
+*.o
 EcoSim
 err
 .err.swp
+
+# Documentation
+docs/
+
+# Save files
+saves/
 
 # IDE
 .vscode/

@@ -11,8 +11,15 @@
 
 #include "gameObject.hpp"
 
-#include <sstream>
-
+/**
+ * @class Food
+ * @brief Represents consumable food items in the simulation.
+ *
+ * Food objects extend GameObject with nutritional properties (calories),
+ * decay mechanics (lifespan and decay timer), and unique identification.
+ * Creatures can consume food to gain energy, and food naturally decays
+ * over time until it becomes inedible.
+ */
 class Food: public GameObject {
 	private:
     unsigned int  _id, _lifespan, _decay;
@@ -22,30 +29,64 @@ class Food: public GameObject {
 		//	Constructor
     //============================================================================
     Food ();
-		Food (const unsigned &id,   const std::string &name,  const std::string &desc,
-          const bool &passable, const char &character,    const unsigned &colour, 
-          const float &calories, const unsigned &lifespan);
-		Food (const unsigned &id,   const std::string &name,  const std::string &desc,
-          const bool &passable, const char &character,    const unsigned &colour, 
-          const float &calories, const unsigned &lifespan, const unsigned &decay);
+		Food (unsigned id,   const std::string &name,  const std::string &desc,
+          bool passable, char character,           unsigned int colour,
+          float calories, unsigned int lifespan);
+		Food (unsigned id,   const std::string &name,  const std::string &desc,
+          bool passable, char character,           unsigned int colour,
+          float calories, unsigned int lifespan,   unsigned int decay);
 
     //============================================================================
-    //  Increment
+    //  Decay Handling
     //============================================================================
+    /**
+     * @brief Increments the decay timer by one unit.
+     *
+     * Will not exceed the lifespan value.
+     */
     void incrementDecay ();
+    
+    /**
+     * @brief Checks if the food has fully decayed.
+     * @return true if decay >= lifespan, false otherwise.
+     */
+    bool isDecayed      () const;
 
     //============================================================================
-		//	Getters
+  //	Getters
     //============================================================================
+    /**
+     * @brief Gets the unique identifier for this food item.
+     * @return The food's ID.
+     */
     unsigned  getID       () const;
-		float     getCalories () const;
-		unsigned  getDecay    () const;
-		unsigned  getLifespan () const;
+    
+    /**
+     * @brief Gets the caloric value of the food.
+     * @return The calories as a float value.
+     */
+  float     getCalories () const;
+  
+  /**
+   * @brief Gets the current decay value.
+   * @return The decay timer value.
+   */
+  unsigned  getDecay    () const;
+  
+  /**
+   * @brief Gets the maximum lifespan of the food.
+   * @return The lifespan value (decay limit).
+   */
+  unsigned  getLifespan () const;
   
     //============================================================================
-		//  To String	
+  //  To String
     //============================================================================
-    std::string toString () const;
+    /**
+     * @brief Converts the food object to a string representation.
+     * @return A comma-separated string with all food properties.
+     */
+    std::string toString () const override;
 };
 
 #endif

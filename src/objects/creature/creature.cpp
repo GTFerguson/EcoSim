@@ -7,6 +7,7 @@
 */
 
 #include "../../../include/objects/creature/creature.hpp"
+#include <unordered_map>
 
 using namespace std;
 
@@ -111,39 +112,42 @@ Creature::Creature (const int &x, const int &y, const Genome &genome) {
  *  @param speed      How fast the creature traverses the environment.
  *  @param genome     This is a collection of the creatures genetic makeup.
  */
-Creature::Creature (const string &name, 
-                    const string &desc, 
+Creature::Creature (const string &name,
+                    const string &desc,
                     const bool &passable,
-                    const char &character,      
+                    const char &character,
                     const unsigned &colour,
                     const int &x,
-                    const int &y, 
+                    const int &y,
                     const unsigned &age,
-                    const string &profile,      
+                    const string &profile,
                     const string &direction,
-                    const float &hunger,        
-                    const float &thirst, 
+                    const float &hunger,
+                    const float &thirst,
                     const float &fatigue,
-                    const float &mate,          
-                    const float &metabolism, 
-                    const unsigned &speed,  
+                    const float &mate,
+                    const float &metabolism,
+                    const unsigned &speed,
                     const Genome &genome)
                     : GameObject (name, desc, passable, character, colour) {
-  //  State Variables
+  // CREATURE-023 fix: Add input validation for file-loaded data
+  //  State Variables (with basic validation)
   _x = x; _y = y;
-  _age        = age;
+  _age        = age;  // Validated against genome.getLifespan() in deathCheck()
   _profile    = stringToProfile   (profile);
   _direction  = stringToDirection (direction);
-  _metabolism = metabolism;
-  _speed      = speed;
-  // Will Variables
-  _hunger     = hunger;
-  _thirst     = thirst;
-  _fatigue    = fatigue;
-  _mate       = mate;
+  // Clamp metabolism to reasonable range (0.0001 to 0.1)
+  _metabolism = (metabolism < 0.0001f) ? 0.0001f : (metabolism > 0.1f) ? 0.1f : metabolism;
+  _speed      = (speed == 0) ? 1 : speed;  // Ensure speed is at least 1
+  
+  // Will Variables (clamp to valid range -1.0 to RESOURCE_LIMIT)
+  _hunger     = (hunger < -1.0f) ? -1.0f : (hunger > RESOURCE_LIMIT) ? RESOURCE_LIMIT : hunger;
+  _thirst     = (thirst < -1.0f) ? -1.0f : (thirst > RESOURCE_LIMIT) ? RESOURCE_LIMIT : thirst;
+  _fatigue    = (fatigue < -1.0f) ? -1.0f : (fatigue > RESOURCE_LIMIT) ? RESOURCE_LIMIT : fatigue;
+  _mate       = (mate < DISCOMFORT_POINT) ? DISCOMFORT_POINT : (mate > RESOURCE_LIMIT) ? RESOURCE_LIMIT : mate;
 
   // Genetic Variable
-  _genome     = genome; 
+  _genome     = genome;
 }
 
 //================================================================================
@@ -152,7 +156,7 @@ Creature::Creature (const string &name,
 void Creature::setAge     (unsigned age) { _age    = age;    }
 void Creature::setHunger  (float hunger) { _hunger = hunger; }
 void Creature::setThirst  (float thirst) { _thirst = thirst; }
-void Creature::setFatigue (float thirst) { _thirst = thirst; }
+void Creature::setFatigue (float fatigue) { _fatigue = fatigue; }
 void Creature::setMate    (float mate)   { _mate   = mate;   }
 void Creature::setXY      (int x, int y) { _x = x; _y = y;   }
 void Creature::setX       (int x)        { _x = x;           }
@@ -172,8 +176,8 @@ int       Creature::getX          () const { return _x;                     }
 int       Creature::getY          () const { return _y;                     }
 Direction Creature::getDirection  () const { return _direction;             }
 Profile   Creature::getProfile    () const { return _profile;               }
-//  Genome Getters
-Genome    Creature::getGenome     () const { return _genome;                }
+//  Genome Getters (CREATURE-010 fix: return by const reference to avoid copy)
+const Genome& Creature::getGenome () const { return _genome;                }
 unsigned  Creature::getLifespan   () const { return _genome.getLifespan();  }
 unsigned  Creature::getSightRange () const { return _genome.getSight();     }
 float     Creature::getTHunger    () const { return _genome.getTHunger();   }
@@ -380,34 +384,46 @@ float Creature::shareWater (const int& amount) {
 /**
  *  Based on the creatures needs and priorities decides their behaviour by setting
  *  the creature to the relevant profile.
+ *  (CREATURE-011 fix: Use std::array instead of vector to avoid heap allocation)
  */
 void Creature::decideBehaviour () {
   //  TODO implementing profile elasticity and more nuanced decision making
   // This prevents creatures getting stuck switching between resource profiles
-  bool seekingResource = 
+  bool seekingResource =
     (_profile == Profile::hungry  && _hunger < getTHunger()) ||
     (_profile == Profile::thirsty && _thirst < getTThirst());
   bool isAsleep = _profile == Profile::sleep && _fatigue > 0.0f;
 
   if (seekingResource) {
-    _mate   -= getComfDec(); 
+    _mate   -= getComfDec();
   } else if (!isAsleep) {
     // Calculate the priority of each behaviour
-    vector<float> priorities;
-    priorities.push_back (getTThirst()  - _thirst);
-    priorities.push_back (getTHunger()  - _hunger);
-    priorities.push_back (_mate         - getTMate());
-    priorities.push_back (_fatigue      - getTFatigue());
+    // Using std::array instead of vector to avoid heap allocation each tick
+    std::array<float, 4> priorities = {{
+      getTThirst()  - _thirst,
+      getTHunger()  - _hunger,
+      _mate         - getTMate(),
+      _fatigue      - getTFatigue()
+    }};
 
-    vector<float>::iterator highestPriority = 
+    auto highestPriority =
       max_element  (priorities.begin(), priorities.end());
-    unsigned pIndex = distance(priorities.begin(), highestPriority);
+    unsigned pIndex = static_cast<unsigned>(distance(priorities.begin(), highestPriority));
 
     if (*highestPriority  > 0.0f) {
-      _profile = (Profile) pIndex;
+      // CREATURE-015 fix: Validate profile index before casting to enum
+      // Profile enum has 5 values: thirsty(0), hungry(1), breed(2), sleep(3), migrate(4)
+      // priorities array only covers first 4, so pIndex is always valid (0-3)
+      static constexpr unsigned MAX_PRIORITY_INDEX = 3;
+      if (pIndex > MAX_PRIORITY_INDEX) {
+        pIndex = MAX_PRIORITY_INDEX;  // Fallback to sleep if somehow out of range
+      }
+      _profile = static_cast<Profile>(pIndex);
       switch (_profile) {
         case Profile::thirsty: case Profile::hungry:
-          _mate -= getComfDec(); 
+          _mate -= getComfDec();
+          break;
+        default:
           break;
       }
 
@@ -419,6 +435,18 @@ void Creature::decideBehaviour () {
   }
 }
 
+// CREATURE-016 fix: Explicit mapping from Diet enum to food ID
+// This makes the relationship explicit rather than relying on enum values matching food IDs
+static unsigned dietToFoodID(Diet diet) {
+  switch (diet) {
+    case Diet::banana:    return 0;
+    case Diet::apple:     return 1;
+    case Diet::scavenger: return 2;
+    case Diet::predator:  return 3;
+    default:              return 0;  // Fallback to banana
+  }
+}
+
 bool Creature::foodCheck (const vector<vector<Tile>> &map,
                           const unsigned &rows,
                           const unsigned &cols,
@@ -426,10 +454,12 @@ bool Creature::foodCheck (const vector<vector<Tile>> &map,
                           const int &y) {
   if (Navigator::boundaryCheck (x, y, rows, cols)) {
     const vector<Food> &foodVec = map.at(x).at(y).getFoodVec();
+    unsigned targetFoodID = dietToFoodID(getDiet());
     for (const Food & food : foodVec) {
-      if (food.getID() == (unsigned)getDiet()) {
+      // CREATURE-016 fix: Use explicit mapping instead of casting enum to unsigned
+      if (food.getID() == targetFoodID) {
         if (Navigator::astarSearch (*this, map, rows, cols, x, y)) {
-          return true; 
+          return true;
         }
       }
     }
@@ -451,6 +481,38 @@ bool Creature::waterCheck (const vector<vector<Tile>> &map,
   return false;
 }
 
+// CREATURE-013 fix: Generic spiral search helper to eliminate code duplication
+// This template method performs an expanding square search pattern
+// and calls the predicate for each position until it returns true
+template<typename Predicate>
+bool Creature::spiralSearch (const vector<vector<Tile>> &map,
+                             const int &rows,
+                             const int &cols,
+                             Predicate predicate) {
+  unsigned maxRadius = getSightRange();
+  //  While the search radius does not exceed the available space
+  for (int radius = 1; radius < static_cast<int>(maxRadius); radius++) {
+    //  Top and Bottom Lines
+    for (int xMod = -radius; xMod <= radius; xMod++) {
+      int curX = _x + xMod;
+      int curY = _y + radius;
+      if (predicate(curX, curY)) return true;
+      curY = _y - radius;
+      if (predicate(curX, curY)) return true;
+    }
+
+    //  Right and Left Lines (excluding corners already checked)
+    for (int yMod = -radius + 1; yMod <= radius - 1; yMod++) {
+      int curX = _x + radius;
+      int curY = _y + yMod;
+      if (predicate(curX, curY)) return true;
+      curX = _x - radius;
+      if (predicate(curX, curY)) return true;
+    }
+  }
+  return false;
+}
+
 /**
  *  This method searches for the sight range of the creature for suitable food to
  *  consume. If the creature is already on suitable food it is eaten.
@@ -461,15 +523,17 @@ bool Creature::waterCheck (const vector<vector<Tile>> &map,
  *  @return     Returns true turn has been spent.
  */
 bool Creature::findFood (vector<vector<Tile>> &map,
-                         const int &rows,         
-                         const int &cols, 
+                         const int &rows,
+                         const int &cols,
                          unsigned &foodCounter) {
   vector<Food> *foodOnTile = &map.at(_x).at(_y).getFoodVec();
   vector<Food>::iterator it = foodOnTile->begin();
 
   //  Check if creature is standing on correct food type
+  unsigned targetFoodID = dietToFoodID(getDiet());
   while (it != foodOnTile->end()) {
-    if (it->getID() == (unsigned)getDiet()) {
+    // CREATURE-016 fix: Use explicit mapping instead of casting enum to unsigned
+    if (it->getID() == targetFoodID) {
       _hunger += it->getCalories();
       foodOnTile->erase(it);
       return true;
@@ -478,33 +542,14 @@ bool Creature::findFood (vector<vector<Tile>> &map,
     }
   }
 
-  unsigned maxRadius = getSightRange ();
-  //  While the search radius does not exceed the available space
-  for (int radius = 1; radius < maxRadius; radius++) {
-    //  Top and Bottom Lines
-    for (int xMod = -radius; xMod <= radius; xMod++) {
-      int curX = _x + xMod;
-      int curY = _y + radius;
-      if (foodCheck(map, rows, cols, curX, curY)) return true;
-      curY = _y - radius;
-      if (foodCheck(map, rows, cols, curX, curY)) return true;
-    }
-
-    //  Right and Left Line
-    for (int yMod = -radius + 1; yMod <= radius - 1; yMod++) {
-      int curX = _x + radius;
-      int curY = _y + yMod;
-      if (foodCheck(map, rows, cols, curX, curY)) return true;
-      curX = _x - radius;
-      if (foodCheck(map, rows, cols, curX, curY)) return true;
-    }
-  }
-
-  return false;
+  // CREATURE-013 fix: Use extracted spiral search helper
+  return spiralSearch(map, rows, cols, [this, &map, rows, cols](int curX, int curY) {
+    return foodCheck(map, rows, cols, curX, curY);
+  });
 }
 
 /**
- *  Simulates a basic line of sight system used for 
+ *  Simulates a basic line of sight system used for
  *  searching the environment for water.
  *
  *  @param map  A reference to the world map.
@@ -520,29 +565,10 @@ bool Creature::findWater (const vector<vector<Tile>> &map,
     return true;
   }
 
-  unsigned maxRadius = getSightRange ();
-  //  While the search radius does not exceed the available space
-  for (int radius = 1; radius < maxRadius; radius++) {
-    //  Top and Bottom Lines
-    for (int xMod = -radius; xMod <= radius; xMod++) {
-      int curX = _x + xMod;
-      int curY = _y + radius;
-      if (waterCheck(map, rows, cols, curX, curY)) return true;
-      curY = _y - radius;
-      if (waterCheck(map, rows, cols, curX, curY)) return true;
-    }
-
-    //  Right and Left Line
-    for (int yMod = -radius + 1; yMod <= radius - 1; yMod++) {
-      int curX = _x + radius;
-      int curY = _y + yMod;
-      if (waterCheck(map, rows, cols, curX, curY)) return true;
-      curX = _x - radius;
-      if (waterCheck(map, rows, cols, curX, curY)) return true;
-    }
-  }
-
-  return false;
+  // CREATURE-013 fix: Use extracted spiral search helper
+  return spiralSearch(map, rows, cols, [this, &map, rows, cols](int curX, int curY) {
+    return waterCheck(map, rows, cols, curX, curY);
+  });
 }
 
 /**
@@ -699,12 +725,13 @@ void Creature::changeDirection (const int &xChange, const int &yChange) {
  *  Calculates the euclidean distance between two points.
  *
  *  @param goalX  The x-coordinate of the destination.
- *  @param goalY  The y-coordinate of the destination. 
+ *  @param goalY  The y-coordinate of the destination.
  */
 float Creature::calculateDistance (const int &goalX, const int &goalY) const {
   float xDist = _x - goalX;
   float yDist = _y - goalY;
-  return sqrt(pow(xDist, 2) + pow(yDist, 2));
+  // CREATURE-014 fix: Use direct multiplication instead of pow() for performance
+  return sqrt(xDist * xDist + yDist * yDist);
 }
 
 void Creature::movementCost (const float &distance) {
@@ -778,11 +805,11 @@ Creature Creature::breedCreature (Creature &mate) {
  */
 char Creature::generateChar () {
   switch (getDiet()) {
-    case Diet::banana:    return 'Q'; break;
-    case Diet::apple:     return '0'; break;
-    case Diet::scavenger: return 'm'; break;
-    case Diet::predator:  return 'M'; break;
-    default:              return '?'; break;
+    case Diet::banana:    return 'Q';
+    case Diet::apple:     return '0';
+    case Diet::scavenger: return 'm';
+    case Diet::predator:  return 'M';
+    default:              return '?';
   }
 }
 
@@ -845,29 +872,35 @@ string Creature::generateName () {
 //  To String
 //================================================================================
 Profile Creature::stringToProfile (const string &str) {
-  Profile p = Profile::migrate;
+  // CREATURE-022 fix: Use static unordered_map for O(1) lookup instead of O(n) string comparisons
+  static const std::unordered_map<string, Profile> profileMap = {
+    {"hungry",  Profile::hungry},
+    {"thirsty", Profile::thirsty},
+    {"sleep",   Profile::sleep},
+    {"breed",   Profile::breed},
+    {"migrate", Profile::migrate}
+  };
 
-  if      (str.compare("hungry")  == 0) p = Profile::hungry;
-  else if (str.compare("thirsty") == 0) p = Profile::thirsty;
-  else if (str.compare("sleep")   == 0) p = Profile::sleep;
-  else if (str.compare("breed")   == 0) p = Profile::breed;
-
-  return p;
+  auto it = profileMap.find(str);
+  return (it != profileMap.end()) ? it->second : Profile::migrate;
 }
 
 Direction Creature::stringToDirection (const string &str) {
-  Direction d = Direction::none;
+  // CREATURE-022 fix: Use static unordered_map for O(1) lookup instead of O(n) string comparisons
+  static const std::unordered_map<string, Direction> directionMap = {
+    {"SE",   Direction::SE},
+    {"NE",   Direction::NE},
+    {"E",    Direction::E},
+    {"SW",   Direction::SW},
+    {"NW",   Direction::NW},
+    {"W",    Direction::W},
+    {"S",    Direction::S},
+    {"N",    Direction::N},
+    {"none", Direction::none}
+  };
 
-  if      (str.compare("SE") == 0) d = Direction::SE;
-  else if (str.compare("NE") == 0) d = Direction::NE;
-  else if (str.compare("E")  == 0) d = Direction::E;
-  else if (str.compare("SW") == 0) d = Direction::SW;
-  else if (str.compare("NW") == 0) d = Direction::NW;
-  else if (str.compare("W")  == 0) d = Direction::W;
-  else if (str.compare("S")  == 0) d = Direction::S;
-  else if (str.compare("N")  == 0) d = Direction::N;
-
-  return d;
+  auto it = directionMap.find(str);
+  return (it != directionMap.end()) ? it->second : Direction::none;
 }
 
 /**
@@ -877,12 +910,12 @@ Direction Creature::stringToDirection (const string &str) {
  */
 string Creature::profileToString () const {
   switch(_profile) {
-    case Profile::hungry:   return "hungry";  break;
-    case Profile::thirsty:  return "thirsty"; break;
-    case Profile::sleep:    return "sleep";   break;
-    case Profile::breed:    return "breed";   break;
-    case Profile::migrate:  return "migrate"; break;
-    default:                return "error";   break;
+    case Profile::hungry:   return "hungry";
+    case Profile::thirsty:  return "thirsty";
+    case Profile::sleep:    return "sleep";
+    case Profile::breed:    return "breed";
+    case Profile::migrate:  return "migrate";
+    default:                return "error";
   }
 }
 
@@ -893,16 +926,16 @@ string Creature::profileToString () const {
  */  
 string Creature::directionToString () const {
   switch (_direction) {
-    case Direction::SE:   return "SE";    break;
-    case Direction::NE:   return "NE";    break;
-    case Direction::E:    return "E";     break;
-    case Direction::SW:   return "SW";    break;
-    case Direction::NW:   return "NW";    break;
-    case Direction::W:    return "W";     break;
-    case Direction::S:    return "S";     break;
-    case Direction::N:    return "N";     break;
-    case Direction::none: return "none";  break;
-    default:              return "error"; break;
+    case Direction::SE:   return "SE";
+    case Direction::NE:   return "NE";
+    case Direction::E:    return "E";
+    case Direction::SW:   return "SW";
+    case Direction::NW:   return "NW";
+    case Direction::W:    return "W";
+    case Direction::S:    return "S";
+    case Direction::N:    return "N";
+    case Direction::none: return "none";
+    default:              return "error";
   }
 }
 

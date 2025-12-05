@@ -8,15 +8,20 @@
 
 #include "../../include/objects/food.hpp"
 
+#include <cassert>
+#include <sstream>
+
 using namespace std;
 
 //================================================================================
 //  Constructors
 //================================================================================
 /**
- *  This is the default constructor that creates the default apple.
+ *  This is the default constructor that creates a generic food item.
+ *  Sets default values for ID, calories, lifespan, and decay.
  */
 Food::Food () : GameObject () {
+  _id       = 0;
   _calories = 0.5f;
   _lifespan = 100;
   _decay    = 0;
@@ -34,10 +39,12 @@ Food::Food () : GameObject () {
  *	@param calories		This is the energy that can be obtained from the food.
  *	@param lifespan   How long the food takes to decay.
  */
-Food::Food 	(const unsigned &id, const std::string &name, const std::string &desc, 
-			       const bool &passable, const char &character, const unsigned &colour, 
-             const float &calories, const unsigned &lifespan) 
+Food::Food 	(unsigned id, const std::string &name, const std::string &desc,
+			       bool passable, char character, unsigned int colour,
+             float calories, unsigned int lifespan)
 			      : GameObject (name, desc, passable, character, colour) {
+  assert(calories >= 0.0f && "Calories cannot be negative");
+  assert(lifespan > 0 && "Lifespan must be positive");
   _id       = id;
 	_calories = calories;
   _lifespan = lifespan;
@@ -56,10 +63,13 @@ Food::Food 	(const unsigned &id, const std::string &name, const std::string &des
  *	@param lifespan   How long the food takes to decay.
  *	@param decay      A timer for when the food will despawn.
  */
-Food::Food 	(const unsigned &id, const std::string &name, const std::string &desc, 
-			       const bool &passable, const char &character, const unsigned &colour, 
-             const float &calories, const unsigned &lifespan, const unsigned &decay) 
+Food::Food 	(unsigned id, const std::string &name, const std::string &desc,
+			       bool passable, char character, unsigned int colour,
+             float calories, unsigned int lifespan, unsigned int decay)
 			      : GameObject (name, desc, passable, character, colour) {
+  assert(calories >= 0.0f && "Calories cannot be negative");
+  assert(lifespan > 0 && "Lifespan must be positive");
+  assert(decay <= lifespan && "Decay cannot exceed lifespan");
   _id       = id;
 	_calories = calories;
   _lifespan = lifespan;
@@ -68,9 +78,17 @@ Food::Food 	(const unsigned &id, const std::string &name, const std::string &des
 
 
 //================================================================================
-//  Increment
+//  Decay Handling
 //================================================================================
-void Food::incrementDecay () { _decay++; };
+void Food::incrementDecay () {
+  if (_decay < _lifespan) {
+    ++_decay;
+  }
+}
+
+bool Food::isDecayed () const {
+  return _decay >= _lifespan;
+}
 
 //================================================================================
 //  Getters

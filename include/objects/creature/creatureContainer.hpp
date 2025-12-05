@@ -1,7 +1,7 @@
 #ifndef CREATURE_CONTAINER_H
-#ifndef CREATURE_CONTAINER_H
+#define CREATURE_CONTAINER_H
 
-#include "creature.hpp";
+#include "creature.hpp"
 
 #include <vector>
 
@@ -15,7 +15,7 @@ class CreatureContainer {
     void add    (const Creature &creature);
     void remove (const size_t &index);
 
-    void 
+    void clear  ();
 
 };
 

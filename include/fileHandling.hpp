@@ -39,7 +39,25 @@ class FileHandling {
     const static std::string statsHeader;
     const static std::string genomeHeader;
 
+    //============================================================================
+    //  File Format Field Counts (for validation)
+    //============================================================================
+    static constexpr size_t WORLD_HEADER_FIELDS = 17;
+    static constexpr size_t TILE_COORD_FIELDS = 2;
+    static constexpr size_t FOOD_FIELDS = 9;
+    static constexpr size_t SPAWNER_FIELDS = 18;
+    static constexpr size_t CREATURE_FIELDS = 28;
+    static constexpr size_t STATS_FIELDS = 13;
+
     std::string saveDir, statDir, genomeDir;
+
+    //============================================================================
+    //  Private Helper Methods
+    //============================================================================
+    std::vector<std::string> parseCsvLine (const std::string &line);
+    bool loadWorld     (World &w, Calendar &calendar);
+    bool loadCreatures (std::vector<Creature> &c);
+    bool loadStats     (Statistics &stats);
 
   public:
     //============================================================================

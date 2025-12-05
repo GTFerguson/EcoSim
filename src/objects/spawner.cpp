@@ -9,7 +9,18 @@
 
 #include "../../include/objects/spawner.hpp"
 
+#include <random>
+#include <algorithm>
+#include <cassert>
+#include <sstream>
+
 using namespace std;
+
+// Thread-safe random number generator
+static std::mt19937& getRandomGenerator() {
+    static std::mt19937 gen(std::random_device{}());
+    return gen;
+}
 
 /**
  *	This is our constructor for Spawner objects.
@@ -24,12 +35,14 @@ using namespace std;
  *	@param maxRadius	The maximum radius objects can spawn.
  *	@param foodObj    The Food object the spawner creates.
  */
-Spawner::Spawner 	(const string &name, 			      const string &desc, 
-			 		         const bool &passable, 			    const char &character, 
-		 	 	 	         const unsigned int &colour, 	  const unsigned int &rate, 
-					         const unsigned int &minRadius, const unsigned int &maxRadius,
+Spawner::Spawner 	(const string &name, 			      const string &desc,
+			 		         bool passable, 			          char character,
+		 	 	 	         unsigned int colour, 	        unsigned int rate,
+					         unsigned int minRadius,        unsigned int maxRadius,
 					         const Food &foodObj)
                   : GameObject (name, desc, passable, character, colour) {
+  assert(minRadius <= maxRadius && "minRadius must be <= maxRadius");
+  assert(rate > 0 && "Spawn rate must be positive");
 	_rate		   = rate;
 	_minRadius = minRadius;
 	_maxRadius = maxRadius;
@@ -51,12 +64,14 @@ Spawner::Spawner 	(const string &name, 			      const string &desc,
  *	@param maxRadius	The maximum radius objects can spawn.
  *	@param foodObj    The Food object the spawner creates.
  */
-Spawner::Spawner 	(const string &name, const string &desc, const bool &passable, 			    
-                   const char &character,         const unsigned int &colour, 	  
-                   const unsigned int &rate,      const unsigned int &timer, 
-					         const unsigned int &minRadius, const unsigned int &maxRadius,
+Spawner::Spawner 	(const string &name, const string &desc, bool passable,
+                   char character,              unsigned int colour,
+                   unsigned int rate,           unsigned int timer,
+					         unsigned int minRadius,        unsigned int maxRadius,
 					         const Food &foodObj)
                   : GameObject (name, desc, passable, character, colour) {
+  assert(minRadius <= maxRadius && "minRadius must be <= maxRadius");
+  assert(rate > 0 && "Spawn rate must be positive");
 	_rate		   = rate;
 	_minRadius = minRadius;
 	_maxRadius = maxRadius;
@@ -67,31 +82,41 @@ Spawner::Spawner 	(const string &name, const string &desc, const bool &passable,
 //================================================================================
 //	Getters
 //================================================================================
-unsigned int Spawner::getRate			 () const { return _rate;		   };
-unsigned int Spawner::getTimer		 () const { return _timer;		 };
-unsigned int Spawner::getMinRadius () const { return _minRadius; };
-unsigned int Spawner::getMaxRadius () const { return _maxRadius; };
-Food         Spawner::getObject	   () const { return _foodObj;	 };
+unsigned int Spawner::getRate			 () const { return _rate;		   }
+unsigned int Spawner::getTimer		 () const { return _timer;		 }
+unsigned int Spawner::getMinRadius () const { return _minRadius; }
+unsigned int Spawner::getMaxRadius () const { return _maxRadius; }
+const Food&  Spawner::getObject	   () const { return _foodObj;	 }
 
 //================================================================================
 //	Setters
 //================================================================================
-void Spawner::setTimer (const unsigned int &time) { _timer = time; }
+void Spawner::setTimer (unsigned int time) { _timer = time; }
 
 //================================================================================
 //	Spawning
 //================================================================================
 /**
- *	Checks whether a new object can be spawned.
+ *	Checks whether a new object can be spawned (query only, no side effects).
  *
  *	@return Returns true if object can be spawned.
  */
-bool Spawner::canSpawn () {
+bool Spawner::canSpawn () const {
+	return _timer > _rate;
+}
+
+/**
+ *	Increments timer and checks if spawn should occur.
+ *	Resets timer when spawn condition is met.
+ *
+ *	@return Returns true if object should be spawned.
+ */
+bool Spawner::tickAndCheckSpawn () {
+	_timer++;
 	if (_timer > _rate) {
 		_timer = 0;
 		return true;
 	}
-	_timer++;
 	return false;
 }
 
@@ -102,17 +127,24 @@ bool Spawner::canSpawn () {
  *	@param limit	The highest value that could be generated.
  *	@return			The generated coordinate.
  */
-int Spawner::genCoordinate (const int &init, const int &limit) {
+int Spawner::genCoordinate (int init, int limit) {
+	constexpr int MAX_ATTEMPTS = 100;
+	std::uniform_int_distribution<int> radiusDist(_minRadius, _maxRadius);
+	std::uniform_int_distribution<int> signDist(0, 1);
+	
 	int coor;
-	do {
-		coor = (rand()% (_maxRadius+1-_minRadius)) + _minRadius;
-		//	Negative or Positive  
-		if (rand()%2 < 1)	//	rand 0-1
+	for (int attempt = 0; attempt < MAX_ATTEMPTS; ++attempt) {
+		coor = radiusDist(getRandomGenerator());
+		//	Negative or Positive
+		if (signDist(getRandomGenerator()) == 0)
 			coor = -coor;
 		coor += init;
-	} while (coor <= 0 || coor >= limit);
-	return coor;
-
+		
+		if (coor > 0 && coor < limit)
+			return coor;
+	}
+	// Fallback: clamp to valid range if no valid coordinate found
+	return std::max(1, std::min(init, limit - 1));
 }
 
 /**
@@ -123,27 +155,22 @@ int Spawner::genCoordinate (const int &init, const int &limit) {
  *	@param x	  The current x pos of the spawner.
  *	@param y	  The current y pos of the spawner.
  *	@param cols	The number of columns on the map.
- *	@param rows	The number of rows on the map. 
- *	@return		  The generated coordinates.
+ *	@param rows	The number of rows on the map.
+ *	@return		  The generated coordinates as a pair (x, y).
  */
-vector<int> Spawner::genCoordinates (const int &x,             const int &y,
-									                   const unsigned int &cols, const unsigned int &rows) {
-  vector<int> coords (2);
-  coords[0] = genCoordinate (x, cols);
-  coords[1] = genCoordinate (y, rows);
-  return coords;
+std::pair<int, int> Spawner::genCoordinates (int x, int y,
+									                           unsigned int cols, unsigned int rows) {
+  return {genCoordinate(x, cols), genCoordinate(y, rows)};
 }
 
 //================================================================================
 //  To String
 //================================================================================
 string Spawner::toString () const {
-  string output = this->GameObject::toString () + ","; 
-         output += to_string (_timer)           + ",";
-         output += to_string (_rate)            + ",";
-         output += to_string (_minRadius)       + ",";
-         output += to_string (_maxRadius)       + ",";
-         output += _foodObj.toString ();
-
-  return output;
+  ostringstream ss;
+  ss << GameObject::toString() << ","
+     << _timer << "," << _rate << ","
+     << _minRadius << "," << _maxRadius << ","
+     << _foodObj.toString();
+  return ss.str();
 }

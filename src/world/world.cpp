@@ -20,7 +20,8 @@ using namespace std;
  *	@param rows		   The number of rows in the world grid.
  *	@param cols		   The number of columns in the world grid.
  */
-  World::World (const MapGen &mapGen, const OctaveGen &octaveGen) {
+  World::World (const MapGen &mapGen, const OctaveGen &octaveGen)
+    : _rng(std::random_device{}()) {
     _mapGen     = mapGen;
     _octaveGen  = octaveGen;
 
@@ -72,10 +73,11 @@ vector<vector<Tile>> &World::getGrid () {
 }
 
 double World::getTerrainLevel (const unsigned &level) const {
-  return _tileGen.at(level).elevation; 
+  return _tileGen.at(level).elevation;
 }
 
-//  TODO update mapgen getters
+// NOTE: MapGen getters are simple pass-throughs.
+// Consider adding validation or conversion logic if needed in future.
 double    World::getSeed        () const { return _mapGen.seed;     }
 double    World::getScale       () const { return _mapGen.scale;    }
 double    World::getFreq        () const { return _mapGen.freq;     }
@@ -117,7 +119,7 @@ Tile World::assignTerrain (const double &height) {
   for (TileGen & layer : _tileGen) {
     if (height < layer.elevation) return layer.prefab;
   }
-  return _tileGen.end()->prefab;
+  return _tileGen.back().prefab;
 }
 
 /**
@@ -158,31 +160,42 @@ void World::simplexGen () {
   double yinc = _mapGen.scale;
   double xinc = yinc / 2;
 
+  // Precompute constants for island mode
+  const double invCols = 1.0 / static_cast<double>(_mapGen.cols);
+  const double invRows = 1.0 / static_cast<double>(_mapGen.rows);
+  const double invSqrtHalf = 1.0 / 0.7071067811865476;  // 1/sqrt(0.5)
+  const double invTerraces = 1.0 / _mapGen.terraces;
+
   double ny   = _mapGen.seed;
   for (unsigned y = 0; y < _mapGen.rows; y++) {
     double nx = _mapGen.seed;
+    // Precompute dy for this row (island mode)
+    const double dy = y * invRows - 0.5;
+    const double dy2 = dy * dy;
+    
     for (unsigned x = 0; x < _mapGen.cols; x++) {
       double  noise = SimplexNoise::noise(_mapGen.freq * nx, _mapGen.freq * ny);
       addOctaves (noise, nx, ny);
 
       if (_mapGen.isIsland) {
-        double dx = x / (double)_mapGen.cols - 0.5;
-        double dy = y / (double)_mapGen.rows - 0.5;
+        double dx = x * invCols - 0.5;
         //  Average the diagonal and euclidean distance to edge of map
         double distance = 2 * max(abs(dx), abs(dy));
-        distance += sqrt(dx*dx + dy*dy) / sqrt(0.5);
-        distance /= 2;
-        distance = pow (distance, 2);
-        noise = (1 + noise - distance) / 2;
+        distance += sqrt(dx*dx + dy2) * invSqrtHalf;
+        distance *= 0.5;
+        distance = distance * distance;  // pow(distance, 2) -> simple multiplication
+        noise = (1 + noise - distance) * 0.5;
       }
 
-      //  Redistribution
-      noise = pow (noise, _mapGen.exponent); 
-      noise = round (noise * _mapGen.terraces) / _mapGen.terraces;
+      //  Redistribution - optimize pow for common exponent of 1.0
+      if (_mapGen.exponent != 1.0) {
+        noise = pow(noise, _mapGen.exponent);
+      }
+      noise = round(noise * _mapGen.terraces) * invTerraces;
       noise = noise * 255;
 
-      _grid.at(x).at(y) = assignTerrain (noise);
-      _grid.at(x).at(y).setElevation (noise);
+      _grid[x][y] = assignTerrain(noise);
+      _grid[x][y].setElevation(noise);
 
       nx += xinc;
     }
@@ -200,10 +213,8 @@ void World::simplexGen () {
  *  @param rate     The percentage chance of it being placed on a tile.
  *  @param tree     A Spawner object of the tree to be placed.
  */
-void World::addTrees  (const unsigned int &lowElev, const unsigned int &highElev, 
-                       const unsigned int &rate, Spawner tree) {
-  random_device rd; 
-  mt19937 gen(rd());
+void World::addTrees  (const unsigned int &lowElev, const unsigned int &highElev,
+                       const unsigned int &rate, const Spawner& treeTemplate) {
   uniform_int_distribution<unsigned short> dis (1, 100);
 //  for (int y = 0; y < _rows; y++) {
 //    for (int x = 0; x < _cols; x++) {
@@ -212,12 +223,13 @@ void World::addTrees  (const unsigned int &lowElev, const unsigned int &highElev
       //  Check elevation is in range
       if (tile.getElevation() > lowElev &&
           tile.getElevation() < highElev) {
-        //  The chance of spawning a tree 
+        //  The chance of spawning a tree
  
 
-        if (dis(gen) < rate) {
+        if (dis(_rng) < rate) {
+          Spawner tree = treeTemplate;  // Copy only when needed
           uniform_int_distribution<unsigned> disTree (0, tree.getRate());
-          tree.setTimer (disTree(gen));
+          tree.setTimer (disTree(_rng));
           tile.addSpawner (tree);
         }
       }
@@ -230,14 +242,11 @@ void World::addTrees  (const unsigned int &lowElev, const unsigned int &highElev
  *  places a vector of tile objects at each point in it.
  **/
 void World::set2Dgrid () {
-	//	Set by x (columns) 
+	// Pre-allocate grid with resize to avoid repeated reallocations
+	_grid.resize(_mapGen.cols);
 	for	(unsigned x = 0; x < _mapGen.cols; x++) {
-		//	Initialise columns with a blank row 
-		_grid.push_back (vector<Tile>());
-		for	(unsigned y = 0; y < _mapGen.rows; y++) {
-			///	Push into row
-			_grid.at(x).push_back (_tileGen.begin()->prefab);
-		}
+		// Resize each column to the number of rows, initialized with default tile
+		_grid[x].resize(_mapGen.rows, _tileGen.begin()->prefab);
 	}
 }
 
@@ -269,11 +278,11 @@ void World::removeSpawner (const int &x, const int &y, const string &objName) {
  *  if able to spawn and if so adding the relevant object to the world.
  */
 void World::updateAllObjects () {
-
-  for (unsigned x = 0; x < _mapGen.cols; x++) { 
-    for (unsigned y = 0; y < _mapGen.rows; y++) { 
-      updateSpawners (_grid.at(x).at(y).getSpawners(), x, y);
-      _grid.at(x).at(y).updateFood();
+  // Use direct indexing [] instead of .at() since bounds are guaranteed by loop
+  for (unsigned x = 0; x < _mapGen.cols; x++) {
+    for (unsigned y = 0; y < _mapGen.rows; y++) {
+      updateSpawners (_grid[x][y].getSpawners(), x, y);
+      _grid[x][y].updateFood();
     }
   }
 }
@@ -290,9 +299,15 @@ void World::updateAllObjects () {
 void World::updateSpawners (vector<Spawner> &spawners, const int &curX, const int &curY) {
   for (Spawner & spawner : spawners) {
     if (spawner.canSpawn()) {
-      vector<int> coords = 
-        spawner.genCoordinates (curX, curY, _mapGen.cols, _mapGen.rows);
-      Tile *tile = &_grid.at(coords[0]).at(coords[1]);
+      auto coords = spawner.genCoordinates(curX, curY, _mapGen.cols, _mapGen.rows);
+      
+      // Validate coords before accessing grid
+      if (coords.first < 0 || coords.first >= static_cast<int>(_mapGen.cols) ||
+          coords.second < 0 || coords.second >= static_cast<int>(_mapGen.rows)) {
+        continue;
+      }
+      
+      Tile *tile = &_grid[coords.first][coords.second];
       if (tile->isPassable())
         tile->addFood (spawner.getObject());
     }

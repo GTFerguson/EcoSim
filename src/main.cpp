@@ -25,6 +25,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <mutex>
 
 using namespace std;
 
@@ -56,7 +57,7 @@ const static unsigned APPLE_MIN_RANGE         = 2;
 const static unsigned APPLE_MAX_RANGE         = 4;
 const static unsigned APPLE_MIN_ALTITUDE      = 180;
 const static unsigned APPLE_MAX_ALTITUDE      = 195;
-const static unsigned BANANA_CALS             = 2.0f;
+const static float    BANANA_CALS             = 2.0f;
 const static unsigned BANANA_LIFESPAN         = 500;
 const static unsigned BANANA_RATE             = 1000;
 const static unsigned BANANA_MIN_RANGE        = 2;
@@ -79,10 +80,45 @@ const static vector<string> SAVE_FILES = {
 };
 
 //================================================================================
-//  Random Number Generator
+//  Random Number Generator (Thread-Safe Singleton)
 //================================================================================
-static random_device rd; 
-static mt19937 gen(rd());
+class RandomGenerator {
+private:
+  std::mt19937 _gen;
+  std::mutex _mutex;
+  
+  RandomGenerator() : _gen(std::random_device{}()) {}
+  
+public:
+  // Delete copy constructor and assignment operator
+  RandomGenerator(const RandomGenerator&) = delete;
+  RandomGenerator& operator=(const RandomGenerator&) = delete;
+  
+  static RandomGenerator& instance() {
+    static RandomGenerator instance;
+    return instance;
+  }
+  
+  std::mt19937& generator() {
+    return _gen;
+  }
+  
+  std::mutex& mutex() {
+    return _mutex;
+  }
+  
+  // Thread-safe random number generation
+  template<typename Distribution>
+  auto generate(Distribution& dist) {
+    std::lock_guard<std::mutex> lock(_mutex);
+    return dist(_gen);
+  }
+};
+
+// Convenience function to get the random generator
+static std::mt19937& gen() {
+  return RandomGenerator::instance().generator();
+}
 
 //================================================================================
 //  Structs
@@ -101,7 +137,7 @@ struct Settings { bool alive, hudIsOn, isPaused; };
  */
 double randSeed () {
   uniform_real_distribution<> dis(0, 10);
-	return dis(gen);
+  return RandomGenerator::instance().generate(dis);
 }
 
 //================================================================================
@@ -142,6 +178,7 @@ void printCreatures (const vector<Creature> &creatures,
         case Profile::sleep:    cColor = SLEEP_PAIR;    break;
         case Profile::breed:    cColor = BREED_PAIR;    break;
         case Profile::migrate:  cColor = MIGRATE_PAIR;  break;
+        default:                cColor = DEFAULT_PAIR;  break;
       }
 
       attron  (COLOR_PAIR(cColor));
@@ -337,7 +374,10 @@ void takeTurn (World &w, GeneralStats &gs, vector<Creature> &c,
 void advanceSimulation (World &w, vector<Creature> &c, GeneralStats &gs) {
   //  Push simulation forward
   w.updateAllObjects ();
-  for (size_t i = 0; i < c.size(); i++)
+  //  Iterate in reverse to safely handle creature removal during iteration
+  //  When a creature is erased, only indices after it shift, so iterating
+  //  backwards ensures we don't skip any creatures
+  for (int i = static_cast<int>(c.size()) - 1; i >= 0; i--)
     takeTurn (w, gs, c, i);
 
   gs.population = c.size ();
@@ -355,17 +395,27 @@ void populateWorld (World &w, vector<Creature> &c, unsigned amount) {
   uniform_int_distribution<int> colDis (0, MAP_COLS-1);
   uniform_int_distribution<int> rowDis (0, MAP_ROWS-1);
   uniform_real_distribution<float> dis (STARTING_RESOURCE_MIN, STARTING_RESOURCE_MAX);
+  
+  //  Maximum attempts to find a passable tile before giving up
+  //  Prevents infinite loop if world has no passable tiles
+  const unsigned MAX_ATTEMPTS = 10000;
+  RandomGenerator& rng = RandomGenerator::instance();
 
 	for (unsigned i = 0; i < amount; i++) {
 		int x, y;
+		unsigned attempts = 0;
 		do {
-			x = colDis (gen);
-			y = rowDis (gen);
+			x = rng.generate(colDis);
+			y = rng.generate(rowDis);
+			if (++attempts > MAX_ATTEMPTS) {
+			  //  Could not find passable tile - stop adding more creatures
+			  return;
+			}
 		} while (w.getGrid().at(x).at(y).isPassable() == false);
 
     //  Randomise needs
-    float hunger  = dis(gen);
-    float thirst  = dis(gen);
+    float hunger  = rng.generate(dis);
+    float thirst  = rng.generate(dis);
     //  Randomise genetics
     Genome g;
     g.randomise ();
@@ -469,145 +519,375 @@ void takeInput 	(Window &win,
 	}
 }
 
-void incTrn (World &w, const unsigned &level) {
-	w.setTerrainLevel (level, w.getTerrainLevel(level) + 1);
-}
+//================================================================================
+//  Map Creator Input Handling - Helper Functions
+//================================================================================
+namespace MapCreator {
+  void incTrn (World &w, const unsigned &level) {
+    w.setTerrainLevel (level, w.getTerrainLevel(level) + 1);
+  }
 
-void decTrn (World &w, const unsigned int &level) {
-	w.setTerrainLevel (level, w.getTerrainLevel(level) - 1);
-}
+  void decTrn (World &w, const unsigned int &level) {
+    w.setTerrainLevel (level, w.getTerrainLevel(level) - 1);
+  }
 
-void mapCreatorInput (Window &win, 
-                      World &w, 
-                      int &xOrigin, 
+  void handleMovement (int key, int &xOrigin, int &yOrigin,
+                       unsigned mapHeight, unsigned mapWidth) {
+    const int inc = 5;
+    
+    switch (key) {
+      case KEY_UP: case KEY_K:
+        yOrigin -= inc;
+        if (yOrigin < 0) yOrigin = 0;
+        break;
+      case KEY_DOWN: case KEY_J:
+        {
+          yOrigin += inc;
+          int relativePos = MAP_ROWS - (int)mapHeight;
+          if (yOrigin > relativePos) yOrigin = relativePos;
+          break;
+        }
+      case KEY_LEFT: case KEY_H:
+        xOrigin -= inc;
+        if (xOrigin < 0) xOrigin = 0;
+        break;
+      case KEY_RIGHT: case KEY_L:
+        {
+          xOrigin += inc;
+          int relativePos = MAP_COLS - (int)mapWidth;
+          if (xOrigin > relativePos) xOrigin = relativePos;
+          break;
+        }
+    }
+  }
+
+  void handleScaleChange (int key, World &w) {
+    switch (key) {
+      case KEY_NPAGE: case KEY_PLUS:
+        if (w.getScale() < 1)
+          w.setScale (w.getScale() + 0.0001);
+        else
+          w.setScale (1);
+        w.simplexGen ();
+        break;
+      case KEY_PPAGE: case KEY_MINUS:
+        if (w.getScale() > 0.0001)
+          w.setScale (w.getScale() - 0.0001);
+        else
+          w.setScale (0.0001);
+        w.simplexGen ();
+        break;
+    }
+  }
+
+  void handleSeedChange (int key, World &w) {
+    switch (key) {
+      case KEY_N:     // n - new seed
+        w.setSeed (randSeed());
+        w.simplexGen ();
+        break;
+      case KEY_D:     // d - decrease seed
+        w.setSeed (w.getSeed() - 0.005);
+        w.simplexGen ();
+        break;
+      case KEY_N_F:   // f - increase seed
+        w.setSeed (w.getSeed() + 0.005);
+        w.simplexGen ();
+        break;
+    }
+  }
+
+  void handleFrequencyChange (int key, World &w) {
+    switch (key) {
+      case KEY_EQUAL: // = - Increase freq
+        w.setFreq (w.getFreq() + 0.01);
+        w.simplexGen ();
+        break;
+      case KEY_DASH:  // - - Decrease freq
+        w.setFreq (w.getFreq() - 0.01);
+        w.simplexGen ();
+        break;
+    }
+  }
+
+  void handleExponentChange (int key, World &w) {
+    switch (key) {
+      case KEY_V:     // v - Increase Exponent
+        w.setExponent (w.getExponent() + 0.01);
+        w.simplexGen ();
+        break;
+      case KEY_C:     // c - Decrease Exponent
+        w.setExponent (w.getExponent() - 0.01);
+        w.simplexGen ();
+        break;
+    }
+  }
+
+  void handleTerraceChange (int key, World &w) {
+    switch (key) {
+      case KEY_S:     // s - Increase terraces
+        w.setTerraces (w.getTerraces() + 1);
+        w.simplexGen ();
+        break;
+      case KEY_A:     // a - Decrease terraces
+        if (w.getTerraces() > 1)
+          w.setTerraces (w.getTerraces() - 1);
+        else
+          w.setTerraces (1);
+        w.simplexGen ();
+        break;
+    }
+  }
+
+  void handleTerrainLevelChange (int key, World &w, unsigned &trnSelector) {
+    switch (key) {
+      case KEY_ONE:   case KEY_TWO:   case KEY_THREE:
+      case KEY_FOUR:  case KEY_FIVE:  case KEY_SIX:
+      case KEY_SEVEN: case KEY_EIGHT: case KEY_NINE:
+        trnSelector = key - KEY_ONE;
+        break;
+      case 119:   // w - increase terrain level
+        incTrn (w, trnSelector);
+        w.simplexGen ();
+        break;
+      case 113:   // q - decrease terrain level
+        decTrn (w, trnSelector);
+        w.simplexGen ();
+        break;
+    }
+  }
+} // namespace MapCreator
+
+/**
+ *  Handles input for the world editor/map creator.
+ */
+void mapCreatorInput (Window &win,
+                      World &w,
+                      int &xOrigin,
                       int &yOrigin,
-                      unsigned &mapHeight, 
-					            unsigned &mapWidth, 
-                      unsigned &trnSelector, 
-					            bool &alive) {
-	int c = getch();
-	int inc = 5;
+                      unsigned &mapHeight,
+                      unsigned &mapWidth,
+                      unsigned &trnSelector,
+                      bool &alive) {
+  int c = getch();
 
-	switch (c) {
-    //  Up : Up key of k
-		case KEY_UP: case KEY_K: 
-      yOrigin -= inc;
-			if (yOrigin < 0)
-				yOrigin = 0;
-			break;
-    //  Down : Down key or j
-		case KEY_DOWN: case KEY_J:
-      {
-        yOrigin += inc;
-        int relativePos = MAP_ROWS - (int)mapHeight;
-        if (yOrigin > relativePos)
-          yOrigin = relativePos;
-        break;
-      }
-    //  Left : Left key or h
-		case KEY_LEFT: case KEY_H:  
-      xOrigin -= inc;
-			if (xOrigin < 0)
-				xOrigin = 0;
-			break;
-    //  Right : Right key or l
-		case KEY_RIGHT: case KEY_L: 
-      {
-        xOrigin += inc;
-        int relativePos = MAP_COLS - (int)mapWidth;
-        if (xOrigin > relativePos)
-          xOrigin = relativePos;
-        break;
-      }
+  //  Movement keys
+  if (c == KEY_UP || c == KEY_K || c == KEY_DOWN || c == KEY_J ||
+      c == KEY_LEFT || c == KEY_H || c == KEY_RIGHT || c == KEY_L) {
+    MapCreator::handleMovement (c, xOrigin, yOrigin, mapHeight, mapWidth);
+    return;
+  }
 
-		case KEY_N_ENTER:	//	Escape and Enter - quit
-			alive = false;
-			break;
+  //  Exit key
+  if (c == KEY_N_ENTER) {
+    alive = false;
+    return;
+  }
 
-		//	Scale Handling
-		case KEY_NPAGE: case KEY_PLUS:
-			if (w.getScale() < 1)
-				w.setScale (w.getScale() + 0.0001);
-			else
-				w.setScale (1);
+  //  Scale keys
+  if (c == KEY_NPAGE || c == KEY_PLUS || c == KEY_PPAGE || c == KEY_MINUS) {
+    MapCreator::handleScaleChange (c, w);
+    return;
+  }
 
-      w.simplexGen ();
-			break;
-		case KEY_PPAGE: case KEY_MINUS:
-			if (w.getScale() > 0.0001)
-				w.setScale (w.getScale() - 0.0001);
-			else
-				w.setScale (0.0001);
+  //  Seed keys
+  if (c == KEY_N || c == KEY_D || c == KEY_N_F) {
+    MapCreator::handleSeedChange (c, w);
+    return;
+  }
 
-      w.simplexGen ();
-			break;
+  //  Frequency keys
+  if (c == KEY_EQUAL || c == KEY_DASH) {
+    MapCreator::handleFrequencyChange (c, w);
+    return;
+  }
 
-		//	Seed Handling
-		case KEY_N:	// n - new seed
-			w.setSeed (randSeed());
-      w.simplexGen ();
-			break;
-		case KEY_D:	// d - decrease seed
-			w.setSeed (w.getSeed() - 0.005);
-      w.simplexGen ();
-			break;
-		case KEY_N_F:	// f - increase seed
-			w.setSeed (w.getSeed() + 0.005);
-      w.simplexGen ();
-			break;
+  //  Exponent keys
+  if (c == KEY_V || c == KEY_C) {
+    MapCreator::handleExponentChange (c, w);
+    return;
+  }
 
-		//	Frequency Handling
-		case KEY_EQUAL:	// = - Increase freq
-			w.setFreq (w.getFreq() + 0.01);
-      w.simplexGen ();
-			break;
-		case KEY_DASH:	// - - Decrease freq
-			w.setFreq (w.getFreq() - 0.01);
-      w.simplexGen ();
-			break;
+  //  Terrace keys
+  if (c == KEY_S || c == KEY_A) {
+    MapCreator::handleTerraceChange (c, w);
+    return;
+  }
 
-		//	Exponent Handling
-		case KEY_V:	// v - Increase Exponent
-			w.setExponent (w.getExponent() + 0.01);
-      w.simplexGen ();
-			break;
-		case KEY_C:	// c - Decrease Exponent
-			w.setExponent (w.getExponent() - 0.01);
-      w.simplexGen ();
-			break;
+  //  Terrain level keys (1-9, w, q)
+  if ((c >= KEY_ONE && c <= KEY_NINE) || c == 119 || c == 113) {
+    MapCreator::handleTerrainLevelChange (c, w, trnSelector);
+    return;
+  }
+}
 
-		//	Terrace Handling
-		case KEY_S:	// s - Increase terraces
-			w.setTerraces (w.getTerraces() + 1);
-      w.simplexGen ();
-			break;
-		case KEY_A:	// a -  Decrease terraces
-			if (w.getTerraces() > 1)
-				w.setTerraces (w.getTerraces() - 1);
-			else
-				w.setTerraces (1);
+//================================================================================
+//  Main Method - Helper Functions
+//================================================================================
+/**
+ *  Creates default map and octave generation parameters.
+ */
+World initializeWorld () {
+  double seed = randSeed();
+  
+  MapGen mg { seed,
+    WORLD_DEFAULT_SCALE,
+    WORLD_DEFAULT_FREQUENCY,
+    WORLD_DEFAULT_EXPONENT,
+    WORLD_DEFAULT_TERRACES,
+    MAP_ROWS,
+    MAP_COLS,
+    false
+  };
 
-      w.simplexGen ();
-			break;
+  OctaveGen og { 2, 0.25, 0.5, 2 };
 
-		//	Terrain Level Handling
-		// Keys 1 - 9
-    case KEY_ONE:   case KEY_TWO:   case KEY_THREE:
-    case KEY_FOUR:  case KEY_FIVE:  case KEY_SIX: 
-    case KEY_SEVEN: case KEY_EIGHT: case KEY_NINE:
-			trnSelector = c - KEY_ONE;
-			break;
+  return World (mg, og);
+}
 
-		//	Switch currently selected terrain level 
-		case 119:
-			incTrn (w, trnSelector);
-      w.simplexGen ();
-			break;
-		case 113:
-			decTrn (w, trnSelector);
-      w.simplexGen ();
-			break;
-	}
+/**
+ *  Runs the world editor loop for creating/editing a new world.
+ */
+void runWorldEditor (Window &win, World &w, vector<Creature> &creatures,
+                     int &xOrigin, int &yOrigin) {
+  bool inWorldEdit = true;
+  unsigned trnSelector = 0;
+  
+  while (inWorldEdit) {
+    unsigned mapHeight = win.getRow() - MAP_HORI_BORDER;
+    unsigned mapWidth  = win.getCol() - MAP_VERT_BORDER;
+    int startx = win.getMidCol() - mapWidth/2;
+    int starty = win.getMidRow() - mapHeight/2;
+
+    mapCreatorInput (win, w, xOrigin, yOrigin, mapHeight,
+                     mapWidth, trnSelector, inWorldEdit);
+    erase ();
+    printWorld (w.getGrid(), creatures, xOrigin, yOrigin,
+                startx, starty, mapWidth, mapHeight);
+    printWorldDetails (w);
+    refresh ();
+  }
+}
+
+/**
+ *  Adds food spawners to the world.
+ */
+void addFoodSpawners (World &w) {
+  //  Food prefabs
+  Food banana (0, "Banana", "A curved yellow fruit", true, ')', 1,
+               BANANA_CALS, BANANA_LIFESPAN);
+  Food apple  (1, "Apple", "A delicious red apple", true, '*', 1,
+               APPLE_CALS, APPLE_LIFESPAN);
+
+  //  Spawner prefabs
+  Spawner bananaPlant ("Banana Plant", "A tall plant that makes bananas",
+                       true, 'T', 13, BANANA_RATE, BANANA_MIN_RANGE,
+                       BANANA_MAX_RANGE, banana);
+  Spawner appleTree   ("Apple Tree", "A big tree that makes apples",
+                       true, '^', 13, APPLE_RATE, APPLE_MIN_RANGE,
+                       APPLE_MAX_RANGE, apple);
+
+  w.addTrees (APPLE_MIN_ALTITUDE,  APPLE_MAX_ALTITUDE,  2, appleTree);
+  w.addTrees (BANANA_MIN_ALTITUDE, BANANA_MAX_ALTITUDE, 2, bananaPlant);
+}
+
+/**
+ *  Handles the New World menu option.
+ */
+void handleNewWorld (Window &win, World &w, vector<Creature> &creatures,
+                     FileHandling &file, int &xOrigin, int &yOrigin) {
+  file.saveStatsHeader ();
+  unsigned starty = win.getMidRow();
+  win.printCenter ("CREATING NEW WORLD", starty);
+  refresh ();
+
+  //  Edit world to liking
+  runWorldEditor (win, w, creatures, xOrigin, yOrigin);
+
+  //  Add Creatures
+  populateWorld (w, creatures, INITIAL_POPULATION);
+  
+  //  Add food spawners
+  addFoodSpawners (w);
+}
+
+/**
+ *  Handles loading an existing world.
+ *  @return True if load was successful, false otherwise.
+ */
+bool handleLoadWorld (Window &win, World &w, vector<Creature> &creatures,
+                      Calendar &calendar, Statistics &stats,
+                      FileHandling &file, int &xOrigin, int &yOrigin) {
+  unsigned starty = win.getMidRow();
+  win.printCenter ("LOADING WORLD", starty);
+  refresh ();
+  
+  if (file.loadState (w, creatures, calendar, stats)) {
+    return true;
+  } else {
+    win.printCenter ("FAILED TO LOAD", starty-1);
+    win.printCenter ("NEW WORLD WILL BE CREATED", starty+1);
+    while (getch() == ERR);
+    erase ();
+    handleNewWorld (win, w, creatures, file, xOrigin, yOrigin);
+    return true;
+  }
+}
+
+/**
+ *  Processes statistics at the end of each simulation tick.
+ */
+void processStatistics (Statistics &stats, Calendar &calendar,
+                        FileHandling &file, vector<Creature> &creatures,
+                        const GeneralStats &gs) {
+  stats.addRecord (gs);
+  
+  if (calendar.getMinute() == 0) {
+    if (calendar.getHour() == 0) {
+      stats.accumulate ();
+      string filepath = calendar.shortDate() + ".csv";
+      file.saveGenomes (filepath, creatures);
+      file.appendStats (stats.toString());
+      stats.clearRecords ();
+    } else {
+      stats.accumulateByHour ();
+    }
+  }
+}
+
+/**
+ *  Runs the main game loop.
+ */
+void runGameLoop (Window &win, World &w, vector<Creature> &creatures,
+                  Calendar &calendar, Statistics &stats, FileHandling &file,
+                  int &xOrigin, int &yOrigin, Settings &settings) {
+  while (settings.alive) {
+    unsigned mapHeight = win.getRow() - MAP_HORI_BORDER;
+    unsigned mapWidth  = win.getCol() - MAP_VERT_BORDER;
+    int startx = win.getMidCol() - mapWidth/2;
+    int starty = win.getMidRow() - mapHeight/2;
+
+    GeneralStats gs = { calendar, 0, 0, 0, 0 };
+    advanceSimulation (w, creatures, gs);
+
+    do {
+      erase ();
+      //  Display output to terminal
+      printWorld (w.getGrid(), creatures, xOrigin, yOrigin,
+                  startx, starty, mapWidth, mapHeight);
+
+      if (settings.hudIsOn)
+        printHUD (win.getRow(), win.getCol(), calendar, gs, creatures);
+
+      takeInput (win, w, creatures, calendar, stats, file,
+                 xOrigin, yOrigin, settings, mapHeight, mapWidth);
+
+      refresh ();
+    } while (settings.isPaused && settings.alive);
+
+    processStatistics (stats, calendar, file, creatures, gs);
+    calendar++;
+  }
 }
 
 //================================================================================
@@ -620,158 +900,39 @@ void mapCreatorInput (Window &win,
  *			    1 is returned if the program was terminated with an error.
  */
 int main () {
-  //  TODO this rand is rarely used now, can remove once it's no longer needed
-  //  Initialises the pseudo-random number generator with the current time
-	srand ((unsigned)time(0));
+  Window win;
+  World w = initializeWorld();
 
-	Window win;
-
-	//	World Generation
-	double seed	= randSeed ();
-
-  MapGen mg { seed, 
-    WORLD_DEFAULT_SCALE,
-    WORLD_DEFAULT_FREQUENCY, 
-    WORLD_DEFAULT_EXPONENT,
-    WORLD_DEFAULT_TERRACES,
-    MAP_ROWS,
-    MAP_COLS,
-    false
-  };
-
-  OctaveGen og {
-    2, 0.25, 0.5, 2
-  };
-
-  World w (mg, og);
-
-	vector<Creature> creatures;
+  std::vector<Creature> creatures;
   Calendar calendar;
   Statistics stats;
   FileHandling file (SAVE_FILES.at(1));
   Settings settings { true, true, false };
 
-	halfdelay (TICK_RATE);
-  int menuOption = win.titleMenu ();
+  halfdelay (TICK_RATE);
+  int menuOption = win.titleMenu();
   erase ();
 
   //  Origin coordinates for drawing world map.
-  int xOrigin	= 0, yOrigin = 0;
-  unsigned starty     = win.getMidRow ();
-  unsigned mapHeight  = win.getRow() - MAP_HORI_BORDER;
-  unsigned mapWidth   = win.getCol() - MAP_VERT_BORDER;
+  int xOrigin = 0, yOrigin = 0;
 
   switch (menuOption) {
-    case 0: //  Load World 
-      win.printCenter ("LOADING WORLD", starty);
-      refresh ();
-      if (file.loadState (w, creatures, calendar, stats)) {
-        break;
-      } else {
-        win.printCenter ("FAILED TO LOAD", starty-1);
-        win.printCenter ("NEW WORLD WILL BE CREATED", starty+1);
-        while (getch() == ERR);
-        erase ();
-      }
+    case 0: //  Load World
+      handleLoadWorld (win, w, creatures, calendar, stats, file, xOrigin, yOrigin);
+      break;
   
     case 1: //  New World
-      {
-        file.saveStatsHeader ();
-        win.printCenter ("CREATING NEW WORLD", starty);
-        refresh ();
-
-        //  Edit world to liking
-        bool inWorldEdit = true;
-        unsigned trnSelector;
-        while (inWorldEdit) {
-          mapHeight   = win.getRow()    - MAP_HORI_BORDER;
-          mapWidth    = win.getCol()    - MAP_VERT_BORDER;
-          int startx  = win.getMidCol() - mapWidth/2;
-          int starty  = win.getMidRow() - mapHeight/2;
-
-          mapCreatorInput (win, w, xOrigin, yOrigin, mapHeight, 
-                           mapWidth, trnSelector, inWorldEdit);
-          erase ();
-          printWorld (w.getGrid(), creatures, xOrigin, yOrigin, 
-                      startx, starty, mapWidth, mapHeight);
-          printWorldDetails (w);
-          refresh ();
-        }
-
-        //  Add Creatures
-        populateWorld (w, creatures, INITIAL_POPULATION); 
-        //  Food prefabs
-        Food    banana  (0, "Banana",  "A curved yellow fruit", true, ')', 1,
-                         BANANA_CALS, BANANA_LIFESPAN);
-        Food    apple   (1, "Apple", "A delicious red apple", true, '*', 1,
-                         APPLE_CALS, APPLE_LIFESPAN);
-
-        //  Spawner prefabs
-        Spawner bananaPlant ("Banana Plant", "A tall plant that makes bananas",
-                             true, 'T', 13, BANANA_RATE, BANANA_MIN_RANGE, 
-                             BANANA_MAX_RANGE, banana);
-        Spawner appleTree   ("Apple Tree",	"A big tree that makes apples",
-                             true, '^', 13, APPLE_RATE, APPLE_MIN_RANGE, 
-                             APPLE_MAX_RANGE, apple);
-
-        w.addTrees (APPLE_MIN_ALTITUDE,   APPLE_MAX_ALTITUDE,   2, appleTree);
-        w.addTrees (BANANA_MIN_ALTITUDE,  BANANA_MAX_ALTITUDE,  2, bananaPlant);
-        break;
-      }
+      handleNewWorld (win, w, creatures, file, xOrigin, yOrigin);
+      break;
 
     case 2: case -2:  // Quit
       settings.alive = false;
       break;
   }
 
-	while (settings.alive) {
-    mapHeight   = win.getRow()    - MAP_HORI_BORDER;
-    mapWidth    = win.getCol()    - MAP_VERT_BORDER;
-		int startx  = win.getMidCol() - mapWidth/2;
-		int starty  = win.getMidRow() - mapHeight/2;
-
-    GeneralStats gs = { calendar, 0, 0, 0, 0 };
-    advanceSimulation (w, creatures, gs);
-
-    do {
-      erase ();
-      //  Display output to terminal
-      printWorld (w.getGrid(), creatures, xOrigin, yOrigin, 
-          startx, starty, mapWidth, mapHeight);
-
-      if (settings.hudIsOn)
-        printHUD (win.getRow(), win.getCol(), calendar, gs, creatures);
-
-      takeInput (win, w, creatures, calendar, stats, file, 
-                 xOrigin, yOrigin, settings, mapHeight, mapWidth);
-
-      refresh (); 
-    } while (settings.isPaused && settings.alive);
-
-    /*/
-    //Saved here for testing new key codes
-    char ch = getch();
-    mvprintw (0, 2,   "Char : %d", ch);
-    */
-
-    //  Statistics 
-    stats.addRecord (gs);
-    if (calendar.getMinute() == 0) {
-      if (calendar.getHour() == 0) {
-        stats.accumulate ();
-        string filepath = calendar.shortDate() + ".csv";
-        file.saveGenomes (filepath, creatures);
-        file.appendStats (stats.toString());
-        stats.clearRecords ();
-      } else {
-        stats.accumulateByHour ();
-      }
-    }
-
-    calendar++;
-	}
+  runGameLoop (win, w, creatures, calendar, stats, file, xOrigin, yOrigin, settings);
 
   clear ();
   endwin ();
-	return 0;
+  return 0;
 }

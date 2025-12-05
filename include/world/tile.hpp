@@ -66,20 +66,22 @@ class Tile {
       //==========================================================================      
       void setElevation (unsigned int elevation);
 
-      //==========================================================================      
+      //==========================================================================
       // Container Handling
-      //==========================================================================      
-      void addFood        (Food obj);
-      void removeFood     (std::string objName);
+      //==========================================================================
+      bool addFood        (const Food& obj);
+      void removeFood     (const std::string& objName);
       void updateFood     ();
-      void addSpawner     (Spawner obj);
-      void removeSpawner  (std::string objName);
+      bool addSpawner     (const Spawner& obj);
+      void removeSpawner  (const std::string& objName);
  
-      //==========================================================================      
+      //==========================================================================
       //  To String
-      //==========================================================================      
+      //==========================================================================
+      /** @brief Returns a string representation of tile contents (food and spawners) */
       std::string contentToString () const;
+      /** @brief Returns a string representation of the entire tile state */
       std::string toString        () const;
 };
 
-#endif
+#endif  // ECOSIM_WORLD_TILE_HPP

@@ -1,7 +1,8 @@
-#ifndef CREATURE_H 
-#define CREATURE_H 
+#ifndef CREATURE_H
+#define CREATURE_H
 
-#define SIZE(a) sizeof(a) / sizeof(a[0])
+// CREATURE-017 fix: Removed SIZE() macro that polluted global namespace
+// If needed elsewhere, use: template<typename T, size_t N> constexpr size_t arraySize(T(&)[N]) { return N; }
 
 /**
  * Title    : Ecosim - Creature
@@ -25,11 +26,13 @@
 #include <stdlib.h>   //  abs
 #include <algorithm>  //  max
 #include <iostream>   //  cerr
-#include <math.h>     //  pow
+#include <cmath>      //  sqrt
 #include <string>
 #include <vector>
+#include <array>
 #include <list>
 #include <sstream>
+#include <functional>
 
 class World;
 
@@ -125,8 +128,8 @@ class Creature: public GameObject {
     int       getY          () const;
     Direction getDirection  () const;
     Profile   getProfile    () const;
-    //  Genome Getters
-    Genome    getGenome     () const;
+    //  Genome Getters (CREATURE-010 fix: return by const reference)
+    const Genome& getGenome () const;
     unsigned  getLifespan   () const;
     unsigned  getSightRange () const;
     float     getTHunger    () const;
@@ -173,11 +176,17 @@ class Creature: public GameObject {
                              const unsigned &cols,
                              const int &x,
                              const int &y);
-    bool  findFood          (std::vector<std::vector<Tile>> &map, 
+    // CREATURE-013 fix: Generic spiral search helper to eliminate duplication
+    template<typename Predicate>
+    bool spiralSearch       (const std::vector<std::vector<Tile>> &map,
+                             const int &rows,
+                             const int &cols,
+                             Predicate predicate);
+    bool  findFood          (std::vector<std::vector<Tile>> &map,
                              const int &rows,
                              const int &cols,
                              unsigned int &foodCounter);
-    bool  findWater         (const std::vector<std::vector<Tile>> &map, 
+    bool  findWater         (const std::vector<std::vector<Tile>> &map,
                              const int &rows, const int &cols);
     bool  findMate          (std::vector<std::vector<Tile>> &map,
                              const int &rows,

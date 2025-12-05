@@ -44,7 +44,7 @@ class Calendar {
     //============================================================================
     //  Incrementing
     //============================================================================
-    Calendar& operator++ (int);
+    Calendar operator++ (int);
     void incrementByMinute  ();
     void incrementByHour    ();
     void incrementByDay     ();

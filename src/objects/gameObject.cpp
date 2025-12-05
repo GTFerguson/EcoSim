@@ -7,6 +7,8 @@
 
 #include "../../include/objects/gameObject.hpp"
 
+#include <sstream>
+
 using namespace std;
 
 //================================================================================
@@ -15,6 +17,7 @@ using namespace std;
 GameObject::GameObject () {
   _name       = "";
   _desc       = "";
+  _passable   = true;
   _character  = ' ';
   _colour     = 1;
 }
@@ -30,9 +33,9 @@ GameObject::GameObject () {
  */
 GameObject::GameObject (const string &name,
                         const string &desc,
-                        const bool &passable, 
-						            const char &character,
-                        const unsigned &colour) {
+                        bool passable,
+						            char character,
+                        unsigned int colour) {
 	_name		    = name;
 	_desc		    = desc;
 	_passable	  = passable;
@@ -41,16 +44,16 @@ GameObject::GameObject (const string &name,
 }
 
 /**
- *	This is our constructor for general GameObjects with 
+ *	This is our constructor for general GameObjects with
  *	name and description set to blank.
  *
  *	@param passable		Whether a creature can walk through it.
  *	@param character	The ASCII representation.
  *	@param colour		  The colour of the character.
  */
-GameObject::GameObject (const bool &passable,
-                        const char &character, 
-                        const unsigned &colour) {
+GameObject::GameObject (bool passable,
+                        char character,
+                        unsigned int colour) {
 	_name		    = "";
 	_desc		    = "";
 	_passable	  = passable;
@@ -59,15 +62,15 @@ GameObject::GameObject (const bool &passable,
 }
 
 /**
- *	This is our constructor for general GameObjects with 
- *	name, description set to blank, as well as colour to 
+ *	This is our constructor for general GameObjects with
+ *	name, description set to blank, as well as colour to
  *	a default value of 1.
  *
  *	@param passable		Whether a creature can walk
  *						        through it.
  *	@param character	The ASCII representation.
  */
-GameObject::GameObject (const bool &passable, const char &character) {
+GameObject::GameObject (bool passable, char character) {
 	_name		    = "";
 	_desc		    = "";
 	_passable	  = passable;
@@ -76,13 +79,13 @@ GameObject::GameObject (const bool &passable, const char &character) {
 }
 
 /**
- *	This is our constructor for general GameObjects with 
- *	name, description set to blank, as well as colour to 
+ *	This is our constructor for general GameObjects with
+ *	name, description set to blank, as well as colour to
  *	a default value of 1.
  *
  *	@param character	The ASCII representation.
  */
-GameObject::GameObject (const char &character) {
+GameObject::GameObject (char character) {
 	_name		    = "";
 	_desc		    = "";
 	_passable	  = true;
@@ -97,7 +100,7 @@ string 		GameObject::getName 		() const { return _name;		  }
 string 		GameObject::getDesc 		() const { return _desc;		  }
 bool 			GameObject::getPassable	() const { return _passable;	}
 char			GameObject::getChar			() const { return _character;	}
-unsigned  GameObject::getColour 	() const { return _colour;		}
+unsigned int GameObject::getColour() const { return _colour; }
 
 //================================================================================
 //  To String

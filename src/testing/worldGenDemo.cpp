@@ -10,10 +10,10 @@
 #include <time.h>
 #include <iostream>
 #include <sstream>
-#include "../include/world.hpp"
-#include "../include/tile.hpp"
-#include "../include/window.hpp"
-#include "../include/objects/spawner.hpp"
+#include "../../include/world/world.hpp"
+#include "../../include/world/tile.hpp"
+#include "../../include/window.hpp"
+#include "../../include/objects/spawner.hpp"
 
 using namespace std;
 
@@ -273,7 +273,7 @@ int main () {
 		win.printCenter (getUI(w, trnSelector), 1);
 
 		win.printStr (curKeyCode, 0, 0);
-		string newKeyCode = takeInput (win, w, mapHeight, mapWidth, trnSelector, alive);
+		string newKeyCode = mapCreatorInput (win, w, mapHeight, mapWidth, trnSelector, alive);
 		if (!newKeyCode.empty()) {
 			curKeyCode = newKeyCode;
 		}

@@ -39,10 +39,11 @@ Calendar::Calendar (const Time &time, const Date &date) {
 //================================================================================
 //  Incrementing Methods 
 //================================================================================
-//  Postfix
-Calendar& Calendar::operator++ (int) {
+//  Postfix - returns copy of original value before modification
+Calendar Calendar::operator++ (int) {
+  Calendar old = *this;
   incrementByMinute ();
-  return *this;
+  return old;
 }
 
 void Calendar::incrementByMinute () {
@@ -97,35 +98,34 @@ unsigned        Calendar::getYear   () const { return _date.year;   }
 //================================================================================
 //  Formatted Date
 //================================================================================
-string Calendar::shortTime () const {
-  ostringstream ss;
-  ss << setw(2) << setfill('0') << _time.hour << ":"
-     << setw(2) << setfill('0') << _time.minute;
+std::string Calendar::shortTime () const {
+  std::ostringstream ss;
+  ss << std::setw(2) << std::setfill('0') << _time.hour << ":"
+     << std::setw(2) << std::setfill('0') << _time.minute;
   return ss.str();
 }
 
-string Calendar::monthToString (const unsigned short &month) const {
+std::string Calendar::monthToString (const unsigned short &month) const {
   return MONTH_STRINGS.at(month);
 }
 
-string Calendar::getDayAffix (const unsigned short &day) const {
+std::string Calendar::getDayAffix (const unsigned short &day) const {
   switch (day) {
-    case 1: case 21: case 31:   return "st"; break;
-    case 2: case 22: case 32:   return "nd"; break;
-    case 3: case 23:            return "rd"; break;
-    default:                    return "th"; break;
-
+    case 1: case 21: case 31:   return "st";
+    case 2: case 22:            return "nd";
+    case 3: case 23:            return "rd";
+    default:                    return "th";
   }
 }
 
-string Calendar::shortDate () const {
-  ostringstream ss;
+std::string Calendar::shortDate () const {
+  std::ostringstream ss;
   ss << _date.day << "-" << _date.month+1 << "-" << _date.year;
   return ss.str();
 }
 
-string Calendar::longDate () const {
-  ostringstream ss;
+std::string Calendar::longDate () const {
+  std::ostringstream ss;
   ss  << monthToString(_date.month)           << " "
       << _date.day << getDayAffix(_date.day)  << ", "
       << _date.year;
@@ -135,8 +135,8 @@ string Calendar::longDate () const {
 //================================================================================
 //  To String
 //================================================================================
-string Calendar::toString () const {
-  ostringstream ss;
+std::string Calendar::toString () const {
+  std::ostringstream ss;
   ss  << _time.hour << "," << _time.minute  << ","
       << _date.day  << "," << _date.month   << "," << _date.year;
   return ss.str();

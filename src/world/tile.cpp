@@ -8,6 +8,8 @@
 
 #include "../../include/world/tile.hpp"
 
+#include <iostream>
+
 using namespace std;
 
 //	Constructors
@@ -67,16 +69,21 @@ void Tile::setElevation (unsigned int elevation) {
 //================================================================================
 //	Object Handling
 //================================================================================
-void Tile::addFood (Food obj) {
-	if (_foodVec.size() < _objLimit)
-		_foodVec.push_back(obj);
+bool Tile::addFood (const Food& obj) {
+	if (_foodVec.size() >= _objLimit) {
+		std::cerr << "[Tile] Warning: Cannot add food '" << obj.getName()
+		          << "' - tile object limit (" << _objLimit << ") reached" << std::endl;
+		return false;
+	}
+	_foodVec.push_back(obj);
+	return true;
 }
 
-void Tile::removeFood (string objName) {
-	for (int i = 0; i < _foodVec.size(); i++) {
+void Tile::removeFood (const string& objName) {
+	for (size_t i = 0; i < _foodVec.size(); i++) {
 		//	If current obj name is equal to name searched for remove
 		if (objName.compare(_foodVec[i].getName()) == 0) {
-			_foodVec.erase (_foodVec.begin() + i);
+			_foodVec.erase (_foodVec.begin() + static_cast<ptrdiff_t>(i));
 			return;
 		}
 	}
@@ -90,29 +97,35 @@ void Tile::updateFood () {
   while (it != _foodVec.end()) {
     if (it->getDecay() < it->getLifespan()) {
       it->incrementDecay ();
-      it++;
+      ++it;
     } else {
-			_foodVec.erase (it);
+      it = _foodVec.erase (it);
     }
   }
 }
 
-void Tile::addSpawner (Spawner obj) {
-	if (_spawners.size() < _objLimit) {
-		_spawners.push_back (obj);
+bool Tile::addSpawner (const Spawner& obj) {
+	if (_spawners.size() >= _objLimit) {
+		std::cerr << "[Tile] Warning: Cannot add spawner '" << obj.getName()
+		          << "' - tile object limit (" << _objLimit << ") reached" << std::endl;
+		return false;
 	}
+	_spawners.push_back (obj);
+	return true;
 }
 
-//  TODO change to id instead of string comps
-void Tile::removeSpawner (string objName) {
+// NOTE: Currently uses string comparison for object identification.
+// Consider refactoring to use numeric IDs for better performance.
+void Tile::removeSpawner (const string& objName) {
   vector<Spawner>::iterator it = _spawners.begin();
   while (it != _spawners.end()) {
-		//	If current obj name is equal to name searched for remove
-		if (objName.compare(it->getName()) == 0) {
-			_spawners.erase (it);
-			return;
-		}
-	}
+    //	If current obj name is equal to name searched for remove
+    if (objName.compare(it->getName()) == 0) {
+      _spawners.erase (it);
+      return;
+    }
+    ++it;
+  }
 }
 
 //================================================================================

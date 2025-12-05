@@ -13,8 +13,9 @@
 #define KEY_N_ENTER 10
 #define KEY_ESCAPE  27
 #define KEY_SPACE   32
-#define KEY_MINUS   43
-#define KEY_DASH    45
+#define KEY_PLUS    43  // ASCII '+' is 43
+#define KEY_MINUS   45  // ASCII '-' is 45
+#define KEY_DASH    45  // Same as minus
 #define KEY_ONE     49
 #define KEY_TWO     50
 #define KEY_THREE   51
@@ -25,7 +26,7 @@
 #define KEY_EIGHT   56
 #define KEY_NINE    57
 #define KEY_EQUAL   61
-#define KEY_PLUS    95
+#define KEY_UNDERSCORE 95  // ASCII '_' is 95
 #define KEY_A       97
 #define KEY_C       99
 #define KEY_D       100
@@ -64,14 +65,12 @@ class Window {
     void initColorPairs ();
 
     //============================================================================
-		//	Getters
+ //	Getters
     //============================================================================
-		int   getRow    ();
-		int   getMidRow ();
-		int   getCol		();
-		int   getMidCol	();
-		void  getStr	  (std::string &str);
-		void  getMaxXY	();
+ int   getRow    ();
+ int   getMidRow ();
+ int   getCol		();
+ int   getMidCol	();
 
     //============================================================================
 		//	Print Methods

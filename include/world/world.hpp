@@ -24,17 +24,24 @@
 #include <random>
 
 struct MapGen {
-  double 	  seed, scale, freq, exponent;
-  unsigned  terraces, rows, cols;
-  bool      isIsland;
+  double    seed      = 0.0;
+  double    scale     = 0.01;
+  double    freq      = 1.0;
+  double    exponent  = 1.0;
+  unsigned  terraces  = 20;
+  unsigned  rows      = 500;
+  unsigned  cols      = 500;
+  bool      isIsland  = false;
 };
 
 struct OctaveGen {
-  unsigned  quantity;
-  double    minWeight, maxWeight, freqInterval;
+  unsigned  quantity     = 4;
+  double    minWeight    = 0.1;
+  double    maxWeight    = 0.5;
+  double    freqInterval = 1.0;
 
   double weightInterval () const {
-    return (maxWeight - minWeight) / (quantity - 1);
+    return (quantity > 1) ? (maxWeight - minWeight) / (quantity - 1) : 0.0;
   }
 };
 
@@ -49,6 +56,9 @@ class World {
     MapGen                _mapGen;
     OctaveGen             _octaveGen;
     std::vector<TileGen>  _tileGen;
+    
+    // RNG for tree placement - initialized once and reused
+    std::mt19937          _rng;
 
 	public:
     //============================================================================
@@ -94,12 +104,12 @@ class World {
 		void  simplexGen		();
 
     //============================================================================
-		//	Game Object Handling
+  //	Game Object Handling
     //============================================================================
-		void addFood          (const int &x, const int &y, const Food    &obj);
-		void addSpawner	      (const int &x, const int &y, const Spawner &obj);
-		void addTrees 	      (const unsigned int &lowElev, const unsigned int &highElev,
-                           const unsigned int &rate,    Spawner tree);
+  void addFood          (const int &x, const int &y, const Food    &obj);
+  void addSpawner	      (const int &x, const int &y, const Spawner &obj);
+  void addTrees 	      (const unsigned int &lowElev, const unsigned int &highElev,
+                           const unsigned int &rate,    const Spawner& tree);
 		void removeFood       (const int &x, const int &y, const std::string &objName);
 		void removeSpawner		(const int &x, const int &y, const std::string &objName);
  
@@ -111,9 +121,10 @@ class World {
                            const int &curX, const int &curY);
 
     //============================================================================
-		//	To String
+  //	To String
     //============================================================================
+    /** @brief Serializes the world state to a string for saving */
     std::string toString () const;
 };
 
-#endif
+#endif  // ECOSIM_WORLD_WORLD_HPP

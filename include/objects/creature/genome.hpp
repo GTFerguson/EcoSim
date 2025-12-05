@@ -2,10 +2,10 @@
 #define GENOME_H
 
 /**
- *  Title   : Ecosim - Genome 
+ *  Title   : Ecosim - Genome
  *  Author  : Gary Ferguson
  *	Date	  : April 18th, 2020
- *	Purpose	: This class helps with the storlifespan of any
+ *	Purpose	: This class helps with the storage of lifespan and other
  *            genetic variables along with their manipulation.
  */
 

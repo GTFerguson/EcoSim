@@ -14,8 +14,7 @@ const vector<string> Window::titleOptions = {
 //================================================================================
 Window::Window () {
 	if ((win = initscr()) == NULL) {
-		fprintf (stderr, "Error initialising ncurses.\n");
-		exit	(EXIT_FAILURE);
+		throw std::runtime_error("Error initialising ncurses.");
 	}
 
 	keypad    (win, TRUE);
@@ -136,30 +135,30 @@ int Window::titleMenu () {
 }
 
 //================================================================================
-//  Getters	
+//  Getters
 //================================================================================
-int Window::getRow    () {  getmaxyx (stdscr, row, col); return row;      }
-int Window::getMidRow () {  getmaxyx (stdscr, row, col); return row / 2;  }
-int Window::getCol    () {	getmaxyx (stdscr, row, col); return col;      }
-int Window::getMidCol () {  getmaxyx (stdscr, row, col); return col / 2;  }
+int Window::getRow    () {  return row;      }
+int Window::getMidRow () {  return row / 2;  }
+int Window::getCol    () {	return col;      }
+int Window::getMidCol () {  return col / 2;  }
 
 //================================================================================
 //	Screen Print Helpers
 //================================================================================
 //	Print string to center of the current window
-void Window::printCenter (const string &str, int y) {
+void Window::printCenter (const std::string &str, int y) {
 	mvprintw (y, getMidCol() - str.length() / 2, str.c_str());
 }
 
-void Window::printCenter (const vector<string> &v, int y) {
+void Window::printCenter (const std::vector<std::string> &v, int y) {
 	//	Set initial Y position
 	int startY = y - (v.size() / 2);
 	//	For each element in vector
 	for (unsigned int i = 0; i < v.size(); i++) {
-		printCenter (v[i], startY + i); 
+		printCenter (v[i], startY + i);
 	}
-} 
+}
 
-void Window::printString (const string &str, const unsigned int &x, const unsigned int &y) {
+void Window::printString (const std::string &str, const unsigned int &x, const unsigned int &y) {
 	mvprintw (y, x, str.c_str());
-} 
+}
