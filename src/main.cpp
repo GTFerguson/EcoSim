@@ -1,7 +1,7 @@
 /**
  *	Title		  : EcoSim
  *	Author		: Gary Ferguson
- *	Date		  : November 18th 2019 
+ *	Date		  : November 18th 2019
  *	Purpose		: This program aims to simulate the evolution of an ecosystem
  *			        through the application of Agent-Based Co-Evolutionary Algorithms
  *			        for Multi-Objective Optimization. The aim being that the ecosystem
@@ -15,9 +15,12 @@
 #include "../include/objects/food.hpp"
 #include "../include/objects/spawner.hpp"
 #include "../include/world/world.hpp"
-#include "../include/window.hpp"
 #include "../include/fileHandling.hpp"
 #include "../include/calendar.hpp"
+
+// RenderSystem includes - abstract rendering interface
+#include "../include/rendering/RenderSystem.hpp"
+#include "../include/rendering/RenderTypes.hpp"
 
 #include <stdlib.h>
 #include <random>
@@ -141,179 +144,75 @@ double randSeed () {
 }
 
 //================================================================================
-//  Window Handling
+//  Rendering via RenderSystem
 //================================================================================
 /**
- *  This method takes a vector of creature objects and prints them to the screen 
- *  complete with a colour representation of their current profile.
+ *  This method renders the world and all creatures within the viewport.
+ *  Uses the RenderSystem interface instead of direct ncurses calls.
  *
- *  @param c        The vector of creature objects.
- *	@param xOrigin  Current x origin of the world map.
- *	@param yOrigin  Current y origin of the world map.
- *	@param xScreen  Starting x coordinate for drawing to the screen.
- *	@param yScreen  Starting y coordinate for drawing to the screen.
- *	@param xRange   The range along the x-axis.
- *	@param yRange   The range along the y-axis.
+ *  @param world      The world to render.
+ *  @param creatures  The vector of creature objects.
+ *  @param viewport   The viewport configuration.
  */
-void printCreatures (const vector<Creature> &creatures,
-                     const int &xOrigin,
-                     const int &yOrigin,
-                     const unsigned &xScreen, 
-                     const unsigned &yScreen,
-                     const unsigned &xRange, 
-                     const unsigned &yRange) {
-  int cX, cY;
-  for (const Creature & creature : creatures) {
-    cX = creature.getX();
-    cY = creature.getY();
-
-    //  Check creature is within the shown area of the map
-    if (cX >= xOrigin && cX < xRange &&
-        cY >= yOrigin && cY < yRange) {
-      //  Visualise the creatures current profile
-      int cColor;
-      switch (creature.getProfile()) {
-        case Profile::hungry:   cColor = HUNGRY_PAIR;   break;
-        case Profile::thirsty:  cColor = THIRSTY_PAIR;  break;
-        case Profile::sleep:    cColor = SLEEP_PAIR;    break;
-        case Profile::breed:    cColor = BREED_PAIR;    break;
-        case Profile::migrate:  cColor = MIGRATE_PAIR;  break;
-        default:                cColor = DEFAULT_PAIR;  break;
-      }
-
-      attron  (COLOR_PAIR(cColor));
-      mvaddch (yScreen + cY, xScreen + cX, creature.getChar());
-      attroff (COLOR_PAIR(cColor));
-    }
-  }
+void renderWorldAndCreatures(const World& world,
+                             const vector<Creature>& creatures,
+                             const Viewport& viewport) {
+  IRenderer& renderer = RenderSystem::getInstance().getRenderer();
+  
+  // Render world terrain, spawners, and food
+  renderer.renderWorld(world, viewport);
+  
+  // Render creatures on top
+  renderer.renderCreatures(creatures, viewport);
 }
 
 /**
- *	Displays a 2D representation of the game world.
+ *  This renders the world generation details overlay.
+ *  Uses the RenderSystem interface.
  *
- *	@param grid 		  A reference to the world map.
- *  @param c          The vector of creature objects.
- *	@param xOrigin    Current x origin of the world map.
- *	@param yOrigin    Current y origin of the world map.
- *	@param startx		  Starting x coordinate for drawing to the screen.
- *	@param starty		  Starting y coordinate for drawing to the screen.
- *	@param mapWidth		The width of the frame to be drawn
- *	@param mapHeight	The height of the frame to be drawn.
+ *  @param world  The world object.
  */
-  //  TODO make this method easier to read
-void printWorld	(vector<vector<Tile>> &grid,
-                 const vector<Creature> &c,
-                 const int &xOrigin,
-                 const int &yOrigin,
-					       unsigned startx,
-                 unsigned starty,
-					       const unsigned &mapWidth,
-                 const unsigned &mapHeight) {
-  //  Center the map within the given space by getting difference 
-  if (mapWidth  > MAP_COLS) startx += (mapWidth   - MAP_COLS) / 2;
-  if (mapHeight > MAP_ROWS) starty += (mapHeight  - MAP_ROWS) / 2;
-
-  //  Work out print boundaries before loops for efficiency
-  unsigned xRange = mapWidth  + xOrigin;
-  unsigned yRange = mapHeight + yOrigin;
-  if (xRange > MAP_COLS) xRange = MAP_COLS;
-  if (yRange > MAP_ROWS) yRange = MAP_ROWS;
-  //  Where to draw in the terminal
-  const unsigned xScreen = startx - xOrigin;
-  const unsigned yScreen = starty - yOrigin;
-
-  for (unsigned y = yOrigin; y < yRange; y++) {
-    for (unsigned x = xOrigin; x < xRange; x++) {
-			//	Terrain
-      Tile *curTile = &grid.at(x).at(y);
-			attron 	(COLOR_PAIR (curTile->getColPair()));
-			mvaddch (yScreen + y, xScreen + x, curTile->getChar());
-			attroff (COLOR_PAIR (curTile->getColPair()));
-
-			//	Spawners
-			const vector<Spawner> *spawners = &curTile->getSpawners();
-			attron (COLOR_PAIR (TREES_PAIR));
-			if (!spawners->empty())
-				mvaddch (yScreen + y, xScreen + x, spawners->begin()->getChar());
-			attroff	(COLOR_PAIR (TREES_PAIR));
-
-			//	Food
-			const vector<Food> *food = &curTile->getFoodVec();
-			if (!food->empty())
-        mvaddch (yScreen + y, xScreen + x, food->begin()->getChar());
-		}
-	}
-  //  Creature displayal is handled differently so must be done separately
-  printCreatures (c, xOrigin, yOrigin, xScreen, yScreen, xRange, yRange);
+void renderWorldDetailsOverlay(const World& world) {
+  IRenderer& renderer = RenderSystem::getInstance().getRenderer();
+  renderer.renderWorldDetails(world);
 }
 
 /**
- *  This prints to the screen all the specifications for generating a world map.
+ *  Displays the HUD with simulation statistics.
+ *  Uses the RenderSystem interface.
  *
- *  @param w  The world object.
+ *  @param calendar   An object that tracks the in-game date and time.
+ *  @param gs         General data stored on the simulation.
+ *  @param creatures  A vector of all creatures.
+ *  @param viewport   The current viewport.
+ *  @param paused     Whether the simulation is paused.
  */
-void printWorldDetails (const World &w) {
-  mvprintw (1,  2, "Seed      : %f", w.getSeed());
-  mvprintw (2,  2, "Scale     : %f", w.getScale());
-  mvprintw (3,  2, "Freq      : %f", w.getFreq());
-  mvprintw (4,  2, "Exponent  : %f", w.getExponent());
-  mvprintw (5,  2, "Terraces  : %d", w.getTerraces());
-
-  mvprintw (7,  2, "OCTAVES");
-  mvprintw (8,  2, "Quantity        : %d", w.getOctaveGen().quantity);
-  mvprintw (9,  2, "Min Weight      : %f", w.getOctaveGen().minWeight);
-  mvprintw (10, 2, "Max Weight      : %f", w.getOctaveGen().maxWeight);
-  mvprintw (11, 2, "Freq. Interval  : %f", w.getOctaveGen().freqInterval);
-}
-
-/**
- *  Displays some UI elements to give feedback on the simulation.
- *
- *  @parma rows     The number or rows in the window.
- *  @parma cols     The number or columns in the window.
- *  @param Calender An object that tracks the in-game date and time.
- *	@param gs       General data stored on the simuation.
- *  @param c        A vector of all creatures.
- */
-void printHUD (const unsigned &rows,
-               const unsigned &cols,
-               const Calendar &calendar, 
-               const GeneralStats &gs,
-               const vector<Creature> &c) {
-  //	Extra interface stuff 
-  mvprintw (1,  2, "Population : %d", gs.population);
-  mvprintw (2,  2, "Births :     %d", gs.births);
-  mvprintw (3,  2, "Food Ate :   %d", gs.foodAte);
-
-  mvprintw (5,  2, "Deaths");
-  mvprintw (6,  2, "Old Age :    %d", gs.deaths.oldAge);
-  mvprintw (7,  2, "Starved :    %d", gs.deaths.starved);
-  mvprintw (8,  2, "Dehydrated : %d", gs.deaths.dehydrated);
-  mvprintw (9,  2, "Discomfort : %d", gs.deaths.discomfort);
-  mvprintw (10, 2, "Predator :   %d", gs.deaths.predator);
-
-  mvprintw (rows-1, 2, calendar.shortTime().c_str());
-  mvprintw (rows-1, 8, calendar.longDate().c_str());
-
-  //  Feedback on two creature objects so we can monitor them at runtime
-  if (c.size() > 0) {
-    mvprintw (1, 20, "Age:     %d", c.begin()->getAge     ());
-    mvprintw (2, 20, "Hunger:  %f", c.begin()->getHunger  ());
-    mvprintw (3, 20, "Thirst:  %f", c.begin()->getThirst  ());
-    mvprintw (4, 20, "Fatigue: %f", c.begin()->getFatigue ());
-    mvprintw (5, 20, "Mate:    %f", c.begin()->getMate    ());
-    mvprintw (6, 20, "Profile: ");
-    addstr (c.begin()->profileToString().c_str());
-    if (c.size() > 1) {
-      mvprintw (1, 40, "Age:     %d", c.at(1).getAge     ());
-      mvprintw (2, 40, "Hunger:  %f", c.at(1).getHunger  ());
-      mvprintw (3, 40, "Thirst:  %f", c.at(1).getThirst  ());
-      mvprintw (4, 40, "Fatigue: %f", c.at(1).getFatigue ());
-      mvprintw (5, 40, "Mate:    %f", c.at(1).getMate    ());
-      mvprintw (6, 40, "Profile: ");
-      addstr (c.at(1).profileToString().c_str());
-    }
-  }
+void renderHUDDisplay(const Calendar& calendar,
+                      const GeneralStats& gs,
+                      const vector<Creature>& creatures,
+                      const Viewport& viewport,
+                      bool paused) {
+  IRenderer& renderer = RenderSystem::getInstance().getRenderer();
+  
+  HUDData hudData;
+  hudData.population = gs.population;
+  hudData.births = gs.births;
+  hudData.foodEaten = gs.foodAte;
+  hudData.deaths.oldAge = gs.deaths.oldAge;
+  hudData.deaths.starved = gs.deaths.starved;
+  hudData.deaths.dehydrated = gs.deaths.dehydrated;
+  hudData.deaths.discomfort = gs.deaths.discomfort;
+  hudData.deaths.predator = gs.deaths.predator;
+  hudData.timeString = calendar.shortTime();
+  hudData.dateString = calendar.longDate();
+  hudData.worldWidth = MAP_COLS;
+  hudData.worldHeight = MAP_ROWS;
+  hudData.viewportX = viewport.originX;
+  hudData.viewportY = viewport.originY;
+  hudData.tickRate = TICK_RATE;
+  hudData.paused = paused;
+  
+  renderer.renderHUD(hudData);
 }
 
 //================================================================================
@@ -427,296 +326,317 @@ void populateWorld (World &w, vector<Creature> &c, unsigned amount) {
 }
 
 //================================================================================
-//  Input Handling
+//  Input Handling via RenderSystem
 //================================================================================
 /**
- *	This handles user input from a keyboard.
+ *	This handles user input from a keyboard using the IInputHandler interface.
  *
- *	@param win			  The window object.	
  *	@param w			    The world object.
+ *  @param c          The vector of creatures.
+ *  @param calendar   The calendar object.
+ *  @param stats      Statistics tracker.
+ *  @param file       File handling object.
  *	@param xOrigin    The left most point displayed.
  *	@param yOrigin    The top most point displayed.
  *	@param settings   Simulation settings.
  *	@param mapHeight	Height of the world map.
  *	@param mapWidth		Width of the world map.
  */
-void takeInput 	(Window &win,
-                 World &w,
-                 vector<Creature> &c,
-                 Calendar &calendar,
-                 Statistics &stats,
-                 FileHandling &file,
-                 int &xOrigin,
-                 int &yOrigin,
-                 Settings &settings,
-                 const unsigned &mapHeight,
-                 const unsigned &mapWidth) {
-	int ch  = getch();
-	int inc = 5;
-
-	switch (ch) {
-		//	Movement on Map
-    //  Up : Up key or K
-		case KEY_UP: case KEY_K: 
+void takeInput(World& w,
+               vector<Creature>& c,
+               Calendar& calendar,
+               Statistics& stats,
+               FileHandling& file,
+               int& xOrigin,
+               int& yOrigin,
+               Settings& settings,
+               const unsigned& mapHeight,
+               const unsigned& mapWidth) {
+  IInputHandler& input = RenderSystem::getInstance().getInputHandler();
+  InputEvent event = input.pollInput();
+  
+  const int inc = 5;
+  
+  // Handle by action first (semantic actions)
+  switch (event.action) {
+    case InputAction::MOVE_UP:
       yOrigin -= inc;
-			if (yOrigin < 0)
-				yOrigin = 0;
-			break;
-    //  Down : Down key or j
-		case KEY_DOWN: case KEY_J:
+      if (yOrigin < 0) yOrigin = 0;
+      return;
+      
+    case InputAction::MOVE_DOWN:
       {
         yOrigin += inc;
         int relativePos = MAP_ROWS - (int)mapHeight;
-        if (yOrigin > relativePos)
-          yOrigin = relativePos;
-        break;
+        if (yOrigin > relativePos) yOrigin = relativePos;
       }
-    //  Left : Left key or h
-		case KEY_LEFT: case KEY_H:  
+      return;
+      
+    case InputAction::MOVE_LEFT:
       xOrigin -= inc;
-			if (xOrigin < 0)
-				xOrigin = 0;
-			break;
-    //  Right : Right key or l
-		case KEY_RIGHT: case KEY_L: 
+      if (xOrigin < 0) xOrigin = 0;
+      return;
+      
+    case InputAction::MOVE_RIGHT:
       {
         xOrigin += inc;
         int relativePos = MAP_COLS - (int)mapWidth;
-        if (xOrigin > relativePos)
-          xOrigin = relativePos;
-        break;
+        if (xOrigin > relativePos) xOrigin = relativePos;
       }
-
-    //  Additional Controls
-    //  HUD switch : f
-    case KEY_N_F:
+      return;
+      
+    case InputAction::TOGGLE_HUD:
       settings.hudIsOn = !settings.hudIsOn;
-      break;
-
-    //  Pause : Spacebar
-    case KEY_SPACE:
+      return;
+      
+    case InputAction::PAUSE:
       settings.isPaused = !settings.isPaused;
-      break;
-
-    //  adds 100 creatures : a
-    case KEY_A:
-      populateWorld (w, c, 100);
-      break;
-
-    // Saves current creature genomes to file : s
-    case KEY_S:
+      return;
+      
+    case InputAction::ADD_CREATURES:
+      populateWorld(w, c, 100);
+      return;
+      
+    case InputAction::SAVE_STATE:
       {
         string filepath = "last_save.csv";
-        file.saveGenomes (filepath, c);
-        file.saveState   (w, c, calendar, stats);
-        break;
+        file.saveGenomes(filepath, c);
+        file.saveState(w, c, calendar, stats);
       }
- 
-    //	Quit : Escape and Enter
-		case KEY_ESCAPE:
-			settings.alive = false;
-			break;
-	}
+      return;
+      
+    case InputAction::QUIT:
+      settings.alive = false;
+      return;
+      
+    default:
+      break;
+  }
 }
 
 //================================================================================
 //  Map Creator Input Handling - Helper Functions
 //================================================================================
 namespace MapCreator {
-  void incTrn (World &w, const unsigned &level) {
-    w.setTerrainLevel (level, w.getTerrainLevel(level) + 1);
+  void incTrn(World& w, const unsigned& level) {
+    w.setTerrainLevel(level, w.getTerrainLevel(level) + 1);
   }
 
-  void decTrn (World &w, const unsigned int &level) {
-    w.setTerrainLevel (level, w.getTerrainLevel(level) - 1);
+  void decTrn(World& w, const unsigned int& level) {
+    w.setTerrainLevel(level, w.getTerrainLevel(level) - 1);
   }
 
-  void handleMovement (int key, int &xOrigin, int &yOrigin,
-                       unsigned mapHeight, unsigned mapWidth) {
+  void handleMovement(InputAction action, int& xOrigin, int& yOrigin,
+                      unsigned mapHeight, unsigned mapWidth) {
     const int inc = 5;
     
-    switch (key) {
-      case KEY_UP: case KEY_K:
+    switch (action) {
+      case InputAction::MOVE_UP:
         yOrigin -= inc;
         if (yOrigin < 0) yOrigin = 0;
         break;
-      case KEY_DOWN: case KEY_J:
+      case InputAction::MOVE_DOWN:
         {
           yOrigin += inc;
           int relativePos = MAP_ROWS - (int)mapHeight;
           if (yOrigin > relativePos) yOrigin = relativePos;
           break;
         }
-      case KEY_LEFT: case KEY_H:
+      case InputAction::MOVE_LEFT:
         xOrigin -= inc;
         if (xOrigin < 0) xOrigin = 0;
         break;
-      case KEY_RIGHT: case KEY_L:
+      case InputAction::MOVE_RIGHT:
         {
           xOrigin += inc;
           int relativePos = MAP_COLS - (int)mapWidth;
           if (xOrigin > relativePos) xOrigin = relativePos;
           break;
         }
+      default:
+        break;
     }
   }
 
-  void handleScaleChange (int key, World &w) {
-    switch (key) {
-      case KEY_NPAGE: case KEY_PLUS:
+  void handleScaleChange(InputAction action, World& w) {
+    switch (action) {
+      case InputAction::INCREASE_SCALE:
         if (w.getScale() < 1)
-          w.setScale (w.getScale() + 0.0001);
+          w.setScale(w.getScale() + 0.0001);
         else
-          w.setScale (1);
-        w.simplexGen ();
+          w.setScale(1);
+        w.simplexGen();
         break;
-      case KEY_PPAGE: case KEY_MINUS:
+      case InputAction::DECREASE_SCALE:
         if (w.getScale() > 0.0001)
-          w.setScale (w.getScale() - 0.0001);
+          w.setScale(w.getScale() - 0.0001);
         else
-          w.setScale (0.0001);
-        w.simplexGen ();
+          w.setScale(0.0001);
+        w.simplexGen();
+        break;
+      default:
         break;
     }
   }
 
-  void handleSeedChange (int key, World &w) {
-    switch (key) {
-      case KEY_N:     // n - new seed
-        w.setSeed (randSeed());
-        w.simplexGen ();
+  void handleSeedChange(InputAction action, World& w) {
+    switch (action) {
+      case InputAction::NEW_SEED:
+        w.setSeed(randSeed());
+        w.simplexGen();
         break;
-      case KEY_D:     // d - decrease seed
-        w.setSeed (w.getSeed() - 0.005);
-        w.simplexGen ();
+      case InputAction::DECREASE_SEED:
+        w.setSeed(w.getSeed() - 0.005);
+        w.simplexGen();
         break;
-      case KEY_N_F:   // f - increase seed
-        w.setSeed (w.getSeed() + 0.005);
-        w.simplexGen ();
+      case InputAction::INCREASE_SEED:
+        w.setSeed(w.getSeed() + 0.005);
+        w.simplexGen();
         break;
-    }
-  }
-
-  void handleFrequencyChange (int key, World &w) {
-    switch (key) {
-      case KEY_EQUAL: // = - Increase freq
-        w.setFreq (w.getFreq() + 0.01);
-        w.simplexGen ();
-        break;
-      case KEY_DASH:  // - - Decrease freq
-        w.setFreq (w.getFreq() - 0.01);
-        w.simplexGen ();
+      default:
         break;
     }
   }
 
-  void handleExponentChange (int key, World &w) {
-    switch (key) {
-      case KEY_V:     // v - Increase Exponent
-        w.setExponent (w.getExponent() + 0.01);
-        w.simplexGen ();
+  void handleFrequencyChange(InputAction action, World& w) {
+    switch (action) {
+      case InputAction::INCREASE_FREQ:
+        w.setFreq(w.getFreq() + 0.01);
+        w.simplexGen();
         break;
-      case KEY_C:     // c - Decrease Exponent
-        w.setExponent (w.getExponent() - 0.01);
-        w.simplexGen ();
+      case InputAction::DECREASE_FREQ:
+        w.setFreq(w.getFreq() - 0.01);
+        w.simplexGen();
+        break;
+      default:
         break;
     }
   }
 
-  void handleTerraceChange (int key, World &w) {
-    switch (key) {
-      case KEY_S:     // s - Increase terraces
-        w.setTerraces (w.getTerraces() + 1);
-        w.simplexGen ();
+  void handleExponentChange(InputAction action, World& w) {
+    switch (action) {
+      case InputAction::INCREASE_EXPONENT:
+        w.setExponent(w.getExponent() + 0.01);
+        w.simplexGen();
         break;
-      case KEY_A:     // a - Decrease terraces
+      case InputAction::DECREASE_EXPONENT:
+        w.setExponent(w.getExponent() - 0.01);
+        w.simplexGen();
+        break;
+      default:
+        break;
+    }
+  }
+
+  void handleTerraceChange(InputAction action, World& w) {
+    switch (action) {
+      case InputAction::INCREASE_TERRACES:
+        w.setTerraces(w.getTerraces() + 1);
+        w.simplexGen();
+        break;
+      case InputAction::DECREASE_TERRACES:
         if (w.getTerraces() > 1)
-          w.setTerraces (w.getTerraces() - 1);
+          w.setTerraces(w.getTerraces() - 1);
         else
-          w.setTerraces (1);
-        w.simplexGen ();
+          w.setTerraces(1);
+        w.simplexGen();
+        break;
+      default:
         break;
     }
   }
 
-  void handleTerrainLevelChange (int key, World &w, unsigned &trnSelector) {
-    switch (key) {
-      case KEY_ONE:   case KEY_TWO:   case KEY_THREE:
-      case KEY_FOUR:  case KEY_FIVE:  case KEY_SIX:
-      case KEY_SEVEN: case KEY_EIGHT: case KEY_NINE:
-        trnSelector = key - KEY_ONE;
+  void handleTerrainLevelChange(InputAction action, World& w, unsigned& trnSelector) {
+    switch (action) {
+      case InputAction::SELECT_TERRAIN_1: trnSelector = 0; break;
+      case InputAction::SELECT_TERRAIN_2: trnSelector = 1; break;
+      case InputAction::SELECT_TERRAIN_3: trnSelector = 2; break;
+      case InputAction::SELECT_TERRAIN_4: trnSelector = 3; break;
+      case InputAction::SELECT_TERRAIN_5: trnSelector = 4; break;
+      case InputAction::SELECT_TERRAIN_6: trnSelector = 5; break;
+      case InputAction::SELECT_TERRAIN_7: trnSelector = 6; break;
+      case InputAction::SELECT_TERRAIN_8: trnSelector = 7; break;
+      case InputAction::SELECT_TERRAIN_9: trnSelector = 8; break;
+      case InputAction::INCREASE_TERRAIN_LEVEL:
+        incTrn(w, trnSelector);
+        w.simplexGen();
         break;
-      case 119:   // w - increase terrain level
-        incTrn (w, trnSelector);
-        w.simplexGen ();
+      case InputAction::DECREASE_TERRAIN_LEVEL:
+        decTrn(w, trnSelector);
+        w.simplexGen();
         break;
-      case 113:   // q - decrease terrain level
-        decTrn (w, trnSelector);
-        w.simplexGen ();
+      default:
         break;
     }
   }
 } // namespace MapCreator
 
 /**
- *  Handles input for the world editor/map creator.
+ *  Handles input for the world editor/map creator using IInputHandler.
  */
-void mapCreatorInput (Window &win,
-                      World &w,
-                      int &xOrigin,
-                      int &yOrigin,
-                      unsigned &mapHeight,
-                      unsigned &mapWidth,
-                      unsigned &trnSelector,
-                      bool &alive) {
-  int c = getch();
-
-  //  Movement keys
-  if (c == KEY_UP || c == KEY_K || c == KEY_DOWN || c == KEY_J ||
-      c == KEY_LEFT || c == KEY_H || c == KEY_RIGHT || c == KEY_L) {
-    MapCreator::handleMovement (c, xOrigin, yOrigin, mapHeight, mapWidth);
+void mapCreatorInput(World& w,
+                     int& xOrigin,
+                     int& yOrigin,
+                     unsigned& mapHeight,
+                     unsigned& mapWidth,
+                     unsigned& trnSelector,
+                     bool& alive) {
+  IInputHandler& input = RenderSystem::getInstance().getInputHandler();
+  InputEvent event = input.pollInput();
+  
+  InputAction action = event.action;
+  
+  // Movement actions
+  if (action == InputAction::MOVE_UP || action == InputAction::MOVE_DOWN ||
+      action == InputAction::MOVE_LEFT || action == InputAction::MOVE_RIGHT) {
+    MapCreator::handleMovement(action, xOrigin, yOrigin, mapHeight, mapWidth);
     return;
   }
-
-  //  Exit key
-  if (c == KEY_N_ENTER) {
+  
+  // Exit key (Enter to confirm world)
+  if (action == InputAction::CONFIRM_WORLD_EDIT || action == InputAction::MENU_SELECT) {
     alive = false;
     return;
   }
-
-  //  Scale keys
-  if (c == KEY_NPAGE || c == KEY_PLUS || c == KEY_PPAGE || c == KEY_MINUS) {
-    MapCreator::handleScaleChange (c, w);
+  
+  // Scale actions
+  if (action == InputAction::INCREASE_SCALE || action == InputAction::DECREASE_SCALE) {
+    MapCreator::handleScaleChange(action, w);
     return;
   }
-
-  //  Seed keys
-  if (c == KEY_N || c == KEY_D || c == KEY_N_F) {
-    MapCreator::handleSeedChange (c, w);
+  
+  // Seed actions
+  if (action == InputAction::NEW_SEED || action == InputAction::INCREASE_SEED ||
+      action == InputAction::DECREASE_SEED) {
+    MapCreator::handleSeedChange(action, w);
     return;
   }
-
-  //  Frequency keys
-  if (c == KEY_EQUAL || c == KEY_DASH) {
-    MapCreator::handleFrequencyChange (c, w);
+  
+  // Frequency actions
+  if (action == InputAction::INCREASE_FREQ || action == InputAction::DECREASE_FREQ) {
+    MapCreator::handleFrequencyChange(action, w);
     return;
   }
-
-  //  Exponent keys
-  if (c == KEY_V || c == KEY_C) {
-    MapCreator::handleExponentChange (c, w);
+  
+  // Exponent actions
+  if (action == InputAction::INCREASE_EXPONENT || action == InputAction::DECREASE_EXPONENT) {
+    MapCreator::handleExponentChange(action, w);
     return;
   }
-
-  //  Terrace keys
-  if (c == KEY_S || c == KEY_A) {
-    MapCreator::handleTerraceChange (c, w);
+  
+  // Terrace actions
+  if (action == InputAction::INCREASE_TERRACES || action == InputAction::DECREASE_TERRACES) {
+    MapCreator::handleTerraceChange(action, w);
     return;
   }
-
-  //  Terrain level keys (1-9, w, q)
-  if ((c >= KEY_ONE && c <= KEY_NINE) || c == 119 || c == 113) {
-    MapCreator::handleTerrainLevelChange (c, w, trnSelector);
+  
+  // Terrain level selection and adjustment
+  if (action >= InputAction::SELECT_TERRAIN_1 && action <= InputAction::SELECT_TERRAIN_9) {
+    MapCreator::handleTerrainLevelChange(action, w, trnSelector);
+    return;
+  }
+  if (action == InputAction::INCREASE_TERRAIN_LEVEL || action == InputAction::DECREASE_TERRAIN_LEVEL) {
+    MapCreator::handleTerrainLevelChange(action, w, trnSelector);
     return;
   }
 }
@@ -747,25 +667,37 @@ World initializeWorld () {
 
 /**
  *  Runs the world editor loop for creating/editing a new world.
+ *  Uses the RenderSystem interface.
  */
-void runWorldEditor (Window &win, World &w, vector<Creature> &creatures,
-                     int &xOrigin, int &yOrigin) {
+void runWorldEditor(World& w, vector<Creature>& creatures,
+                    int& xOrigin, int& yOrigin) {
+  IRenderer& renderer = RenderSystem::getInstance().getRenderer();
+  
   bool inWorldEdit = true;
   unsigned trnSelector = 0;
   
   while (inWorldEdit) {
-    unsigned mapHeight = win.getRow() - MAP_HORI_BORDER;
-    unsigned mapWidth  = win.getCol() - MAP_VERT_BORDER;
-    int startx = win.getMidCol() - mapWidth/2;
-    int starty = win.getMidRow() - mapHeight/2;
+    unsigned mapHeight = renderer.getViewportMaxHeight();
+    unsigned mapWidth = renderer.getViewportMaxWidth();
+    int startx = renderer.getScreenCenterX() - mapWidth / 2;
+    int starty = renderer.getScreenCenterY() - mapHeight / 2;
+    
+    // Create viewport for rendering
+    Viewport viewport;
+    viewport.originX = xOrigin;
+    viewport.originY = yOrigin;
+    viewport.width = mapWidth;
+    viewport.height = mapHeight;
+    viewport.screenX = startx;
+    viewport.screenY = starty;
 
-    mapCreatorInput (win, w, xOrigin, yOrigin, mapHeight,
-                     mapWidth, trnSelector, inWorldEdit);
-    erase ();
-    printWorld (w.getGrid(), creatures, xOrigin, yOrigin,
-                startx, starty, mapWidth, mapHeight);
-    printWorldDetails (w);
-    refresh ();
+    mapCreatorInput(w, xOrigin, yOrigin, mapHeight,
+                    mapWidth, trnSelector, inWorldEdit);
+    
+    renderer.beginFrame();
+    renderWorldAndCreatures(w, creatures, viewport);
+    renderWorldDetailsOverlay(w);
+    renderer.endFrame();
   }
 }
 
@@ -793,43 +725,53 @@ void addFoodSpawners (World &w) {
 
 /**
  *  Handles the New World menu option.
+ *  Uses the RenderSystem interface.
  */
-void handleNewWorld (Window &win, World &w, vector<Creature> &creatures,
-                     FileHandling &file, int &xOrigin, int &yOrigin) {
-  file.saveStatsHeader ();
-  unsigned starty = win.getMidRow();
-  win.printCenter ("CREATING NEW WORLD", starty);
-  refresh ();
-
-  //  Edit world to liking
-  runWorldEditor (win, w, creatures, xOrigin, yOrigin);
-
-  //  Add Creatures
-  populateWorld (w, creatures, INITIAL_POPULATION);
+void handleNewWorld(World& w, vector<Creature>& creatures,
+                    FileHandling& file, int& xOrigin, int& yOrigin) {
+  IRenderer& renderer = RenderSystem::getInstance().getRenderer();
   
-  //  Add food spawners
-  addFoodSpawners (w);
+  file.saveStatsHeader();
+  renderer.renderMessage("CREATING NEW WORLD");
+  renderer.endFrame();
+
+  // Edit world to liking
+  runWorldEditor(w, creatures, xOrigin, yOrigin);
+
+  // Add Creatures
+  populateWorld(w, creatures, INITIAL_POPULATION);
+  
+  // Add food spawners
+  addFoodSpawners(w);
 }
 
 /**
  *  Handles loading an existing world.
+ *  Uses the RenderSystem interface.
  *  @return True if load was successful, false otherwise.
  */
-bool handleLoadWorld (Window &win, World &w, vector<Creature> &creatures,
-                      Calendar &calendar, Statistics &stats,
-                      FileHandling &file, int &xOrigin, int &yOrigin) {
-  unsigned starty = win.getMidRow();
-  win.printCenter ("LOADING WORLD", starty);
-  refresh ();
+bool handleLoadWorld(World& w, vector<Creature>& creatures,
+                     Calendar& calendar, Statistics& stats,
+                     FileHandling& file, int& xOrigin, int& yOrigin) {
+  IRenderer& renderer = RenderSystem::getInstance().getRenderer();
+  IInputHandler& input = RenderSystem::getInstance().getInputHandler();
   
-  if (file.loadState (w, creatures, calendar, stats)) {
+  renderer.renderMessage("LOADING WORLD");
+  renderer.endFrame();
+  
+  if (file.loadState(w, creatures, calendar, stats)) {
     return true;
   } else {
-    win.printCenter ("FAILED TO LOAD", starty-1);
-    win.printCenter ("NEW WORLD WILL BE CREATED", starty+1);
-    while (getch() == ERR);
-    erase ();
-    handleNewWorld (win, w, creatures, file, xOrigin, yOrigin);
+    renderer.beginFrame();
+    renderer.renderMessage("FAILED TO LOAD", -2);
+    renderer.renderMessage("NEW WORLD WILL BE CREATED", 0);
+    renderer.endFrame();
+    
+    // Wait for any key
+    input.waitForInput(-1);
+    
+    renderer.beginFrame();
+    handleNewWorld(w, creatures, file, xOrigin, yOrigin);
     return true;
   }
 }
@@ -857,35 +799,47 @@ void processStatistics (Statistics &stats, Calendar &calendar,
 
 /**
  *  Runs the main game loop.
+ *  Uses the RenderSystem interface.
  */
-void runGameLoop (Window &win, World &w, vector<Creature> &creatures,
-                  Calendar &calendar, Statistics &stats, FileHandling &file,
-                  int &xOrigin, int &yOrigin, Settings &settings) {
+void runGameLoop(World& w, vector<Creature>& creatures,
+                 Calendar& calendar, Statistics& stats, FileHandling& file,
+                 int& xOrigin, int& yOrigin, Settings& settings) {
+  IRenderer& renderer = RenderSystem::getInstance().getRenderer();
+  
   while (settings.alive) {
-    unsigned mapHeight = win.getRow() - MAP_HORI_BORDER;
-    unsigned mapWidth  = win.getCol() - MAP_VERT_BORDER;
-    int startx = win.getMidCol() - mapWidth/2;
-    int starty = win.getMidRow() - mapHeight/2;
+    unsigned mapHeight = renderer.getViewportMaxHeight();
+    unsigned mapWidth = renderer.getViewportMaxWidth();
+    int startx = renderer.getScreenCenterX() - mapWidth / 2;
+    int starty = renderer.getScreenCenterY() - mapHeight / 2;
+    
+    // Create viewport for rendering
+    Viewport viewport;
+    viewport.originX = xOrigin;
+    viewport.originY = yOrigin;
+    viewport.width = mapWidth;
+    viewport.height = mapHeight;
+    viewport.screenX = startx;
+    viewport.screenY = starty;
 
     GeneralStats gs = { calendar, 0, 0, 0, 0 };
-    advanceSimulation (w, creatures, gs);
+    advanceSimulation(w, creatures, gs);
 
     do {
-      erase ();
-      //  Display output to terminal
-      printWorld (w.getGrid(), creatures, xOrigin, yOrigin,
-                  startx, starty, mapWidth, mapHeight);
+      renderer.beginFrame();
+      
+      // Display output using RenderSystem
+      renderWorldAndCreatures(w, creatures, viewport);
 
       if (settings.hudIsOn)
-        printHUD (win.getRow(), win.getCol(), calendar, gs, creatures);
+        renderHUDDisplay(calendar, gs, creatures, viewport, settings.isPaused);
 
-      takeInput (win, w, creatures, calendar, stats, file,
-                 xOrigin, yOrigin, settings, mapHeight, mapWidth);
+      takeInput(w, creatures, calendar, stats, file,
+                xOrigin, yOrigin, settings, mapHeight, mapWidth);
 
-      refresh ();
+      renderer.endFrame();
     } while (settings.isPaused && settings.alive);
 
-    processStatistics (stats, calendar, file, creatures, gs);
+    processStatistics(stats, calendar, file, creatures, gs);
     calendar++;
   }
 }
@@ -895,44 +849,67 @@ void runGameLoop (Window &win, World &w, vector<Creature> &creatures,
 //================================================================================
 /**
  *	This is the main game loop where all the action happens.
+ *  Uses the RenderSystem interface instead of direct ncurses calls.
  *
  *	@return 0 is returned if program was successfully ran,
  *			    1 is returned if the program was terminated with an error.
  */
-int main () {
-  Window win;
+int main() {
+  // Initialize the render system
+  RenderConfig config;
+  config.backend = RenderBackend::BACKEND_AUTO;
+  config.inputDelayMs = TICK_RATE * 100;  // Convert to milliseconds
+  config.targetFPS = 60;
+  
+  if (!RenderSystem::initialize(config)) {
+    std::cerr << "Failed to initialize render system" << std::endl;
+    return 1;
+  }
+  
+  IRenderer& renderer = RenderSystem::getInstance().getRenderer();
+  IInputHandler& input = RenderSystem::getInstance().getInputHandler();
+  
+  // Set up input delay for simulation tick rate
+  input.setInputDelay(TICK_RATE * 100);
+  
   World w = initializeWorld();
 
   std::vector<Creature> creatures;
   Calendar calendar;
   Statistics stats;
-  FileHandling file (SAVE_FILES.at(1));
+  FileHandling file(SAVE_FILES.at(1));
   Settings settings { true, true, false };
 
-  halfdelay (TICK_RATE);
-  int menuOption = win.titleMenu();
-  erase ();
+  // Create menu options for title screen
+  std::vector<MenuOption> menuOptions = {
+    MenuOption("Load World", true, '1'),
+    MenuOption("New World", true, '2'),
+    MenuOption("Quit", true, '3')
+  };
+  
+  int menuOption = renderer.renderMenu("Deorys: Terminal Rebirth", menuOptions);
+  renderer.beginFrame();
 
-  //  Origin coordinates for drawing world map.
+  // Origin coordinates for drawing world map.
   int xOrigin = 0, yOrigin = 0;
 
   switch (menuOption) {
-    case 0: //  Load World
-      handleLoadWorld (win, w, creatures, calendar, stats, file, xOrigin, yOrigin);
+    case 0: // Load World
+      handleLoadWorld(w, creatures, calendar, stats, file, xOrigin, yOrigin);
       break;
   
-    case 1: //  New World
-      handleNewWorld (win, w, creatures, file, xOrigin, yOrigin);
+    case 1: // New World
+      handleNewWorld(w, creatures, file, xOrigin, yOrigin);
       break;
 
-    case 2: case -2:  // Quit
+    case 2: case -1:  // Quit (2 = selected Quit, -1 = cancelled/Escape)
       settings.alive = false;
       break;
   }
 
-  runGameLoop (win, w, creatures, calendar, stats, file, xOrigin, yOrigin, settings);
+  runGameLoop(w, creatures, calendar, stats, file, xOrigin, yOrigin, settings);
 
-  clear ();
-  endwin ();
+  // Shutdown the render system
+  RenderSystem::shutdown();
   return 0;
 }

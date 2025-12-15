@@ -18,6 +18,10 @@ src/objects/food.cpp src/objects/gameObject.cpp src/objects/spawner.cpp \
 src/statistics/statistics.cpp \
 src/objects/creature/creature.cpp src/objects/creature/genome.cpp \
 src/objects/creature/navigator.cpp \
+src/rendering/RenderSystem.cpp \
+src/rendering/backends/ncurses/NCursesColorMapper.cpp \
+src/rendering/backends/ncurses/NCursesRenderer.cpp \
+src/rendering/backends/ncurses/NCursesInputHandler.cpp \
 -lncurses -o EcoSim &> err
 
 if [ -s err ]; then
