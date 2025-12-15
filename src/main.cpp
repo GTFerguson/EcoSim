@@ -29,6 +29,8 @@
 #include <string>
 #include <vector>
 #include <mutex>
+#include <thread>
+#include <chrono>
 
 using namespace std;
 
@@ -800,11 +802,19 @@ void processStatistics (Statistics &stats, Calendar &calendar,
 /**
  *  Runs the main game loop.
  *  Uses the RenderSystem interface.
+ *
+ *  Input handling is decoupled from simulation advancement:
+ *  - Input is polled EVERY frame (allows camera movement when paused)
+ *  - Simulation advances ONLY when not paused
+ *  - Rendering happens EVERY frame
  */
 void runGameLoop(World& w, vector<Creature>& creatures,
                  Calendar& calendar, Statistics& stats, FileHandling& file,
                  int& xOrigin, int& yOrigin, Settings& settings) {
   IRenderer& renderer = RenderSystem::getInstance().getRenderer();
+  
+  // Statistics tracking - persists across pause/unpause
+  GeneralStats gs = { calendar, 0, 0, 0, 0 };
   
   while (settings.alive) {
     unsigned mapHeight = renderer.getViewportMaxHeight();
@@ -821,26 +831,28 @@ void runGameLoop(World& w, vector<Creature>& creatures,
     viewport.screenX = startx;
     viewport.screenY = starty;
 
-    GeneralStats gs = { calendar, 0, 0, 0, 0 };
-    advanceSimulation(w, creatures, gs);
+    // ALWAYS poll input - allows camera movement regardless of pause state
+    takeInput(w, creatures, calendar, stats, file,
+              xOrigin, yOrigin, settings, mapHeight, mapWidth);
 
-    do {
-      renderer.beginFrame();
-      
-      // Display output using RenderSystem
-      renderWorldAndCreatures(w, creatures, viewport);
+    // ONLY advance simulation when NOT paused
+    if (!settings.isPaused) {
+      gs = { calendar, 0, 0, 0, 0 };  // Reset stats for this tick
+      advanceSimulation(w, creatures, gs);
+      processStatistics(stats, calendar, file, creatures, gs);
+      calendar++;
+    }
 
-      if (settings.hudIsOn)
-        renderHUDDisplay(calendar, gs, creatures, viewport, settings.isPaused);
-
-      takeInput(w, creatures, calendar, stats, file,
-                xOrigin, yOrigin, settings, mapHeight, mapWidth);
-
-      renderer.endFrame();
-    } while (settings.isPaused && settings.alive);
-
-    processStatistics(stats, calendar, file, creatures, gs);
-    calendar++;
+    // ALWAYS render current state
+    renderer.beginFrame();
+    renderWorldAndCreatures(w, creatures, viewport);
+    if (settings.hudIsOn)
+      renderHUDDisplay(calendar, gs, creatures, viewport, settings.isPaused);
+    renderer.endFrame();
+    
+    // Frame timing - prevent the loop from running too fast
+    // This ensures consistent simulation speed regardless of input
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));  // ~100 FPS max
   }
 }
 
