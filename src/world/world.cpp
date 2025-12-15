@@ -25,41 +25,58 @@ using namespace std;
     _mapGen     = mapGen;
     _octaveGen  = octaveGen;
 
-    //  Set Terrain Prefabs
-    _tileGen.push_back (TileGen { 
-        90,   Tile (100, '~',  D_WATER_PAIR,    false, true ) });  //  Deep Water
-    _tileGen.push_back (TileGen { 
-        110,  Tile (100, '~',  WATER_PAIR,      false, true ) });  //  Water
-    _tileGen.push_back (TileGen { 
-        120,  Tile (100, '~',  S_WATER_PAIR,    true,  true ) });  //  Shallow Water
-    _tileGen.push_back (TileGen { 
-        130,  Tile (100, '~',  S_WATER_2_PAIR,  true,  true ) });  //  Shallow Water 2
-    _tileGen.push_back (TileGen { 
-        135,  Tile (100, '.',  SAND_PAIR,       true,  false) });  //  Sand
-    _tileGen.push_back (TileGen { 
-        138,  Tile (100, '.',  D_SAND_PAIR,     true,  false) });  //  Desert Sand
-    _tileGen.push_back (TileGen { 
-        155,  Tile (100, '.',  PLAINS_PAIR,     true,  false) });  //  Plains
-    _tileGen.push_back (TileGen { 
-        160,  Tile (100, '.',  SAVANNA_PAIR,    true,  false) });  //  Savanna
-    _tileGen.push_back (TileGen { 
-        165,  Tile (100, ',',  GRASS_PAIR,      true,  false) });  //  Short Grass 
-    _tileGen.push_back (TileGen { 
-        170,  Tile (100, '\'', GRASS_PAIR,      true,  false) });  //  Medium Grass  
-    _tileGen.push_back (TileGen { 
-        180,  Tile (100, '"',  L_GRASS_PAIR,    true,  false) });  //  Long Grass  
-    _tileGen.push_back (TileGen { 
-        200,  Tile (100, '"',  FOREST_PAIR,     true,  false) });  //  Forests
-    _tileGen.push_back (TileGen { 
-        205,  Tile (100, '.',  MOUNTAIN_PAIR,   true,  false) });  //  Mountains
-    _tileGen.push_back (TileGen { 
-        210,  Tile (100, '.',  MOUNTAIN_2_PAIR, true,  false) });  //  Mountains 2
-    _tileGen.push_back (TileGen { 
-        220,  Tile (100, '.',  MOUNTAIN_3_PAIR, true,  false) });  //  Mountains 3
-    _tileGen.push_back (TileGen { 
-        235,  Tile (100, '.',  SNOW_PAIR,       true,  false) });  //  Snow
-    _tileGen.push_back (TileGen { 
-        255,  Tile (100, '^',  PEAKS_PAIR,      false, false) });  //  Peaks
+    //  Set Terrain Prefabs (with TerrainType for renderer-agnostic rendering)
+    _tileGen.push_back (TileGen {
+        90,   Tile (100, '~',  D_WATER_PAIR,    false, true,  TerrainType::DEEP_WATER),
+        TerrainType::DEEP_WATER });
+    _tileGen.push_back (TileGen {
+        110,  Tile (100, '~',  WATER_PAIR,      false, true,  TerrainType::WATER),
+        TerrainType::WATER });
+    _tileGen.push_back (TileGen {
+        120,  Tile (100, '~',  S_WATER_PAIR,    true,  true,  TerrainType::SHALLOW_WATER),
+        TerrainType::SHALLOW_WATER });
+    _tileGen.push_back (TileGen {
+        130,  Tile (100, '~',  S_WATER_2_PAIR,  true,  true,  TerrainType::SHALLOW_WATER_2),
+        TerrainType::SHALLOW_WATER_2 });
+    _tileGen.push_back (TileGen {
+        135,  Tile (100, '.',  SAND_PAIR,       true,  false, TerrainType::SAND),
+        TerrainType::SAND });
+    _tileGen.push_back (TileGen {
+        138,  Tile (100, '.',  D_SAND_PAIR,     true,  false, TerrainType::DESERT_SAND),
+        TerrainType::DESERT_SAND });
+    _tileGen.push_back (TileGen {
+        155,  Tile (100, '.',  PLAINS_PAIR,     true,  false, TerrainType::PLAINS),
+        TerrainType::PLAINS });
+    _tileGen.push_back (TileGen {
+        160,  Tile (100, '.',  SAVANNA_PAIR,    true,  false, TerrainType::SAVANNA),
+        TerrainType::SAVANNA });
+    _tileGen.push_back (TileGen {
+        165,  Tile (100, ',',  GRASS_PAIR,      true,  false, TerrainType::SHORT_GRASS),
+        TerrainType::SHORT_GRASS });
+    _tileGen.push_back (TileGen {
+        170,  Tile (100, '\'', GRASS_PAIR,      true,  false, TerrainType::SHORT_GRASS),
+        TerrainType::SHORT_GRASS });  //  Medium Grass (uses SHORT_GRASS type)
+    _tileGen.push_back (TileGen {
+        180,  Tile (100, '"',  L_GRASS_PAIR,    true,  false, TerrainType::LONG_GRASS),
+        TerrainType::LONG_GRASS });
+    _tileGen.push_back (TileGen {
+        200,  Tile (100, '"',  FOREST_PAIR,     true,  false, TerrainType::FOREST),
+        TerrainType::FOREST });
+    _tileGen.push_back (TileGen {
+        205,  Tile (100, '.',  MOUNTAIN_PAIR,   true,  false, TerrainType::MOUNTAIN),
+        TerrainType::MOUNTAIN });
+    _tileGen.push_back (TileGen {
+        210,  Tile (100, '.',  MOUNTAIN_2_PAIR, true,  false, TerrainType::MOUNTAIN_2),
+        TerrainType::MOUNTAIN_2 });
+    _tileGen.push_back (TileGen {
+        220,  Tile (100, '.',  MOUNTAIN_3_PAIR, true,  false, TerrainType::MOUNTAIN_3),
+        TerrainType::MOUNTAIN_3 });
+    _tileGen.push_back (TileGen {
+        235,  Tile (100, '.',  SNOW_PAIR,       true,  false, TerrainType::SNOW),
+        TerrainType::SNOW });
+    _tileGen.push_back (TileGen {
+        255,  Tile (100, '^',  PEAKS_PAIR,      false, false, TerrainType::PEAKS),
+        TerrainType::PEAKS });
 
   set2Dgrid   ();
   simplexGen  ();

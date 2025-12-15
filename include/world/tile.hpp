@@ -1,17 +1,18 @@
-#ifndef TILE_H 
-#define TILE_H 
+#ifndef TILE_H
+#define TILE_H
 
 /**
  *  Title   : Ecosim- Tiles
  *  Author  : Gary Ferguson
  *  Date    : Oct 04, 2019
- *  Purpose : Creates an object to handle each tile within 
+ *  Purpose : Creates an object to handle each tile within
  *            the world. Includes both aesthetic and practical
  *            information on the tile and it's contents.
  */
 
 #include "../objects/gameObject.hpp"
 #include "../objects/spawner.hpp"
+#include "../rendering/RenderTypes.hpp"
 
 #include <string>
 #include <sstream>
@@ -25,39 +26,43 @@ class Tile {
       unsigned int          _objLimit;
       std::vector<Food>     _foodVec;
       std::vector<Spawner>  _spawners;
-      //========================================================================== 
+      //==========================================================================
       //  Tile Information
-      //========================================================================== 
+      //==========================================================================
       char          _character;
-      int           _colPair;
+      int           _colPair;         // DEPRECATED: Keep for backward compatibility
+      TerrainType   _terrainType;     // NEW: Semantic terrain type
       bool          _passable;
       bool          _isSource;
       unsigned int  _elevation;
   public:
-      //========================================================================== 
+      //==========================================================================
       // Default Constructor
-      //==========================================================================      
+      //==========================================================================
       Tile ();
       // Paremeterized Constructor w/ Default Elevation
-      Tile (const unsigned int &objLimit, const char &character, 
-            const unsigned int &colPair,  
-            const bool &passable,         const bool &_isSource);
+      Tile (const unsigned int &objLimit, const char &character,
+            const unsigned int &colPair,
+            const bool &passable,         const bool &_isSource,
+            TerrainType terrainType = TerrainType::PLAINS);
       // Paremeterized Constructor w/ Elevation
-      Tile (const unsigned int &objLimit, const char &character, 
-            const unsigned int &colPair,  
-            const bool &passable,         const bool &_isSource, 
-            const unsigned int elevation);
+      Tile (const unsigned int &objLimit, const char &character,
+            const unsigned int &colPair,
+            const bool &passable,         const bool &_isSource,
+            const unsigned int elevation,
+            TerrainType terrainType = TerrainType::PLAINS);
       
-      //==========================================================================      
+      //==========================================================================
       // Getters
-      //==========================================================================      
+      //==========================================================================
       std::vector<Food>&          getFoodVec    ();
       std::vector<Spawner>&       getSpawners   ();
       const std::vector<Food>     getFoodVec    () const;
       const std::vector<Spawner>  getSpawners   () const;
       unsigned int                getElevation  () const;
       char                        getChar       () const;
-      int                         getColPair    () const;
+      int                         getColPair    () const;  // DEPRECATED: Use getTerrainType()
+      TerrainType                 getTerrainType() const;  // NEW: Returns semantic terrain type
       bool                        isPassable    () const;
       bool                        isSource      () const;
 

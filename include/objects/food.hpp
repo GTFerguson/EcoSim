@@ -26,15 +26,17 @@ class Food: public GameObject {
 		float         _calories;
 	public:
     //============================================================================
-		//	Constructor
+  //	Constructor
     //============================================================================
     Food ();
-		Food (unsigned id,   const std::string &name,  const std::string &desc,
+  Food (unsigned id,   const std::string &name,  const std::string &desc,
           bool passable, char character,           unsigned int colour,
-          float calories, unsigned int lifespan);
-		Food (unsigned id,   const std::string &name,  const std::string &desc,
+          float calories, unsigned int lifespan,
+          EntityType entityType = EntityType::FOOD_APPLE);
+  Food (unsigned id,   const std::string &name,  const std::string &desc,
           bool passable, char character,           unsigned int colour,
-          float calories, unsigned int lifespan,   unsigned int decay);
+          float calories, unsigned int lifespan,   unsigned int decay,
+          EntityType entityType = EntityType::FOOD_APPLE);
 
     //============================================================================
     //  Decay Handling

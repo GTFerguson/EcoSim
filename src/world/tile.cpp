@@ -14,36 +14,41 @@ using namespace std;
 
 //	Constructors
 Tile::Tile () {
-	_objLimit	  = 100;
-	_character	= '?';
-	_colPair	  = 4;
-	_passable	  = false;
+	_objLimit	    = 100;
+	_character	  = '?';
+	_colPair	    = 4;
+	_terrainType  = TerrainType::PLAINS;
+	_passable	    = false;
 }
 
-Tile::Tile (const unsigned &objLimit, 
-						const char &character, 
-						const unsigned &colPair, 
-            const bool &passable, 
-						const bool &isSource) {
-	_objLimit	 = objLimit;	
-	_character = character;
-	_colPair	 = colPair;
-	_passable  = passable;
-  _isSource  = isSource;
+Tile::Tile (const unsigned &objLimit,
+						const char &character,
+						const unsigned &colPair,
+            const bool &passable,
+						const bool &isSource,
+						TerrainType terrainType) {
+	_objLimit	    = objLimit;
+	_character    = character;
+	_colPair	    = colPair;
+	_terrainType  = terrainType;
+	_passable     = passable;
+  _isSource     = isSource;
 }
 
-Tile::Tile (const unsigned &objLimit, 
-						const char &character, 
-						const unsigned &colPair, 
-            const bool &passable, 
-						const bool &isSource, 
-						const unsigned elevation) {
-	_objLimit	  = objLimit;	
-	_character  = character;
-	_colPair	  = colPair;
-	_passable 	= passable;
-  _isSource   = isSource;
-	_elevation	= elevation;
+Tile::Tile (const unsigned &objLimit,
+						const char &character,
+						const unsigned &colPair,
+            const bool &passable,
+						const bool &isSource,
+						const unsigned elevation,
+						TerrainType terrainType) {
+	_objLimit	    = objLimit;
+	_character    = character;
+	_colPair	    = colPair;
+	_terrainType  = terrainType;
+	_passable 	  = passable;
+  _isSource     = isSource;
+	_elevation	  = elevation;
 }
 
 //================================================================================
@@ -56,6 +61,7 @@ const vector<Spawner>   Tile::getSpawners	  () const { return _spawners; }
 unsigned int            Tile::getElevation  () const { return _elevation;	}
 char                    Tile::getChar		    () const { return _character;	}
 int			                Tile::getColPair    () const { return _colPair;   }
+TerrainType             Tile::getTerrainType() const { return _terrainType; }
 bool		                Tile::isPassable    () const { return _passable;	}
 bool                    Tile::isSource      () const { return _isSource;  }
 

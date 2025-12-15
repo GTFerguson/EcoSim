@@ -38,11 +38,12 @@ Food::Food () : GameObject () {
  *	@param colour		  The colour of the character.
  *	@param calories		This is the energy that can be obtained from the food.
  *	@param lifespan   How long the food takes to decay.
+ *	@param entityType The semantic entity type for renderer-agnostic rendering.
  */
 Food::Food 	(unsigned id, const std::string &name, const std::string &desc,
-			       bool passable, char character, unsigned int colour,
-             float calories, unsigned int lifespan)
-			      : GameObject (name, desc, passable, character, colour) {
+		       bool passable, char character, unsigned int colour,
+             float calories, unsigned int lifespan, EntityType entityType)
+		      : GameObject (name, desc, passable, character, colour, entityType) {
   assert(calories >= 0.0f && "Calories cannot be negative");
   assert(lifespan > 0 && "Lifespan must be positive");
   _id       = id;
@@ -62,11 +63,13 @@ Food::Food 	(unsigned id, const std::string &name, const std::string &desc,
  *	@param calories		This is the energy that can be obtained from the food.
  *	@param lifespan   How long the food takes to decay.
  *	@param decay      A timer for when the food will despawn.
+ *	@param entityType The semantic entity type for renderer-agnostic rendering.
  */
 Food::Food 	(unsigned id, const std::string &name, const std::string &desc,
-			       bool passable, char character, unsigned int colour,
-             float calories, unsigned int lifespan, unsigned int decay)
-			      : GameObject (name, desc, passable, character, colour) {
+		       bool passable, char character, unsigned int colour,
+             float calories, unsigned int lifespan, unsigned int decay,
+             EntityType entityType)
+		      : GameObject (name, desc, passable, character, colour, entityType) {
   assert(calories >= 0.0f && "Calories cannot be negative");
   assert(lifespan > 0 && "Lifespan must be positive");
   assert(decay <= lifespan && "Decay cannot exceed lifespan");

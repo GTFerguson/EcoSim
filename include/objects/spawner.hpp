@@ -40,13 +40,15 @@ class Spawner: public GameObject {
              bool passable,             char character,
              unsigned int colour,       unsigned int rate,
              unsigned int minRadius,    unsigned int maxRadius,
-             const Food &foodObj);
+             const Food &foodObj,
+             EntityType entityType = EntityType::SPAWNER);
 
     Spawner (const std::string &name, const std::string &desc, bool passable,
              char character,            unsigned int colour,
              unsigned int rate,         unsigned int timer,
              unsigned int minRadius,    unsigned int maxRadius,
-             const Food &foodObj);
+             const Food &foodObj,
+             EntityType entityType = EntityType::SPAWNER);
     //============================================================================
     //  Getters
     //============================================================================

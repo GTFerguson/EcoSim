@@ -1,5 +1,5 @@
-#ifndef WORLD_H 
-#define WORLD_H 
+#ifndef WORLD_H
+#define WORLD_H
 
 /**
  *	Title	  : Ecosim - World
@@ -12,6 +12,7 @@
 #include "../objects/gameObject.hpp"
 #include "../objects/spawner.hpp"
 #include "../colorPairs.hpp"
+#include "../rendering/RenderTypes.hpp"
 #include "tile.hpp"
 #include "SimplexNoise.hpp"
 
@@ -46,8 +47,9 @@ struct OctaveGen {
 };
 
 struct TileGen {
-  double  elevation;
-  Tile    prefab;
+  double      elevation;
+  Tile        prefab;
+  TerrainType terrainType;  // NEW: Semantic terrain type for this tile
 };
 
 class World {

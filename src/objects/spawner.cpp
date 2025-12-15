@@ -34,13 +34,14 @@ static std::mt19937& getRandomGenerator() {
  *	@param minRadius	The minimum radius objects can spawn.
  *	@param maxRadius	The maximum radius objects can spawn.
  *	@param foodObj    The Food object the spawner creates.
+ *	@param entityType The semantic entity type for renderer-agnostic rendering.
  */
 Spawner::Spawner 	(const string &name, 			      const string &desc,
 			 		         bool passable, 			          char character,
 		 	 	 	         unsigned int colour, 	        unsigned int rate,
-					         unsigned int minRadius,        unsigned int maxRadius,
-					         const Food &foodObj)
-                  : GameObject (name, desc, passable, character, colour) {
+				         unsigned int minRadius,        unsigned int maxRadius,
+				         const Food &foodObj,           EntityType entityType)
+                  : GameObject (name, desc, passable, character, colour, entityType) {
   assert(minRadius <= maxRadius && "minRadius must be <= maxRadius");
   assert(rate > 0 && "Spawn rate must be positive");
 	_rate		   = rate;
@@ -63,13 +64,14 @@ Spawner::Spawner 	(const string &name, 			      const string &desc,
  *	@param minRadius	The minimum radius objects can spawn.
  *	@param maxRadius	The maximum radius objects can spawn.
  *	@param foodObj    The Food object the spawner creates.
+ *	@param entityType The semantic entity type for renderer-agnostic rendering.
  */
 Spawner::Spawner 	(const string &name, const string &desc, bool passable,
                    char character,              unsigned int colour,
                    unsigned int rate,           unsigned int timer,
-					         unsigned int minRadius,        unsigned int maxRadius,
-					         const Food &foodObj)
-                  : GameObject (name, desc, passable, character, colour) {
+				         unsigned int minRadius,        unsigned int maxRadius,
+				         const Food &foodObj,           EntityType entityType)
+                  : GameObject (name, desc, passable, character, colour, entityType) {
   assert(minRadius <= maxRadius && "minRadius must be <= maxRadius");
   assert(rate > 0 && "Spawn rate must be positive");
 	_rate		   = rate;

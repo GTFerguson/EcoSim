@@ -8,6 +8,7 @@
  *	Purpose : Allows the creation of generic game objects.
  */
 
+#include "../rendering/RenderTypes.hpp"
 #include <string>
 
 /**
@@ -25,7 +26,8 @@ class GameObject {
 		std::string		_desc;
 		bool			    _passable;
 		char			    _character;
-		unsigned int	_colour;
+		unsigned int	_colour;      // DEPRECATED: Keep for backward compatibility
+		EntityType    _entityType;  // NEW: Semantic entity type
 
 	public:
 	   //============================================================================
@@ -33,8 +35,10 @@ class GameObject {
 	   //============================================================================
 	 GameObject ();
 	 GameObject (const std::string &name, const std::string &desc, bool passable,
-	   	      char character, unsigned int colour);
-	 GameObject (bool passable, char character, unsigned int colour);
+	   	      char character, unsigned int colour,
+	   	      EntityType entityType = EntityType::CREATURE);
+	 GameObject (bool passable, char character, unsigned int colour,
+	             EntityType entityType = EntityType::CREATURE);
 	 GameObject (bool passable, char character);
 	 GameObject (char character);
 
@@ -73,8 +77,15 @@ class GameObject {
 	 /**
 	  * @brief Gets the color code for rendering.
 	  * @return The color code as an unsigned integer.
+	  * @deprecated Use getEntityType() instead for renderer-agnostic code.
 	  */
 	 unsigned int	getColour	  () const;
+	 
+	 /**
+	  * @brief Gets the entity type for renderer-agnostic rendering.
+	  * @return The EntityType enum value.
+	  */
+	 EntityType   getEntityType() const;
 
 	   //============================================================================
 	   //  To String

@@ -20,6 +20,7 @@ GameObject::GameObject () {
   _passable   = true;
   _character  = ' ';
   _colour     = 1;
+  _entityType = EntityType::CREATURE;
 }
 
 /**
@@ -30,17 +31,20 @@ GameObject::GameObject () {
  *	@param passable		Whether a creature can walk	through it.
  *	@param character	The ASCII representation.
  *	@param colour		  The colour of the character.
+ *	@param entityType The semantic entity type for renderer-agnostic rendering.
  */
 GameObject::GameObject (const string &name,
                         const string &desc,
                         bool passable,
 						            char character,
-                        unsigned int colour) {
+                        unsigned int colour,
+                        EntityType entityType) {
 	_name		    = name;
 	_desc		    = desc;
 	_passable	  = passable;
 	_character	= character;
 	_colour		  = colour;
+	_entityType = entityType;
 }
 
 /**
@@ -50,15 +54,18 @@ GameObject::GameObject (const string &name,
  *	@param passable		Whether a creature can walk through it.
  *	@param character	The ASCII representation.
  *	@param colour		  The colour of the character.
+ *	@param entityType The semantic entity type for renderer-agnostic rendering.
  */
 GameObject::GameObject (bool passable,
                         char character,
-                        unsigned int colour) {
+                        unsigned int colour,
+                        EntityType entityType) {
 	_name		    = "";
 	_desc		    = "";
 	_passable	  = passable;
 	_character  = character;
 	_colour		  = colour;
+	_entityType = entityType;
 }
 
 /**
@@ -76,6 +83,7 @@ GameObject::GameObject (bool passable, char character) {
 	_passable	  = passable;
 	_character  = character;
 	_colour		  = 1;
+	_entityType = EntityType::CREATURE;
 }
 
 /**
@@ -91,6 +99,7 @@ GameObject::GameObject (char character) {
 	_passable	  = true;
 	_character  = character;
 	_colour		  = 1;
+	_entityType = EntityType::CREATURE;
 }
 
 //================================================================================
@@ -101,6 +110,7 @@ string 		GameObject::getDesc 		() const { return _desc;		  }
 bool 			GameObject::getPassable	() const { return _passable;	}
 char			GameObject::getChar			() const { return _character;	}
 unsigned int GameObject::getColour() const { return _colour; }
+EntityType  GameObject::getEntityType() const { return _entityType; }
 
 //================================================================================
 //  To String
