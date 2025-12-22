@@ -6,11 +6,16 @@
 *.dSYM/
 *.o
 EcoSim
+EcoSim_SDL2
+EcoSim_ImGui
 err
 .err.swp
 
 # Documentation
 docs/
+
+# Plans (local development notes)
+plans/
 
 # Save files
 saves/
