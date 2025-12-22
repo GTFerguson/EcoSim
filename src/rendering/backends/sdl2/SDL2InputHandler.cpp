@@ -11,6 +11,12 @@
 #include "../../../../include/rendering/backends/sdl2/SDL2InputHandler.hpp"
 #include <algorithm>
 
+// ImGui integration for event handling
+#ifdef ECOSIM_HAS_IMGUI
+#include "imgui.h"
+#include "backends/imgui_impl_sdl2.h"
+#endif
+
 //==============================================================================
 // Constructor / Destructor
 //==============================================================================
@@ -330,6 +336,19 @@ void SDL2InputHandler::initializeDefaultMappings() {
 InputEvent SDL2InputHandler::processSDLEvent(const SDL_Event& event) {
     InputEvent inputEvent;
     
+    // Pass event to ImGui first
+#ifdef ECOSIM_HAS_IMGUI
+    ImGui_ImplSDL2_ProcessEvent(&event);
+    
+    // Check if ImGui wants to capture this event
+    ImGuiIO& io = ImGui::GetIO();
+    bool imguiWantsMouse = io.WantCaptureMouse;
+    bool imguiWantsKeyboard = io.WantCaptureKeyboard;
+#else
+    bool imguiWantsMouse = false;
+    bool imguiWantsKeyboard = false;
+#endif
+    
     switch (event.type) {
         case SDL_QUIT:
             _quitRequested = true;
@@ -345,6 +364,11 @@ InputEvent SDL2InputHandler::processSDLEvent(const SDL_Event& event) {
                 // Update key state
                 if (key != KeyCode::KEY_NONE && key < KeyCode::COUNT) {
                     _keyStates[static_cast<size_t>(key)] = true;
+                }
+                
+                // If ImGui wants keyboard, don't process for game (except Escape)
+                if (imguiWantsKeyboard && key != KeyCode::KEY_ESCAPE) {
+                    break;
                 }
                 
                 // Look up action for this key
@@ -375,7 +399,7 @@ InputEvent SDL2InputHandler::processSDLEvent(const SDL_Event& event) {
             break;
             
         case SDL_MOUSEBUTTONDOWN:
-            if (_mouseEnabled) {
+            if (_mouseEnabled && !imguiWantsMouse) {
                 inputEvent.hasMouseEvent = true;
                 inputEvent.mouseEvent.x = event.button.x;
                 inputEvent.mouseEvent.y = event.button.y;
@@ -403,7 +427,7 @@ InputEvent SDL2InputHandler::processSDLEvent(const SDL_Event& event) {
             break;
             
         case SDL_MOUSEBUTTONUP:
-            if (_mouseEnabled) {
+            if (_mouseEnabled && !imguiWantsMouse) {
                 inputEvent.hasMouseEvent = true;
                 inputEvent.mouseEvent.x = event.button.x;
                 inputEvent.mouseEvent.y = event.button.y;
@@ -428,7 +452,7 @@ InputEvent SDL2InputHandler::processSDLEvent(const SDL_Event& event) {
             break;
             
         case SDL_MOUSEWHEEL:
-            if (_mouseEnabled) {
+            if (_mouseEnabled && !imguiWantsMouse) {
                 inputEvent.hasMouseEvent = true;
                 inputEvent.mouseEvent.scrollDelta = event.wheel.y;
             }

@@ -2,7 +2,7 @@
  * @file SDL2Renderer.cpp
  * @brief Implementation of SDL2Renderer class
  * @author Gary Ferguson
- * @date December 2024
+ * @date December 2025
  * 
  * This file implements the SDL2-based renderer, providing hardware-accelerated
  * graphical rendering for the ecological simulation.
@@ -10,6 +10,7 @@
 
 #include "../../../../include/rendering/backends/sdl2/SDL2Renderer.hpp"
 #include "../../../../include/rendering/backends/sdl2/SDL2ColorMapper.hpp"
+#include "../../../../include/rendering/backends/sdl2/ImGuiOverlay.hpp"
 #include "../../../../include/world/world.hpp"
 #include "../../../../include/world/tile.hpp"
 #include "../../../../include/objects/creature/creature.hpp"
@@ -19,6 +20,12 @@
 #include <iostream>
 #include <sstream>
 
+// ImGui panel layout constants (in pixels)
+// These should match the panel positions/sizes in ImGuiOverlay.cpp
+static constexpr int IMGUI_LEFT_PANEL_WIDTH = 265;   // Stats panel width + padding
+static constexpr int IMGUI_RIGHT_PANEL_WIDTH = 215;  // Right panels width + padding
+static constexpr int IMGUI_MENU_BAR_HEIGHT = 25;     // Menu bar height
+
 //==============================================================================
 // Constructor / Destructor
 //==============================================================================
@@ -26,6 +33,9 @@
 SDL2Renderer::SDL2Renderer()
     : _window(nullptr)
     , _renderer(nullptr)
+    , _imguiOverlay(nullptr)
+    , _currentCreatures(nullptr)
+    , _currentWorld(nullptr)
     , _initialized(false)
     , _screenWidth(DEFAULT_SCREEN_WIDTH)
     , _screenHeight(DEFAULT_SCREEN_HEIGHT)
@@ -87,6 +97,17 @@ bool SDL2Renderer::initialize() {
     // Enable alpha blending
     SDL_SetRenderDrawBlendMode(_renderer, SDL_BLENDMODE_BLEND);
     
+    // Initialize ImGui overlay
+#ifdef ECOSIM_HAS_IMGUI
+    _imguiOverlay = new ImGuiOverlay();
+    if (!_imguiOverlay->initialize(_window, _renderer)) {
+        std::cerr << "SDL2Renderer: ImGui initialization failed (continuing without ImGui)" << std::endl;
+        delete _imguiOverlay;
+        _imguiOverlay = nullptr;
+        // Continue without ImGui - graceful degradation
+    }
+#endif
+    
     _initialized = true;
     return true;
 }
@@ -95,6 +116,15 @@ void SDL2Renderer::shutdown() {
     if (!_initialized) {
         return;
     }
+    
+    // Shutdown ImGui first
+#ifdef ECOSIM_HAS_IMGUI
+    if (_imguiOverlay != nullptr) {
+        _imguiOverlay->shutdown();
+        delete _imguiOverlay;
+        _imguiOverlay = nullptr;
+    }
+#endif
     
     if (_renderer != nullptr) {
         SDL_DestroyRenderer(_renderer);
@@ -118,12 +148,26 @@ void SDL2Renderer::beginFrame() {
     // Clear screen with dark background
     SDL_SetRenderDrawColor(_renderer, 20, 20, 30, 255);
     SDL_RenderClear(_renderer);
+    
+    // Start ImGui frame
+#ifdef ECOSIM_HAS_IMGUI
+    if (_imguiOverlay != nullptr) {
+        _imguiOverlay->beginFrame();
+    }
+#endif
 }
 
 void SDL2Renderer::endFrame() {
     if (!_initialized) {
         return;
     }
+    
+    // End ImGui frame and render (must be before SDL_RenderPresent)
+#ifdef ECOSIM_HAS_IMGUI
+    if (_imguiOverlay != nullptr) {
+        _imguiOverlay->endFrame();
+    }
+#endif
     
     SDL_RenderPresent(_renderer);
 }
@@ -136,6 +180,9 @@ void SDL2Renderer::renderWorld(const World& world, const Viewport& viewport) {
     if (!_initialized) {
         return;
     }
+    
+    // Store reference to world for ImGui overlay
+    _currentWorld = &world;
     
     // Get the grid from world (using const_cast temporarily since getGrid() isn't const)
     World& mutableWorld = const_cast<World&>(world);
@@ -227,6 +274,9 @@ void SDL2Renderer::renderCreatures(const std::vector<Creature>& creatures,
         return;
     }
     
+    // Store reference to creatures for ImGui overlay
+    _currentCreatures = &creatures;
+    
     // Calculate boundaries
     int xRange = viewport.originX + viewport.width;
     int yRange = viewport.originY + viewport.height;
@@ -234,7 +284,16 @@ void SDL2Renderer::renderCreatures(const std::vector<Creature>& creatures,
     int baseScreenX = static_cast<int>(viewport.screenX) * _tileSize;
     int baseScreenY = static_cast<int>(viewport.screenY) * _tileSize;
     
-    for (const Creature& creature : creatures) {
+    // Check if ImGui has a selected creature - highlight it
+    int selectedId = -1;
+#ifdef ECOSIM_HAS_IMGUI
+    if (_imguiOverlay != nullptr) {
+        selectedId = _imguiOverlay->getSelectedCreatureId();
+    }
+#endif
+    
+    for (size_t idx = 0; idx < creatures.size(); idx++) {
+        const Creature& creature = creatures[idx];
         int cX = creature.getX();
         int cY = creature.getY();
         
@@ -246,7 +305,12 @@ void SDL2Renderer::renderCreatures(const std::vector<Creature>& creatures,
             int screenX = baseScreenX + (cX - viewport.originX) * _tileSize;
             int screenY = baseScreenY + (cY - viewport.originY) * _tileSize;
             
-            renderCreature(creature, screenX, screenY);
+            // Special rendering for selected creature
+            if (static_cast<int>(idx) == selectedId) {
+                renderSelectedCreature(creature, screenX, screenY);
+            } else {
+                renderCreature(creature, screenX, screenY);
+            }
         }
     }
 }
@@ -277,6 +341,51 @@ void SDL2Renderer::renderCreature(const Creature& creature, int screenX, int scr
             outlineColor);
 }
 
+void SDL2Renderer::renderSelectedCreature(const Creature& creature, int screenX, int screenY) {
+    if (!_initialized) {
+        return;
+    }
+    
+    // Draw a highlight ring around the selected creature
+    SDL_Color highlightColor = {255, 255, 100, 255};  // Yellow highlight
+    
+    // Outer highlight ring
+    drawRect(screenX - 1, screenY - 1,
+            _tileSize + 2, _tileSize + 2,
+            highlightColor);
+    drawRect(screenX - 2, screenY - 2,
+            _tileSize + 4, _tileSize + 4,
+            highlightColor);
+    
+    // Get color based on creature's behavior profile
+    SDL_Color creatureColor = getProfileColor(creature);
+    
+    // Make the creature slightly brighter when selected
+    creatureColor.r = std::min(255, creatureColor.r + 30);
+    creatureColor.g = std::min(255, creatureColor.g + 30);
+    creatureColor.b = std::min(255, creatureColor.b + 30);
+    
+    // Draw creature as a smaller rectangle within the tile (with padding)
+    int padding = 2;
+    drawFilledRect(screenX + padding, screenY + padding,
+                  _tileSize - 2 * padding, _tileSize - 2 * padding,
+                  creatureColor);
+    
+    // Draw a brighter outline
+    SDL_Color outlineColor = highlightColor;
+    drawRect(screenX + padding, screenY + padding,
+            _tileSize - 2 * padding, _tileSize - 2 * padding,
+            outlineColor);
+}
+
+void SDL2Renderer::renderImGuiOverlay(const HUDData& data, const World* world) {
+#ifdef ECOSIM_HAS_IMGUI
+    if (_imguiOverlay != nullptr) {
+        _imguiOverlay->render(data, world, _currentCreatures);
+    }
+#endif
+}
+
 //==============================================================================
 // UI Rendering Methods
 //==============================================================================
@@ -286,6 +395,16 @@ void SDL2Renderer::renderHUD(const HUDData& data) {
         return;
     }
     
+#ifdef ECOSIM_HAS_IMGUI
+    // Skip SDL2 text HUD when ImGui is active - ImGui panels show this info
+    if (_imguiOverlay && _imguiOverlay->isInitialized()) {
+        // Only render ImGui overlay
+        renderImGuiOverlay(data, _currentWorld);
+        return;
+    }
+#endif
+    
+    // Original SDL2 HUD rendering code for non-ImGui builds
     // Draw HUD background at bottom of screen
     SDL_Color hudBgColor = {40, 40, 50, 230};
     drawFilledRect(0, _screenHeight - HUD_HEIGHT, _screenWidth, HUD_HEIGHT, hudBgColor);
@@ -544,25 +663,29 @@ unsigned int SDL2Renderer::getScreenHeight() const {
 }
 
 unsigned int SDL2Renderer::getViewportMaxWidth() const {
-    // Available width divided by tile size
+    // Full screen width in tiles - world renders full screen, ImGui overlays on top
     return static_cast<unsigned int>(_screenWidth / _tileSize);
 }
 
 unsigned int SDL2Renderer::getViewportMaxHeight() const {
-    // Available height (minus HUD) divided by tile size
+#ifdef ECOSIM_HAS_IMGUI
+    // When ImGui is active, use full screen height (ImGui overlays on top)
+    if (_imguiOverlay && _imguiOverlay->isInitialized()) {
+        return static_cast<unsigned int>(_screenHeight / _tileSize);
+    }
+#endif
+    // For non-ImGui builds, subtract HUD height at bottom
     int availableHeight = _screenHeight - HUD_HEIGHT;
     return static_cast<unsigned int>(availableHeight / _tileSize);
 }
 
 unsigned int SDL2Renderer::getScreenCenterX() const {
-    // Return in tile units for consistency with NCurses (character units)
-    // This matches how main.cpp calculates viewport positions
+    // Return actual center in tile units - world fills entire screen
     return getViewportMaxWidth() / 2;
 }
 
 unsigned int SDL2Renderer::getScreenCenterY() const {
-    // Return in tile units for consistency with NCurses (character units)
-    // This matches how main.cpp calculates viewport positions
+    // Return actual center in tile units - world fills entire screen
     return getViewportMaxHeight() / 2;
 }
 

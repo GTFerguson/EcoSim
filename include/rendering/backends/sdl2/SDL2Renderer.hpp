@@ -22,6 +22,7 @@ class World;
 class Creature;
 class Tile;
 class Calendar;
+class ImGuiOverlay;
 
 /**
  * @brief SDL2 implementation of the IRenderer interface
@@ -258,11 +259,49 @@ public:
      * @brief Handle window resize event
      */
     void handleResize();
+    
+    /**
+     * @brief Get the ImGui overlay pointer
+     *
+     * @return Pointer to ImGuiOverlay (can be null if not initialized)
+     */
+    ImGuiOverlay* getImGuiOverlay() const { return _imguiOverlay; }
+
+    /**
+     * @brief Render a selected/highlighted creature
+     *
+     * Draws the creature with a highlight effect to indicate selection
+     *
+     * @param creature The creature to render
+     * @param screenX Screen X coordinate (pixels)
+     * @param screenY Screen Y coordinate (pixels)
+     */
+    void renderSelectedCreature(const Creature& creature,
+                               int screenX, int screenY);
+    
+    /**
+     * @brief Render ImGui overlay with creature data
+     *
+     * Should be called after creatures are rendered so ImGui has access to creature data
+     *
+     * @param data HUD data structure
+     * @param world World pointer for world info
+     */
+    void renderImGuiOverlay(const HUDData& data, const World* world = nullptr);
 
 private:
     // SDL2 objects
     SDL_Window* _window;
     SDL_Renderer* _renderer;
+    
+    // ImGui overlay
+    ImGuiOverlay* _imguiOverlay;
+    
+    // Current creatures reference for ImGui
+    const std::vector<Creature>* _currentCreatures;
+    
+    // Current world reference for ImGui
+    const World* _currentWorld;
     
     // Screen state
     bool _initialized;
