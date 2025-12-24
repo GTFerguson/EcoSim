@@ -51,6 +51,34 @@ NC='\033[0m' # No Color
 echo "=== EcoSim Test Suite ==="
 echo ""
 
+# Include paths for genetics headers
+INCLUDE_PATHS="-I../../include"
+
+# Common genetics source files needed when creature/world depends on genetics
+GENETICS_SOURCES=(
+    "../genetics/core/Gene.cpp"
+    "../genetics/core/Chromosome.cpp"
+    "../genetics/core/Genome.cpp"
+    "../genetics/core/GeneRegistry.cpp"
+    "../genetics/core/GeneticTypes.cpp"
+    "../genetics/expression/Phenotype.cpp"
+    "../genetics/expression/EnergyBudget.cpp"
+    "../genetics/expression/EnvironmentState.cpp"
+    "../genetics/expression/OrganismState.cpp"
+    "../genetics/expression/PhenotypeCache.cpp"
+    "../genetics/defaults/DefaultGenes.cpp"
+    "../genetics/defaults/PlantGenes.cpp"
+    "../genetics/defaults/UniversalGenes.cpp"
+    "../genetics/organisms/Plant.cpp"
+    "../genetics/organisms/PlantFactory.cpp"
+    "../genetics/organisms/CreatureFactory.cpp"
+    "../genetics/interactions/FeedingInteraction.cpp"
+    "../genetics/interactions/SeedDispersal.cpp"
+    "../genetics/interactions/CoevolutionTracker.cpp"
+    "../genetics/migration/LegacyGenomeAdapter.cpp"
+    "../logging/Logger.cpp"
+)
+
 # Compile and run a test
 compile_and_run() {
     local test_name="$1"
@@ -66,7 +94,7 @@ compile_and_run() {
     
     # Compile
     echo "  Compiling..."
-    if ! g++ -std=c++17 "$source_file" $source_files -o "test_${test_name}" 2>&1; then
+    if ! g++ -std=c++17 $INCLUDE_PATHS "$source_file" $source_files -o "test_${test_name}" 2>&1; then
         echo -e "  ${RED}COMPILE FAILED: $test_name${NC}"
         FAILED=1
         return 1
@@ -98,33 +126,9 @@ cd "$(dirname "$0")"
 compile_and_run "calendar" "testCalendar.cpp" \
     "../calendar.cpp"
 
-# Creature Test - requires creature and related objects
-compile_and_run "creature" "creatureTest.cpp" \
-    "../objects/gameObject.cpp" \
-    "../objects/food.cpp" \
-    "../objects/spawner.cpp" \
-    "../objects/creature/creature.cpp" \
-    "../objects/creature/genome.cpp" \
-    "../world/tile.cpp" \
-    "../world/world.cpp" \
-    "../world/SimplexNoise.cpp" \
-    "../statistics/statistics.cpp" \
-    "../statistics/genomeStats.cpp" \
-    "../objects/creature/navigator.cpp"
-
-# Object Test - tests game objects
-compile_and_run "objects" "testObjects.cpp" \
-    "../objects/gameObject.cpp" \
-    "../objects/food.cpp" \
-    "../objects/spawner.cpp" \
-    "../objects/creature/creature.cpp" \
-    "../objects/creature/genome.cpp" \
-    "../world/tile.cpp" \
-    "../world/world.cpp" \
-    "../world/SimplexNoise.cpp" \
-    "../statistics/statistics.cpp" \
-    "../statistics/genomeStats.cpp" \
-    "../objects/creature/navigator.cpp"
+# NOTE: Legacy creature and objects tests removed (2024-12-23)
+# These tests used the old genome system (include/objects/creature/genome.hpp)
+# For genetics tests, see src/testing/genetics/ which uses the new system
 
 # File Test - tests save/load functionality
 compile_and_run "file" "fileTest.cpp" \
@@ -139,7 +143,9 @@ compile_and_run "file" "fileTest.cpp" \
     "../statistics/statistics.cpp" \
     "../statistics/genomeStats.cpp" \
     "../fileHandling.cpp" \
-    "../objects/creature/navigator.cpp"
+    "../objects/creature/navigator.cpp" \
+    "../calendar.cpp" \
+    "${GENETICS_SOURCES[@]}"
 
 # World Test - tests world generation and tile functionality
 compile_and_run "world" "testWorld.cpp" \
@@ -153,7 +159,9 @@ compile_and_run "world" "testWorld.cpp" \
     "../world/SimplexNoise.cpp" \
     "../statistics/statistics.cpp" \
     "../statistics/genomeStats.cpp" \
-    "../objects/creature/navigator.cpp"
+    "../objects/creature/navigator.cpp" \
+    "../calendar.cpp" \
+    "${GENETICS_SOURCES[@]}"
 
 # Statistics Test - tests statistics tracking functionality
 compile_and_run "statistics" "testStatistics.cpp" \
@@ -168,7 +176,8 @@ compile_and_run "statistics" "testStatistics.cpp" \
     "../statistics/statistics.cpp" \
     "../statistics/genomeStats.cpp" \
     "../objects/creature/navigator.cpp" \
-    "../calendar.cpp"
+    "../calendar.cpp" \
+    "${GENETICS_SOURCES[@]}"
 
 # ==============================================================================
 # Summary

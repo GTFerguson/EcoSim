@@ -82,12 +82,19 @@ int main () {
   // For isolation, we'll use a unique test save directory within saves/
   FileHandling fileHandler("TEST_ISOLATION");
   
-  double        seed      = 7.1231;
-  double        scale     = 0.0039;
-  double        freq      = 4.4;
-  double        exponent  = 0.6;
-  unsigned int  terraces  = 64;
-  World world (seed, scale, freq, exponent, terraces, ROWS, COLS);
+  // Create world with new MapGen/OctaveGen API
+  MapGen mapGen;
+  mapGen.seed = 7.1231;
+  mapGen.scale = 0.0039;
+  mapGen.freq = 4.4;
+  mapGen.exponent = 0.6;
+  mapGen.terraces = 64;
+  mapGen.rows = ROWS;
+  mapGen.cols = COLS;
+  
+  OctaveGen octaveGen;  // Use defaults
+  
+  World world(mapGen, octaveGen);
 
   Calendar calendar;
   Statistics stats;
@@ -224,10 +231,10 @@ int main () {
   boundaryGenome.randomise();
   
   // Creatures at map boundaries
-  Creature c1(0, 0, boundaryGenome);
-  Creature c2(COLS - 1, ROWS - 1, boundaryGenome);
-  creatures.push_back(c1);
-  creatures.push_back(c2);
+  Creature boundaryC1(0, 0, boundaryGenome);
+  Creature boundaryC2(COLS - 1, ROWS - 1, boundaryGenome);
+  creatures.push_back(boundaryC1);
+  creatures.push_back(boundaryC2);
   
   cout << "  Saving creatures at boundaries: (0,0) and (" << (COLS-1) << "," << (ROWS-1) << ")" << endl;
   
