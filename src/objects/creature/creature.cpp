@@ -7,9 +7,28 @@
 */
 
 #include "../../../include/objects/creature/creature.hpp"
+#include "genetics/organisms/Plant.hpp"
+#include "genetics/defaults/UniversalGenes.hpp"
+#include "logging/Logger.hpp"
 #include <unordered_map>
 
 using namespace std;
+
+//================================================================================
+//  Static Member Initialization - New Genetics System
+//================================================================================
+std::shared_ptr<EcoSim::Genetics::GeneRegistry> Creature::s_geneRegistry = nullptr;
+
+//================================================================================
+//  Static Member Initialization - Logging
+//================================================================================
+static int s_nextCreatureId = 1;
+
+//================================================================================
+//  Static Member Initialization - Creature-Plant Interactions
+//================================================================================
+std::unique_ptr<EcoSim::Genetics::FeedingInteraction> Creature::s_feedingInteraction = nullptr;
+std::unique_ptr<EcoSim::Genetics::SeedDispersal> Creature::s_seedDispersal = nullptr;
 
 //================================================================================
 //  Constants
@@ -24,9 +43,31 @@ const float Creature::PREY_CALORIES     = 3.0f;
 //  Constants for managing creature death
 const float Creature::STARVATION_POINT  = -0.1f;
 const float Creature::DEHYDRATION_POINT = -0.1f;
-const float Creature::DISCOMFORT_POINT  = -1.0f;
+const float Creature::DISCOMFORT_POINT  = -3.0f;  // Increased from -1.0f to allow starvation to occur first
 //  What fraction of resources is shared
 const unsigned Creature::RESOURCE_SHARED = 4;
+
+//  DRY refactoring: Scent detection constants (extracted from duplicated magic numbers)
+const float Creature::SCENT_DETECTION_BASE_RANGE    = 100.0f;  // Base scent detection range
+const float Creature::SCENT_DETECTION_ACUITY_MULT   = 100.0f;  // Multiplier for olfactory acuity bonus
+const float Creature::DEFAULT_OLFACTORY_ACUITY      = 0.5f;    // Default detection ability
+const float Creature::DEFAULT_SCENT_PRODUCTION      = 0.5f;    // Default pheromone production rate
+
+//  DRY refactoring: Seed dispersal constants
+const float Creature::BURR_SEED_VIABILITY           = 0.85f;   // Viability for burr-dispersed seeds
+const float Creature::GUT_SEED_SCARIFICATION_BONUS  = 1.15f;   // Bonus for optimal gut transit
+const float Creature::GUT_SEED_ACID_DAMAGE          = 0.9f;    // Penalty for prolonged gut transit
+const float Creature::DEFAULT_GUT_TRANSIT_HOURS     = 6.0f;    // Default seed transit time
+const float Creature::TICKS_PER_HOUR                = 10.0f;   // Conversion factor for time
+
+//  DRY refactoring: Feeding interaction constants
+const float Creature::FEEDING_MATE_BOOST            = 2.0f;    // Mate (comfort) boost from successful feeding
+const float Creature::DAMAGE_HUNGER_COST            = 0.5f;    // Hunger cost per point of damage
+const float Creature::SEEKING_FOOD_MATE_PENALTY     = 0.5f;    // Comfort reduction while seeking food (multiplied by comfDec)
+
+//  DRY refactoring: Sense enhancement constants
+const float Creature::COLOR_VISION_RANGE_BONUS      = 0.3f;    // Range bonus from color vision
+const float Creature::SCENT_DETECTION_RANGE_BONUS   = 0.5f;    // Range bonus from scent detection
 
 //================================================================================
 //  Constructor
@@ -43,27 +84,31 @@ const unsigned Creature::RESOURCE_SHARED = 4;
  */
 Creature::Creature (const int &x,
                     const int &y,
-                    const float &hunger, 
+                    const float &hunger,
                     const float &thirst,
                     const Genome &genome) {
   //  State Variables
   _x = x; _y = y;
   _age = 0;
+  _id = s_nextCreatureId++;
 
-  // Will Variables 
+  // Will Variables
   _hunger     = hunger;
   _thirst     = thirst;
   _fatigue    = INIT_FATIGUE;
   _mate       = 0.0f;
 
   // Genetic Variable
-  _genome     = genome; 
+  _genome     = genome;
  
   _speed      = 1;
   _direction  = Direction::none;
 
   _character  = generateChar ();
   _name       = generateName ();
+  
+  // Enable new genetics by default for creature-plant interactions
+  enableNewGenetics(true);
 }
 
 /**
@@ -77,6 +122,7 @@ Creature::Creature (const int &x, const int &y, const Genome &genome) {
   //  State Variables
   _x = x; _y = y;
   _age = 0;
+  _id = s_nextCreatureId++;
 
   //  Will Variables
   _hunger   = 1.0f;
@@ -92,10 +138,13 @@ Creature::Creature (const int &x, const int &y, const Genome &genome) {
 
   _character  = generateChar ();
   _name       = generateName ();
+  
+  // Enable new genetics by default for creature-plant interactions
+  enableNewGenetics(true);
 }
 
 /**
- *  Constructor for our Creature object. This version is used for loading 
+ *  Constructor for our Creature object. This version is used for loading
  *  a creature from a save file.
  *
  *	@param name			  The name of the object.
@@ -134,6 +183,7 @@ Creature::Creature (const string &name,
   //  State Variables (with basic validation)
   _x = x; _y = y;
   _age        = age;  // Validated against genome.getLifespan() in deathCheck()
+  _id = s_nextCreatureId++;
   _profile    = stringToProfile   (profile);
   _direction  = stringToDirection (direction);
   // Clamp metabolism to reasonable range (0.0001 to 0.1)
@@ -148,6 +198,119 @@ Creature::Creature (const string &name,
 
   // Genetic Variable
   _genome     = genome;
+  
+  // Enable new genetics by default for creature-plant interactions
+  enableNewGenetics(true);
+}
+
+//================================================================================
+//  Copy/Move Constructors and Assignment Operators (M5)
+//================================================================================
+/**
+ * Copy constructor - performs deep copy of unique_ptr members
+ */
+Creature::Creature(const Creature& other)
+    : GameObject(other),
+      _x(other._x), _y(other._y),
+      _age(other._age),
+      _direction(other._direction),
+      _profile(other._profile),
+      _hunger(other._hunger),
+      _thirst(other._thirst),
+      _fatigue(other._fatigue),
+      _mate(other._mate),
+      _metabolism(other._metabolism),
+      _speed(other._speed),
+      _genome(other._genome),
+      _useNewGenetics(other._useNewGenetics) {
+    // Deep copy unique_ptr members if they exist
+    if (other._newGenome) {
+        _newGenome = std::make_unique<EcoSim::Genetics::Genome>(*other._newGenome);
+    }
+    if (other._phenotype) {
+        _phenotype = std::make_unique<EcoSim::Genetics::Phenotype>(_newGenome.get(), &getGeneRegistry());
+    }
+}
+
+/**
+ * Move constructor
+ */
+Creature::Creature(Creature&& other) noexcept
+    : GameObject(std::move(other)),
+      _x(other._x), _y(other._y),
+      _age(other._age),
+      _direction(other._direction),
+      _profile(other._profile),
+      _hunger(other._hunger),
+      _thirst(other._thirst),
+      _fatigue(other._fatigue),
+      _mate(other._mate),
+      _metabolism(other._metabolism),
+      _speed(other._speed),
+      _genome(std::move(other._genome)),
+      _newGenome(std::move(other._newGenome)),
+      _phenotype(std::move(other._phenotype)),
+      _useNewGenetics(other._useNewGenetics) {
+}
+
+/**
+ * Copy assignment operator
+ */
+Creature& Creature::operator=(const Creature& other) {
+    if (this != &other) {
+        GameObject::operator=(other);
+        _x = other._x;
+        _y = other._y;
+        _age = other._age;
+        _direction = other._direction;
+        _profile = other._profile;
+        _hunger = other._hunger;
+        _thirst = other._thirst;
+        _fatigue = other._fatigue;
+        _mate = other._mate;
+        _metabolism = other._metabolism;
+        _speed = other._speed;
+        _genome = other._genome;
+        _useNewGenetics = other._useNewGenetics;
+        
+        // Deep copy unique_ptr members
+        if (other._newGenome) {
+            _newGenome = std::make_unique<EcoSim::Genetics::Genome>(*other._newGenome);
+        } else {
+            _newGenome.reset();
+        }
+        if (other._phenotype) {
+            _phenotype = std::make_unique<EcoSim::Genetics::Phenotype>(_newGenome.get(), &getGeneRegistry());
+        } else {
+            _phenotype.reset();
+        }
+    }
+    return *this;
+}
+
+/**
+ * Move assignment operator
+ */
+Creature& Creature::operator=(Creature&& other) noexcept {
+    if (this != &other) {
+        GameObject::operator=(std::move(other));
+        _x = other._x;
+        _y = other._y;
+        _age = other._age;
+        _direction = other._direction;
+        _profile = other._profile;
+        _hunger = other._hunger;
+        _thirst = other._thirst;
+        _fatigue = other._fatigue;
+        _mate = other._mate;
+        _metabolism = other._metabolism;
+        _speed = other._speed;
+        _genome = std::move(other._genome);
+        _newGenome = std::move(other._newGenome);
+        _phenotype = std::move(other._phenotype);
+        _useNewGenetics = other._useNewGenetics;
+    }
+    return *this;
 }
 
 //================================================================================
@@ -166,6 +329,7 @@ void Creature::setY       (int y)        { _y = y;           }
 //  Getters
 //================================================================================
 unsigned  Creature::getAge        () const { return _age;                   }
+int       Creature::getId         () const { return _id;                    }
 float     Creature::getHunger     () const { return _hunger;                }
 float     Creature::getThirst     () const { return _thirst;                }
 float     Creature::getFatigue    () const { return _fatigue;               }
@@ -178,8 +342,27 @@ Direction Creature::getDirection  () const { return _direction;             }
 Profile   Creature::getProfile    () const { return _profile;               }
 //  Genome Getters (CREATURE-010 fix: return by const reference to avoid copy)
 const Genome& Creature::getGenome () const { return _genome;                }
-unsigned  Creature::getLifespan   () const { return _genome.getLifespan();  }
-unsigned  Creature::getSightRange () const { return _genome.getSight();     }
+
+// M5: Updated getLifespan to support new genetics system
+unsigned Creature::getLifespan() const {
+    if (_useNewGenetics && _phenotype) {
+        return static_cast<unsigned>(
+            _phenotype->getTrait(EcoSim::Genetics::UniversalGenes::LIFESPAN)
+        );
+    }
+    return _genome.getLifespan();
+}
+
+// M5: Updated getSightRange to support new genetics system
+unsigned Creature::getSightRange() const {
+    if (_useNewGenetics && _phenotype) {
+        return static_cast<unsigned>(
+            _phenotype->getTrait(EcoSim::Genetics::UniversalGenes::SIGHT_RANGE)
+        );
+    }
+    return _genome.getSight();
+}
+
 float     Creature::getTHunger    () const { return _genome.getTHunger();   }
 float     Creature::getTThirst    () const { return _genome.getTThirst();   }
 float     Creature::getTFatigue   () const { return _genome.getTFatigue();  }
@@ -190,6 +373,177 @@ Diet      Creature::getDiet       () const { return _genome.getDiet();      }
 bool      Creature::ifFlocks      () const { return _genome.ifFlocks();     }
 unsigned  Creature::getFlee       () const { return _genome.getFlee();      }
 unsigned  Creature::getPursue     () const { return _genome.getPursue();    }
+
+//================================================================================
+//  New Genetics System - Static Methods (M5)
+//================================================================================
+/**
+ * Initialize the shared gene registry with default gene definitions.
+ * Should be called once at application startup before creating creatures.
+ */
+void Creature::initializeGeneRegistry() {
+    if (!s_geneRegistry) {
+        s_geneRegistry = std::make_shared<EcoSim::Genetics::GeneRegistry>();
+        // Use UniversalGenes (58+ genes) instead of DefaultGenes for Phase 2.1 coevolution support
+        EcoSim::Genetics::UniversalGenes::registerDefaults(*s_geneRegistry);
+    }
+}
+
+/**
+ * Get the shared gene registry (initializes if not already done).
+ */
+EcoSim::Genetics::GeneRegistry& Creature::getGeneRegistry() {
+    if (!s_geneRegistry) {
+        initializeGeneRegistry();
+    }
+    return *s_geneRegistry;
+}
+
+//================================================================================
+//  New Genetics System - Instance Methods (M5)
+//================================================================================
+/**
+ * Enable or disable the new genetics system for this creature.
+ * When enabled, converts legacy genome to new format if not already done.
+ */
+void Creature::enableNewGenetics(bool enable) {
+    _useNewGenetics = enable;
+    
+    if (enable && !_newGenome) {
+        // Start with a full creature genome with all UniversalGenes defaults
+        // This ensures all 58+ genes have proper default values
+        _newGenome = std::make_unique<EcoSim::Genetics::Genome>(
+            EcoSim::Genetics::UniversalGenes::createCreatureGenome(getGeneRegistry())
+        );
+        
+        // Now overlay legacy genome values onto the new genome
+        // This preserves legacy creature traits while adding new genes
+        overlayLegacyGenome(*_newGenome, _genome);
+        
+        // Create phenotype for trait expression
+        _phenotype = std::make_unique<EcoSim::Genetics::Phenotype>(
+            _newGenome.get(), &getGeneRegistry()
+        );
+        
+        // Initialize phenotype context with default environment
+        EcoSim::Genetics::EnvironmentState defaultEnv;
+        updatePhenotypeContext(defaultEnv);
+    }
+}
+
+/**
+ * Overlay legacy genome values onto a new genome.
+ * This maps legacy genome traits to the appropriate UniversalGenes.
+ */
+void Creature::overlayLegacyGenome(EcoSim::Genetics::Genome& newGenome, const ::Genome& legacy) {
+    using namespace EcoSim::Genetics;
+    
+    // Helper to update a gene value if it exists
+    auto updateGene = [&newGenome](const std::string& geneId, float value) {
+        if (newGenome.hasGene(geneId)) {
+            Gene& gene = newGenome.getGeneMutable(geneId);
+            gene.setAlleleValues(value);
+        }
+    };
+    
+    // Map legacy values to UniversalGenes
+    // Lifespan
+    updateGene(UniversalGenes::LIFESPAN, static_cast<float>(legacy.getLifespan()));
+    
+    // Sight -> sight_range
+    updateGene(UniversalGenes::SIGHT_RANGE, static_cast<float>(legacy.getSight()));
+    
+    // Metabolism thresholds
+    updateGene(UniversalGenes::HUNGER_THRESHOLD, legacy.getTHunger());
+    updateGene(UniversalGenes::THIRST_THRESHOLD, legacy.getTThirst());
+    updateGene(UniversalGenes::FATIGUE_THRESHOLD, legacy.getTFatigue());
+    updateGene(UniversalGenes::MATE_THRESHOLD, legacy.getTMate());
+    
+    // Comfort rates
+    updateGene(UniversalGenes::COMFORT_INCREASE, legacy.getComfInc());
+    updateGene(UniversalGenes::COMFORT_DECREASE, legacy.getComfDec());
+    
+    // Flee/Pursue thresholds
+    updateGene(UniversalGenes::FLEE_THRESHOLD, static_cast<float>(legacy.getFlee()));
+    updateGene(UniversalGenes::PURSUE_THRESHOLD, static_cast<float>(legacy.getPursue()));
+    
+    // Map legacy Diet to the new digestion genes for emergent diet behavior
+    Diet diet = legacy.getDiet();
+    switch (diet) {
+        case Diet::banana:  // Herbivore - plant eater
+            updateGene(UniversalGenes::PLANT_DIGESTION_EFFICIENCY, 0.8f);
+            updateGene(UniversalGenes::MEAT_DIGESTION_EFFICIENCY, 0.2f);
+            updateGene(UniversalGenes::CELLULOSE_BREAKDOWN, 0.7f);
+            updateGene(UniversalGenes::GUT_LENGTH, 0.8f);
+            updateGene(UniversalGenes::TOOTH_GRINDING, 0.8f);
+            updateGene(UniversalGenes::TOOTH_SHARPNESS, 0.2f);
+            break;
+        case Diet::apple:  // Frugivore/omnivore - fruit eater
+            updateGene(UniversalGenes::PLANT_DIGESTION_EFFICIENCY, 0.6f);
+            updateGene(UniversalGenes::MEAT_DIGESTION_EFFICIENCY, 0.4f);
+            updateGene(UniversalGenes::CELLULOSE_BREAKDOWN, 0.4f);
+            updateGene(UniversalGenes::SWEETNESS_PREFERENCE, 0.8f);
+            updateGene(UniversalGenes::COLOR_VISION, 0.8f);
+            break;
+        case Diet::predator:  // Carnivore - meat eater
+            updateGene(UniversalGenes::PLANT_DIGESTION_EFFICIENCY, 0.2f);
+            updateGene(UniversalGenes::MEAT_DIGESTION_EFFICIENCY, 0.9f);
+            updateGene(UniversalGenes::STOMACH_ACIDITY, 0.9f);
+            updateGene(UniversalGenes::TOOTH_SHARPNESS, 0.9f);
+            updateGene(UniversalGenes::TOOTH_GRINDING, 0.2f);
+            updateGene(UniversalGenes::GUT_LENGTH, 0.4f);
+            updateGene(UniversalGenes::HUNT_INSTINCT, 0.9f);
+            break;
+        case Diet::scavenger:  // Scavenger - carrion eater
+            updateGene(UniversalGenes::PLANT_DIGESTION_EFFICIENCY, 0.3f);
+            updateGene(UniversalGenes::MEAT_DIGESTION_EFFICIENCY, 0.8f);
+            updateGene(UniversalGenes::TOXIN_TOLERANCE, 0.8f);
+            updateGene(UniversalGenes::SCENT_DETECTION, 0.9f);
+            updateGene(UniversalGenes::STOMACH_ACIDITY, 0.8f);
+            break;
+    }
+}
+
+/**
+ * Get the new genome (if enabled).
+ */
+const EcoSim::Genetics::Genome* Creature::getNewGenome() const {
+    return _newGenome.get();
+}
+
+/**
+ * Get the phenotype (if new genetics enabled).
+ */
+const EcoSim::Genetics::Phenotype* Creature::getPhenotype() const {
+    return _phenotype.get();
+}
+
+/**
+ * Update phenotype context with current environment and organism state.
+ * Should be called each tick or when environment changes significantly.
+ */
+void Creature::updatePhenotypeContext(const EcoSim::Genetics::EnvironmentState& env) {
+    if (_phenotype) {
+        EcoSim::Genetics::OrganismState orgState;
+        
+        // Calculate normalized age (0.0 = birth, 1.0 = max lifespan)
+        unsigned lifespan = _genome.getLifespan();  // Use legacy for consistency
+        if (lifespan > 0) {
+            orgState.age_normalized = static_cast<float>(_age) / static_cast<float>(lifespan);
+        } else {
+            orgState.age_normalized = 0.0f;
+        }
+        
+        // Convert hunger level to energy (higher hunger = lower energy)
+        // _hunger ranges from about -1 to RESOURCE_LIMIT (10.0)
+        orgState.energy_level = std::max(0.0f, std::min(1.0f, _hunger / RESOURCE_LIMIT));
+        
+        // Health is always 1.0 for now (could be expanded later)
+        orgState.health = 1.0f;
+        
+        _phenotype->updateContext(env, orgState);
+    }
+}
 
 //================================================================================
 //  Behaviours
@@ -211,11 +565,18 @@ void Creature::hungryProfile (World &world,
                               GeneralStats &gs) {
   bool actionTaken = false;
   if (getDiet() == Diet::predator) {
-    actionTaken = findPrey 
+    actionTaken = findPrey
       (world.getGrid(), world.getRows(), world.getCols(), creatures, gs.deaths.predator);
   } else {
-    actionTaken = findFood
-      (world.getGrid(), world.getRows(), world.getCols(), gs.foodAte);
+    // GENETICS-MIGRATION: Prioritize genetics plants over legacy food
+    // First try to find and eat genetics-based plants
+    actionTaken = findGeneticsPlants(world, gs.feeding);
+    
+    // If no genetics plants found, fall back to legacy food system
+    if (!actionTaken) {
+      actionTaken = findFood
+        (world.getGrid(), world.getRows(), world.getCols(), gs.foodAte);
+    }
   }
 
   if (!actionTaken) migrateProfile (world, creatures, index);
@@ -230,11 +591,24 @@ void Creature::thirstyProfile (World &world,
 
 void Creature::breedProfile (World &world,
                              vector<Creature> &creatures,
-                             const unsigned index, 
+                             const unsigned index,
                              GeneralStats &gs) {
-  if (!findMate (world.getGrid(), world.getRows(), 
+  // Deposit breeding scent each tick while in breeding mode
+  depositBreedingScent(world.getScentLayer(), world.getCurrentTick());
+  
+  if (!findMate (world.getGrid(), world.getRows(),
         world.getCols(), creatures, index, gs.births)) {
-    migrateProfile (world, creatures, index);
+    // Visual mate finding failed - try scent-based navigation
+    int scentTargetX, scentTargetY;
+    
+    if (findMateScent(world.getScentLayer(), scentTargetX, scentTargetY)) {
+      // Found a scent trail - navigate toward scent source using A* pathfinding
+      Navigator::astarSearch(*this, world.getGrid(), world.getRows(), world.getCols(),
+                            scentTargetX, scentTargetY);
+    } else {
+      // No scent detected - fall back to wandering
+      migrateProfile (world, creatures, index);
+    }
   }
 }
 
@@ -325,8 +699,17 @@ void Creature::update () {
     _fatigue  += _metabolism;
   }
 
+  // Track energy before changes for starvation logging
+  float hungerBefore = _hunger;
+  
   _hunger -= change;
   _thirst -= change;
+  
+  // Log when creature enters critical starvation zone (approaching death)
+  if (hungerBefore > STARVATION_POINT && _hunger <= STARVATION_POINT + 0.5f) {
+    logging::Logger::getInstance().starvation(_id, hungerBefore, _hunger);
+  }
+  
   _age++;
 }
 
@@ -395,7 +778,7 @@ void Creature::decideBehaviour () {
   bool isAsleep = _profile == Profile::sleep && _fatigue > 0.0f;
 
   if (seekingResource) {
-    _mate   -= getComfDec();
+    _mate   -= getComfDec() * 0.3f;  // Slowed discomfort buildup (Phase 1 fix)
   } else if (!isAsleep) {
     // Calculate the priority of each behaviour
     // Using std::array instead of vector to avoid heap allocation each tick
@@ -421,7 +804,7 @@ void Creature::decideBehaviour () {
       _profile = static_cast<Profile>(pIndex);
       switch (_profile) {
         case Profile::thirsty: case Profile::hungry:
-          _mate -= getComfDec();
+          _mate -= getComfDec() * 0.3f;  // Slowed discomfort buildup (Phase 1 fix)
           break;
         default:
           break;
@@ -436,15 +819,9 @@ void Creature::decideBehaviour () {
 }
 
 // CREATURE-016 fix: Explicit mapping from Diet enum to food ID
-// This makes the relationship explicit rather than relying on enum values matching food IDs
+// DRY refactoring: Now uses centralized DietInfo lookup table
 static unsigned dietToFoodID(Diet diet) {
-  switch (diet) {
-    case Diet::banana:    return 0;
-    case Diet::apple:     return 1;
-    case Diet::scavenger: return 2;
-    case Diet::predator:  return 3;
-    default:              return 0;  // Fallback to banana
-  }
+  return getDietInfo(diet).foodId;
 }
 
 bool Creature::foodCheck (const vector<vector<Tile>> &map,
@@ -484,12 +861,17 @@ bool Creature::waterCheck (const vector<vector<Tile>> &map,
 // CREATURE-013 fix: Generic spiral search helper to eliminate code duplication
 // This template method performs an expanding square search pattern
 // and calls the predicate for each position until it returns true
+// DRY refactoring: Added maxRadius parameter with default to support different search ranges
 template<typename Predicate>
 bool Creature::spiralSearch (const vector<vector<Tile>> &map,
                              const int &rows,
                              const int &cols,
-                             Predicate predicate) {
-  unsigned maxRadius = getSightRange();
+                             Predicate predicate,
+                             unsigned maxRadius) {
+  // If maxRadius is 0, use sight range as default
+  if (maxRadius == 0) {
+    maxRadius = getSightRange();
+  }
   //  While the search radius does not exceed the available space
   for (int radius = 1; radius < static_cast<int>(maxRadius); radius++) {
     //  Top and Bottom Lines
@@ -510,6 +892,131 @@ bool Creature::spiralSearch (const vector<vector<Tile>> &map,
       if (predicate(curX, curY)) return true;
     }
   }
+  return false;
+}
+
+// DRY refactoring: Iterator for visiting all tiles in a spiral pattern
+// Unlike spiralSearch, this doesn't stop early - useful for finding closest match
+// Visitor receives (x, y) coordinates and returns void
+template<typename Visitor>
+void Creature::forEachTileInRange(unsigned maxRadius, Visitor visitor) {
+  for (unsigned radius = 1; radius < maxRadius; radius++) {
+    // Top and Bottom edges
+    for (int xMod = -static_cast<int>(radius); xMod <= static_cast<int>(radius); xMod++) {
+      int curX = _x + xMod;
+      // Top edge
+      int curY = _y - static_cast<int>(radius);
+      visitor(curX, curY);
+      // Bottom edge
+      curY = _y + static_cast<int>(radius);
+      visitor(curX, curY);
+    }
+    
+    // Left and Right edges (excluding corners already visited)
+    for (int yMod = -static_cast<int>(radius) + 1; yMod <= static_cast<int>(radius) - 1; yMod++) {
+      int curY = _y + yMod;
+      // Left edge
+      int curX = _x - static_cast<int>(radius);
+      visitor(curX, curY);
+      // Right edge
+      curX = _x + static_cast<int>(radius);
+      visitor(curX, curY);
+    }
+  }
+}
+
+//================================================================================
+//  Genetics-Based Plant Finding (Phase 2.4 - Full Migration)
+//================================================================================
+
+/**
+ *  Search for nearby genetics-based plants and attempt to eat them.
+ *  This method searches the creature's sight range for edible plants
+ *  and navigates toward or eats them using the genetics feeding system.
+ *
+ *  @param world          Reference to the world object.
+ *  @param feedingCounter Counter for tracking feeding events.
+ *  @return               True if an action was taken (eating or moving toward plant).
+ */
+bool Creature::findGeneticsPlants(World &world, unsigned &feedingCounter) {
+  using namespace EcoSim::Genetics;
+  
+  // Ensure new genetics system is enabled
+  if (!_useNewGenetics || !_phenotype) {
+    return false;
+  }
+  
+  vector<vector<Tile>> &map = world.getGrid();
+  const int rows = world.getRows();
+  const int cols = world.getCols();
+  
+  // Check if we're standing on a tile with edible plants
+  Tile &currentTile = map[_x][_y];
+  auto &plantsHere = currentTile.getPlants();
+  
+  for (auto &plantPtr : plantsHere) {
+    if (!plantPtr || !plantPtr->isAlive()) continue;
+    
+    // Check if we can eat this plant (detection + defenses)
+    if (canEatPlant(*plantPtr)) {
+      // Attempt to eat the plant
+      FeedingResult result = eatPlant(*plantPtr);
+      
+      if (result.success) {
+        feedingCounter++;
+        
+        // GENETICS-MIGRATION: Successful feeding significantly increases mate (reduces discomfort)
+        // This creates proper survival pressure tied to feeding success
+        // Eating should be very rewarding to offset the continuous drain while searching
+        _mate += 2.0f;  // Large fixed boost from eating - enough to survive ~200+ ticks
+        if (_mate > RESOURCE_LIMIT) _mate = RESOURCE_LIMIT;
+        
+        // Log the feeding event
+        logging::Logger::getInstance().feeding(
+          _id, plantPtr->getId(), result.success, result.nutritionGained, result.damageReceived
+        );
+        
+        return true;
+      }
+    }
+  }
+  
+  // Search nearby tiles for edible plants
+  Plant* closestPlant = nullptr;
+  int closestX = -1, closestY = -1;
+  float closestDistance = getPlantDetectionRange();
+  
+  // DRY refactoring: Use forEachTileInRange() instead of duplicating spiral search logic
+  // This reduces ~80 lines of code to ~15 lines while maintaining the same behavior
+  unsigned maxRadius = static_cast<unsigned>(getPlantDetectionRange());
+  forEachTileInRange(maxRadius, [&](int checkX, int checkY) {
+    // Boundary check for valid tile coordinates
+    if (!Navigator::boundaryCheck(checkX, checkY, rows, cols)) {
+      return;  // Continue to next tile
+    }
+    
+    Tile &tile = map[checkX][checkY];
+    auto &plants = tile.getPlants();
+    for (auto &plantPtr : plants) {
+      if (plantPtr && plantPtr->isAlive() && canEatPlant(*plantPtr)) {
+        float distance = calculateDistance(checkX, checkY);
+        if (distance < closestDistance) {
+          closestDistance = distance;
+          closestPlant = plantPtr.get();
+          closestX = checkX;
+          closestY = checkY;
+        }
+      }
+    }
+  });
+  
+  // If we found a plant, navigate toward it
+  if (closestPlant != nullptr && closestX >= 0 && closestY >= 0) {
+    // Decrement mate while seeking food (discomfort from hunger)
+    _mate -= getComfDec() * 0.5f;  // Less harsh than not finding any food
+    return Navigator::astarSearch(*this, map, rows, cols, closestX, closestY);
+  }
+  
   return false;
 }
 
@@ -593,16 +1100,20 @@ bool Creature::findMate (vector<vector<Tile>> &map,
   Creature *bestMate = NULL;
 
   //  Attempt to find the most desirable mate
+  //  GENETICS-MIGRATION: Removed legacy Diet check. Mate compatibility is now
+  //  determined by genetic similarity via checkFitness(), not diet type.
+  //  This allows creatures with different feeding adaptations to still breed
+  //  if they are genetically compatible.
+  unsigned sightRange = getSightRange();
+  
   for (Creature & creature : creatures) {
     bool isPotentialMate = &creature != this
-        && creature.getProfile() == Profile::breed
-        && creature.getDiet() == getDiet();
+        && creature.getProfile() == Profile::breed;
 
     if (isPotentialMate) {
       //  Calculate the distance between the creatures
       unsigned diffX = abs(_x - creature.getX());
       unsigned diffY = abs(_y - creature.getY());
-      unsigned sightRange = getSightRange();
 
       if (diffX < sightRange && diffY < sightRange) {
         float desirability = checkFitness (creature);
@@ -754,7 +1265,8 @@ void Creature::movementCost (const float &distance) {
  */
 float Creature::checkFitness (const Creature &c2) const {
   float distance   = calculateDistance(c2.getX(), c2.getY());
-  float proximity  = 1.0f - distance / getSightRange ();
+  unsigned sight = getSightRange();
+  float proximity  = 1.0f - distance / static_cast<float>(sight);
   float similarity = _genome.compare (c2.getGenome());
 
   //  Penalise if too similar
@@ -791,7 +1303,575 @@ Creature Creature::breedCreature (Creature &mate) {
   //  Reset the parents mating levels
   _mate = 0.0f; mate.setMate (0.0f);
 
-	return Creature (_x, _y, hunger, thirst, newGenome);
+  Creature offspring(_x, _y, hunger, thirst, newGenome);
+  
+  // Log the birth event
+  logging::Logger::getInstance().creatureBorn(
+    offspring.getId(),
+    offspring.generateName(),
+    _id,
+    mate.getId()
+  );
+  
+  return offspring;
+}
+
+//================================================================================
+//  Sensory System Methods (Phase 1)
+//================================================================================
+
+/**
+ * Compute this creature's unique genetic scent signature.
+ * Creates an 8-float fingerprint based on genome characteristics.
+ */
+std::array<float, 8> Creature::computeScentSignature() const {
+  std::array<float, 8> signature;
+  
+  // Use genome traits to create a unique fingerprint
+  // This allows related creatures to have similar signatures
+  
+  // Component 0: Diet-based (0.0-0.25 range based on diet type)
+  signature[0] = static_cast<float>(static_cast<int>(getDiet())) * 0.25f;
+  
+  // Component 1: Lifespan-based (normalized)
+  signature[1] = std::min(1.0f, static_cast<float>(getLifespan()) / 1000000.0f);
+  
+  // Component 2: Sight range (normalized)
+  signature[2] = std::min(1.0f, static_cast<float>(getSightRange()) / 200.0f);
+  
+  // Component 3: Metabolism-based (normalized)
+  signature[3] = std::min(1.0f, getMetabolism() * 100.0f);
+  
+  // Component 4: Social behavior (flee/pursue ratio)
+  float fleeVal = static_cast<float>(getFlee());
+  float pursueVal = static_cast<float>(getPursue());
+  signature[4] = (pursueVal > 0) ? std::min(1.0f, fleeVal / pursueVal) : 0.5f;
+  
+  // Component 5: Flocking tendency
+  signature[5] = ifFlocks() ? 0.8f : 0.2f;
+  
+  // Components 6-7: Use olfactory genes if available
+  if (_useNewGenetics && _phenotype) {
+    signature[6] = _phenotype->hasTrait(EcoSim::Genetics::UniversalGenes::SCENT_SIGNATURE_VARIANCE) ?
+                   _phenotype->getTrait(EcoSim::Genetics::UniversalGenes::SCENT_SIGNATURE_VARIANCE) : 0.5f;
+    signature[7] = _phenotype->hasTrait(EcoSim::Genetics::UniversalGenes::SCENT_PRODUCTION) ?
+                   _phenotype->getTrait(EcoSim::Genetics::UniversalGenes::SCENT_PRODUCTION) : 0.5f;
+  } else {
+    // Derive from other traits for legacy creatures
+    signature[6] = std::min(1.0f, getTHunger() + getTThirst());
+    signature[7] = std::min(1.0f, getTFatigue() + getTMate());
+  }
+  
+  return signature;
+}
+
+/**
+ * Deposit breeding pheromone when in breeding state.
+ * Creates a MATE_SEEKING scent deposit based on creature's olfactory genes.
+ */
+void Creature::depositBreedingScent(EcoSim::ScentLayer& layer, unsigned int currentTick) {
+  // Only deposit if in breeding profile
+  if (_profile != Profile::breed) {
+    return;
+  }
+  
+  // Get scent production rate from phenotype
+  // DRY refactoring: Uses DEFAULT_SCENT_PRODUCTION constant
+  float scentProduction = DEFAULT_SCENT_PRODUCTION;
+  float scentMasking = 0.0f;     // Default - no masking
+  
+  if (_useNewGenetics && _phenotype) {
+    if (_phenotype->hasTrait(EcoSim::Genetics::UniversalGenes::SCENT_PRODUCTION)) {
+      scentProduction = _phenotype->getTrait(EcoSim::Genetics::UniversalGenes::SCENT_PRODUCTION);
+    }
+    if (_phenotype->hasTrait(EcoSim::Genetics::UniversalGenes::SCENT_MASKING)) {
+      scentMasking = _phenotype->getTrait(EcoSim::Genetics::UniversalGenes::SCENT_MASKING);
+    }
+  }
+  
+  // Apply scent masking - high masking reduces effective production
+  float effectiveProduction = scentProduction * (1.0f - scentMasking * 0.8f);
+  
+  // Only deposit if effective production is significant
+  if (effectiveProduction < 0.05f) {
+    return;
+  }
+  
+  // Create scent deposit
+  EcoSim::ScentDeposit deposit;
+  deposit.type = EcoSim::ScentType::MATE_SEEKING;
+  deposit.creatureId = _id;
+  deposit.intensity = effectiveProduction;
+  deposit.signature = computeScentSignature();
+  deposit.tickDeposited = currentTick;
+  
+  // Decay rate based on intensity - stronger scents last longer
+  // Base decay: 50-200 ticks depending on intensity
+  deposit.decayRate = static_cast<unsigned int>(50 + effectiveProduction * 150);
+  
+  // Deposit at creature's current position
+  layer.deposit(_x, _y, deposit);
+}
+
+//================================================================================
+//  Scent Detection Methods (Phase 2: Gradient Navigation)
+//================================================================================
+
+/**
+ * Calculate genetic similarity between two scent signatures.
+ * Uses cosine similarity for comparing 8-dimensional signature vectors.
+ */
+float Creature::calculateSignatureSimilarity(
+    const std::array<float, 8>& sig1,
+    const std::array<float, 8>& sig2) {
+  // Calculate cosine similarity
+  float dotProduct = 0.0f;
+  float norm1 = 0.0f;
+  float norm2 = 0.0f;
+  
+  for (size_t i = 0; i < 8; ++i) {
+    dotProduct += sig1[i] * sig2[i];
+    norm1 += sig1[i] * sig1[i];
+    norm2 += sig2[i] * sig2[i];
+  }
+  
+  if (norm1 == 0.0f || norm2 == 0.0f) {
+    return 0.0f;
+  }
+  
+  return dotProduct / (std::sqrt(norm1) * std::sqrt(norm2));
+}
+
+/**
+ * Detect the direction to a potential mate using scent trails.
+ * Uses OLFACTORY_ACUITY gene to determine detection range.
+ * Filters by genetic similarity to ensure same-species recognition.
+ */
+std::optional<Direction> Creature::detectMateDirection(const EcoSim::ScentLayer& scentLayer) const {
+  // Only detect if we're in breeding mode
+  if (_profile != Profile::breed) {
+    return std::nullopt;
+  }
+  
+  // Get olfactory acuity from phenotype (default to moderate if not available)
+  // DRY refactoring: Uses DEFAULT_OLFACTORY_ACUITY constant
+  float olfactoryAcuity = DEFAULT_OLFACTORY_ACUITY;
+  if (_useNewGenetics && _phenotype) {
+    if (_phenotype->hasTrait(EcoSim::Genetics::UniversalGenes::OLFACTORY_ACUITY)) {
+      olfactoryAcuity = _phenotype->getTrait(EcoSim::Genetics::UniversalGenes::OLFACTORY_ACUITY);
+    }
+  }
+  
+  // Calculate detection range: base + acuity * multiplier
+  // Range: SCENT_DETECTION_BASE_RANGE (acuity=0) to BASE+MULT (acuity=1)
+  // This allows creatures to detect mates at typical population distances (avg ~116 tiles)
+  // DRY refactoring: Uses SCENT_DETECTION_BASE_RANGE and SCENT_DETECTION_ACUITY_MULT constants
+  int detectionRange = static_cast<int>(SCENT_DETECTION_BASE_RANGE + olfactoryAcuity * SCENT_DETECTION_ACUITY_MULT);
+  
+  // Query the scent layer for strongest MATE_SEEKING scent in range
+  int scentX = _x, scentY = _y;
+  EcoSim::ScentDeposit strongestScent = scentLayer.getStrongestScentInRadius(
+    _x, _y, detectionRange,
+    EcoSim::ScentType::MATE_SEEKING,
+    scentX, scentY
+  );
+  
+  // Check if we found a valid scent
+  if (strongestScent.intensity <= 0.0f || strongestScent.creatureId == _id) {
+    // No scent found, or it's our own scent
+    return std::nullopt;
+  }
+  
+  // No genetic similarity filter - any MATE_SEEKING scent from another creature is valid
+  // The findMate() method already handles compatibility checks when creatures meet
+  
+  // Check if scent is at our current position (we've arrived!)
+  if (scentX == _x && scentY == _y) {
+    return Direction::none;  // At the scent source
+  }
+  
+  // Calculate direction toward scent source
+  int dx = scentX - _x;
+  int dy = scentY - _y;
+  
+  // Convert delta to one of 8 directions
+  Direction result = Direction::none;
+  
+  if (dx > 0 && dy > 0) {
+    result = Direction::SE;
+  } else if (dx > 0 && dy < 0) {
+    result = Direction::NE;
+  } else if (dx > 0 && dy == 0) {
+    result = Direction::E;
+  } else if (dx < 0 && dy > 0) {
+    result = Direction::SW;
+  } else if (dx < 0 && dy < 0) {
+    result = Direction::NW;
+  } else if (dx < 0 && dy == 0) {
+    result = Direction::W;
+  } else if (dx == 0 && dy > 0) {
+    result = Direction::S;
+  } else if (dx == 0 && dy < 0) {
+    result = Direction::N;
+  }
+  
+  return result;
+}
+
+/**
+ * Find the coordinates of the strongest mate scent in range.
+ * Returns target coordinates for A* pathfinding navigation.
+ *
+ * GENETICS-MIGRATION: No diet filtering needed. Mate compatibility is determined
+ * by genetic similarity in checkFitness() when creatures actually meet. Creatures
+ * follow any breeding pheromone to increase chances of finding compatible mates.
+ */
+bool Creature::findMateScent(const EcoSim::ScentLayer& scentLayer, int& outX, int& outY) const {
+  // Only detect if we're in breeding mode
+  if (_profile != Profile::breed) {
+    return false;
+  }
+  
+  // Get olfactory acuity from phenotype (default to moderate if not available)
+  // DRY refactoring: Uses DEFAULT_OLFACTORY_ACUITY constant
+  float olfactoryAcuity = DEFAULT_OLFACTORY_ACUITY;
+  if (_useNewGenetics && _phenotype) {
+    if (_phenotype->hasTrait(EcoSim::Genetics::UniversalGenes::OLFACTORY_ACUITY)) {
+      olfactoryAcuity = _phenotype->getTrait(EcoSim::Genetics::UniversalGenes::OLFACTORY_ACUITY);
+    }
+  }
+  
+  // Calculate detection range: base + acuity * multiplier
+  // DRY refactoring: Uses SCENT_DETECTION_BASE_RANGE and SCENT_DETECTION_ACUITY_MULT constants
+  int detectionRange = static_cast<int>(SCENT_DETECTION_BASE_RANGE + olfactoryAcuity * SCENT_DETECTION_ACUITY_MULT);
+  
+  // Query the scent layer for strongest MATE_SEEKING scent in range
+  int scentX = _x, scentY = _y;
+  EcoSim::ScentDeposit strongestScent = scentLayer.getStrongestScentInRadius(
+    _x, _y, detectionRange,
+    EcoSim::ScentType::MATE_SEEKING,
+    scentX, scentY
+  );
+  
+  // Check if we found a valid scent (not our own)
+  if (strongestScent.intensity <= 0.0f || strongestScent.creatureId == _id) {
+    return false;
+  }
+  
+  // Check if scent is at our current position (shouldn't navigate to self)
+  if (scentX == _x && scentY == _y) {
+    return false;
+  }
+  
+  // Return the scent coordinates for A* pathfinding
+  outX = scentX;
+  outY = scentY;
+  return true;
+}
+
+//================================================================================
+//  Plant Interaction Methods (Phase 2.4)
+//================================================================================
+
+/**
+	* Initialize shared interaction calculators.
+	* Should be called once at application startup.
+	*/
+void Creature::initializeInteractionSystems() {
+	   if (!s_feedingInteraction) {
+	       s_feedingInteraction = std::make_unique<EcoSim::Genetics::FeedingInteraction>();
+	   }
+	   if (!s_seedDispersal) {
+	       s_seedDispersal = std::make_unique<EcoSim::Genetics::SeedDispersal>();
+	   }
+}
+
+/**
+	* Attempt to eat a plant using genetics-based feeding calculations.
+	*/
+EcoSim::Genetics::FeedingResult Creature::eatPlant(EcoSim::Genetics::Plant& plant) {
+	   using namespace EcoSim::Genetics;
+	   
+	   // Ensure interaction systems are initialized
+	   if (!s_feedingInteraction) {
+	       initializeInteractionSystems();
+	   }
+	   
+	   // Need new genetics system enabled for plant interactions
+	   if (!_useNewGenetics || !_phenotype) {
+	       FeedingResult result;
+	       result.success = false;
+	       result.description = "New genetics system not enabled";
+	       return result;
+	   }
+	   
+	   // Calculate hunger level (0-1, higher = more desperate)
+	   float hungerLevel = 1.0f - std::max(0.0f, std::min(1.0f, _hunger / RESOURCE_LIMIT));
+	   
+	   // Attempt the feeding interaction
+	   FeedingResult result = s_feedingInteraction->attemptToEatPlant(
+	       *_phenotype, plant, hungerLevel
+	   );
+	   
+	   if (result.success) {
+	       // Apply nutrition gained
+	       _hunger += result.nutritionGained;
+	       if (_hunger > RESOURCE_LIMIT) {
+	           _hunger = RESOURCE_LIMIT;
+	       }
+	       
+	       // Apply damage from plant defenses
+	       // For now, damage reduces hunger (representing injury cost)
+	       float totalDamage = result.damageReceived;
+	       _hunger -= totalDamage * 0.5f;  // Damage costs energy to heal
+	       
+	       // Apply damage to the plant
+	       plant.takeDamage(result.plantDamage);
+	       
+	       // Handle seed consumption
+	       if (result.seedsConsumed && result.seedsToDisperse > 0) {
+	           consumeSeeds(plant, static_cast<int>(result.seedsToDisperse),
+	                       1.0f - (result.seedsDestroyed ? 0.5f : 0.0f));
+	       }
+	   }
+	   
+	   return result;
+}
+
+/**
+	* Check if creature can eat the given plant.
+	* When called for a plant on the same tile, assume distance = 0.
+	*/
+bool Creature::canEatPlant(const EcoSim::Genetics::Plant& plant) const {
+	   using namespace EcoSim::Genetics;
+	   
+	   if (!s_feedingInteraction) {
+	       const_cast<Creature*>(this)->initializeInteractionSystems();
+	   }
+	   
+	   if (!_useNewGenetics || !_phenotype) {
+	       return false;
+	   }
+	   
+	   // GENETICS-MIGRATION: For plants on the same tile as creature, use distance 0
+	   // Plant.getX()/getY() may not be set correctly for tile-stored plants
+	   // The calling code in findGeneticsPlants already verifies the plant is reachable
+	   float distance = 0.0f;
+	   if (plant.getX() >= 0 && plant.getY() >= 0) {
+	       // Only calculate distance if plant has valid coordinates
+	       distance = calculateDistance(plant.getX(), plant.getY());
+	   }
+	   
+	   // Detection check - with distance 0, should always pass
+	   if (!s_feedingInteraction->canDetectPlant(*_phenotype, plant, distance)) {
+	       return false;
+	   }
+	   
+	   return s_feedingInteraction->canOvercomeDefenses(*_phenotype, plant);
+}
+
+/**
+	* Get maximum plant detection range based on creature's senses.
+	*/
+float Creature::getPlantDetectionRange() const {
+	   using namespace EcoSim::Genetics;
+	   
+	   if (!s_feedingInteraction) {
+	       const_cast<Creature*>(this)->initializeInteractionSystems();
+	   }
+	   
+	   if (!_useNewGenetics || !_phenotype) {
+	       return static_cast<float>(getSightRange());
+	   }
+	   
+	   // Use the feeding interaction's detection range calculation
+	   // For a "generic" plant, use default values
+	   float colorVision = _phenotype->hasTrait(UniversalGenes::COLOR_VISION) ?
+	                       _phenotype->getTrait(UniversalGenes::COLOR_VISION) : 0.5f;
+	   float scentDetection = _phenotype->hasTrait(UniversalGenes::SCENT_DETECTION) ?
+	                          _phenotype->getTrait(UniversalGenes::SCENT_DETECTION) : 0.5f;
+	   
+	   // Base range from sight, enhanced by color vision and scent
+	   float baseRange = static_cast<float>(getSightRange());
+	   float enhancement = 1.0f + (colorVision * 0.3f) + (scentDetection * 0.5f);
+	   
+	   return baseRange * enhancement;
+}
+
+/**
+	* Attach a burr from a plant to this creature.
+	*/
+void Creature::attachBurr(const EcoSim::Genetics::Plant& plant) {
+	   using namespace EcoSim::Genetics;
+	   
+	   if (!s_seedDispersal) {
+	       initializeInteractionSystems();
+	   }
+	   
+	   if (!_useNewGenetics || !_phenotype) {
+	       return;
+	   }
+	   
+	   // Check if burr will attach based on plant hook strength and creature fur
+	   if (s_seedDispersal->willBurrAttach(plant, *_phenotype)) {
+	       // Store burr info: (dispersal strategy as int, originX, originY, ticksAttached)
+	       _attachedBurrs.push_back(std::make_tuple(
+	           static_cast<int>(plant.getPrimaryDispersalStrategy()),
+	           plant.getX(),
+	           plant.getY(),
+	           0  // Just attached
+	       ));
+	   }
+}
+
+/**
+	* Process burr detachment and return dispersal events.
+	*/
+std::vector<EcoSim::Genetics::DispersalEvent> Creature::detachBurrs() {
+	   using namespace EcoSim::Genetics;
+	   
+	   std::vector<DispersalEvent> events;
+	   
+	   if (!s_seedDispersal || !_useNewGenetics || !_phenotype) {
+	       return events;
+	   }
+	   
+	   auto it = _attachedBurrs.begin();
+	   while (it != _attachedBurrs.end()) {
+	       int ticksAttached = std::get<3>(*it);
+	       
+	       // Check if burr detaches
+	       if (s_seedDispersal->willBurrDetach(*_phenotype, ticksAttached)) {
+	           // Create dispersal event at current creature location
+	           DispersalEvent event;
+	           event.originX = std::get<1>(*it);
+	           event.originY = std::get<2>(*it);
+	           event.targetX = _x;
+	           event.targetY = _y;
+	           event.method = static_cast<DispersalStrategy>(std::get<0>(*it));
+	           event.disperserInfo = "creature_burr_detach";
+	           event.seedViability = 0.85f;  // Good viability for burr dispersal
+	           
+	           events.push_back(event);
+	           it = _attachedBurrs.erase(it);
+	       } else {
+	           // Increment ticks attached
+	           std::get<3>(*it) = ticksAttached + 1;
+	           ++it;
+	       }
+	   }
+	   
+	   return events;
+}
+
+/**
+	* Check if creature has burrs attached.
+	*/
+bool Creature::hasBurrs() const {
+	   return !_attachedBurrs.empty();
+}
+
+/**
+	* Get pending dispersal events from attached burrs.
+	*/
+std::vector<EcoSim::Genetics::DispersalEvent> Creature::getPendingBurrDispersal() const {
+	   using namespace EcoSim::Genetics;
+	   
+	   std::vector<DispersalEvent> events;
+	   
+	   for (const auto& burr : _attachedBurrs) {
+	       DispersalEvent event;
+	       event.originX = std::get<1>(burr);
+	       event.originY = std::get<2>(burr);
+	       event.targetX = _x;  // Current creature position
+	       event.targetY = _y;
+	       event.method = static_cast<DispersalStrategy>(std::get<0>(burr));
+	       event.disperserInfo = "creature_burr_pending";
+	       event.seedViability = 0.85f;
+	       
+	       events.push_back(event);
+	   }
+	   
+	   return events;
+}
+
+/**
+	* Add seeds to gut for digestion and dispersal.
+	*/
+void Creature::consumeSeeds(const EcoSim::Genetics::Plant& plant, int count, float viability) {
+	   if (!_useNewGenetics || !_phenotype) {
+	       return;
+	   }
+	   
+	   // Calculate gut transit time from phenotype
+	   float gutTransit = _phenotype->hasTrait(EcoSim::Genetics::UniversalGenes::GUT_TRANSIT_TIME) ?
+	                      _phenotype->getTrait(EcoSim::Genetics::UniversalGenes::GUT_TRANSIT_TIME) : 6.0f;
+	   
+	   // Convert hours to ticks (assuming ~10 ticks per hour)
+	   int transitTicks = static_cast<int>(gutTransit * 10.0f);
+	   
+	   // Encode origin position as single int for storage
+	   int encodedOrigin = plant.getX() * 10000 + plant.getY();
+	   
+	   // Add each seed to gut
+	   for (int i = 0; i < count; ++i) {
+	       _gutSeeds.push_back(std::make_tuple(encodedOrigin, viability, transitTicks));
+	   }
+}
+
+/**
+	* Process gut seed passage and return dispersal events.
+	*/
+std::vector<EcoSim::Genetics::DispersalEvent> Creature::processGutSeeds(int ticksElapsed) {
+	   using namespace EcoSim::Genetics;
+	   
+	   std::vector<DispersalEvent> events;
+	   
+	   auto it = _gutSeeds.begin();
+	   while (it != _gutSeeds.end()) {
+	       int ticksRemaining = std::get<2>(*it) - ticksElapsed;
+	       
+	       if (ticksRemaining <= 0) {
+	           // Seed is ready to be dispersed
+	           int encodedOrigin = std::get<0>(*it);
+	           float viability = std::get<1>(*it);
+	           
+	           // Decode origin position
+	           int originX = encodedOrigin / 10000;
+	           int originY = encodedOrigin % 10000;
+	           
+	           // Create dispersal event at current creature location
+	           DispersalEvent event;
+	           event.originX = originX;
+	           event.originY = originY;
+	           event.targetX = _x;
+	           event.targetY = _y;
+	           event.method = DispersalStrategy::ANIMAL_FRUIT;
+	           event.disperserInfo = "creature_gut_passage";
+	           
+	           // Viability affected by gut passage
+	           // Optimal transit time (4-12 hours) can improve viability through scarification
+	           float transitHours = (_phenotype && _phenotype->hasTrait(UniversalGenes::GUT_TRANSIT_TIME)) ?
+	                                _phenotype->getTrait(UniversalGenes::GUT_TRANSIT_TIME) : 6.0f;
+	           
+	           if (transitHours >= 4.0f && transitHours <= 12.0f) {
+	               viability = std::min(1.0f, viability * 1.15f);  // Scarification bonus
+	           } else if (transitHours > 12.0f) {
+	               viability *= 0.9f;  // Acid damage
+	           }
+	           
+	           event.seedViability = viability;
+	           events.push_back(event);
+	           
+	           it = _gutSeeds.erase(it);
+	       } else {
+	           // Update remaining time
+	           std::get<2>(*it) = ticksRemaining;
+	           ++it;
+	       }
+	   }
+	   
+	   return events;
 }
 
 //================================================================================
@@ -799,18 +1879,13 @@ Creature Creature::breedCreature (Creature &mate) {
 //================================================================================
 /**
  *  Generates a character representation of a creature based on it's diet.
+ *  DRY refactoring: Now uses centralized DietInfo lookup table.
  *
  *  @param diet The diet used to generate the character.
  *  @return     The character used to represent the creature.
  */
 char Creature::generateChar () {
-  switch (getDiet()) {
-    case Diet::banana:    return 'Q';
-    case Diet::apple:     return '0';
-    case Diet::scavenger: return 'm';
-    case Diet::predator:  return 'M';
-    default:              return '?';
-  }
+  return getDietInfo(getDiet()).character;
 }
 
 /**
@@ -818,18 +1893,12 @@ char Creature::generateChar () {
  *  Not only does this provide some interesting flavour text to the simulation,
  *  it also gives something that is a lot quicker to examine to see if certain
  *  subspecies have become dominant.
+ *  DRY refactoring: Diet prefix now uses centralized DietInfo lookup table.
  *
  *  @return The creatures species name.
  */
 string Creature::generateName () {
-  string name = "";
-
-  switch (getDiet()) {
-    case Diet::banana:    name += "Musa";   break;
-    case Diet::apple:     name += "Malu";   break;
-    case Diet::scavenger: name += "Putre";  break;
-    case Diet::predator:  name += "Caro";   break;
-  };
+  string name = getDietInfo(getDiet()).namePrefix;
 
   if (ifFlocks()) {
     unsigned  flee      = getFlee ();

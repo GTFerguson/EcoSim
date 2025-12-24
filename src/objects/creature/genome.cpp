@@ -480,21 +480,19 @@ float Genome::compare (const Genome &g2) const {
 //================================================================================
 //  To String Methods
 //================================================================================
+// DRY refactoring: Uses centralized DietInfo lookup table instead of switch statements
 Diet Genome::stringToDiet (const string &str) const {
-  if      (str.compare("banana")    == 0)   return Diet::banana;
-  else if (str.compare("apple")     == 0)   return Diet::apple;
-  else if (str.compare("scavenger") == 0)   return Diet::scavenger;
-  else                                      return Diet::predator;
+  // Search through DIET_INFO for matching string value
+  for (size_t i = 0; i < DIET_INFO.size(); ++i) {
+    if (str.compare(DIET_INFO[i].stringValue) == 0) {
+      return static_cast<Diet>(i);
+    }
+  }
+  return Diet::predator;  // Default fallback
 }
 
 string Genome::dietToString () const {
-  switch (_diet) {
-    case Diet::banana:    return "banana";
-    case Diet::apple:     return "apple";
-    case Diet::scavenger: return "scavenger";
-    case Diet::predator:  return "predator";
-    default:              return "error";
-  }
+  return getDietInfo(_diet).stringValue;
 }
 
 /**

@@ -14,9 +14,52 @@
 #include <string>
 #include <random>
 #include <sstream>
+#include <array>
 
 //  Made it an enum class to allow more diets to be added easily
 enum class Diet { banana = 0, apple = 1, scavenger = 2, predator = 3 };
+
+//================================================================================
+//  DietInfo - Centralized Diet-to-X Mappings (DRY Refactoring)
+//================================================================================
+/**
+ *  Consolidates all Diet enum mappings in one place to avoid duplicated
+ *  switch statements across the codebase. Add new diets here only.
+ */
+struct DietInfo {
+    unsigned foodId;           // Food ID for matching food objects
+    char character;            // ASCII representation for rendering
+    const char* namePrefix;    // Species name prefix (latin-style)
+    const char* stringValue;   // Enum string value for serialization
+    const char* displayName;   // Human-readable display name
+};
+
+/**
+ *  Diet lookup table - single source of truth for all diet mappings.
+ *  Indexed by static_cast<size_t>(Diet::xxx) for O(1) lookup.
+ */
+constexpr std::array<DietInfo, 4> DIET_INFO = {{
+    // banana (Herbivore - plant/leaf eater)
+    { 0, 'Q', "Musa",  "banana",    "Herbivore (Banana)" },
+    // apple (Frugivore - fruit eater)
+    { 1, '0', "Malu",  "apple",     "Herbivore (Apple)"  },
+    // scavenger (Scavenger - carrion eater)
+    { 2, 'm', "Putre", "scavenger", "Scavenger"          },
+    // predator (Carnivore - meat eater)
+    { 3, 'M', "Caro",  "predator",  "Predator"           }
+}};
+
+/**
+ *  Safe accessor for DietInfo - returns reference to info struct.
+ *  Falls back to banana (index 0) for invalid diet values.
+ */
+inline const DietInfo& getDietInfo(Diet diet) {
+    size_t index = static_cast<size_t>(diet);
+    if (index >= DIET_INFO.size()) {
+        index = 0;  // Fallback to banana
+    }
+    return DIET_INFO[index];
+}
 
 class Genome {
   private:
