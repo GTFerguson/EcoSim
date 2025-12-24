@@ -478,7 +478,7 @@ bool FileHandling::loadStats (Statistics &stats) {
         unsigned predators  = std::stoul (result.at(index++));
 
         DeathStats ds   = { oldAge, starved, dehydrated, discomfort, predators };
-        GeneralStats gs = { c, pop, births, foodAte, ds };
+        GeneralStats gs = { c, pop, births, foodAte, 0, ds };  // 0 for feeding (legacy saves)
 
         stats.addRecord (gs);
       }

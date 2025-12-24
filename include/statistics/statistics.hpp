@@ -42,7 +42,8 @@ struct GeneralStats {
   Calendar    calendar;   ///< Simulation time when this snapshot was taken
   unsigned    population; ///< Current living population count
   unsigned    births;     ///< Number of births during this period
-  unsigned    foodAte;    ///< Total food consumed by all creatures
+  unsigned    foodAte;    ///< Total food consumed by all creatures (legacy system)
+  unsigned    feeding = 0; ///< Number of genetics-based plant feeding events
   DeathStats  deaths;     ///< Breakdown of deaths by cause during this period
 };
 

@@ -17,10 +17,19 @@
 #include "../include/world/world.hpp"
 #include "../include/fileHandling.hpp"
 #include "../include/calendar.hpp"
+#include "../include/timing.hpp"
 
 // RenderSystem includes - abstract rendering interface
 #include "../include/rendering/RenderSystem.hpp"
 #include "../include/rendering/RenderTypes.hpp"
+
+// Genetics system integration (Phase 2.4)
+#include "../include/genetics/defaults/UniversalGenes.hpp"
+#include "../include/genetics/organisms/PlantFactory.hpp"
+#include "../include/genetics/organisms/CreatureFactory.hpp"
+
+// Logging system for diagnostics
+#include "../include/logging/Logger.hpp"
 
 #include <stdlib.h>
 #include <random>
@@ -37,7 +46,10 @@ using namespace std;
 //================================================================================
 //  General simulation constants
 //================================================================================
-const static unsigned TICK_RATE               = 1;
+// Simulation speed: 1 tick per second (1000ms per tick)
+// 1 real second = 1 game minute (calendar advances 1 minute per tick)
+// Use EcoSim::Timing::SimulationSpeed for predefined speeds
+const static double   SIMULATION_TICK_MS      = EcoSim::Timing::SimulationSpeed::NORMAL;  // 1000ms
 const static unsigned INITIAL_POPULATION      = 200;
 const static float    STARTING_RESOURCE_MIN   = 4.0f;
 const static float    STARTING_RESOURCE_MAX   = 10.0f;
@@ -71,6 +83,25 @@ const static unsigned BANANA_MIN_ALTITUDE     = 160;
 const static unsigned BANANA_MAX_ALTITUDE     = 170;
 const static float    CORPSE_CALS             = 1.0f;
 const static unsigned CORPSE_LIFESPAN         = 2000;
+
+//================================================================================
+//  Genetics-based Plant Constants (Phase 2.4)
+//================================================================================
+const static unsigned GRASS_MIN_ALTITUDE      = 165;
+const static unsigned GRASS_MAX_ALTITUDE      = 200;
+const static unsigned GRASS_SPAWN_RATE        = 5;
+
+const static unsigned BERRY_MIN_ALTITUDE      = 170;
+const static unsigned BERRY_MAX_ALTITUDE      = 190;
+const static unsigned BERRY_SPAWN_RATE        = 3;
+
+const static unsigned OAK_MIN_ALTITUDE        = 175;
+const static unsigned OAK_MAX_ALTITUDE        = 195;
+const static unsigned OAK_SPAWN_RATE          = 2;
+
+const static unsigned THORN_MIN_ALTITUDE      = 160;
+const static unsigned THORN_MAX_ALTITUDE      = 175;
+const static unsigned THORN_SPAWN_RATE        = 2;
 
 //================================================================================
 //  UI Constants
@@ -211,7 +242,7 @@ void renderHUDDisplay(const Calendar& calendar,
   hudData.worldHeight = MAP_ROWS;
   hudData.viewportX = viewport.originX;
   hudData.viewportY = viewport.originY;
-  hudData.tickRate = TICK_RATE;
+  hudData.tickRate = static_cast<unsigned>(1000.0 / SIMULATION_TICK_MS);  // Ticks per second
   hudData.paused = paused;
   
   renderer.renderHUD(hudData);
@@ -235,13 +266,24 @@ void takeTurn (World &w, GeneralStats &gs, vector<Creature> &c,
 
   short dc = activeC->deathCheck();
   if (dc != 0) {
-    //  Record death statistic
+    //  Record death statistic and determine cause string for logging
+    std::string deathCause;
     switch (dc) {
-      case 1: gs.deaths.oldAge++;     break;
-      case 2: gs.deaths.starved++;    break;
-      case 3: gs.deaths.dehydrated++; break;
-      case 4: gs.deaths.discomfort++; break;
+      case 1: gs.deaths.oldAge++;     deathCause = "old_age";     break;
+      case 2: gs.deaths.starved++;    deathCause = "starvation";  break;
+      case 3: gs.deaths.dehydrated++; deathCause = "dehydration"; break;
+      case 4: gs.deaths.discomfort++; deathCause = "discomfort";  break;
+      default: deathCause = "unknown"; break;
     }
+    
+    // Log the death event
+    logging::Logger::getInstance().creatureDied(
+      activeC->getId(),
+      activeC->generateName(),
+      deathCause,
+      activeC->getHunger(),
+      activeC->getAge()
+    );
 
     //  Create and add corpse
     float calories = CORPSE_CALS + activeC->getHunger();
@@ -275,6 +317,20 @@ void takeTurn (World &w, GeneralStats &gs, vector<Creature> &c,
 void advanceSimulation (World &w, vector<Creature> &c, GeneralStats &gs) {
   //  Push simulation forward
   w.updateAllObjects ();
+  
+  // Update scent layer for pheromone decay (Phase 2: Sensory System)
+  w.updateScentLayer();
+  
+  // PRE-PASS: Have ALL breeding creatures deposit scents BEFORE any creature acts
+  // This ensures scents from all potential mates are available during detection
+  // (Phase 2: Gradient Navigation)
+  unsigned int currentTick = w.getCurrentTick();
+  for (auto& creature : c) {
+    if (creature.getProfile() == Profile::breed) {
+      creature.depositBreedingScent(w.getScentLayer(), currentTick);
+    }
+  }
+  
   //  Iterate in reverse to safely handle creature removal during iteration
   //  When a creature is erased, only indices after it shift, so iterating
   //  backwards ensures we don't skip any creatures
@@ -286,45 +342,85 @@ void advanceSimulation (World &w, vector<Creature> &c, GeneralStats &gs) {
 
 /**
  * This method creates an initial population of creatures and
- * adds them to the world.
+ * adds them to the world using the CreatureFactory for ecological balance.
+ *
+ * Population distribution (to match plant ecosystem):
+ * - 40% Grazers (herbivores eating grass/leaves)
+ * - 25% Browsers (herbivores eating fruits/berries)
+ * - 10% Hunters (carnivores)
+ * - 10% Foragers (omnivores)
+ * - 5% Scavengers (carrion specialists)
+ * - 10% Random (for genetic diversity)
  *
  * @param w       A reference to the world map.
- * @param c	      A vector containing all of the creatures.
+ * @param c       A vector containing all of the creatures.
  * @param amount  The amount of creatures to be added.
  */
 void populateWorld (World &w, vector<Creature> &c, unsigned amount) {
   uniform_int_distribution<int> colDis (0, MAP_COLS-1);
   uniform_int_distribution<int> rowDis (0, MAP_ROWS-1);
-  uniform_real_distribution<float> dis (STARTING_RESOURCE_MIN, STARTING_RESOURCE_MAX);
   
   //  Maximum attempts to find a passable tile before giving up
   //  Prevents infinite loop if world has no passable tiles
   const unsigned MAX_ATTEMPTS = 10000;
   RandomGenerator& rng = RandomGenerator::instance();
-
-	for (unsigned i = 0; i < amount; i++) {
-		int x, y;
-		unsigned attempts = 0;
-		do {
-			x = rng.generate(colDis);
-			y = rng.generate(rowDis);
-			if (++attempts > MAX_ATTEMPTS) {
-			  //  Could not find passable tile - stop adding more creatures
-			  return;
-			}
-		} while (w.getGrid().at(x).at(y).isPassable() == false);
-
-    //  Randomise needs
-    float hunger  = rng.generate(dis);
-    float thirst  = rng.generate(dis);
-    //  Randomise genetics
-    Genome g;
-    g.randomise ();
-    g.setDiet (Diet::apple);
-    Creature newC (x, y, hunger, thirst, g);
-
-		c.push_back (newC);
-	}
+  
+  // Create creature factory with gene registry
+  // Note: CreatureFactory constructor handles registering UniversalGenes defaults
+  auto registry = std::make_shared<EcoSim::Genetics::GeneRegistry>();
+  EcoSim::Genetics::CreatureFactory factory(registry);
+  factory.registerDefaultTemplates();
+  
+  // Calculate population distribution
+  // Mostly herbivores, with carnivores and omnivores representation
+  unsigned grazers = static_cast<unsigned>(amount * 0.40);   // 40% grazers
+  unsigned browsers = static_cast<unsigned>(amount * 0.25);  // 25% browsers
+  unsigned hunters = static_cast<unsigned>(amount * 0.10);   // 10% hunters
+  unsigned foragers = static_cast<unsigned>(amount * 0.10);  // 10% foragers
+  unsigned scavengers = static_cast<unsigned>(amount * 0.05); // 5% scavengers
+  unsigned randoms = amount - grazers - browsers - hunters - foragers - scavengers; // Rest random
+  
+  // Template spawn order with counts
+  std::vector<std::pair<std::string, unsigned>> spawnOrder = {
+    {"grazer", grazers},
+    {"browser", browsers},
+    {"hunter", hunters},
+    {"forager", foragers},
+    {"scavenger", scavengers},
+    {"", randoms}  // Empty string means random creature
+  };
+  
+  std::cout << "[World] Populating with " << amount << " creatures:" << std::endl;
+  std::cout << "  - Grazers: " << grazers << std::endl;
+  std::cout << "  - Browsers: " << browsers << std::endl;
+  std::cout << "  - Hunters: " << hunters << std::endl;
+  std::cout << "  - Foragers: " << foragers << std::endl;
+  std::cout << "  - Scavengers: " << scavengers << std::endl;
+  std::cout << "  - Random: " << randoms << std::endl;
+  
+  for (const auto& [templateName, count] : spawnOrder) {
+    for (unsigned i = 0; i < count; i++) {
+      int x, y;
+      unsigned attempts = 0;
+      do {
+        x = rng.generate(colDis);
+        y = rng.generate(rowDis);
+        if (++attempts > MAX_ATTEMPTS) {
+          std::cerr << "[World] Warning: Could not find passable tile for creature" << std::endl;
+          return;
+        }
+      } while (w.getGrid().at(x).at(y).isPassable() == false);
+      
+      // Create creature from template or random
+      Creature newC = templateName.empty()
+        ? factory.createRandom(x, y)
+        : factory.createFromTemplate(templateName, x, y);
+      
+      c.push_back(std::move(newC));
+    }
+  }
+  
+  std::cout << "[World] Successfully added " << c.size() << " creatures" << std::endl;
 }
 
 //================================================================================
@@ -409,6 +505,20 @@ void takeInput(World& w,
       
     case InputAction::QUIT:
       settings.alive = false;
+      return;
+      
+    case InputAction::ZOOM_IN:
+      {
+        IRenderer& renderer = RenderSystem::getInstance().getRenderer();
+        renderer.zoomIn();
+      }
+      return;
+      
+    case InputAction::ZOOM_OUT:
+      {
+        IRenderer& renderer = RenderSystem::getInstance().getRenderer();
+        renderer.zoomOut();
+      }
       return;
       
     default:
@@ -726,6 +836,25 @@ void addFoodSpawners (World &w) {
 }
 
 /**
+ *  Initializes the genetics system and adds genetics-based plants.
+ *  This supplements the existing spawner system with Phase 2.4 genetics plants.
+ */
+void addGeneticsPlants(World& w) {
+  // Initialize the genetics plant system
+  w.initializeGeneticsPlants();
+  
+  // Add genetics-based plants by species and elevation range
+  w.addGeneticsPlants(GRASS_MIN_ALTITUDE, GRASS_MAX_ALTITUDE,
+                      GRASS_SPAWN_RATE, "grass");
+  w.addGeneticsPlants(BERRY_MIN_ALTITUDE, BERRY_MAX_ALTITUDE,
+                      BERRY_SPAWN_RATE, "berry_bush");
+  w.addGeneticsPlants(OAK_MIN_ALTITUDE, OAK_MAX_ALTITUDE,
+                      OAK_SPAWN_RATE, "oak_tree");
+  w.addGeneticsPlants(THORN_MIN_ALTITUDE, THORN_MAX_ALTITUDE,
+                      THORN_SPAWN_RATE, "thorn_bush");
+}
+
+/**
  *  Handles the New World menu option.
  *  Uses the RenderSystem interface.
  */
@@ -743,8 +872,11 @@ void handleNewWorld(World& w, vector<Creature>& creatures,
   // Add Creatures
   populateWorld(w, creatures, INITIAL_POPULATION);
   
-  // Add food spawners
+  // Add food spawners (legacy system)
   addFoodSpawners(w);
+  
+  // Add genetics-based plants (Phase 2.4)
+  addGeneticsPlants(w);
 }
 
 /**
@@ -800,23 +932,35 @@ void processStatistics (Statistics &stats, Calendar &calendar,
 }
 
 /**
- *  Runs the main game loop.
+ *  Runs the main game loop using the "Fix Your Timestep" pattern.
  *  Uses the RenderSystem interface.
  *
- *  Input handling is decoupled from simulation advancement:
- *  - Input is polled EVERY frame (allows camera movement when paused)
- *  - Simulation advances ONLY when not paused
- *  - Rendering happens EVERY frame
+ *  This implements a proper game loop where:
+ *  - Input is polled EVERY frame (responsive controls, no lag)
+ *  - Simulation runs at a FIXED timestep (consistent physics/AI)
+ *  - Rendering happens EVERY frame (smooth visuals)
+ *
+ *  The fixed timestep ensures simulation consistency regardless of frame rate,
+ *  while input and rendering remain responsive.
+ *
+ *  @see include/timing.hpp for timing utilities and constants
  */
 void runGameLoop(World& w, vector<Creature>& creatures,
                  Calendar& calendar, Statistics& stats, FileHandling& file,
                  int& xOrigin, int& yOrigin, Settings& settings) {
   IRenderer& renderer = RenderSystem::getInstance().getRenderer();
   
+  // Initialize the game clock for fixed timestep timing
+  EcoSim::Timing::GameClock gameClock(SIMULATION_TICK_MS);
+  gameClock.start();
+  
   // Statistics tracking - persists across pause/unpause
   GeneralStats gs = { calendar, 0, 0, 0, 0 };
   
   while (settings.alive) {
+    // Update timing at the start of each frame
+    gameClock.tick();
+    
     unsigned mapHeight = renderer.getViewportMaxHeight();
     unsigned mapWidth = renderer.getViewportMaxWidth();
     int startx = renderer.getScreenCenterX() - mapWidth / 2;
@@ -831,28 +975,76 @@ void runGameLoop(World& w, vector<Creature>& creatures,
     viewport.screenX = startx;
     viewport.screenY = starty;
 
-    // ALWAYS poll input - allows camera movement regardless of pause state
+    // =========================================================================
+    // 1. PROCESS INPUT (every frame - responsive controls)
+    // =========================================================================
+    // Input is polled every frame regardless of simulation state.
+    // This ensures viewport movement and UI controls feel responsive.
     takeInput(w, creatures, calendar, stats, file,
               xOrigin, yOrigin, settings, mapHeight, mapWidth);
 
-    // ONLY advance simulation when NOT paused
+    // =========================================================================
+    // 2. UPDATE SIMULATION (fixed timestep - consistent simulation)
+    // =========================================================================
+    // Simulation only advances when not paused.
+    // Uses accumulator pattern to run multiple ticks if frame was slow,
+    // or skip ticks if frame was fast, maintaining consistent simulation speed.
+    // Track tick count for logging
+    static int tickCount = 0;
+    
     if (!settings.isPaused) {
-      gs = { calendar, 0, 0, 0, 0 };  // Reset stats for this tick
-      advanceSimulation(w, creatures, gs);
-      processStatistics(stats, calendar, file, creatures, gs);
-      calendar++;
+      while (gameClock.shouldUpdate()) {
+        // Set current tick for the logger
+        logging::Logger::getInstance().setCurrentTick(tickCount);
+        
+        gs = { calendar, 0, 0, 0, 0 };  // Reset stats for this tick
+        advanceSimulation(w, creatures, gs);
+        processStatistics(stats, calendar, file, creatures, gs);
+        
+        // Population snapshot every 20 ticks
+        if (tickCount % 20 == 0) {
+          logging::Logger::getInstance().populationSnapshot(
+            tickCount,
+            static_cast<int>(creatures.size()),
+            0,  // plant count - would need to iterate tiles to count
+            0   // food count - not tracked separately
+          );
+        }
+        
+        // Check for extinction
+        if (creatures.empty()) {
+          logging::Logger::getInstance().extinction("creatures");
+        }
+        
+        // Signal tick completion (flushes logs)
+        logging::Logger::getInstance().onTickEnd();
+        
+        calendar++;
+        tickCount++;
+        gameClock.consumeTick();
+      }
+    } else {
+      // When paused, still consume accumulated time to prevent
+      // simulation "catching up" when unpaused
+      while (gameClock.shouldUpdate()) {
+        gameClock.consumeTick();
+      }
     }
 
-    // ALWAYS render current state
+    // =========================================================================
+    // 3. RENDER (every frame - smooth visuals)
+    // =========================================================================
     renderer.beginFrame();
     renderWorldAndCreatures(w, creatures, viewport);
     if (settings.hudIsOn)
       renderHUDDisplay(calendar, gs, creatures, viewport, settings.isPaused);
     renderer.endFrame();
     
-    // Frame timing - prevent the loop from running too fast
-    // This ensures consistent simulation speed regardless of input
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));  // ~100 FPS max
+    // Note: No sleep_for() here! The fixed timestep pattern naturally
+    // handles frame pacing. The loop will run as fast as possible for
+    // responsive input, while simulation stays at fixed rate.
+    // If CPU usage is a concern, a small sleep can be added, but it
+    // should be minimal (1-2ms) to avoid input lag.
   }
 }
 
@@ -870,7 +1062,10 @@ int main() {
   // Initialize the render system
   RenderConfig config;
   config.backend = RenderBackend::BACKEND_AUTO;
-  config.inputDelayMs = TICK_RATE * 100;  // Convert to milliseconds
+  // Note: inputDelayMs is no longer used for simulation timing.
+  // The fixed timestep pattern in runGameLoop handles simulation pacing.
+  // Input delay is set to 0 for maximum responsiveness.
+  config.inputDelayMs = 0;
   config.targetFPS = 60;
   
   if (!RenderSystem::initialize(config)) {
@@ -881,8 +1076,13 @@ int main() {
   IRenderer& renderer = RenderSystem::getInstance().getRenderer();
   IInputHandler& input = RenderSystem::getInstance().getInputHandler();
   
-  // Set up input delay for simulation tick rate
-  input.setInputDelay(TICK_RATE * 100);
+  // Input delay is set to 0 for immediate, responsive input.
+  // Simulation pacing is handled by the GameClock in runGameLoop.
+  input.setInputDelay(0);
+  
+  // Initialize the creature gene registry before any creatures are created
+  // This ensures the new genetics system is ready for creature-plant interactions
+  Creature::initializeGeneRegistry();
   
   World w = initializeWorld();
 
