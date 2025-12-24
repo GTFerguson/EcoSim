@@ -96,8 +96,16 @@ class Creature: public GameObject {
     //  DRY refactoring: Sense enhancement constants
     const static float COLOR_VISION_RANGE_BONUS;
     const static float SCENT_DETECTION_RANGE_BONUS;
+    
+    //  Movement system constants (Phase 1: Float Movement)
+    const static float BASE_MOVEMENT_SPEED;   // Base speed multiplier
+    const static float MIN_MOVEMENT_SPEED;    // Minimum speed floor
+    const static float DEFAULT_LEG_LENGTH;    // Default leg length for creatures without gene
+    const static float DEFAULT_BODY_MASS;     // Default body mass for creatures without gene
+    
     //  State Variables
-    int       _x, _y;
+    //  Float-based world coordinates (Phase 1: Float Movement System)
+    float     _worldX, _worldY;   // Precise position in world coordinates
     unsigned  _age;
     int       _id;  // Unique creature ID for logging
     Direction _direction;
@@ -237,6 +245,28 @@ class Creature: public GameObject {
     void setXY      (int x, int y);
     void setX       (int x);
     void setY       (int y);
+    
+    //============================================================================
+    //  Float Position Setters (Phase 1: Float Movement System)
+    //============================================================================
+    /**
+     * @brief Set precise world coordinates.
+     * @param x Float x-coordinate in world space
+     * @param y Float y-coordinate in world space
+     */
+    void setWorldPosition(float x, float y);
+    
+    /**
+     * @brief Set precise world X coordinate.
+     * @param x Float x-coordinate in world space
+     */
+    void setWorldX(float x);
+    
+    /**
+     * @brief Set precise world Y coordinate.
+     * @param y Float y-coordinate in world space
+     */
+    void setWorldY(float y);
 
     //============================================================================
     //  Getters
@@ -254,6 +284,42 @@ class Creature: public GameObject {
     int       getY          () const;
     Direction getDirection  () const;
     Profile   getProfile    () const;
+    
+    //============================================================================
+    //  Float Position Getters (Phase 1: Float Movement System)
+    //============================================================================
+    /**
+     * @brief Get precise world X coordinate.
+     * @return Float x-coordinate in world space
+     */
+    float getWorldX() const;
+    
+    /**
+     * @brief Get precise world Y coordinate.
+     * @return Float y-coordinate in world space
+     */
+    float getWorldY() const;
+    
+    /**
+     * @brief Get tile X coordinate (integer, for rendering/collision).
+     *        Derives from world coordinates via truncation.
+     * @return Integer tile x-coordinate
+     */
+    int tileX() const;
+    
+    /**
+     * @brief Get tile Y coordinate (integer, for rendering/collision).
+     *        Derives from world coordinates via truncation.
+     * @return Integer tile y-coordinate
+     */
+    int tileY() const;
+    
+    /**
+     * @brief Calculate movement speed based on genes.
+     *        Formula: baseSpeed = (MOVEMENT_SPEED * LEG_LENGTH) / sqrt(MASS)
+     * @return Calculated movement speed (tiles per tick)
+     */
+    float getMovementSpeed() const;
     //  Genome Getters (CREATURE-010 fix: return by const reference)
     const Genome& getGenome () const;
     unsigned  getLifespan   () const;

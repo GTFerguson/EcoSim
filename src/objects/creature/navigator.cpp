@@ -246,8 +246,9 @@ bool Navigator::astarSearch (Creature &c,
 }
 
 /**
- *  This method makes a creature move in a random direction.
+ *  This method makes a creature move in a random direction using smooth movement.
  *  (CREATURE-009 fix: Uses static random engine instead of recreating each call)
+ *  Phase 1: Float Movement System - creatures now move smoothly in random directions.
  *
  *  @param c    The creature moving.
  *  @param map  A reference to the 2D grid of the world.
@@ -260,18 +261,18 @@ void Navigator::wander (Creature &c,
                         const unsigned cols) {
   static uniform_int_distribution<short> change(-1, 1);
 
-	int x = c.getX() + (change(s_wanderGen));
-	int y = c.getY() + (change(s_wanderGen));
-  moveTowards (c, map, rows, cols, x, y);
+	int targetTileX = c.tileX() + (change(s_wanderGen));
+	int targetTileY = c.tileY() + (change(s_wanderGen));
+  moveTowards (c, map, rows, cols, targetTileX, targetTileY);
 }
 
-// TODO Allow movement as float values to enable creatures to move
-//      in the spaces between grid squares.
 /**
- *  Simply moves the creature towards a target.
+ *  Simply moves the creature towards a target using smooth float movement.
+ *  Phase 1: Float Movement System - creatures now move gradually toward
+ *  their target tile, with movement speed determined by getMovementSpeed().
  *
- *  @param goalX  x pos of the target.
- *  @param goalY  y pos of the target.
+ *  @param goalX  x pos of the target tile.
+ *  @param goalY  y pos of the target tile.
  */
 void Navigator::moveTowards (Creature &c,
                              const vector<vector<Tile>> &map,
@@ -279,32 +280,20 @@ void Navigator::moveTowards (Creature &c,
                              const int &cols,
                              const int &goalX,
                              const int &goalY) {
-  int xChange =  0;
-  int yChange =  0;
-  int newX    = c.getX();
-  int newY    = c.getY();
-
-  //  Movement along X-Axis
-  if      (goalX > c.getX()) { newX++; xChange =  1; }
-  else if (goalX < c.getX()) { newX--; xChange = -1; }
-  //  Movement along Y-Axis
-  if      (goalY > c.getY()) { newY++; yChange =  1; }
-  else if (goalY < c.getY()) { newY--; yChange = -1; }
-
-  if (boundaryCheck(newX, newY, rows, cols)) {
-      if (map.at(newX).at(newY).isPassable()) {
-        // CREATURE-019 fix: Calculate distance BEFORE updating position
-        // Previously calculated after setX/setY which always gave ~0 distance
-        float dist = c.calculateDistance(newX, newY);
-        c.setX(newX); c.setY(newY);
-        c.movementCost    (dist);
-        c.changeDirection (xChange, yChange);
-    }
-  }
+  // Calculate the target position as the center of the goal tile
+  // This gives a smooth movement toward the tile center
+  float targetX = static_cast<float>(goalX) + 0.5f;
+  float targetY = static_cast<float>(goalY) + 0.5f;
+  
+  // Use smooth movement to gradually approach the target
+  // deltaTime = 1.0 (one tick) by default
+  moveSmooth(c, map, rows, cols, targetX, targetY, 1.0f);
 }
 
 /**
- *  Simply moves the creature away from the target.
+ *  Simply moves the creature away from the target using smooth float movement.
+ *  Phase 1: Float Movement System - creatures now move gradually away from
+ *  threats, with movement speed determined by getMovementSpeed().
  *
  *  @param avoidX X-position to move away from.
  *  @param avoidY y-position to move away from.
@@ -315,32 +304,120 @@ void Navigator::moveAway (Creature &c,
                           const int &cols,
                           const int &avoidX,
                           const int &avoidY) {
-  int xChange = 0;
-  int yChange = 0;
-  int newX = c.getX();
-  int newY = c.getY();
+  int curTileX = c.tileX();
+  int curTileY = c.tileY();
 
-  //  If at same location
-  if (avoidX == newX && avoidY == newY) {
+  //  If at same tile location, wander randomly
+  if (avoidX == curTileX && avoidY == curTileY) {
     wander (c, map, rows, cols);
 
   } else {
-    //  Movement along X-Axis
-    if      (avoidX < newX) { newX++; xChange =  1; }
-    else if (avoidX > newX) { newX--; xChange = -1; }
-    //  Movement along Y-Axis
-    if      (avoidY < newY) { newY++; yChange =  1; }
-    else if (avoidY > newY) { newY--; yChange = -1; }
+    // Calculate target tile (opposite direction from threat)
+    int targetTileX = curTileX;
+    int targetTileY = curTileY;
+    
+    //  Movement along X-Axis (away from avoidX)
+    if      (avoidX < curTileX) { targetTileX++; }
+    else if (avoidX > curTileX) { targetTileX--; }
+    //  Movement along Y-Axis (away from avoidY)
+    if      (avoidY < curTileY) { targetTileY++; }
+    else if (avoidY > curTileY) { targetTileY--; }
 
-    if (boundaryCheck(newX, newY, rows, cols)) {
-      if (map.at(newX).at(newY).isPassable()) {
-        // CREATURE-019 fix: Calculate distance BEFORE updating position
-        // Previously calculated after setX/setY which always gave ~0 distance
-        float dist = c.calculateDistance(newX, newY);
-        c.setX(newX); c.setY(newY);
-        c.movementCost    (dist);
-        c.changeDirection (xChange, yChange);
+    if (boundaryCheck(targetTileX, targetTileY, rows, cols)) {
+      if (map.at(targetTileX).at(targetTileY).isPassable()) {
+        // Calculate target as center of target tile
+        float targetX = static_cast<float>(targetTileX) + 0.5f;
+        float targetY = static_cast<float>(targetTileY) + 0.5f;
+        
+        // Use smooth movement
+        moveSmooth(c, map, rows, cols, targetX, targetY, 1.0f);
       }
     }
   }
+}
+
+//================================================================================
+//  Smooth Float Movement (Phase 1: Float Movement System)
+//================================================================================
+
+/**
+ *  Move creature smoothly toward a target position using float coordinates.
+ *  Movement is based on creature's getMovementSpeed() gene-derived value.
+ *  Creature moves fractionally each tick, enabling visible speed differences.
+ *
+ *  @param c        Creature to move
+ *  @param map      World grid for collision checking
+ *  @param rows     Number of rows in map
+ *  @param cols     Number of columns in map
+ *  @param targetX  Target X coordinate (float, world space)
+ *  @param targetY  Target Y coordinate (float, world space)
+ *  @param deltaTime Time elapsed since last update (typically 1.0 per tick)
+ *  @return         true if creature reached target (within arrival threshold)
+ */
+bool Navigator::moveSmooth(Creature &c,
+                           const vector<vector<Tile>> &map,
+                           const int &rows,
+                           const int &cols,
+                           float targetX,
+                           float targetY,
+                           float deltaTime) {
+  // Arrival threshold - consider "arrived" if within this distance
+  constexpr float ARRIVAL_THRESHOLD = 0.1f;
+  
+  // Get current position
+  float curX = c.getWorldX();
+  float curY = c.getWorldY();
+  
+  // Calculate direction vector to target
+  float dx = targetX - curX;
+  float dy = targetY - curY;
+  float dist = sqrt(dx * dx + dy * dy);
+  
+  // Check if already at target
+  if (dist <= ARRIVAL_THRESHOLD) {
+    return true;  // Arrived
+  }
+  
+  // Calculate movement amount based on speed and deltaTime
+  float speed = c.getMovementSpeed();
+  float moveAmount = std::min(speed * deltaTime, dist);  // Don't overshoot
+  
+  // Normalize direction and calculate new position
+  float normX = dx / dist;
+  float normY = dy / dist;
+  float newWorldX = curX + normX * moveAmount;
+  float newWorldY = curY + normY * moveAmount;
+  
+  // Check if new tile position is valid (for collision)
+  int newTileX = static_cast<int>(newWorldX);
+  int newTileY = static_cast<int>(newWorldY);
+  int curTileX = static_cast<int>(curX);
+  int curTileY = static_cast<int>(curY);
+  
+  // If moving to a new tile, check passability
+  if (newTileX != curTileX || newTileY != curTileY) {
+    // Boundary check
+    if (!boundaryCheck(newTileX, newTileY, rows, cols)) {
+      return false;  // Can't move - out of bounds
+    }
+    
+    // Passability check
+    if (!map.at(newTileX).at(newTileY).isPassable()) {
+      return false;  // Can't move - blocked
+    }
+  }
+  
+  // Update creature position using float coordinates
+  c.setWorldPosition(newWorldX, newWorldY);
+  
+  // Apply movement cost
+  c.movementCost(moveAmount);
+  
+  // Update direction for animation/prediction
+  int xChange = (dx > 0.1f) ? 1 : (dx < -0.1f) ? -1 : 0;
+  int yChange = (dy > 0.1f) ? 1 : (dy < -0.1f) ? -1 : 0;
+  c.changeDirection(xChange, yChange);
+  
+  // Return whether we've arrived
+  return (dist - moveAmount) <= ARRIVAL_THRESHOLD;
 }

@@ -313,7 +313,7 @@ void SDL2Renderer::renderCreatures(const std::vector<Creature>& creatures,
     // Store reference to creatures for ImGui overlay
     _currentCreatures = &creatures;
     
-    // Calculate boundaries
+    // Calculate boundaries (in tile units for visibility check)
     int xRange = viewport.originX + viewport.width;
     int yRange = viewport.originY + viewport.height;
     // Convert from tile units to pixels (same as renderWorld)
@@ -330,22 +330,31 @@ void SDL2Renderer::renderCreatures(const std::vector<Creature>& creatures,
     
     for (size_t idx = 0; idx < creatures.size(); idx++) {
         const Creature& creature = creatures[idx];
-        int cX = creature.getX();
-        int cY = creature.getY();
         
-        // Check if creature is within the shown area of the map
-        if (cX >= viewport.originX && cX < xRange &&
-            cY >= viewport.originY && cY < yRange) {
+        // Use float world coordinates for smooth sub-tile rendering
+        float worldX = creature.getWorldX();
+        float worldY = creature.getWorldY();
+        int tileX = static_cast<int>(worldX);
+        int tileY = static_cast<int>(worldY);
+        
+        // Check if creature is within the shown area of the map (use tile coords for bounds check)
+        if (tileX >= viewport.originX && tileX < xRange &&
+            tileY >= viewport.originY && tileY < yRange) {
             
-            // Calculate screen position (offset already in pixels, add tile offset)
-            int screenX = baseScreenX + (cX - viewport.originX) * _tileSize;
-            int screenY = baseScreenY + (cY - viewport.originY) * _tileSize;
+            // Calculate screen position using float world coordinates for sub-tile positioning
+            // This allows creatures to render at positions between tiles
+            float screenX = baseScreenX + (worldX - viewport.originX) * _tileSize;
+            float screenY = baseScreenY + (worldY - viewport.originY) * _tileSize;
+            
+            // Convert to int for SDL rendering (SDL2 still uses integer pixels)
+            int pixelX = static_cast<int>(screenX);
+            int pixelY = static_cast<int>(screenY);
             
             // Special rendering for selected creature
             if (static_cast<int>(idx) == selectedId) {
-                renderSelectedCreature(creature, screenX, screenY);
+                renderSelectedCreature(creature, pixelX, pixelY);
             } else {
-                renderCreature(creature, screenX, screenY);
+                renderCreature(creature, pixelX, pixelY);
             }
         }
     }

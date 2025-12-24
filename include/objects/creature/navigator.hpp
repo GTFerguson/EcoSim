@@ -162,23 +162,47 @@ class Navigator {
     static bool astarSearch     (Creature &c,
                                  const std::vector<std::vector<Tile>> &map,
                                  const int &rows,
-                                 const int &cols, 
+                                 const int &cols,
                                  const int &endX,
                                  const int &endY);
     static void wander          (Creature &c, const std::vector<std::vector<Tile>> &map,
                                  const unsigned rows, const unsigned cols);
-    static void moveTowards     (Creature &c, 
+    static void moveTowards     (Creature &c,
                                  const std::vector<std::vector<Tile>> &map,
                                  const int &rows,
                                  const int &cols,
                                  const int &goalX,
                                  const int &goalY);
-    static void moveAway        (Creature &c, 
+    static void moveAway        (Creature &c,
                                  const std::vector<std::vector<Tile>> &map,
                                  const int &rows,
                                  const int &cols,
                                  const int &awayX,
-                                 const int &awayY); 
+                                 const int &awayY);
+    
+    //============================================================================
+    //  Smooth Float Movement (Phase 1: Float Movement System)
+    //============================================================================
+    /**
+     * @brief Move creature smoothly toward a target position using float coordinates.
+     *        Movement is based on creature's getMovementSpeed() and deltaTime.
+     *
+     * @param c Creature to move
+     * @param map World grid for collision checking
+     * @param rows Number of rows in map
+     * @param cols Number of columns in map
+     * @param targetX Target X coordinate (float, world space)
+     * @param targetY Target Y coordinate (float, world space)
+     * @param deltaTime Time elapsed since last update (in ticks, typically 1.0)
+     * @return true if creature reached target (within small epsilon)
+     */
+    static bool moveSmooth      (Creature &c,
+                                 const std::vector<std::vector<Tile>> &map,
+                                 const int &rows,
+                                 const int &cols,
+                                 float targetX,
+                                 float targetY,
+                                 float deltaTime = 1.0f);
 };
 
 #endif

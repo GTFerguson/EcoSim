@@ -69,6 +69,12 @@ const float Creature::SEEKING_FOOD_MATE_PENALTY     = 0.5f;    // Comfort reduct
 const float Creature::COLOR_VISION_RANGE_BONUS      = 0.3f;    // Range bonus from color vision
 const float Creature::SCENT_DETECTION_RANGE_BONUS   = 0.5f;    // Range bonus from scent detection
 
+//  Movement system constants (Phase 1: Float Movement)
+const float Creature::BASE_MOVEMENT_SPEED           = 0.5f;    // Base speed multiplier (tiles per tick)
+const float Creature::MIN_MOVEMENT_SPEED            = 0.1f;    // Minimum speed floor
+const float Creature::DEFAULT_LEG_LENGTH            = 0.5f;    // Default leg length for creatures without gene
+const float Creature::DEFAULT_BODY_MASS             = 1.0f;    // Default body mass for creatures without gene
+
 //================================================================================
 //  Constructor
 //================================================================================
@@ -87,8 +93,9 @@ Creature::Creature (const int &x,
                     const float &hunger,
                     const float &thirst,
                     const Genome &genome) {
-  //  State Variables
-  _x = x; _y = y;
+  //  State Variables - Float position system (Phase 1)
+  _worldX = static_cast<float>(x);
+  _worldY = static_cast<float>(y);
   _age = 0;
   _id = s_nextCreatureId++;
 
@@ -119,8 +126,9 @@ Creature::Creature (const int &x,
  *  @param genome This is a collection of the creatures genetic makeup.
  */
 Creature::Creature (const int &x, const int &y, const Genome &genome) {
-  //  State Variables
-  _x = x; _y = y;
+  //  State Variables - Float position system (Phase 1)
+  _worldX = static_cast<float>(x);
+  _worldY = static_cast<float>(y);
   _age = 0;
   _id = s_nextCreatureId++;
 
@@ -180,8 +188,9 @@ Creature::Creature (const string &name,
                     const Genome &genome)
                     : GameObject (name, desc, passable, character, colour) {
   // CREATURE-023 fix: Add input validation for file-loaded data
-  //  State Variables (with basic validation)
-  _x = x; _y = y;
+  //  State Variables (with basic validation) - Float position system (Phase 1)
+  _worldX = static_cast<float>(x);
+  _worldY = static_cast<float>(y);
   _age        = age;  // Validated against genome.getLifespan() in deathCheck()
   _id = s_nextCreatureId++;
   _profile    = stringToProfile   (profile);
@@ -211,8 +220,9 @@ Creature::Creature (const string &name,
  */
 Creature::Creature(const Creature& other)
     : GameObject(other),
-      _x(other._x), _y(other._y),
+      _worldX(other._worldX), _worldY(other._worldY),
       _age(other._age),
+      _id(other._id),  // CREATURE-024 fix: Copy ID to prevent garbage values after vector resize
       _direction(other._direction),
       _profile(other._profile),
       _hunger(other._hunger),
@@ -237,8 +247,9 @@ Creature::Creature(const Creature& other)
  */
 Creature::Creature(Creature&& other) noexcept
     : GameObject(std::move(other)),
-      _x(other._x), _y(other._y),
+      _worldX(other._worldX), _worldY(other._worldY),
       _age(other._age),
+      _id(other._id),  // CREATURE-024 fix: Move ID to prevent garbage values after vector resize
       _direction(other._direction),
       _profile(other._profile),
       _hunger(other._hunger),
@@ -259,9 +270,10 @@ Creature::Creature(Creature&& other) noexcept
 Creature& Creature::operator=(const Creature& other) {
     if (this != &other) {
         GameObject::operator=(other);
-        _x = other._x;
-        _y = other._y;
+        _worldX = other._worldX;
+        _worldY = other._worldY;
         _age = other._age;
+        _id = other._id;  // CREATURE-024 fix: Copy ID to prevent garbage values after vector resize
         _direction = other._direction;
         _profile = other._profile;
         _hunger = other._hunger;
@@ -294,9 +306,10 @@ Creature& Creature::operator=(const Creature& other) {
 Creature& Creature::operator=(Creature&& other) noexcept {
     if (this != &other) {
         GameObject::operator=(std::move(other));
-        _x = other._x;
-        _y = other._y;
+        _worldX = other._worldX;
+        _worldY = other._worldY;
         _age = other._age;
+        _id = other._id;  // CREATURE-024 fix: Move ID to prevent garbage values after vector resize
         _direction = other._direction;
         _profile = other._profile;
         _hunger = other._hunger;
@@ -321,9 +334,14 @@ void Creature::setHunger  (float hunger) { _hunger = hunger; }
 void Creature::setThirst  (float thirst) { _thirst = thirst; }
 void Creature::setFatigue (float fatigue) { _fatigue = fatigue; }
 void Creature::setMate    (float mate)   { _mate   = mate;   }
-void Creature::setXY      (int x, int y) { _x = x; _y = y;   }
-void Creature::setX       (int x)        { _x = x;           }
-void Creature::setY       (int y)        { _y = y;           }
+void Creature::setXY      (int x, int y) { _worldX = static_cast<float>(x); _worldY = static_cast<float>(y); }
+void Creature::setX       (int x)        { _worldX = static_cast<float>(x); }
+void Creature::setY       (int y)        { _worldY = static_cast<float>(y); }
+
+// Float position setters (Phase 1: Float Movement)
+void Creature::setWorldPosition(float x, float y) { _worldX = x; _worldY = y; }
+void Creature::setWorldX(float x) { _worldX = x; }
+void Creature::setWorldY(float y) { _worldY = y; }
 
 //================================================================================
 //  Getters
@@ -336,8 +354,44 @@ float     Creature::getFatigue    () const { return _fatigue;               }
 float     Creature::getMate       () const { return _mate;                  }
 float     Creature::getMetabolism () const { return _metabolism;            }
 unsigned  Creature::getSpeed      () const { return _speed;                 }
-int       Creature::getX          () const { return _x;                     }
-int       Creature::getY          () const { return _y;                     }
+int       Creature::getX          () const { return tileX();                }
+int       Creature::getY          () const { return tileY();                }
+
+// Float position getters (Phase 1: Float Movement)
+int       Creature::tileX         () const { return static_cast<int>(_worldX); }
+int       Creature::tileY         () const { return static_cast<int>(_worldY); }
+float     Creature::getWorldX     () const { return _worldX;                }
+float     Creature::getWorldY     () const { return _worldY;                }
+
+// Movement speed calculation (Phase 1: Float Movement)
+float Creature::getMovementSpeed() const {
+    // Get gene values from phenotype if available
+    float locomotion = DEFAULT_LEG_LENGTH;  // Base movement capability
+    float legLength = DEFAULT_LEG_LENGTH;   // Stride length
+    float bodyMass = DEFAULT_BODY_MASS;     // Weight affects speed
+    
+    if (_useNewGenetics && _phenotype) {
+        // Use LOCOMOTION gene for movement speed capability
+        if (_phenotype->hasTrait(EcoSim::Genetics::UniversalGenes::LOCOMOTION)) {
+            locomotion = _phenotype->getTrait(EcoSim::Genetics::UniversalGenes::LOCOMOTION);
+        }
+        // Use MAX_SIZE as proxy for body mass (larger creatures are heavier)
+        if (_phenotype->hasTrait(EcoSim::Genetics::UniversalGenes::MAX_SIZE)) {
+            bodyMass = _phenotype->getTrait(EcoSim::Genetics::UniversalGenes::MAX_SIZE);
+            // Normalize max_size - gene value is 0.5-20.0, scale to reasonable mass range
+            bodyMass = 0.5f + (bodyMass / 20.0f) * 1.5f;  // Range: 0.5 to 2.0
+        }
+        // Leg length could be derived from body morphology genes
+        // For now, use locomotion as a proxy
+        legLength = 0.3f + locomotion * 0.7f;  // Range: 0.3 to 1.0
+    }
+    
+    // Speed formula: baseSpeed = (locomotion * legLength) / sqrt(mass)
+    float speed = (BASE_MOVEMENT_SPEED * locomotion * legLength) / std::sqrt(bodyMass);
+    
+    // Ensure minimum speed
+    return std::max(MIN_MOVEMENT_SPEED, speed);
+}
 Direction Creature::getDirection  () const { return _direction;             }
 Profile   Creature::getProfile    () const { return _profile;               }
 //  Genome Getters (CREATURE-010 fix: return by const reference to avoid copy)
@@ -872,23 +926,26 @@ bool Creature::spiralSearch (const vector<vector<Tile>> &map,
   if (maxRadius == 0) {
     maxRadius = getSightRange();
   }
+  // Use tile positions for grid-based search (Phase 1: Float Movement)
+  int tx = tileX();
+  int ty = tileY();
   //  While the search radius does not exceed the available space
   for (int radius = 1; radius < static_cast<int>(maxRadius); radius++) {
     //  Top and Bottom Lines
     for (int xMod = -radius; xMod <= radius; xMod++) {
-      int curX = _x + xMod;
-      int curY = _y + radius;
+      int curX = tx + xMod;
+      int curY = ty + radius;
       if (predicate(curX, curY)) return true;
-      curY = _y - radius;
+      curY = ty - radius;
       if (predicate(curX, curY)) return true;
     }
 
     //  Right and Left Lines (excluding corners already checked)
     for (int yMod = -radius + 1; yMod <= radius - 1; yMod++) {
-      int curX = _x + radius;
-      int curY = _y + yMod;
+      int curX = tx + radius;
+      int curY = ty + yMod;
       if (predicate(curX, curY)) return true;
-      curX = _x - radius;
+      curX = tx - radius;
       if (predicate(curX, curY)) return true;
     }
   }
@@ -900,26 +957,29 @@ bool Creature::spiralSearch (const vector<vector<Tile>> &map,
 // Visitor receives (x, y) coordinates and returns void
 template<typename Visitor>
 void Creature::forEachTileInRange(unsigned maxRadius, Visitor visitor) {
+  // Use tile positions for grid-based iteration (Phase 1: Float Movement)
+  int tx = tileX();
+  int ty = tileY();
   for (unsigned radius = 1; radius < maxRadius; radius++) {
     // Top and Bottom edges
     for (int xMod = -static_cast<int>(radius); xMod <= static_cast<int>(radius); xMod++) {
-      int curX = _x + xMod;
+      int curX = tx + xMod;
       // Top edge
-      int curY = _y - static_cast<int>(radius);
+      int curY = ty - static_cast<int>(radius);
       visitor(curX, curY);
       // Bottom edge
-      curY = _y + static_cast<int>(radius);
+      curY = ty + static_cast<int>(radius);
       visitor(curX, curY);
     }
     
     // Left and Right edges (excluding corners already visited)
     for (int yMod = -static_cast<int>(radius) + 1; yMod <= static_cast<int>(radius) - 1; yMod++) {
-      int curY = _y + yMod;
+      int curY = ty + yMod;
       // Left edge
-      int curX = _x - static_cast<int>(radius);
+      int curX = tx - static_cast<int>(radius);
       visitor(curX, curY);
       // Right edge
-      curX = _x + static_cast<int>(radius);
+      curX = tx + static_cast<int>(radius);
       visitor(curX, curY);
     }
   }
@@ -951,7 +1011,8 @@ bool Creature::findGeneticsPlants(World &world, unsigned &feedingCounter) {
   const int cols = world.getCols();
   
   // Check if we're standing on a tile with edible plants
-  Tile &currentTile = map[_x][_y];
+  // Use tile positions for grid access (Phase 1: Float Movement)
+  Tile &currentTile = map[tileX()][tileY()];
   auto &plantsHere = currentTile.getPlants();
   
   for (auto &plantPtr : plantsHere) {
@@ -1033,7 +1094,8 @@ bool Creature::findFood (vector<vector<Tile>> &map,
                          const int &rows,
                          const int &cols,
                          unsigned &foodCounter) {
-  vector<Food> *foodOnTile = &map.at(_x).at(_y).getFoodVec();
+  // Use tile positions for grid access (Phase 1: Float Movement)
+  vector<Food> *foodOnTile = &map.at(tileX()).at(tileY()).getFoodVec();
   vector<Food>::iterator it = foodOnTile->begin();
 
   //  Check if creature is standing on correct food type
@@ -1066,8 +1128,8 @@ bool Creature::findFood (vector<vector<Tile>> &map,
  */
 bool Creature::findWater (const vector<vector<Tile>> &map,
                           const int &rows, const int &cols) {
-  //  If on water source drink from it
-  if (map.at(_x).at(_y).isSource()) {
+  //  If on water source drink from it (Phase 1: Float Movement - use tile positions)
+  if (map.at(tileX()).at(tileY()).isSource()) {
     _thirst = RESOURCE_LIMIT;
     return true;
   }
@@ -1111,9 +1173,9 @@ bool Creature::findMate (vector<vector<Tile>> &map,
         && creature.getProfile() == Profile::breed;
 
     if (isPotentialMate) {
-      //  Calculate the distance between the creatures
-      unsigned diffX = abs(_x - creature.getX());
-      unsigned diffY = abs(_y - creature.getY());
+      //  Calculate the distance between the creatures (Phase 1: Float Movement - use tile positions)
+      unsigned diffX = abs(tileX() - creature.getX());
+      unsigned diffY = abs(tileY() - creature.getY());
 
       if (diffX < sightRange && diffY < sightRange) {
         float desirability = checkFitness (creature);
@@ -1129,8 +1191,9 @@ bool Creature::findMate (vector<vector<Tile>> &map,
   if (bestMate != NULL) {
     int mateX = bestMate->getX();
     int mateY = bestMate->getY();
-    unsigned diffX = abs(_x - bestMate->getX());
-    unsigned diffY = abs(_y - bestMate->getY());
+    // Phase 1: Float Movement - use tile positions for grid-based distance
+    unsigned diffX = abs(tileX() - bestMate->getX());
+    unsigned diffY = abs(tileY() - bestMate->getY());
 
     if (diffX <= 1 && diffY <= 1) {
       creatures.push_back (breedCreature(*bestMate));
@@ -1183,8 +1246,9 @@ bool Creature::findPrey (vector<vector<Tile>> &map,
   if (closestDistance < getSightRange()) {
     int preyX = closestPrey->getX();
     int preyY = closestPrey->getY();
-    unsigned xDist = abs(_x - preyX);
-    unsigned yDist = abs(_y - preyY);
+    // Phase 1: Float Movement - use tile positions for grid-based distance
+    unsigned xDist = abs(tileX() - preyX);
+    unsigned yDist = abs(tileY() - preyY);
 
     // If on prey convert it to food and eat
     if (xDist <= 1 && yDist <= 1) {
@@ -1239,8 +1303,9 @@ void Creature::changeDirection (const int &xChange, const int &yChange) {
  *  @param goalY  The y-coordinate of the destination.
  */
 float Creature::calculateDistance (const int &goalX, const int &goalY) const {
-  float xDist = _x - goalX;
-  float yDist = _y - goalY;
+  // Phase 1: Float Movement - use tile positions for grid-based distance calculation
+  float xDist = tileX() - goalX;
+  float yDist = tileY() - goalY;
   // CREATURE-014 fix: Use direct multiplication instead of pow() for performance
   return sqrt(xDist * xDist + yDist * yDist);
 }
@@ -1303,7 +1368,7 @@ Creature Creature::breedCreature (Creature &mate) {
   //  Reset the parents mating levels
   _mate = 0.0f; mate.setMate (0.0f);
 
-  Creature offspring(_x, _y, hunger, thirst, newGenome);
+  Creature offspring(tileX(), tileY(), hunger, thirst, newGenome);
   
   // Log the birth event
   logging::Logger::getInstance().creatureBorn(
@@ -1410,7 +1475,7 @@ void Creature::depositBreedingScent(EcoSim::ScentLayer& layer, unsigned int curr
   deposit.decayRate = static_cast<unsigned int>(50 + effectiveProduction * 150);
   
   // Deposit at creature's current position
-  layer.deposit(_x, _y, deposit);
+  layer.deposit(tileX(), tileY(), deposit);
 }
 
 //================================================================================
@@ -1469,9 +1534,9 @@ std::optional<Direction> Creature::detectMateDirection(const EcoSim::ScentLayer&
   int detectionRange = static_cast<int>(SCENT_DETECTION_BASE_RANGE + olfactoryAcuity * SCENT_DETECTION_ACUITY_MULT);
   
   // Query the scent layer for strongest MATE_SEEKING scent in range
-  int scentX = _x, scentY = _y;
+  int scentX = tileX(), scentY = tileY();
   EcoSim::ScentDeposit strongestScent = scentLayer.getStrongestScentInRadius(
-    _x, _y, detectionRange,
+    tileX(), tileY(), detectionRange,
     EcoSim::ScentType::MATE_SEEKING,
     scentX, scentY
   );
@@ -1486,13 +1551,13 @@ std::optional<Direction> Creature::detectMateDirection(const EcoSim::ScentLayer&
   // The findMate() method already handles compatibility checks when creatures meet
   
   // Check if scent is at our current position (we've arrived!)
-  if (scentX == _x && scentY == _y) {
+  if (scentX == tileX() && scentY == tileY()) {
     return Direction::none;  // At the scent source
   }
   
   // Calculate direction toward scent source
-  int dx = scentX - _x;
-  int dy = scentY - _y;
+  int dx = scentX - tileX();
+  int dy = scentY - tileY();
   
   // Convert delta to one of 8 directions
   Direction result = Direction::none;
@@ -1546,9 +1611,9 @@ bool Creature::findMateScent(const EcoSim::ScentLayer& scentLayer, int& outX, in
   int detectionRange = static_cast<int>(SCENT_DETECTION_BASE_RANGE + olfactoryAcuity * SCENT_DETECTION_ACUITY_MULT);
   
   // Query the scent layer for strongest MATE_SEEKING scent in range
-  int scentX = _x, scentY = _y;
+  int scentX = tileX(), scentY = tileY();
   EcoSim::ScentDeposit strongestScent = scentLayer.getStrongestScentInRadius(
-    _x, _y, detectionRange,
+    tileX(), tileY(), detectionRange,
     EcoSim::ScentType::MATE_SEEKING,
     scentX, scentY
   );
@@ -1559,7 +1624,7 @@ bool Creature::findMateScent(const EcoSim::ScentLayer& scentLayer, int& outX, in
   }
   
   // Check if scent is at our current position (shouldn't navigate to self)
-  if (scentX == _x && scentY == _y) {
+  if (scentX == tileX() && scentY == tileY()) {
     return false;
   }
   
@@ -1746,8 +1811,8 @@ std::vector<EcoSim::Genetics::DispersalEvent> Creature::detachBurrs() {
 	           DispersalEvent event;
 	           event.originX = std::get<1>(*it);
 	           event.originY = std::get<2>(*it);
-	           event.targetX = _x;
-	           event.targetY = _y;
+	           event.targetX = tileX();
+	           event.targetY = tileY();
 	           event.method = static_cast<DispersalStrategy>(std::get<0>(*it));
 	           event.disperserInfo = "creature_burr_detach";
 	           event.seedViability = 0.85f;  // Good viability for burr dispersal
@@ -1783,8 +1848,8 @@ std::vector<EcoSim::Genetics::DispersalEvent> Creature::getPendingBurrDispersal(
 	       DispersalEvent event;
 	       event.originX = std::get<1>(burr);
 	       event.originY = std::get<2>(burr);
-	       event.targetX = _x;  // Current creature position
-	       event.targetY = _y;
+	       event.targetX = tileX();  // Current creature position
+	       event.targetY = tileY();
 	       event.method = static_cast<DispersalStrategy>(std::get<0>(burr));
 	       event.disperserInfo = "creature_burr_pending";
 	       event.seedViability = 0.85f;
@@ -1844,8 +1909,8 @@ std::vector<EcoSim::Genetics::DispersalEvent> Creature::processGutSeeds(int tick
 	           DispersalEvent event;
 	           event.originX = originX;
 	           event.originY = originY;
-	           event.targetX = _x;
-	           event.targetY = _y;
+	           event.targetX = tileX();
+	           event.targetY = tileY();
 	           event.method = DispersalStrategy::ANIMAL_FRUIT;
 	           event.disperserInfo = "creature_gut_passage";
 	           
@@ -2017,7 +2082,7 @@ string Creature::directionToString () const {
 string Creature::toString () const {
   ostringstream ss;
   ss  << this->GameObject::toString ()  << ","
-      << _x << "," << _y << "," << _age << ","
+      << tileX() << "," << tileY() << "," << _age << ","
       << directionToString ()           << ","
       << profileToString ()             << ","
       << _hunger      << ","
