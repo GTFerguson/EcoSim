@@ -15,6 +15,7 @@
 #include "../../../../include/objects/creature/creature.hpp"
 #include "../../../../include/objects/food.hpp"
 #include "../../../../include/objects/spawner.hpp"
+#include "../../../../include/genetics/organisms/Plant.hpp"
 #include "../../../../include/colorPairs.hpp"
 
 #include <ncurses.h>
@@ -162,6 +163,18 @@ void NCursesRenderer::renderWorld(const World& world, const Viewport& viewport) 
                 mvaddch(yScreen + y, xScreen + x, food.begin()->getChar());
                 attroff(COLOR_PAIR(foodColor));
             }
+            
+            // Render genetics-based plants (Phase 2.4)
+            const auto& plants = curTile->getPlants();
+            if (!plants.empty()) {
+                const auto& plant = plants.front();
+                if (plant && plant->isAlive()) {
+                    int plantColor = NCursesColorMapper::entityToColorPair(plant->getEntityType());
+                    attron(COLOR_PAIR(plantColor));
+                    mvaddch(yScreen + y, xScreen + x, plant->getRenderCharacter());
+                    attroff(COLOR_PAIR(plantColor));
+                }
+            }
         }
     }
 }
@@ -193,6 +206,18 @@ void NCursesRenderer::renderTile(const Tile& tile, int screenX, int screenY) {
         attron(COLOR_PAIR(foodColor));
         mvaddch(screenY, screenX, food.begin()->getChar());
         attroff(COLOR_PAIR(foodColor));
+    }
+    
+    // Render genetics-based plants (Phase 2.4)
+    const auto& plants = tile.getPlants();
+    if (!plants.empty()) {
+        const auto& plant = plants.front();
+        if (plant && plant->isAlive()) {
+            int plantColor = NCursesColorMapper::entityToColorPair(plant->getEntityType());
+            attron(COLOR_PAIR(plantColor));
+            mvaddch(screenY, screenX, plant->getRenderCharacter());
+            attroff(COLOR_PAIR(plantColor));
+        }
     }
 }
 

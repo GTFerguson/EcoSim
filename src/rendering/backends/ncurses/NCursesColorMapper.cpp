@@ -171,11 +171,17 @@ int NCursesColorMapper::legacyProfileToColorPair(Profile profile) {
 
 int NCursesColorMapper::entityToColorPair(EntityType entity) {
     switch (entity) {
-        case EntityType::CREATURE:    return DEFAULT_PAIR;
-        case EntityType::FOOD_APPLE:  return APPLE_PAIR;
-        case EntityType::FOOD_BANANA: return BANANA_PAIR;
-        case EntityType::FOOD_CORPSE: return DEFAULT_PAIR;
-        case EntityType::SPAWNER:     return SPAWNER_PAIR;
-        default:                      return DEFAULT_PAIR;
+        case EntityType::CREATURE:         return DEFAULT_PAIR;
+        case EntityType::FOOD_APPLE:       return APPLE_PAIR;
+        case EntityType::FOOD_BANANA:      return BANANA_PAIR;
+        case EntityType::FOOD_CORPSE:      return DEFAULT_PAIR;
+        case EntityType::SPAWNER:          return SPAWNER_PAIR;
+        // Phase 2.4: Genetics-based plant entity types
+        case EntityType::PLANT_BERRY_BUSH: return FOREST_PAIR;   // Green for berry bushes
+        case EntityType::PLANT_OAK_TREE:   return TREES_PAIR;    // Dark green for trees
+        case EntityType::PLANT_GRASS:      return GRASS_PAIR;    // Yellow-green for grass
+        case EntityType::PLANT_THORN_BUSH: return L_GRASS_PAIR;  // Dark green for thorns
+        case EntityType::PLANT_GENERIC:    return FOREST_PAIR;   // Default green
+        default:                           return DEFAULT_PAIR;
     }
 }

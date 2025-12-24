@@ -261,6 +261,27 @@ public:
     void handleResize();
     
     /**
+     * @brief Zoom in (increase tile size)
+     *
+     * Increases tile size by 2 pixels up to maximum.
+     */
+    void zoomIn() override;
+    
+    /**
+     * @brief Zoom out (decrease tile size)
+     *
+     * Decreases tile size by 2 pixels down to minimum.
+     */
+    void zoomOut() override;
+    
+    /**
+     * @brief Get current zoom level (tile size)
+     *
+     * @return Current tile size in pixels
+     */
+    int getZoomLevel() const override { return _tileSize; }
+    
+    /**
      * @brief Get the ImGui overlay pointer
      *
      * @return Pointer to ImGuiOverlay (can be null if not initialized)
@@ -310,9 +331,11 @@ private:
     int _tileSize;  // Pixels per tile
     
     // UI layout constants
-    static constexpr int DEFAULT_TILE_SIZE = 16;
-    static constexpr int DEFAULT_SCREEN_WIDTH = 1280;
-    static constexpr int DEFAULT_SCREEN_HEIGHT = 720;
+    static constexpr int DEFAULT_TILE_SIZE = 8;      // Smaller for more zoomed-out default view
+    static constexpr int MIN_TILE_SIZE = 4;          // Minimum zoom (most zoomed out)
+    static constexpr int MAX_TILE_SIZE = 32;         // Maximum zoom (most zoomed in)
+    static constexpr int DEFAULT_SCREEN_WIDTH = 1920;  // Will be overridden by display mode
+    static constexpr int DEFAULT_SCREEN_HEIGHT = 1080; // Will be overridden by display mode
     static constexpr int HUD_HEIGHT = 150;
     static constexpr int HUD_PADDING = 10;
     

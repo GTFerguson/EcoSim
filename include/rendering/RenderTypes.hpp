@@ -74,6 +74,13 @@ enum class EntityType {
     FOOD_CORPSE,        ///< Corpse food item
     SPAWNER,            ///< Food spawner (tree/plant)
     
+    // Phase 2.3: Plant entity types
+    PLANT_BERRY_BUSH,   ///< Berry bush (r-strategy, fast growth)
+    PLANT_OAK_TREE,     ///< Oak tree (K-strategy, slow growth)
+    PLANT_GRASS,        ///< Grass (grazing-adapted)
+    PLANT_THORN_BUSH,   ///< Thorn bush (defensive)
+    PLANT_GENERIC,      ///< Generic/unknown plant type
+    
     COUNT               ///< Number of entity types
 };
 

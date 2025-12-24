@@ -331,6 +331,11 @@ void SDL2InputHandler::initializeDefaultMappings() {
     
     _keyActionMap[KeyCode::KEY_W] = InputAction::INCREASE_TERRAIN_LEVEL;
     _keyActionMap[KeyCode::KEY_Q] = InputAction::DECREASE_TERRAIN_LEVEL;
+    
+    // Zoom controls
+    _keyActionMap[KeyCode::KEY_PLUS]   = InputAction::ZOOM_IN;
+    _keyActionMap[KeyCode::KEY_EQUALS] = InputAction::ZOOM_IN;   // Unshifted + key
+    _keyActionMap[KeyCode::KEY_MINUS]  = InputAction::ZOOM_OUT;
 }
 
 InputEvent SDL2InputHandler::processSDLEvent(const SDL_Event& event) {

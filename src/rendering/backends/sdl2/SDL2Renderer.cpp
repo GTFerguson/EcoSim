@@ -16,6 +16,7 @@
 #include "../../../../include/objects/creature/creature.hpp"
 #include "../../../../include/objects/food.hpp"
 #include "../../../../include/objects/spawner.hpp"
+#include "../../../../include/genetics/organisms/Plant.hpp"
 
 #include <iostream>
 #include <sstream>
@@ -63,14 +64,23 @@ bool SDL2Renderer::initialize() {
         return false;
     }
     
-    // Create window
+    // Get display resolution for borderless fullscreen
+    SDL_DisplayMode displayMode;
+    if (SDL_GetCurrentDisplayMode(0, &displayMode) == 0) {
+        _screenWidth = displayMode.w;
+        _screenHeight = displayMode.h;
+    }
+    
+    // Create borderless fullscreen window (windowed borderless)
+    // This covers the entire screen without window decorations
+    // but allows easy Alt+Tab to other apps (unlike true fullscreen)
     _window = SDL_CreateWindow(
         "EcoSim - Ecological Simulation",
-        SDL_WINDOWPOS_CENTERED,
-        SDL_WINDOWPOS_CENTERED,
+        0,  // Position at top-left
+        0,
         _screenWidth,
         _screenHeight,
-        SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE
+        SDL_WINDOW_SHOWN | SDL_WINDOW_BORDERLESS
     );
     
     if (_window == nullptr) {
@@ -234,6 +244,19 @@ void SDL2Renderer::renderWorld(const World& world, const Viewport& viewport) {
                               _tileSize - 2 * padding, _tileSize - 2 * padding,
                               foodColor);
             }
+            
+            // Render genetics-based plants (Phase 2.4)
+            const auto& plants = curTile->getPlants();
+            if (!plants.empty()) {
+                const auto& plant = plants.front();
+                if (plant && plant->isAlive()) {
+                    SDL_Color plantColor = getEntityColor(plant->getEntityType());
+                    int padding = _tileSize / 4;
+                    drawFilledRect(screenX + padding, screenY + padding,
+                                  _tileSize - 2 * padding, _tileSize - 2 * padding,
+                                  plantColor);
+                }
+            }
         }
     }
 }
@@ -265,6 +288,19 @@ void SDL2Renderer::renderTile(const Tile& tile, int screenX, int screenY) {
         drawFilledRect(screenX + padding, screenY + padding,
                       _tileSize - 2 * padding, _tileSize - 2 * padding,
                       foodColor);
+    }
+    
+    // Render genetics-based plants (Phase 2.4)
+    const auto& plants = tile.getPlants();
+    if (!plants.empty()) {
+        const auto& plant = plants.front();
+        if (plant && plant->isAlive()) {
+            SDL_Color plantColor = getEntityColor(plant->getEntityType());
+            int padding = _tileSize / 4;
+            drawFilledRect(screenX + padding, screenY + padding,
+                          _tileSize - 2 * padding, _tileSize - 2 * padding,
+                          plantColor);
+        }
     }
 }
 
@@ -720,7 +756,7 @@ std::string SDL2Renderer::getName() const {
 //==============================================================================
 
 void SDL2Renderer::setTileSize(int size) {
-    if (size > 0 && size <= 64) {
+    if (size >= MIN_TILE_SIZE && size <= MAX_TILE_SIZE) {
         _tileSize = size;
     }
 }
@@ -728,6 +764,24 @@ void SDL2Renderer::setTileSize(int size) {
 void SDL2Renderer::handleResize() {
     if (_initialized && _window != nullptr) {
         SDL_GetWindowSize(_window, &_screenWidth, &_screenHeight);
+    }
+}
+
+void SDL2Renderer::zoomIn() {
+    if (_tileSize < MAX_TILE_SIZE) {
+        _tileSize += 2;
+        if (_tileSize > MAX_TILE_SIZE) {
+            _tileSize = MAX_TILE_SIZE;
+        }
+    }
+}
+
+void SDL2Renderer::zoomOut() {
+    if (_tileSize > MIN_TILE_SIZE) {
+        _tileSize -= 2;
+        if (_tileSize < MIN_TILE_SIZE) {
+            _tileSize = MIN_TILE_SIZE;
+        }
     }
 }
 

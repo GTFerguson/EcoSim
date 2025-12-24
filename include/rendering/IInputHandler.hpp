@@ -160,6 +160,10 @@ enum class InputAction {
     DECREASE_TERRAIN_LEVEL, ///< Decrease selected terrain level
     CONFIRM_WORLD_EDIT, ///< Confirm world editing
     
+    // Zoom control
+    ZOOM_IN,            ///< Zoom in (increase tile size)
+    ZOOM_OUT,           ///< Zoom out (decrease tile size)
+    
     COUNT               ///< Number of actions
 };
 

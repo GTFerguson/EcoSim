@@ -2,7 +2,7 @@
  * @file ImGuiOverlay.hpp
  * @brief Dear ImGui overlay for professional debug UI panels
  * @author Gary Ferguson
- * @date December 2024
+ * @date December 2025
  *
  * This file defines the ImGuiOverlay class that provides beautiful,
  * professional UI panels for statistics, debugging, and controls
@@ -20,6 +20,13 @@
 struct ImGuiContext;
 class World;
 class Creature;
+
+namespace EcoSim {
+namespace Genetics {
+    class Plant;
+    enum class DietType;
+}
+}
 
 /**
  * @brief Dear ImGui overlay for debug and statistics UI
@@ -178,6 +185,28 @@ public:
      * @param id Creature ID to select (-1 to deselect)
      */
     void setSelectedCreatureId(int id) { _selectedCreatureId = id; }
+    
+    /**
+     * @brief Toggle plant inspector window visibility
+     */
+    void togglePlantInspector() { _showPlantInspector = !_showPlantInspector; }
+    
+    /**
+     * @brief Check if plant inspector window is visible
+     */
+    bool isPlantInspectorVisible() const { return _showPlantInspector; }
+    
+    /**
+     * @brief Get the currently selected plant ID
+     * @return Selected plant ID, or -1 if none selected
+     */
+    int getSelectedPlantId() const { return _selectedPlantId; }
+    
+    /**
+     * @brief Set the selected plant ID
+     * @param id Plant ID to select (-1 to deselect)
+     */
+    void setSelectedPlantId(int id) { _selectedPlantId = id; }
 
 private:
     // SDL2 references (not owned)
@@ -196,11 +225,15 @@ private:
     bool _showCreatureList;
     bool _showPerformance;
     bool _showCreatureInspector;
+    bool _showPlantInspector;
     bool _showControls;
     bool _showDemo;  // ImGui demo window (for development)
     
     // Creature selection state
     int _selectedCreatureId;
+    
+    // Plant selection state
+    int _selectedPlantId;
     
     // Creature list filter/sort state
     char _creatureFilterText[64];
@@ -270,6 +303,12 @@ private:
     void renderControlsWindow();
     
     /**
+     * @brief Render the plant inspector window
+     * @param plant Pointer to the selected plant
+     */
+    void renderPlantInspectorWindow(const EcoSim::Genetics::Plant* plant);
+    
+    /**
      * @brief Set up custom ImGui style
      */
     void setupStyle();
@@ -282,11 +321,25 @@ private:
     const char* getProfileName(int profile) const;
     
     /**
-     * @brief Get diet name string from Diet enum
+     * @brief Get diet name string from Diet enum (legacy)
      * @param diet The Diet enum value
      * @return Human-readable diet name
      */
     const char* getDietName(int diet) const;
+    
+    /**
+     * @brief Get emergent diet type name from new genetics system
+     * @param type The DietType enum value
+     * @return Human-readable diet type name
+     */
+    const char* getEmergentDietName(EcoSim::Genetics::DietType type) const;
+    
+    /**
+     * @brief Get dispersal strategy name
+     * @param strategy The DispersalStrategy enum value
+     * @return Human-readable strategy name
+     */
+    const char* getDispersalStrategyName(int strategy) const;
 };
 
 #endif // ECOSIM_IMGUI_OVERLAY_HPP

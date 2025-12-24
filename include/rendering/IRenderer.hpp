@@ -225,10 +225,37 @@ public:
     
     /**
      * @brief Get the center Y coordinate of the screen
-     * 
+     *
      * @return Center Y position
      */
     virtual unsigned int getScreenCenterY() const = 0;
+
+    //==========================================================================
+    // Zoom Methods
+    //==========================================================================
+    
+    /**
+     * @brief Zoom in (increase tile size/scale)
+     *
+     * Increases the zoom level, showing less of the world but more detail.
+     * Default implementation does nothing (for backends that don't support zoom).
+     */
+    virtual void zoomIn() {}
+    
+    /**
+     * @brief Zoom out (decrease tile size/scale)
+     *
+     * Decreases the zoom level, showing more of the world but less detail.
+     * Default implementation does nothing (for backends that don't support zoom).
+     */
+    virtual void zoomOut() {}
+    
+    /**
+     * @brief Get current zoom level
+     *
+     * @return Current zoom level (tile size in pixels for SDL2, 1 for NCurses)
+     */
+    virtual int getZoomLevel() const { return 1; }
 
     //==========================================================================
     // Capability Query Methods

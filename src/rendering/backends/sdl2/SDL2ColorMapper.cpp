@@ -144,6 +144,17 @@ SDL_Color SDL2ColorMapper::entityToColor(EntityType entity) {
             return {150, 100, 100, 255};  // Brownish for corpse
         case EntityType::SPAWNER:
             return spawnerColor();
+        // Phase 2.4: Plant entity colors
+        case EntityType::PLANT_BERRY_BUSH:
+            return {220, 50, 100, 255};  // Red/Magenta for berry bush
+        case EntityType::PLANT_OAK_TREE:
+            return {139, 90, 43, 255};   // Brown for oak tree
+        case EntityType::PLANT_GRASS:
+            return {50, 200, 50, 255};   // Green for grass
+        case EntityType::PLANT_THORN_BUSH:
+            return {80, 120, 40, 255};   // Dark green/yellow for thorn bush
+        case EntityType::PLANT_GENERIC:
+            return {120, 220, 100, 255}; // Light green for generic plant
         default:
             return {0, 0, 0, 0};  // Transparent
     }
