@@ -1,5 +1,5 @@
-/** 
- *	Title	  : EcoSim - World 
+/**
+ *	Title	  : EcoSim - World
  *	Author	: Gary Ferguson
  *	Date	  : Nov 18th, 2020
  *	Purpose	: Storage and manipulation of	world data.
@@ -8,6 +8,7 @@
 #include "../../include/world/world.hpp"
 
 using namespace std;
+using namespace EcoSim::Genetics;
 
 /**
  *	This is the parametrised constructor for creating a world.
@@ -21,7 +22,9 @@ using namespace std;
  *	@param cols		   The number of columns in the world grid.
  */
   World::World (const MapGen &mapGen, const OctaveGen &octaveGen)
-    : _rng(std::random_device{}()) {
+    : _rng(std::random_device{}())
+    , _scentLayer(mapGen.cols, mapGen.rows)
+    , _currentTick(0) {
     _mapGen     = mapGen;
     _octaveGen  = octaveGen;
 
@@ -291,7 +294,7 @@ void World::removeSpawner (const int &x, const int &y, const string &objName) {
 //================================================================================
 /**
  *  Goes through each Tile object on the map and checks each
- *  Spawner object and updates it as necessary, such as checking 
+ *  Spawner object and updates it as necessary, such as checking
  *  if able to spawn and if so adding the relevant object to the world.
  */
 void World::updateAllObjects () {
@@ -302,11 +305,16 @@ void World::updateAllObjects () {
       _grid[x][y].updateFood();
     }
   }
+  
+  // Update genetics-based plants if initialized
+  if (hasGeneticsPlants()) {
+    updateGeneticsPlants();
+  }
 }
 
 /**
  *  Goes through each Spawner object on a Tile and updates it
- *  as necessary, such as checking if able to spawn and if so 
+ *  as necessary, such as checking if able to spawn and if so
  *  adding the relevant object to the world.
  *
  *  @param objects  A vector of Spawner objects to be checked.
@@ -332,6 +340,194 @@ void World::updateSpawners (vector<Spawner> &spawners, const int &curX, const in
 }
 
 //================================================================================
+//  Genetics-Based Plants (Phase 2.4)
+//================================================================================
+
+void World::initializeGeneticsPlants() {
+  // Create and initialize the gene registry
+  _plantRegistry = std::make_shared<GeneRegistry>();
+  UniversalGenes::registerDefaults(*_plantRegistry);
+  
+  // Create the plant factory with the registry
+  _plantFactory = std::make_unique<PlantFactory>(_plantRegistry);
+  
+  // Register default species templates
+  _plantFactory->registerTemplate(PlantFactory::createBerryBushTemplate());
+  _plantFactory->registerTemplate(PlantFactory::createOakTreeTemplate());
+  _plantFactory->registerTemplate(PlantFactory::createGrassTemplate());
+  _plantFactory->registerTemplate(PlantFactory::createThornBushTemplate());
+  
+  // Initialize default environment state (direct struct member access)
+  _currentEnvironment.temperature = 20.0f;  // 20°C default
+  _currentEnvironment.humidity = 0.6f;      // Moderate humidity
+  _currentEnvironment.time_of_day = 0.5f;   // Noon
+  
+  std::cout << "[World] Genetics plant system initialized with "
+            << _plantFactory->getTemplateNames().size() << " species templates" << std::endl;
+}
+
+bool World::hasGeneticsPlants() const {
+  return _plantFactory != nullptr && _plantRegistry != nullptr;
+}
+
+void World::addGeneticsPlants(unsigned int lowElev, unsigned int highElev,
+                              unsigned int rate, const std::string& speciesName) {
+  if (!hasGeneticsPlants()) {
+    std::cerr << "[World] Error: Genetics plant system not initialized. "
+              << "Call initializeGeneticsPlants() first." << std::endl;
+    return;
+  }
+  
+  if (!_plantFactory->hasTemplate(speciesName)) {
+    std::cerr << "[World] Error: Unknown plant species '" << speciesName << "'" << std::endl;
+    return;
+  }
+  
+  uniform_int_distribution<unsigned short> dis(1, 100);
+  unsigned int plantsAdded = 0;
+  
+  for (unsigned x = 0; x < _mapGen.cols; x++) {
+    for (unsigned y = 0; y < _mapGen.rows; y++) {
+      Tile& tile = _grid[x][y];
+      
+      // Check elevation is in range and tile is passable
+      if (tile.getElevation() > lowElev &&
+          tile.getElevation() < highElev &&
+          tile.isPassable()) {
+        
+        // Random chance of placing plant
+        if (dis(_rng) <= rate) {
+          Plant plant = _plantFactory->createFromTemplate(speciesName,
+                                                          static_cast<int>(x),
+                                                          static_cast<int>(y));
+          tile.addPlant(std::make_shared<Plant>(std::move(plant)));
+          ++plantsAdded;
+        }
+      }
+    }
+  }
+  
+  std::cout << "[World] Added " << plantsAdded << " " << speciesName << " plants" << std::endl;
+}
+
+bool World::addGeneticsPlant(int x, int y, const std::string& speciesName) {
+  if (!hasGeneticsPlants()) {
+    std::cerr << "[World] Error: Genetics plant system not initialized." << std::endl;
+    return false;
+  }
+  
+  if (x < 0 || x >= static_cast<int>(_mapGen.cols) ||
+      y < 0 || y >= static_cast<int>(_mapGen.rows)) {
+    return false;
+  }
+  
+  if (!_plantFactory->hasTemplate(speciesName)) {
+    return false;
+  }
+  
+  Tile& tile = _grid[x][y];
+  if (!tile.isPassable()) {
+    return false;
+  }
+  
+  Plant plant = _plantFactory->createFromTemplate(speciesName, x, y);
+  return tile.addPlant(std::make_shared<Plant>(std::move(plant)));
+}
+
+EnvironmentState& World::getEnvironment() {
+  return _currentEnvironment;
+}
+
+void World::updateEnvironment(float temperature, float lightLevel, float waterAvailability) {
+  _currentEnvironment.temperature = temperature;
+  _currentEnvironment.humidity = waterAvailability;  // Map water availability to humidity
+  _currentEnvironment.time_of_day = lightLevel;      // Map light level to time_of_day (0=dark, 1=bright)
+}
+
+PlantFactory* World::getPlantFactory() {
+  return _plantFactory.get();
+}
+
+std::shared_ptr<GeneRegistry> World::getPlantRegistry() {
+  return _plantRegistry;
+}
+
+void World::updateGeneticsPlants() {
+  if (!hasGeneticsPlants()) {
+    return;
+  }
+  
+  // Collect seed dispersal events during iteration
+  std::vector<std::pair<EcoSim::Genetics::DispersalEvent, std::shared_ptr<EcoSim::Genetics::Plant>>> dispersalEvents;
+  
+  // Update all plants on all tiles
+  for (unsigned x = 0; x < _mapGen.cols; x++) {
+    for (unsigned y = 0; y < _mapGen.rows; y++) {
+      Tile& tile = _grid[x][y];
+      
+      // Update plants with current environment
+      tile.updatePlants(_currentEnvironment);
+      
+      // Remove dead plants
+      tile.removeDeadPlants();
+      
+      // Handle fruit production and seed dispersal
+      for (auto& plant : tile.getPlants()) {
+        if (!plant || !plant->isAlive()) continue;
+        
+        // Fruit production - plants that can produce fruit create Food objects
+        if (plant->canProduceFruit()) {
+          Food fruit = plant->produceFruit();
+          tile.addFood(fruit);
+          
+          // Seed dispersal - mature plants attempt passive dispersal when producing fruit
+          // Use a probability check to avoid too many seeds per tick
+          std::uniform_real_distribution<float> dist(0.0f, 1.0f);
+          float dispersalChance = plant->getFruitProductionRate() * 0.1f;  // Low chance per tick
+          
+          if (dist(_rng) < dispersalChance) {
+            EcoSim::Genetics::DispersalEvent event = _seedDispersal.disperse(*plant, &_currentEnvironment);
+            dispersalEvents.push_back({event, plant});
+          }
+        }
+      }
+    }
+  }
+  
+  // Process dispersal events - spawn new plants at target locations
+  for (const auto& [event, parentPlant] : dispersalEvents) {
+    // Check bounds
+    if (event.targetX < 0 || event.targetX >= static_cast<int>(_mapGen.cols) ||
+        event.targetY < 0 || event.targetY >= static_cast<int>(_mapGen.rows)) {
+      continue;
+    }
+    
+    Tile& targetTile = _grid[event.targetX][event.targetY];
+    
+    // Check if tile is passable and not already crowded with plants
+    if (!targetTile.isPassable() || targetTile.getPlants().size() >= 3) {
+      continue;
+    }
+    
+    // Viability check - seed may not germinate
+    std::uniform_real_distribution<float> dist(0.0f, 1.0f);
+    if (dist(_rng) > event.seedViability) {
+      continue;  // Seed failed to germinate
+    }
+    
+    // Create offspring plant using parent's genome (with mutation)
+    // Use PlantFactory::createOffspring for proper genome handling
+    EcoSim::Genetics::Plant offspring = _plantFactory->createOffspring(
+      *parentPlant, *parentPlant,  // Self-crossing (asexual via seed)
+      event.targetX, event.targetY
+    );
+    
+    // Add the new plant to the target tile
+    targetTile.addPlant(std::make_shared<EcoSim::Genetics::Plant>(std::move(offspring)));
+  }
+}
+
+//================================================================================
 //  To String
 //================================================================================
 string World::toString () const {
@@ -353,7 +549,7 @@ string World::toString () const {
   for (unsigned x = 0; x < _mapGen.cols; x++) {
     for (unsigned y = 0; y < _mapGen.rows; y++) {
       tile = &_grid.at(x).at(y);
-      if (!tile->getFoodVec().empty() || 
+      if (!tile->getFoodVec().empty() ||
           !tile->getSpawners().empty()) {
         ss  << endl << x << "," << y
             << endl << tile->contentToString();
@@ -361,4 +557,25 @@ string World::toString () const {
     }
   }
   return ss.str ();
+}
+
+//================================================================================
+//  Scent Layer (Phase 1: Sensory System)
+//================================================================================
+
+EcoSim::ScentLayer& World::getScentLayer() {
+  return _scentLayer;
+}
+
+const EcoSim::ScentLayer& World::getScentLayer() const {
+  return _scentLayer;
+}
+
+void World::updateScentLayer() {
+  ++_currentTick;
+  _scentLayer.update(_currentTick);
+}
+
+unsigned int World::getCurrentTick() const {
+  return _currentTick;
 }

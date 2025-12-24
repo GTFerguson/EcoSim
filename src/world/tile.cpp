@@ -9,8 +9,10 @@
 #include "../../include/world/tile.hpp"
 
 #include <iostream>
+#include <algorithm>
 
 using namespace std;
+using namespace EcoSim::Genetics;
 
 //	Constructors
 Tile::Tile () {
@@ -132,6 +134,58 @@ void Tile::removeSpawner (const string& objName) {
     }
     ++it;
   }
+}
+
+//================================================================================
+//  Genetics-Based Plant Handling (Phase 2.4)
+//================================================================================
+
+std::vector<std::shared_ptr<Plant>>& Tile::getPlants() {
+  return _plants;
+}
+
+const std::vector<std::shared_ptr<Plant>>& Tile::getPlants() const {
+  return _plants;
+}
+
+bool Tile::addPlant(std::shared_ptr<Plant> plant) {
+  // Count total objects including plants
+  size_t totalObjects = _foodVec.size() + _spawners.size() + _plants.size();
+  if (totalObjects >= _objLimit) {
+    std::cerr << "[Tile] Warning: Cannot add plant - tile object limit ("
+              << _objLimit << ") reached" << std::endl;
+    return false;
+  }
+  _plants.push_back(plant);
+  return true;
+}
+
+void Tile::removePlant(size_t index) {
+  if (index < _plants.size()) {
+    _plants.erase(_plants.begin() + static_cast<ptrdiff_t>(index));
+  }
+}
+
+void Tile::updatePlants(const EnvironmentState& env) {
+  for (auto& plant : _plants) {
+    if (plant && plant->isAlive()) {
+      plant->update(env);
+    }
+  }
+}
+
+size_t Tile::removeDeadPlants() {
+  size_t removed = 0;
+  auto it = _plants.begin();
+  while (it != _plants.end()) {
+    if (!(*it) || !(*it)->isAlive()) {
+      it = _plants.erase(it);
+      ++removed;
+    } else {
+      ++it;
+    }
+  }
+  return removed;
 }
 
 //================================================================================

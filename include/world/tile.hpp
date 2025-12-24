@@ -14,18 +14,29 @@
 #include "../objects/spawner.hpp"
 #include "../rendering/RenderTypes.hpp"
 
+// Genetics system integration (Phase 2.4)
+#include "../genetics/organisms/Plant.hpp"
+#include "../genetics/expression/EnvironmentState.hpp"
+
 #include <string>
 #include <sstream>
 #include <vector>
+#include <memory>
 
 class Tile {
   private:
-      //========================================================================== 
+      //==========================================================================
       //  Containers
-      //========================================================================== 
+      //==========================================================================
       unsigned int          _objLimit;
       std::vector<Food>     _foodVec;
       std::vector<Spawner>  _spawners;
+      
+      // Genetics-based plants (Phase 2.4)
+      // Using shared_ptr instead of unique_ptr to allow Tile to be copyable
+      // (needed for std::vector<std::vector<Tile>> in World)
+      std::vector<std::shared_ptr<EcoSim::Genetics::Plant>> _plants;
+      
       //==========================================================================
       //  Tile Information
       //==========================================================================
@@ -65,6 +76,10 @@ class Tile {
       TerrainType                 getTerrainType() const;  // NEW: Returns semantic terrain type
       bool                        isPassable    () const;
       bool                        isSource      () const;
+      
+      // Genetics-based plant getters (Phase 2.4)
+      std::vector<std::shared_ptr<EcoSim::Genetics::Plant>>& getPlants();
+      const std::vector<std::shared_ptr<EcoSim::Genetics::Plant>>& getPlants() const;
 
       //==========================================================================      
       // Setters
@@ -79,6 +94,32 @@ class Tile {
       void updateFood     ();
       bool addSpawner     (const Spawner& obj);
       void removeSpawner  (const std::string& objName);
+      
+      // Genetics-based plant handling (Phase 2.4)
+      /**
+       * @brief Add a genetics-based plant to this tile
+       * @param plant The plant to add (ownership shared)
+       * @return true if added successfully, false if object limit reached
+       */
+      bool addPlant(std::shared_ptr<EcoSim::Genetics::Plant> plant);
+      
+      /**
+       * @brief Remove a plant at the given index
+       * @param index Index of plant to remove
+       */
+      void removePlant(size_t index);
+      
+      /**
+       * @brief Update all genetics-based plants on this tile
+       * @param env Current environment state (light, water, temperature, etc.)
+       */
+      void updatePlants(const EcoSim::Genetics::EnvironmentState& env);
+      
+      /**
+       * @brief Remove dead plants from the tile
+       * @return Number of plants removed
+       */
+      size_t removeDeadPlants();
  
       //==========================================================================
       //  To String
