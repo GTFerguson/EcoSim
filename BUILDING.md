@@ -4,8 +4,8 @@
 
 ### macOS
 ```bash
-# Install ncurses (usually pre-installed)
-brew install ncurses
+# Install SDL2 (required for default build)
+brew install sdl2
 
 # Clone and build
 cd EcoSim
@@ -15,10 +15,10 @@ bash comp.sh
 
 ### Linux
 ```bash
-# Install ncurses
-sudo apt-get install libncurses5-dev libncursesw5-dev  # Debian/Ubuntu
-sudo yum install ncurses-devel                          # RHEL/CentOS
-sudo pacman -S ncurses                                  # Arch
+# Install SDL2 (required for default build)
+sudo apt-get install libsdl2-dev                        # Debian/Ubuntu
+sudo yum install SDL2-devel                             # RHEL/CentOS
+sudo pacman -S sdl2                                     # Arch
 
 # Build
 bash comp.sh
@@ -32,14 +32,39 @@ wsl --install
 
 # Inside WSL, same as Linux
 sudo apt-get update
-sudo apt-get install build-essential libncurses5-dev
+sudo apt-get install build-essential libsdl2-dev
 bash comp.sh
 ./EcoSim
 ```
 
+## Build Scripts
+
+| Script | Description | Output |
+|--------|-------------|--------|
+| `comp.sh` | **Default** - SDL2 + Dear ImGui (recommended) | `EcoSim` |
+| `comp_ncurses.sh` | Terminal-only version (ncurses) | `EcoSim` |
+
+### Default Build (SDL2 + ImGui)
+```bash
+bash comp.sh
+./EcoSim
+```
+Features: Hardware-accelerated rendering, ImGui debug panels, graphical UI.
+
+### Terminal Build (ncurses)
+```bash
+# Install ncurses if needed
+brew install ncurses           # macOS
+sudo apt-get install libncurses5-dev  # Linux
+
+bash comp_ncurses.sh
+./EcoSim
+```
+Features: Runs in terminal, minimal dependencies, good for SSH sessions.
+
 ## Build Options
 
-The compilation script automatically detects your system:
+The compilation scripts automatically detect your system:
 - **macOS**: Uses `clang++` by default
 - **Linux**: Uses `g++` by default
 - **Custom compiler**: `CXX=g++-11 bash comp.sh`
@@ -49,7 +74,8 @@ The compilation script automatically detects your system:
 ### Compiler Flags
 - `-g`: Debug symbols
 - `-std=c++17`: C++17 standard
-- `-lncurses`: Link ncurses library
+- `-lncurses`: Link ncurses library (both builds)
+- SDL2 flags via `sdl2-config` (default build)
 
 ### Build Artifacts
 - `EcoSim`: Main executable
@@ -57,12 +83,18 @@ The compilation script automatically detects your system:
 
 ## Troubleshooting
 
-### "ncurses.h not found"
+### "SDL2 not found" or "sdl2-config: command not found"
+**macOS**: `brew install sdl2`
+**Linux**: `sudo apt-get install libsdl2-dev`
+
+### "ncurses.h not found" (for terminal build)
 **macOS**: `brew install ncurses`
 **Linux**: `sudo apt-get install libncurses5-dev`
 
 ### "clang: error: linker command failed"
-Check ncurses is installed: `pkg-config --libs ncurses`
+Check libraries are installed:
+- SDL2: `sdl2-config --version`
+- ncurses: `pkg-config --libs ncurses`
 
 ### Terminal colors don't work
 Use a modern terminal emulator:
