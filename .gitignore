@@ -8,7 +8,25 @@
 EcoSim
 EcoSim_SDL2
 EcoSim_ImGui
+
+# Test binaries (root level)
+GeneticsTest
+NewGenomeTest
+OlfactoryTest
+SimDiagnostic
+BreedingDiagnostic
+TestTiming
+test_plant_copy
+
+# Test binaries (in src/testing/)
+src/testing/CalendarTest
+src/testing/FileTest
+src/testing/NewGenomeTest
+
+# Diagnostic/log outputs
+*.csv
 err
+err_*
 .err.swp
 
 # Documentation
@@ -20,7 +38,8 @@ plans/
 # Save files
 saves/
 
-# IDE
+# IDE/Editor
 .vscode/
+.obsidian/
 *.swp
 *.swo
