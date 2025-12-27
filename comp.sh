@@ -66,13 +66,11 @@ $CXX -g -std=c++17 \
     src/world/world.cpp \
     src/world/SimplexNoise.cpp \
     src/world/ScentLayer.cpp \
-    src/objects/food.cpp \
+    src/world/Corpse.cpp \
     src/objects/gameObject.cpp \
-    src/objects/spawner.cpp \
     src/statistics/statistics.cpp \
     src/statistics/genomeStats.cpp \
     src/objects/creature/creature.cpp \
-    src/objects/creature/genome.cpp \
     src/objects/creature/navigator.cpp \
     src/rendering/RenderSystem.cpp \
     src/rendering/backends/ncurses/NCursesColorMapper.cpp \
@@ -87,7 +85,6 @@ $CXX -g -std=c++17 \
     src/genetics/core/GeneRegistry.cpp \
     src/genetics/core/GeneticTypes.cpp \
     src/genetics/core/Genome.cpp \
-    src/genetics/defaults/DefaultGenes.cpp \
     src/genetics/defaults/PlantGenes.cpp \
     src/genetics/defaults/UniversalGenes.cpp \
     src/genetics/expression/EnvironmentState.cpp \
@@ -95,13 +92,15 @@ $CXX -g -std=c++17 \
     src/genetics/expression/OrganismState.cpp \
     src/genetics/expression/Phenotype.cpp \
     src/genetics/expression/PhenotypeCache.cpp \
-    src/genetics/migration/LegacyGenomeAdapter.cpp \
     src/genetics/organisms/Plant.cpp \
     src/genetics/organisms/PlantFactory.cpp \
     src/genetics/organisms/CreatureFactory.cpp \
+    src/genetics/classification/ArchetypeIdentity.cpp \
+    src/genetics/classification/CreatureTaxonomy.cpp \
     src/genetics/interactions/FeedingInteraction.cpp \
     src/genetics/interactions/SeedDispersal.cpp \
     src/genetics/interactions/CoevolutionTracker.cpp \
+    src/genetics/interactions/CombatInteraction.cpp \
     src/logging/Logger.cpp \
     external/imgui/imgui.cpp \
     external/imgui/imgui_draw.cpp \

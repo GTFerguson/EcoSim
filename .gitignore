@@ -29,8 +29,9 @@ err
 err_*
 .err.swp
 
-# Documentation
-docs/
+# Documentation (exclude work-in-progress directories)
+docs/code-review/
+docs/future/
 
 # Plans (local development notes)
 plans/
