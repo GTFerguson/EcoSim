@@ -16,7 +16,6 @@
 #include "logging/Logger.hpp"
 #include <unordered_map>
 
-#if USE_NEW_BEHAVIOR_SYSTEM
 #include "genetics/behaviors/BehaviorController.hpp"
 #include "genetics/behaviors/BehaviorContext.hpp"
 #include "genetics/behaviors/FeedingBehavior.hpp"
@@ -26,7 +25,6 @@
 #include "genetics/behaviors/RestBehavior.hpp"
 #include "genetics/behaviors/ZoochoryBehavior.hpp"
 #include "genetics/systems/HealthSystem.hpp"
-#endif
 
 using namespace std;
 
@@ -72,13 +70,11 @@ static int s_nextCreatureId = 1;
 std::unique_ptr<EcoSim::Genetics::FeedingInteraction> Creature::s_feedingInteraction = nullptr;
 std::unique_ptr<EcoSim::Genetics::SeedDispersal> Creature::s_seedDispersal = nullptr;
 
-#if USE_NEW_BEHAVIOR_SYSTEM
 //================================================================================
 //  Static Member Initialization - Behavior System Services
 //================================================================================
 std::unique_ptr<EcoSim::Genetics::PerceptionSystem> Creature::s_perceptionSystem = nullptr;
 std::unique_ptr<EcoSim::Genetics::CombatInteraction> Creature::s_combatInteraction = nullptr;
-#endif
 
 //================================================================================
 //  Constants
@@ -166,11 +162,9 @@ Creature::Creature(const Creature& other)
     if (_archetype) {
         _archetype->incrementPopulation();
     }
-#if USE_NEW_BEHAVIOR_SYSTEM
     // Behavior controller is NOT copied - use lazy initialization
     // _behaviorController remains nullptr and will be initialized on first use
     _behaviorController = nullptr;
-#endif
 }
 
 /**
@@ -201,9 +195,7 @@ Creature::Creature(Creature&& other) noexcept
       _archetype(other._archetype),
       _attachedBurrs(std::move(other._attachedBurrs)),
       _gutSeeds(std::move(other._gutSeeds))
-#if USE_NEW_BEHAVIOR_SYSTEM
       , _behaviorController(std::move(other._behaviorController))
-#endif
 {
     // Transfer archetype without incrementing - just null out source
     other._archetype = nullptr;
@@ -262,10 +254,8 @@ Creature& Creature::operator=(const Creature& other) {
         _attachedBurrs = other._attachedBurrs;
         _gutSeeds = other._gutSeeds;
         
-#if USE_NEW_BEHAVIOR_SYSTEM
         // Reset behavior controller - lazy initialization will recreate it when needed
         _behaviorController.reset();
-#endif
     }
     return *this;
 }
@@ -311,10 +301,8 @@ Creature& Creature::operator=(Creature&& other) noexcept {
         _attachedBurrs = std::move(other._attachedBurrs);
         _gutSeeds = std::move(other._gutSeeds);
         
-#if USE_NEW_BEHAVIOR_SYSTEM
         // Move behavior controller from source
         _behaviorController = std::move(other._behaviorController);
-#endif
     }
     return *this;
 }
@@ -2684,8 +2672,6 @@ Creature::Creature(int x, int y, float hunger, float thirst,
 //  Behavior System Integration (Phase 3: God Class Decomposition)
 //================================================================================
 
-#if USE_NEW_BEHAVIOR_SYSTEM
-
 /**
  * Get the behavior controller for this creature.
  * Returns nullptr if behavior system is not initialized.
@@ -2822,5 +2808,3 @@ EcoSim::Genetics::BehaviorResult Creature::updateWithBehaviors(EcoSim::Genetics:
     
     return result;
 }
-
-#endif // USE_NEW_BEHAVIOR_SYSTEM

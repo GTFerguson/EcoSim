@@ -15,7 +15,6 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 option(ECOSIM_BUILD_TESTS "Build test suite" ON)
 option(ECOSIM_USE_SDL2 "Build with SDL2/ImGui support" ON)
 option(ECOSIM_USE_NCURSES "Build with NCurses support" ON)
-option(USE_NEW_BEHAVIOR_SYSTEM "Enable new BehaviorController-based update system" ON)
 
 # Include helper modules
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
@@ -69,14 +68,6 @@ target_include_directories(ecosim_genetics PUBLIC
     ${PROJECT_SOURCE_DIR}/include
 )
 target_link_libraries(ecosim_genetics PUBLIC ecosim_logging)
-
-# Propagate USE_NEW_BEHAVIOR_SYSTEM flag - must be on ecosim_genetics since
-# it includes creature.hpp in CoevolutionTracker.cpp. Using PUBLIC so it
-# propagates to ecosim_world and ecosim_core to ensure ODR compliance.
-if(USE_NEW_BEHAVIOR_SYSTEM)
-    target_compile_definitions(ecosim_genetics PUBLIC USE_NEW_BEHAVIOR_SYSTEM=1)
-endif()
-
 add_compiler_warnings(ecosim_genetics)
 
 # ==============================================================================
@@ -110,9 +101,6 @@ target_include_directories(ecosim_core PUBLIC
     ${PROJECT_SOURCE_DIR}/include
 )
 target_link_libraries(ecosim_core PUBLIC ecosim_world ecosim_genetics)
-
-# USE_NEW_BEHAVIOR_SYSTEM is propagated via ecosim_genetics (PUBLIC dependency)
-# No need to re-define it here - the flag flows through the dependency chain
 
 add_compiler_warnings(ecosim_core)
 

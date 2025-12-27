@@ -5,8 +5,7 @@
  * Phase 3: Creature God Class decomposition
  *
  * These tests verify that the BehaviorController integration works correctly
- * when USE_NEW_BEHAVIOR_SYSTEM is enabled, and that backward compatibility
- * is maintained when it is disabled.
+ * with the Creature class.
  */
 
 #include "test_framework.hpp"
@@ -16,7 +15,6 @@
 #include "genetics/defaults/UniversalGenes.hpp"
 #include "genetics/expression/OrganismState.hpp"
 
-#if USE_NEW_BEHAVIOR_SYSTEM
 #include "genetics/behaviors/BehaviorController.hpp"
 #include "genetics/behaviors/BehaviorContext.hpp"
 #include "genetics/behaviors/FeedingBehavior.hpp"
@@ -25,7 +23,6 @@
 #include "genetics/behaviors/MovementBehavior.hpp"
 #include "genetics/behaviors/RestBehavior.hpp"
 #include "genetics/behaviors/ZoochoryBehavior.hpp"
-#endif
 
 #include <iostream>
 #include <memory>
@@ -126,8 +123,6 @@ void test_creature_decide_behaviour() {
 //==============================================================================
 // Tests specific to new behavior system
 //==============================================================================
-
-#if USE_NEW_BEHAVIOR_SYSTEM
 
 /**
  * Test that behaviorController is properly initialized
@@ -402,8 +397,6 @@ void test_zoochoryBehavior_forSeedDispersal() {
     TEST_ASSERT(!applicable);
 }
 
-#endif // USE_NEW_BEHAVIOR_SYSTEM
-
 //==============================================================================
 // Test runner
 //==============================================================================
@@ -414,15 +407,14 @@ void run_creature_behavior_integration_tests() {
     // Initialize gene registry before tests
     Creature::initializeGeneRegistry();
     
-    // Backward compatibility tests (always run)
+    // Backward compatibility tests
     BEGIN_TEST_GROUP("Backward Compatibility");
     RUN_TEST(test_creature_construction_with_genome);
     RUN_TEST(test_creature_legacy_update);
     RUN_TEST(test_creature_decide_behaviour);
     END_TEST_GROUP();
     
-#if USE_NEW_BEHAVIOR_SYSTEM
-    // New behavior system tests (only when enabled)
+    // New behavior system tests
     BEGIN_TEST_GROUP("BehaviorController Integration");
     RUN_TEST(test_behaviorController_initialized);
     RUN_TEST(test_updateWithBehaviors_executesBehavior);
@@ -441,9 +433,6 @@ void run_creature_behavior_integration_tests() {
     BEGIN_TEST_GROUP("Priority Execution");
     RUN_TEST(test_behaviors_executedByPriority);
     END_TEST_GROUP();
-#else
-    std::cout << "\n[INFO] New behavior system tests skipped (USE_NEW_BEHAVIOR_SYSTEM=0)" << std::endl;
-#endif
     
     TestSuite::instance().printSummary();
 }

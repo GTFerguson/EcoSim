@@ -1,13 +1,6 @@
 #ifndef CREATURE_H
 #define CREATURE_H
 
-// Feature flag for new behavior system (Phase 3 - Creature God Class decomposition)
-// Set to 1 to enable the new BehaviorController-based update system
-// Set to 0 to use the legacy decideBehaviour() system
-#ifndef USE_NEW_BEHAVIOR_SYSTEM
-#define USE_NEW_BEHAVIOR_SYSTEM 0
-#endif
-
 // If needed elsewhere, use: template<typename T, size_t N> constexpr size_t arraySize(T(&)[N]) { return N; }
 
 /**
@@ -47,12 +40,10 @@
 #include "genetics/classification/ArchetypeIdentity.hpp"
 
 // Behavior system (Phase 3 - Creature God Class decomposition)
-#if USE_NEW_BEHAVIOR_SYSTEM
 #include "genetics/behaviors/BehaviorController.hpp"
 #include "genetics/behaviors/BehaviorContext.hpp"
 #include "genetics/systems/PerceptionSystem.hpp"
 #include "genetics/interactions/CombatInteraction.hpp"
-#endif
 
 #include <stdlib.h>   //  abs
 #include <algorithm>  //  max
@@ -218,7 +209,6 @@ class Creature: public GameObject,
     // Shared seed dispersal calculator
     static std::unique_ptr<EcoSim::Genetics::SeedDispersal> s_seedDispersal;
 
-#if USE_NEW_BEHAVIOR_SYSTEM
     //============================================================================
     //  Behavior System (Phase 3 - Creature God Class decomposition)
     //============================================================================
@@ -227,7 +217,6 @@ class Creature: public GameObject,
     // Shared services for behavior system
     static std::unique_ptr<EcoSim::Genetics::PerceptionSystem> s_perceptionSystem;
     static std::unique_ptr<EcoSim::Genetics::CombatInteraction> s_combatInteraction;
-#endif
 
   public:
     //============================================================================
@@ -765,7 +754,6 @@ class Creature: public GameObject,
      */
     static void initializeInteractionSystems();
 
-#if USE_NEW_BEHAVIOR_SYSTEM
     //============================================================================
     //  Behavior System (Phase 3 - Creature God Class decomposition)
     //============================================================================
@@ -781,7 +769,6 @@ class Creature: public GameObject,
      * @param ctx Behavior context with world access and timing
      * @return Result of behavior execution
      *
-     * Called instead of decideBehaviour() when USE_NEW_BEHAVIOR_SYSTEM is enabled.
      * The BehaviorController selects and executes the highest priority
      * applicable behavior.
      */
@@ -802,11 +789,9 @@ class Creature: public GameObject,
     /**
      * @brief Initialize the behavior controller with default behaviors.
      *
-     * Called during construction when USE_NEW_BEHAVIOR_SYSTEM is enabled.
      * Registers all standard behaviors (feeding, hunting, mating, rest, movement, zoochory).
      */
     void initializeBehaviorController();
-#endif
 
 public:
     //============================================================================
