@@ -285,9 +285,9 @@ void Navigator::moveTowards (Creature &c,
   float targetX = static_cast<float>(goalX) + 0.5f;
   float targetY = static_cast<float>(goalY) + 0.5f;
   
-  // Use smooth movement to gradually approach the target
+  // Move toward the target using float coordinates
   // deltaTime = 1.0 (one tick) by default
-  moveSmooth(c, map, rows, cols, targetX, targetY, 1.0f);
+  move(c, map, rows, cols, targetX, targetY, 1.0f);
 }
 
 /**
@@ -329,19 +329,19 @@ void Navigator::moveAway (Creature &c,
         float targetX = static_cast<float>(targetTileX) + 0.5f;
         float targetY = static_cast<float>(targetTileY) + 0.5f;
         
-        // Use smooth movement
-        moveSmooth(c, map, rows, cols, targetX, targetY, 1.0f);
+        // Move toward target using float coordinates
+        move(c, map, rows, cols, targetX, targetY, 1.0f);
       }
     }
   }
 }
 
 //================================================================================
-//  Smooth Float Movement (Phase 1: Float Movement System)
+//  Float Movement System
 //================================================================================
 
 /**
- *  Move creature smoothly toward a target position using float coordinates.
+ *  Move creature toward a target position using float coordinates.
  *  Movement is based on creature's getMovementSpeed() gene-derived value.
  *  Creature moves fractionally each tick, enabling visible speed differences.
  *
@@ -354,7 +354,7 @@ void Navigator::moveAway (Creature &c,
  *  @param deltaTime Time elapsed since last update (typically 1.0 per tick)
  *  @return         true if creature reached target (within arrival threshold)
  */
-bool Navigator::moveSmooth(Creature &c,
+bool Navigator::move(Creature &c,
                            const vector<vector<Tile>> &map,
                            const int &rows,
                            const int &cols,

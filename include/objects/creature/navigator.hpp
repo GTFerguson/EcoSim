@@ -181,11 +181,12 @@ class Navigator {
                                  const int &awayY);
     
     //============================================================================
-    //  Smooth Float Movement (Phase 1: Float Movement System)
+    //  Float Movement System
     //============================================================================
     /**
-     * @brief Move creature smoothly toward a target position using float coordinates.
+     * @brief Move creature toward a target position using float coordinates.
      *        Movement is based on creature's getMovementSpeed() and deltaTime.
+     *        Creatures move fractionally each tick, enabling visible speed differences.
      *
      * @param c Creature to move
      * @param map World grid for collision checking
@@ -196,7 +197,7 @@ class Navigator {
      * @param deltaTime Time elapsed since last update (in ticks, typically 1.0)
      * @return true if creature reached target (within small epsilon)
      */
-    static bool moveSmooth      (Creature &c,
+    static bool move            (Creature &c,
                                  const std::vector<std::vector<Tile>> &map,
                                  const int &rows,
                                  const int &cols,
