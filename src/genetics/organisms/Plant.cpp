@@ -577,52 +577,41 @@ float Plant::getSeedCoatDurability() const {
     return getGeneValueFromGenome(UniversalGenes::SEED_COAT_DURABILITY, 0.5f);
 }
 
+float Plant::getExplosivePodForce() const {
+    return getGeneValueFromGenome(UniversalGenes::EXPLOSIVE_POD_FORCE, 0.0f);
+}
+
 // ============================================================================
 // Phase 2.3: Emergent Dispersal Strategy
 // ============================================================================
 
 DispersalStrategy Plant::getPrimaryDispersalStrategy() const {
-    // Get all relevant traits (now read directly from genome)
-    float seedMass = getSeedMass();
-    float aerodynamics = getSeedAerodynamics();
-    float hookStrength = getSeedHookStrength();
-    float fruitAppeal = getFruitAppeal();
-    float seedDurability = getSeedCoatDurability();
+    struct StrategyScore {
+        DispersalStrategy strategy;
+        float score;
+    };
     
-    // Get runner production (vegetative strategy)
-    float runnerProd = getGeneValueFromGenome(UniversalGenes::RUNNER_PRODUCTION, 0.0f);
+    std::vector<StrategyScore> scores = {
+        {DispersalStrategy::VEGETATIVE, getRunnerProduction()},
+        {DispersalStrategy::EXPLOSIVE, getExplosivePodForce()},
+        {DispersalStrategy::WIND, (1.0f - getSeedMass()) * getSeedAerodynamics()},
+        {DispersalStrategy::ANIMAL_BURR, getSeedHookStrength()},
+        {DispersalStrategy::ANIMAL_FRUIT, getFruitAppeal() * getSeedCoatDurability()},
+    };
     
-    // Get explosive pod force
-    float explosiveForce = getGeneValueFromGenome(UniversalGenes::EXPLOSIVE_POD_FORCE, 0.0f);
+    // Find the highest scoring active strategy
+    auto best = std::max_element(scores.begin(), scores.end(),
+        [](const auto& a, const auto& b) { return a.score < b.score; });
     
-    // Strategy emerges from gene thresholds (order matters!)
+    // MINIMUM THRESHOLD: If no strategy scores high enough, use GRAVITY
+    // 0.1f accounts for very slow runners and other low-trait plants
+    const float MIN_STRATEGY_THRESHOLD = 0.1f;
     
-    // 1. Vegetative: high runner production prioritizes clonal spreading
-    if (runnerProd > 0.7f) {
-        return DispersalStrategy::VEGETATIVE;
+    if (best != scores.end() && best->score >= MIN_STRATEGY_THRESHOLD) {
+        return best->strategy;
     }
     
-    // 2. Explosive: mechanical seed launching
-    if (explosiveForce > 0.5f) {
-        return DispersalStrategy::EXPLOSIVE;
-    }
-    
-    // 3. Wind: light seeds with aerodynamic features
-    if (seedMass < 0.2f && aerodynamics > 0.6f) {
-        return DispersalStrategy::WIND;
-    }
-    
-    // 4. Animal burr: hooks attach to fur
-    if (hookStrength > 0.6f) {
-        return DispersalStrategy::ANIMAL_BURR;
-    }
-    
-    // 5. Animal fruit: attractive fruit with durable seeds
-    if (fruitAppeal > 0.6f && seedDurability > 0.5f) {
-        return DispersalStrategy::ANIMAL_FRUIT;
-    }
-    
-    // 6. Default: gravity dispersal
+    // Default: GRAVITY - seeds simply fall (requires no adaptation)
     return DispersalStrategy::GRAVITY;
 }
 

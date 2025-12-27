@@ -123,25 +123,39 @@ public:
     // ========================================================================
     // IPositionable interface
     // ========================================================================
+    // Note: getX() and getY() are declared in IGeneticOrganism interface section
+    // to satisfy both IPositionable and IGeneticOrganism requirements
     
     /**
-     * @brief Get X coordinate
-     * @return X position in world coordinates
+     * @brief Get world X coordinate (float precision)
+     * @return X position in world coordinates (tile center)
+     *
+     * Plants are positioned at tile center (x + 0.5). This is temporary until
+     * plants are overhauled to support variable sizes (multiple small plants
+     * per tile or large plants spanning multiple tiles).
      */
-    int getX() const override { return x_; }
+    float getWorldX() const override { return static_cast<float>(x_) + 0.5f; }
     
     /**
-     * @brief Get Y coordinate
-     * @return Y position in world coordinates
+     * @brief Get world Y coordinate (float precision)
+     * @return Y position in world coordinates (tile center)
+     *
+     * Plants are positioned at tile center (y + 0.5). This is temporary until
+     * plants are overhauled to support variable sizes.
      */
-    int getY() const override { return y_; }
+    float getWorldY() const override { return static_cast<float>(y_) + 0.5f; }
     
     /**
-     * @brief Set position (plants typically don't move, but seeds can be placed)
+     * @brief Set world position (plants typically don't move, but seeds can be placed)
      * @param x New X position
      * @param y New Y position
+     *
+     * For plants, this truncates to integer tile position.
      */
-    void setPosition(int x, int y) override { x_ = x; y_ = y; }
+    void setWorldPosition(float x, float y) override {
+        x_ = static_cast<int>(x);
+        y_ = static_cast<int>(y);
+    }
     
     // ========================================================================
     // ILifecycle interface
@@ -201,6 +215,24 @@ public:
      * @return The plant's phenotype
      */
     const Phenotype& getPhenotype() const override { return phenotype_; }
+    
+    /**
+     * @brief Get tile X coordinate (satisfies both IPositionable and IGeneticOrganism)
+     * @return X position in tile coordinates
+     */
+    int getX() const override { return x_; }
+    
+    /**
+     * @brief Get tile Y coordinate (satisfies both IPositionable and IGeneticOrganism)
+     * @return Y position in tile coordinates
+     */
+    int getY() const override { return y_; }
+    
+    /**
+     * @brief Get unique ID (IGeneticOrganism interface)
+     * @return Unique identifier as int
+     */
+    int getId() const override { return static_cast<int>(id_); }
     
     /**
      * @brief Recalculate expressed traits from genome
@@ -457,6 +489,14 @@ public:
      */
     float getSeedCoatDurability() const;
     
+    /**
+     * @brief Get explosive pod force from EXPLOSIVE_POD_FORCE gene
+     * @return Force (0.0 = no explosive mechanism, 1.0 = strong ballistic launch)
+     *
+     * High values enable mechanical seed launching (ballistic dispersal).
+     */
+    float getExplosivePodForce() const;
+    
     // ========================================================================
     // Emergent Dispersal Strategy (Phase 2.3)
     // ========================================================================
@@ -535,12 +575,13 @@ public:
     // ========================================================================
     // Unique ID and Serialization (Phase 2.3)
     // ========================================================================
+    // Note: getId() is declared above in IGeneticOrganism interface section
     
     /**
-     * @brief Get unique ID for this plant instance
-     * @return Unique identifier
+     * @brief Get unsigned ID for internal use
+     * @return Unique identifier as unsigned int
      */
-    unsigned int getId() const { return id_; }
+    unsigned int getUnsignedId() const { return id_; }
     
     /**
      * @brief Set unique ID (used during creation/deserialization)
