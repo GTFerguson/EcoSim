@@ -34,32 +34,39 @@ std::unique_ptr<Creature> createTestCreature(int x, int y, DietType dietType) {
     Creature::initializeGeneRegistry();
     auto genome = std::make_unique<EcoSim::Genetics::Genome>();
     
+    // Helper lambda to set gene value if gene exists
+    auto setGeneValue = [&genome](const std::string& geneId, float value) {
+        if (genome->hasGene(geneId)) {
+            genome->getGeneMutable(geneId).setAlleleValues(value);
+        }
+    };
+    
     // Set genes to produce the desired diet type
     switch (dietType) {
         case DietType::HERBIVORE:
-            genome->setGeneValue(EcoSim::Genetics::UniversalGenes::PLANT_DIGESTION_EFFICIENCY, 0.9f);
-            genome->setGeneValue(EcoSim::Genetics::UniversalGenes::MEAT_DIGESTION_EFFICIENCY, 0.1f);
-            genome->setGeneValue(EcoSim::Genetics::UniversalGenes::CELLULOSE_BREAKDOWN, 0.8f);
+            setGeneValue(EcoSim::Genetics::UniversalGenes::PLANT_DIGESTION_EFFICIENCY, 0.9f);
+            setGeneValue(EcoSim::Genetics::UniversalGenes::MEAT_DIGESTION_EFFICIENCY, 0.1f);
+            setGeneValue(EcoSim::Genetics::UniversalGenes::CELLULOSE_BREAKDOWN, 0.8f);
             break;
         case DietType::FRUGIVORE:
-            genome->setGeneValue(EcoSim::Genetics::UniversalGenes::PLANT_DIGESTION_EFFICIENCY, 0.6f);
-            genome->setGeneValue(EcoSim::Genetics::UniversalGenes::MEAT_DIGESTION_EFFICIENCY, 0.1f);
-            genome->setGeneValue(EcoSim::Genetics::UniversalGenes::COLOR_VISION, 0.8f);
-            genome->setGeneValue(EcoSim::Genetics::UniversalGenes::CELLULOSE_BREAKDOWN, 0.3f);
+            setGeneValue(EcoSim::Genetics::UniversalGenes::PLANT_DIGESTION_EFFICIENCY, 0.6f);
+            setGeneValue(EcoSim::Genetics::UniversalGenes::MEAT_DIGESTION_EFFICIENCY, 0.1f);
+            setGeneValue(EcoSim::Genetics::UniversalGenes::COLOR_VISION, 0.8f);
+            setGeneValue(EcoSim::Genetics::UniversalGenes::CELLULOSE_BREAKDOWN, 0.3f);
             break;
         case DietType::CARNIVORE:
-            genome->setGeneValue(EcoSim::Genetics::UniversalGenes::PLANT_DIGESTION_EFFICIENCY, 0.1f);
-            genome->setGeneValue(EcoSim::Genetics::UniversalGenes::MEAT_DIGESTION_EFFICIENCY, 0.9f);
+            setGeneValue(EcoSim::Genetics::UniversalGenes::PLANT_DIGESTION_EFFICIENCY, 0.1f);
+            setGeneValue(EcoSim::Genetics::UniversalGenes::MEAT_DIGESTION_EFFICIENCY, 0.9f);
             break;
         case DietType::NECROVORE:
-            genome->setGeneValue(EcoSim::Genetics::UniversalGenes::TOXIN_TOLERANCE, 0.9f);
-            genome->setGeneValue(EcoSim::Genetics::UniversalGenes::MEAT_DIGESTION_EFFICIENCY, 0.6f);
-            genome->setGeneValue(EcoSim::Genetics::UniversalGenes::COMBAT_AGGRESSION, 0.2f);
+            setGeneValue(EcoSim::Genetics::UniversalGenes::TOXIN_TOLERANCE, 0.9f);
+            setGeneValue(EcoSim::Genetics::UniversalGenes::MEAT_DIGESTION_EFFICIENCY, 0.6f);
+            setGeneValue(EcoSim::Genetics::UniversalGenes::COMBAT_AGGRESSION, 0.2f);
             break;
         case DietType::OMNIVORE:
         default:
-            genome->setGeneValue(EcoSim::Genetics::UniversalGenes::PLANT_DIGESTION_EFFICIENCY, 0.5f);
-            genome->setGeneValue(EcoSim::Genetics::UniversalGenes::MEAT_DIGESTION_EFFICIENCY, 0.5f);
+            setGeneValue(EcoSim::Genetics::UniversalGenes::PLANT_DIGESTION_EFFICIENCY, 0.5f);
+            setGeneValue(EcoSim::Genetics::UniversalGenes::MEAT_DIGESTION_EFFICIENCY, 0.5f);
             break;
     }
     

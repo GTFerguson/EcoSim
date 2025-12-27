@@ -55,7 +55,7 @@ void test_classify_apex_predator() {
     
     // The apex predator template has high meat digestion, large size, high aggression
     // After updateIdentity(), it should be classified as ApexPredator or similar
-    const ArchetypeIdentity* identity = CreatureTaxonomy::classifyArchetype(*apex.getGenome());
+    const ArchetypeIdentity* identity = CreatureTaxonomy::classifyArchetype(apex.getGenome());
     
     // Check that it's a predator type (comparing flyweight pointers)
     TEST_ASSERT(identity == ArchetypeIdentity::ApexPredator() ||
@@ -70,7 +70,7 @@ void test_classify_pack_hunter() {
     factory.registerDefaultTemplates();
     
     Creature packHunter = factory.createPackHunter(0, 0);
-    const ArchetypeIdentity* identity = CreatureTaxonomy::classifyArchetype(*packHunter.getGenome());
+    const ArchetypeIdentity* identity = CreatureTaxonomy::classifyArchetype(packHunter.getGenome());
     
     // Pack hunters are characterized by high pack coordination and smaller size
     TEST_ASSERT(identity == ArchetypeIdentity::PackHunter() ||
@@ -84,7 +84,7 @@ void test_classify_scavenger() {
     factory.registerDefaultTemplates();
     
     Creature scavenger = factory.createCarrionStalker(0, 0);
-    const ArchetypeIdentity* identity = CreatureTaxonomy::classifyArchetype(*scavenger.getGenome());
+    const ArchetypeIdentity* identity = CreatureTaxonomy::classifyArchetype(scavenger.getGenome());
     
     // Scavengers have low hunt instinct and high toxin tolerance
     TEST_ASSERT(identity == ArchetypeIdentity::Scavenger() ||
@@ -98,7 +98,7 @@ void test_classify_fleet_runner() {
     factory.registerDefaultTemplates();
     
     Creature runner = factory.createFleetRunner(0, 0);
-    const ArchetypeIdentity* identity = CreatureTaxonomy::classifyArchetype(*runner.getGenome());
+    const ArchetypeIdentity* identity = CreatureTaxonomy::classifyArchetype(runner.getGenome());
     
     // Fleet runners are fast herbivores with high retreat threshold
     TEST_ASSERT(identity == ArchetypeIdentity::FleetRunner() ||
@@ -112,7 +112,7 @@ void test_classify_tank_herbivore() {
     factory.registerDefaultTemplates();
     
     Creature tank = factory.createTankHerbivore(0, 0);
-    const ArchetypeIdentity* identity = CreatureTaxonomy::classifyArchetype(*tank.getGenome());
+    const ArchetypeIdentity* identity = CreatureTaxonomy::classifyArchetype(tank.getGenome());
     
     // Tank herbivores are large, armored, with horns
     TEST_ASSERT(identity == ArchetypeIdentity::TankHerbivore() ||
@@ -257,7 +257,7 @@ void test_update_identity_sets_category() {
     Creature creature = factory.createPredator(0, 0);
     
     // Category should be set after factory creation (which calls updateIdentity)
-    const ArchetypeIdentity* identity = CreatureTaxonomy::classifyArchetype(*creature.getGenome());
+    const ArchetypeIdentity* identity = CreatureTaxonomy::classifyArchetype(creature.getGenome());
     
     // Should return a valid identity pointer (never null)
     TEST_ASSERT(identity != nullptr);
@@ -300,7 +300,7 @@ void test_update_identity_updates_all_fields() {
     Creature creature = factory.createHerbivore(0, 0);
     
     // All fields should be set
-    const ArchetypeIdentity* identity = CreatureTaxonomy::classifyArchetype(*creature.getGenome());
+    const ArchetypeIdentity* identity = CreatureTaxonomy::classifyArchetype(creature.getGenome());
     TEST_ASSERT(identity != nullptr);
     TEST_ASSERT(!creature.getArchetypeLabel().empty());
     TEST_ASSERT(!creature.getScientificName().empty());
@@ -324,19 +324,19 @@ void test_creature_classification_matches_archetype() {
     
     // Create each type and check it gets an appropriate classification
     Creature apex = factory.createApexPredator(0, 0);
-    const ArchetypeIdentity* apexId = CreatureTaxonomy::classifyArchetype(*apex.getGenome());
+    const ArchetypeIdentity* apexId = CreatureTaxonomy::classifyArchetype(apex.getGenome());
     TEST_ASSERT(apexId == ArchetypeIdentity::ApexPredator() ||
                 apexId == ArchetypeIdentity::PursuitHunter() ||
                 apexId == ArchetypeIdentity::AmbushPredator());
     
     Creature tank = factory.createTankHerbivore(0, 0);
-    const ArchetypeIdentity* tankId = CreatureTaxonomy::classifyArchetype(*tank.getGenome());
+    const ArchetypeIdentity* tankId = CreatureTaxonomy::classifyArchetype(tank.getGenome());
     TEST_ASSERT(tankId == ArchetypeIdentity::TankHerbivore() ||
                 tankId == ArchetypeIdentity::ArmoredGrazer() ||
                 tankId == ArchetypeIdentity::OmnivoreGeneralist());
     
     Creature spiky = factory.createSpikyDefender(0, 0);
-    const ArchetypeIdentity* spikyId = CreatureTaxonomy::classifyArchetype(*spiky.getGenome());
+    const ArchetypeIdentity* spikyId = CreatureTaxonomy::classifyArchetype(spiky.getGenome());
     TEST_ASSERT(spikyId == ArchetypeIdentity::SpikyDefender() ||
                 spikyId == ArchetypeIdentity::OmnivoreGeneralist());
 }

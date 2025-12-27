@@ -16,6 +16,8 @@
 #include "genetics/core/GeneRegistry.hpp"
 #include "genetics/defaults/UniversalGenes.hpp"
 #include "genetics/expression/Phenotype.hpp"
+#include "genetics/expression/OrganismState.hpp"
+#include "genetics/expression/EnvironmentState.hpp"
 #include "genetics/interactions/CombatInteraction.hpp"
 #include "genetics/interactions/CombatAction.hpp"
 #include "genetics/interactions/DamageTypes.hpp"
@@ -35,19 +37,28 @@ using namespace EcoSim::Testing;
  * Set up a genome with combat-relevant gene values.
  * NOTE: Do NOT create Phenotype in a helper that returns by value,
  * because Phenotype stores a pointer to the Genome.
+ *
+ * Combat initiation uses: COMBAT_AGGRESSION, HUNT_INSTINCT
+ * Retreat uses: RETREAT_THRESHOLD
+ * Attack uses: TOOTH_SHARPNESS and other weapon genes
  */
 void setupCombatGenome(
     Genome& genome,
     float aggression,
-    float meatDigestion,
+    float huntInstinct,
     float toothSharpness = 0.5f
 ) {
-    // Set combat-relevant genes
+    // Set combat behavior genes
     if (genome.hasGene(UniversalGenes::COMBAT_AGGRESSION)) {
         genome.getGeneMutable(UniversalGenes::COMBAT_AGGRESSION).setAlleleValues(aggression);
     }
+    // HUNT_INSTINCT is used in shouldInitiateCombat() calculation
+    if (genome.hasGene(UniversalGenes::HUNT_INSTINCT)) {
+        genome.getGeneMutable(UniversalGenes::HUNT_INSTINCT).setAlleleValues(huntInstinct);
+    }
+    // Also set meat digestion for predator behavior consistency
     if (genome.hasGene(UniversalGenes::MEAT_DIGESTION_EFFICIENCY)) {
-        genome.getGeneMutable(UniversalGenes::MEAT_DIGESTION_EFFICIENCY).setAlleleValues(meatDigestion);
+        genome.getGeneMutable(UniversalGenes::MEAT_DIGESTION_EFFICIENCY).setAlleleValues(huntInstinct);
     }
     if (genome.hasGene(UniversalGenes::TOOTH_SHARPNESS)) {
         genome.getGeneMutable(UniversalGenes::TOOTH_SHARPNESS).setAlleleValues(toothSharpness);
@@ -67,13 +78,26 @@ void test_combat_initiation() {
     setupCombatGenome(predatorGenome, 0.9f, 0.9f, 0.8f);
     Phenotype predatorPhenotype(&predatorGenome, &registry);
     
+    // Set adult age (0.5 = prime adult) for full trait expression
+    // Default age=0 applies 40% modulation which weakens combat traits
+    OrganismState adultState;
+    adultState.age_normalized = 0.5f;  // Adult (0.15-0.8 range = 100% expression)
+    adultState.health = 1.0f;
+    adultState.energy_level = 1.0f;
+    EnvironmentState defaultEnv;
+    predatorPhenotype.updateContext(defaultEnv, adultState);
+    
     // Low aggression prey - create genome in local scope
     Genome preyGenome = UniversalGenes::createCreatureGenome(registry);
     setupCombatGenome(preyGenome, 0.1f, 0.2f, 0.2f);
     Phenotype preyPhenotype(&preyGenome, &registry);
+    preyPhenotype.updateContext(defaultEnv, adultState);
     
     // Test 1: Hungry predator should initiate combat
-    float hungerLevel = 0.8f;  // Very hungry (low food)
+    // Note: hungerLevel is food satiation, NOT hunger.
+    // Low hungerLevel (0.1) = empty stomach = high hunt motivation
+    // The formula: hungerMotive = 1.0f - attackerHunger
+    float hungerLevel = 0.1f;  // Very hungry (low food satiation)
     bool shouldAttack = CombatInteraction::shouldInitiateCombat(
         predatorPhenotype, preyPhenotype, hungerLevel);
     
@@ -127,7 +151,16 @@ void test_retreat_threshold() {
     
     Phenotype phenotype(&genome, &registry);
     
+    // Set adult age for full trait expression (100%)
+    OrganismState adultState;
+    adultState.age_normalized = 0.5f;  // Adult (0.15-0.8 range = 100% expression)
+    adultState.health = 1.0f;
+    adultState.energy_level = 1.0f;
+    EnvironmentState defaultEnv;
+    phenotype.updateContext(defaultEnv, adultState);
+    
     // Test at various health levels
+    // With 0.3f threshold and adult age (100% expression)
     bool shouldRetreat80 = CombatInteraction::shouldRetreat(phenotype, 0.8f);
     bool shouldRetreat20 = CombatInteraction::shouldRetreat(phenotype, 0.2f);
     
@@ -267,25 +300,25 @@ void test_weapon_selection() {
 void test_type_effectiveness() {
     // Piercing vs ThickHide = 0.5 (resisted)
     TEST_ASSERT_NEAR(
-        getTypeEffectiveness(DamageType::Piercing, DefenseType::ThickHide),
+        getTypeEffectiveness(CombatDamageType::Piercing, DefenseType::ThickHide),
         0.5f, 0.001f
     );
     
     // Piercing vs Scales = 1.5 (strong)
     TEST_ASSERT_NEAR(
-        getTypeEffectiveness(DamageType::Piercing, DefenseType::Scales),
+        getTypeEffectiveness(CombatDamageType::Piercing, DefenseType::Scales),
         1.5f, 0.001f
     );
     
     // Slashing vs FatLayer = 1.5 (strong)
     TEST_ASSERT_NEAR(
-        getTypeEffectiveness(DamageType::Slashing, DefenseType::FatLayer),
+        getTypeEffectiveness(CombatDamageType::Slashing, DefenseType::FatLayer),
         1.5f, 0.001f
     );
     
     // Blunt vs ThickHide = 1.5 (strong)
     TEST_ASSERT_NEAR(
-        getTypeEffectiveness(DamageType::Blunt, DefenseType::ThickHide),
+        getTypeEffectiveness(CombatDamageType::Blunt, DefenseType::ThickHide),
         1.5f, 0.001f
     );
 }

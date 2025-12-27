@@ -33,6 +33,30 @@ extern void runNamingSystemTests();
 extern void run_combat_system_tests();
 extern void run_combat_behavior_tests();
 
+// Creature behavior test runners (new coverage tests)
+extern void runHealthHealingTests();
+extern void run_creature_breeding_tests();
+extern void run_creature_state_machine_tests();
+extern void run_creature_movement_tests();
+
+// HealthSystem test runner (organism-agnostic)
+extern void runHealthSystemTests();
+
+// FeedingBehavior test runner (IBehavior implementation)
+extern void runFeedingBehaviorTests();
+
+// MatingBehavior test runner (IBehavior implementation)
+extern void run_mating_behavior_tests();
+
+// MovementBehavior test runner (IBehavior implementation)
+extern void run_movement_behavior_tests();
+
+// ZoochoryBehavior test runner (animal-mediated seed dispersal)
+extern void runZoochoryBehaviorTests();
+
+// RestBehavior test runner (IBehavior implementation)
+extern void runRestBehaviorTests();
+
 int main() {
     auto start = std::chrono::high_resolution_clock::now();
     
@@ -109,6 +133,53 @@ int main() {
     // Combat Behavior Tests
     std::cout << "=== Combat Behavior Tests ===" << std::endl;
     run_combat_behavior_tests();
+    std::cout << std::endl;
+    
+    // Creature Behavior Coverage Tests
+    std::cout << "=== Creature Health & Healing Tests ===" << std::endl;
+    runHealthHealingTests();
+    std::cout << std::endl;
+    
+    std::cout << "=== Creature Breeding System Tests ===" << std::endl;
+    run_creature_breeding_tests();
+    std::cout << std::endl;
+    
+    std::cout << "=== Creature State Machine Tests ===" << std::endl;
+    run_creature_state_machine_tests();
+    std::cout << std::endl;
+    
+    std::cout << "=== Creature Movement System Tests ===" << std::endl;
+    run_creature_movement_tests();
+    std::cout << std::endl;
+    
+    // HealthSystem Tests (organism-agnostic)
+    std::cout << "=== HealthSystem Tests (Organism-Agnostic) ===" << std::endl;
+    runHealthSystemTests();
+    std::cout << std::endl;
+    
+    // FeedingBehavior Tests (IBehavior implementation)
+    std::cout << "=== FeedingBehavior Tests (IBehavior) ===" << std::endl;
+    runFeedingBehaviorTests();
+    std::cout << std::endl;
+    
+    // MatingBehavior Tests (IBehavior implementation)
+    std::cout << "=== MatingBehavior Tests (IBehavior) ===" << std::endl;
+    run_mating_behavior_tests();
+    std::cout << std::endl;
+    
+    // MovementBehavior Tests (IBehavior implementation)
+    std::cout << "=== MovementBehavior Tests (IBehavior) ===" << std::endl;
+    run_movement_behavior_tests();
+    std::cout << std::endl;
+    
+    // ZoochoryBehavior Tests (animal-mediated seed dispersal)
+    std::cout << "=== ZoochoryBehavior Tests (Zoochory) ===" << std::endl;
+    runZoochoryBehaviorTests();
+    std::cout << std::endl;
+    
+    // RestBehavior Tests (IBehavior implementation)
+    std::cout << "=== RestBehavior Tests (IBehavior) ===" << std::endl;
+    runRestBehaviorTests();
     std::cout << std::endl;
     
     auto end = std::chrono::high_resolution_clock::now();

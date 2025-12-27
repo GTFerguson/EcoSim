@@ -5,11 +5,14 @@
 # Build artifacts
 *.dSYM/
 *.o
+build/
+
+# Legacy executables (before CMake migration)
 EcoSim
 EcoSim_SDL2
 EcoSim_ImGui
 
-# Test binaries (root level)
+# Legacy test binaries (root level) - kept for shell script compatibility
 GeneticsTest
 NewGenomeTest
 OlfactoryTest

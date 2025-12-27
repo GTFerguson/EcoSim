@@ -259,12 +259,12 @@ void test_batch_decay_processing() {
         layer.deposit(i, i, deposit);
     }
     
-    TEST_ASSERT_EQ(50, layer.getActiveCount());
+    TEST_ASSERT_EQ(50, layer.getActiveTileCount());
     
     // Decay all
     layer.update(200);
     
-    TEST_ASSERT_EQ(0, layer.getActiveCount());
+    TEST_ASSERT_EQ(0, layer.getActiveTileCount());
 }
 
 //================================================================================
@@ -328,7 +328,7 @@ void test_sparse_storage_empty_map() {
     ScentLayer layer(500, 500);  // Large map
     
     // Empty map should have zero active count
-    TEST_ASSERT_EQ(0, layer.getActiveCount());
+    TEST_ASSERT_EQ(0, layer.getActiveTileCount());
 }
 
 void test_sparse_storage_few_scents() {
@@ -346,7 +346,7 @@ void test_sparse_storage_few_scents() {
         layer.deposit(i * 50, i * 50, deposit);
     }
     
-    TEST_ASSERT_EQ(10, layer.getActiveCount());
+    TEST_ASSERT_EQ(10, layer.getActiveTileCount());
 }
 
 void test_sparse_storage_performance() {
@@ -396,11 +396,11 @@ void test_clear_operation() {
         layer.deposit(i, i, deposit);
     }
     
-    TEST_ASSERT_EQ(50, layer.getActiveCount());
+    TEST_ASSERT_EQ(50, layer.getActiveTileCount());
     
     layer.clear();
     
-    TEST_ASSERT_EQ(0, layer.getActiveCount());
+    TEST_ASSERT_EQ(0, layer.getActiveTileCount());
 }
 
 void test_remove_scents_from_creature() {
@@ -423,12 +423,12 @@ void test_remove_scents_from_creature() {
     layer.deposit(40, 40, deposit);
     layer.deposit(50, 50, deposit);
     
-    TEST_ASSERT_EQ(5, layer.getActiveCount());
+    TEST_ASSERT_EQ(5, layer.getActiveTileCount());
     
     // Remove creature 1's scents
     layer.removeScentsFromCreature(1);
     
-    TEST_ASSERT_EQ(2, layer.getActiveCount());
+    TEST_ASSERT_EQ(2, layer.getActiveTileCount());
     TEST_ASSERT(layer.getScentsAt(10, 10).empty());
     TEST_ASSERT(!layer.getScentsAt(40, 40).empty());
 }
@@ -468,9 +468,9 @@ void test_find_strongest_scent_in_radius() {
     layer.deposit(49, 49, different);
     
     int foundX = -1, foundY = -1;
-    bool found = layer.getStrongestScentInRadius(50, 50, 10, ScentType::MATE_SEEKING, foundX, foundY);
+    ScentDeposit found = layer.getStrongestScentInRadius(50, 50, 10, ScentType::MATE_SEEKING, foundX, foundY);
     
-    TEST_ASSERT(found);
+    TEST_ASSERT(found.intensity > 0.0f);
     TEST_ASSERT_EQ(55, foundX);
     TEST_ASSERT_EQ(55, foundY);
 }
@@ -489,9 +489,9 @@ void test_no_scent_in_radius() {
     layer.deposit(90, 90, deposit);
     
     int foundX = -1, foundY = -1;
-    bool found = layer.getStrongestScentInRadius(10, 10, 5, ScentType::MATE_SEEKING, foundX, foundY);
+    ScentDeposit found = layer.getStrongestScentInRadius(10, 10, 5, ScentType::MATE_SEEKING, foundX, foundY);
     
-    TEST_ASSERT(!found);
+    TEST_ASSERT(found.intensity <= 0.0f);
 }
 
 //================================================================================
@@ -510,10 +510,10 @@ void test_olfactory_genes_registered() {
     
     // Check gene definitions are valid
     const auto& scentProd = registry.getDefinition(EcoSim::Genetics::UniversalGenes::SCENT_PRODUCTION);
-    TEST_ASSERT_GE(scentProd.maxValue, scentProd.minValue);
+    TEST_ASSERT_GE(scentProd.getLimits().max_value, scentProd.getLimits().min_value);
     
     const auto& olfactory = registry.getDefinition(EcoSim::Genetics::UniversalGenes::OLFACTORY_ACUITY);
-    TEST_ASSERT_GE(olfactory.maxValue, olfactory.minValue);
+    TEST_ASSERT_GE(olfactory.getLimits().max_value, olfactory.getLimits().min_value);
 }
 
 //================================================================================

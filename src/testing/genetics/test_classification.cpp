@@ -24,7 +24,7 @@ void printGeneComparison(Creature& creature, const char* geneId, const std::stri
     
     // Try to get raw value directly from genome
     float rawValue = -1.0f;
-    const EcoSim::Genetics::Genome* genome = creature.getNewGenome();
+    const EcoSim::Genetics::Genome* genome = creature.getGenome();
     if (genome && genome->hasGene(geneId)) {
         const EcoSim::Genetics::Gene& gene = genome->getGene(geneId);
         rawValue = gene.getNumericValue(DominanceType::Incomplete);
@@ -46,11 +46,10 @@ void testClassification(CreatureFactory& factory, const std::string& templateNam
     Creature creature = factory.createFromTemplate(templateName, 0, 0);
     
     std::cout << "Archetype Label: " << creature.getArchetypeLabel() << std::endl;
-    std::cout << "Uses New Genetics: " << (creature.usesNewGenetics() ? "Yes" : "No") << std::endl;
     
-    // Check if phenotype exists
-    if (!creature.usesNewGenetics()) {
-        std::cout << "ERROR: New genetics not enabled!" << std::endl;
+    // Check if genome exists
+    if (!creature.getGenome()) {
+        std::cout << "ERROR: Genome not initialized!" << std::endl;
         return;
     }
     

@@ -149,16 +149,18 @@ void testHealingIncreasesHealth() {
     
     float maxHealth = creature.getMaxHealth();
     
-    // Damage creature first
-    creature.takeDamage(maxHealth * 0.5f);
+    // Damage creature to 25% health to ensure room for healing
+    creature.takeDamage(maxHealth * 0.75f);
     float healthBefore = creature.getHealth();
     
-    // Heal
-    creature.heal(10.0f);
+    // Heal a percentage of max health (10%) - ensures we don't hit cap
+    float healAmount = maxHealth * 0.1f;
+    creature.heal(healAmount);
     float healthAfter = creature.getHealth();
     
     TEST_ASSERT_GT(healthAfter, healthBefore);
-    TEST_ASSERT_GE(healthAfter - healthBefore, 10.0f - 0.001f);
+    // Verify healing occurred (with small tolerance for floating point)
+    TEST_ASSERT_GE(healthAfter - healthBefore, healAmount - 0.001f);
 }
 
 /**
@@ -289,15 +291,15 @@ void testHealthInitialization() {
  */
 void testMaxHealthScalesWithSize() {
     // This test verifies the relationship between MAX_SIZE gene and health
-    // Health = MAX_SIZE * 50.0f (HEALTH_PER_SIZE constant)
+    // Health = MAX_SIZE * 10.0f (HEALTH_PER_SIZE constant)
     
     Creature creature = createTestCreature();
     
     float maxHealth = creature.getMaxHealth();
     
     // Max health should be reasonable for a creature
-    // With default MAX_SIZE around 1-4, health should be 50-200
-    TEST_ASSERT_GE(maxHealth, 25.0f);
+    // With default MAX_SIZE around 1-4, health should be 10-40
+    TEST_ASSERT_GE(maxHealth, 5.0f);
     TEST_ASSERT_LE(maxHealth, 1000.0f);
 }
 

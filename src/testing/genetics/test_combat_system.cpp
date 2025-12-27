@@ -61,43 +61,43 @@ void setMatureAge(Phenotype& phenotype) {
 void test_damage_type_effectiveness() {
     // Piercing vs ThickHide = 0.5 (resisted)
     TEST_ASSERT_NEAR(
-        getTypeEffectiveness(DamageType::Piercing, DefenseType::ThickHide),
+        getTypeEffectiveness(CombatDamageType::Piercing, DefenseType::ThickHide),
         0.5f, 0.001f
     );
     
     // Piercing vs Scales = 1.5 (strong)
     TEST_ASSERT_NEAR(
-        getTypeEffectiveness(DamageType::Piercing, DefenseType::Scales),
+        getTypeEffectiveness(CombatDamageType::Piercing, DefenseType::Scales),
         1.5f, 0.001f
     );
     
     // Piercing vs FatLayer = 1.0 (neutral)
     TEST_ASSERT_NEAR(
-        getTypeEffectiveness(DamageType::Piercing, DefenseType::FatLayer),
+        getTypeEffectiveness(CombatDamageType::Piercing, DefenseType::FatLayer),
         1.0f, 0.001f
     );
     
     // Slashing vs Scales = 0.5 (resisted)
     TEST_ASSERT_NEAR(
-        getTypeEffectiveness(DamageType::Slashing, DefenseType::Scales),
+        getTypeEffectiveness(CombatDamageType::Slashing, DefenseType::Scales),
         0.5f, 0.001f
     );
     
     // Slashing vs FatLayer = 1.5 (strong)
     TEST_ASSERT_NEAR(
-        getTypeEffectiveness(DamageType::Slashing, DefenseType::FatLayer),
+        getTypeEffectiveness(CombatDamageType::Slashing, DefenseType::FatLayer),
         1.5f, 0.001f
     );
     
     // Blunt vs ThickHide = 1.5 (strong)
     TEST_ASSERT_NEAR(
-        getTypeEffectiveness(DamageType::Blunt, DefenseType::ThickHide),
+        getTypeEffectiveness(CombatDamageType::Blunt, DefenseType::ThickHide),
         1.5f, 0.001f
     );
     
     // Blunt vs FatLayer = 0.5 (resisted)
     TEST_ASSERT_NEAR(
-        getTypeEffectiveness(DamageType::Blunt, DefenseType::FatLayer),
+        getTypeEffectiveness(CombatDamageType::Blunt, DefenseType::FatLayer),
         0.5f, 0.001f
     );
 }
@@ -111,31 +111,31 @@ void test_weapon_base_stats() {
     const WeaponStats& teeth = getWeaponStats(WeaponType::Teeth);
     TEST_ASSERT_NEAR(teeth.baseDamage, 10.0f, 0.001f);
     TEST_ASSERT_EQ(teeth.baseCooldown, 3);
-    TEST_ASSERT(teeth.primaryType == DamageType::Piercing);
+    TEST_ASSERT(teeth.primaryType == CombatDamageType::Piercing);
     
     // Claws: 6 damage, 2 cooldown, Slash
     const WeaponStats& claws = getWeaponStats(WeaponType::Claws);
     TEST_ASSERT_NEAR(claws.baseDamage, 6.0f, 0.001f);
     TEST_ASSERT_EQ(claws.baseCooldown, 2);
-    TEST_ASSERT(claws.primaryType == DamageType::Slashing);
+    TEST_ASSERT(claws.primaryType == CombatDamageType::Slashing);
     
     // Horns: 12 damage, 4 cooldown, Pierce
     const WeaponStats& horns = getWeaponStats(WeaponType::Horns);
     TEST_ASSERT_NEAR(horns.baseDamage, 12.0f, 0.001f);
     TEST_ASSERT_EQ(horns.baseCooldown, 4);
-    TEST_ASSERT(horns.primaryType == DamageType::Piercing);
+    TEST_ASSERT(horns.primaryType == CombatDamageType::Piercing);
     
     // Tail: 5 damage, 2 cooldown, Blunt
     const WeaponStats& tail = getWeaponStats(WeaponType::Tail);
     TEST_ASSERT_NEAR(tail.baseDamage, 5.0f, 0.001f);
     TEST_ASSERT_EQ(tail.baseCooldown, 2);
-    TEST_ASSERT(tail.primaryType == DamageType::Blunt);
+    TEST_ASSERT(tail.primaryType == CombatDamageType::Blunt);
     
     // Body: 8 damage, 3 cooldown, Blunt
     const WeaponStats& body = getWeaponStats(WeaponType::Body);
     TEST_ASSERT_NEAR(body.baseDamage, 8.0f, 0.001f);
     TEST_ASSERT_EQ(body.baseCooldown, 3);
-    TEST_ASSERT(body.primaryType == DamageType::Blunt);
+    TEST_ASSERT(body.primaryType == CombatDamageType::Blunt);
 }
 
 // ============================================================================
@@ -152,7 +152,7 @@ void test_damage_distribution() {
     TEST_ASSERT_NEAR(dist.total(), 1.0f, 0.001f);
     
     // Test dominant type (should be piercing)
-    TEST_ASSERT(dist.getDominantType() == DamageType::Piercing);
+    TEST_ASSERT(dist.getDominantType() == CombatDamageType::Piercing);
     
     // Test specialization (0.8/1.0 = 0.8)
     TEST_ASSERT_NEAR(dist.getSpecialization(), 0.8f, 0.001f);
@@ -407,7 +407,7 @@ void test_body_damage_normalized() {
     TEST_ASSERT_NEAR(dist.total(), 1.0f, 0.01f);
     
     // Body is primarily blunt (always 1.0 weight before normalization)
-    TEST_ASSERT(dist.getDominantType() == DamageType::Blunt);
+    TEST_ASSERT(dist.getDominantType() == CombatDamageType::Blunt);
     
     // With spines=0.3, pierce should be ~23% (0.3/1.3), blunt ~77% (1.0/1.3)
     TEST_ASSERT_GT(dist.blunt, 0.7f);
@@ -421,20 +421,20 @@ void test_type_effectiveness_combinations() {
     // Full rock-paper-scissors verification
     // Pierce -> strong vs Scales, weak vs Hide
     TEST_ASSERT_GT(
-        getTypeEffectiveness(DamageType::Piercing, DefenseType::Scales),
-        getTypeEffectiveness(DamageType::Piercing, DefenseType::ThickHide)
+        getTypeEffectiveness(CombatDamageType::Piercing, DefenseType::Scales),
+        getTypeEffectiveness(CombatDamageType::Piercing, DefenseType::ThickHide)
     );
     
     // Slash -> strong vs Fat, weak vs Scales
     TEST_ASSERT_GT(
-        getTypeEffectiveness(DamageType::Slashing, DefenseType::FatLayer),
-        getTypeEffectiveness(DamageType::Slashing, DefenseType::Scales)
+        getTypeEffectiveness(CombatDamageType::Slashing, DefenseType::FatLayer),
+        getTypeEffectiveness(CombatDamageType::Slashing, DefenseType::Scales)
     );
     
     // Blunt -> strong vs Hide, weak vs Fat
     TEST_ASSERT_GT(
-        getTypeEffectiveness(DamageType::Blunt, DefenseType::ThickHide),
-        getTypeEffectiveness(DamageType::Blunt, DefenseType::FatLayer)
+        getTypeEffectiveness(CombatDamageType::Blunt, DefenseType::ThickHide),
+        getTypeEffectiveness(CombatDamageType::Blunt, DefenseType::FatLayer)
     );
 }
 
@@ -477,7 +477,7 @@ void test_attack_result() {
     result.hit = true;
     result.rawDamage = 20.0f;
     result.finalDamage = 15.0f;
-    result.primaryType = DamageType::Piercing;
+    result.primaryType = CombatDamageType::Piercing;
     result.effectivenessMultiplier = 0.5f;  // Resisted
     result.weaponUsed = WeaponType::Teeth;
     result.causedBleeding = false;
@@ -497,9 +497,9 @@ void test_attack_result() {
 
 void test_string_conversions() {
     // Damage types
-    TEST_ASSERT(std::string(damageTypeToString(DamageType::Piercing)) == "Piercing");
-    TEST_ASSERT(std::string(damageTypeToString(DamageType::Slashing)) == "Slashing");
-    TEST_ASSERT(std::string(damageTypeToString(DamageType::Blunt)) == "Blunt");
+    TEST_ASSERT(std::string(combatDamageTypeToString(CombatDamageType::Piercing)) == "Piercing");
+    TEST_ASSERT(std::string(combatDamageTypeToString(CombatDamageType::Slashing)) == "Slashing");
+    TEST_ASSERT(std::string(combatDamageTypeToString(CombatDamageType::Blunt)) == "Blunt");
     
     // Defense types
     TEST_ASSERT(std::string(defenseTypeToString(DefenseType::ThickHide)) == "ThickHide");
@@ -681,7 +681,7 @@ void test_raw_damage_formula() {
     TEST_ASSERT_NEAR(dist.total(), 1.0f, 0.01f);
     
     // Piercing should be dominant with default sharpness=0.7
-    TEST_ASSERT(dist.getDominantType() == DamageType::Piercing);
+    TEST_ASSERT(dist.getDominantType() == CombatDamageType::Piercing);
     
     // Calculate spec bonus based on actual distribution
     float specBonus = CombatInteraction::calculateSpecializationBonus(dist);

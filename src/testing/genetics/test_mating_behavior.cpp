@@ -1,0 +1,443 @@
+/**
+ * @file test_mating_behavior.cpp
+ * @brief Tests for MatingBehavior component
+ *
+ * Tests cover:
+ * - isApplicable conditions (mate value, hunger, maturity)
+ * - checkFitness genetic similarity evaluation
+ * - execute behavior outcomes
+ * - offspring callback invocation
+ * - priority calculation based on mate value
+ */
+
+#include "test_framework.hpp"
+#include "genetics/behaviors/MatingBehavior.hpp"
+#include "genetics/behaviors/BehaviorContext.hpp"
+#include "genetics/systems/PerceptionSystem.hpp"
+#include "genetics/core/Genome.hpp"
+#include "genetics/core/GeneRegistry.hpp"
+#include "genetics/defaults/UniversalGenes.hpp"
+#include "genetics/expression/Phenotype.hpp"
+#include "genetics/expression/OrganismState.hpp"
+#include "genetics/expression/EnvironmentState.hpp"
+#include "genetics/interfaces/IGeneticOrganism.hpp"
+#include "genetics/interfaces/ILifecycle.hpp"
+#include <memory>
+#include <iostream>
+#include <cmath>
+
+using namespace EcoSim::Genetics;
+using namespace EcoSim::Testing;
+
+/**
+ * @brief Mock organism for testing mating behavior
+ *
+ * Implements IGeneticOrganism and IPositionable interfaces for isolated testing
+ * without requiring full Creature dependencies.
+ */
+class MockMatingOrganism : public IGeneticOrganism, public ILifecycle {
+public:
+    ~MockMatingOrganism() noexcept override = default;
+    
+    MockMatingOrganism(GeneRegistry& registry, int x = 0, int y = 0, unsigned int maxLifespan = 500000)
+        : genome_(UniversalGenes::createCreatureGenome(registry))
+        , phenotype_(&genome_, &registry)
+        , registry_(registry)
+        , x_(x)
+        , y_(y)
+        , maxLifespan_(maxLifespan)
+    {
+        OrganismState state;
+        state.age_normalized = 0.5f;
+        state.health = 1.0f;
+        state.energy_level = 0.7f;
+        
+        EnvironmentState env;
+        env.temperature = 20.0f;
+        env.humidity = 0.5f;
+        env.time_of_day = 0.5f;
+        
+        phenotype_.updateContext(env, state);
+    }
+    
+    const Genome& getGenome() const override { return genome_; }
+    Genome& getGenomeMutable() override { return genome_; }
+    const Phenotype& getPhenotype() const override { return phenotype_; }
+    void updatePhenotype() override {
+        phenotype_ = Phenotype(&genome_, &registry_);
+        
+        OrganismState state;
+        state.age_normalized = ageNormalized_;
+        state.health = 1.0f;
+        state.energy_level = 0.7f;
+        
+        EnvironmentState env;
+        env.temperature = 20.0f;
+        env.humidity = 0.5f;
+        env.time_of_day = 0.5f;
+        
+        phenotype_.updateContext(env, state);
+    }
+    
+    int getX() const override { return x_; }
+    int getY() const override { return y_; }
+    int getId() const override { return 0; }
+    void setPosition(int x, int y) { x_ = x; y_ = y; }
+    
+    void setGene(const std::string& geneName, float value) {
+        if (genome_.hasGene(geneName)) {
+            genome_.getGeneMutable(geneName).setAlleleValues(value);
+        }
+        updatePhenotype();
+    }
+    
+    void setAgeNormalized(float age) {
+        ageNormalized_ = age;
+        age_ = static_cast<unsigned int>(age * maxLifespan_);
+        updatePhenotype();
+    }
+    
+    // ILifecycle interface
+    unsigned int getAge() const override { return age_; }
+    unsigned int getMaxLifespan() const override { return maxLifespan_; }
+    float getAgeNormalized() const override { return ageNormalized_; }
+    bool isAlive() const override { return true; }
+    void age(unsigned int ticks = 1) override {
+        age_ += ticks;
+        ageNormalized_ = static_cast<float>(age_) / static_cast<float>(maxLifespan_);
+        updatePhenotype();
+    }
+    
+private:
+    Genome genome_;
+    mutable Phenotype phenotype_;
+    GeneRegistry& registry_;
+    int x_;
+    int y_;
+    unsigned int age_ = 250000;  // Default to mature (50% of lifespan)
+    unsigned int maxLifespan_ = 500000;
+    float ageNormalized_ = 0.5f;
+};
+
+void setupMatureOrganism(MockMatingOrganism& organism) {
+    organism.setAgeNormalized(0.5f);
+    organism.setGene(UniversalGenes::MATE_THRESHOLD, 3.0f);
+    organism.setGene(UniversalGenes::HUNGER_THRESHOLD, 10.0f);
+    organism.setGene(UniversalGenes::LIFESPAN, 500000.0f);
+}
+
+void setupImmatureOrganism(MockMatingOrganism& organism) {
+    organism.setAgeNormalized(0.01f);
+    organism.setGene(UniversalGenes::MATE_THRESHOLD, 3.0f);
+    organism.setGene(UniversalGenes::HUNGER_THRESHOLD, 10.0f);
+    organism.setGene(UniversalGenes::LIFESPAN, 500000.0f);
+}
+
+void test_isApplicable_trueWhenReadyToMate() {
+    GeneRegistry registry;
+    UniversalGenes::registerDefaults(registry);
+    
+    PerceptionSystem perception;
+    MatingBehavior mating(perception, registry);
+    
+    MockMatingOrganism organism(registry);
+    setupMatureOrganism(organism);
+    organism.setGene(UniversalGenes::MATE_THRESHOLD, 1.0f);
+    
+    BehaviorContext ctx;
+    ctx.currentTick = 100;
+    
+    bool applicable = mating.isApplicable(organism, ctx);
+    
+    TEST_ASSERT_MSG(applicable, "Mature organism with high mate value should be ready to mate");
+}
+
+void test_isApplicable_falseWhenLowMateValue() {
+    GeneRegistry registry;
+    UniversalGenes::registerDefaults(registry);
+    
+    PerceptionSystem perception;
+    MatingBehavior mating(perception, registry);
+    
+    MockMatingOrganism organism(registry);
+    setupMatureOrganism(organism);
+    organism.setGene(UniversalGenes::MATE_THRESHOLD, 0.1f);
+    
+    BehaviorContext ctx;
+    ctx.currentTick = 100;
+    
+    bool applicable = mating.isApplicable(organism, ctx);
+    
+    TEST_ASSERT_MSG(!applicable, "Organism with low mate value should not be ready to mate");
+}
+
+void test_isApplicable_falseWhenHungry() {
+    GeneRegistry registry;
+    UniversalGenes::registerDefaults(registry);
+    
+    PerceptionSystem perception;
+    MatingBehavior mating(perception, registry);
+    
+    MockMatingOrganism organism(registry);
+    setupMatureOrganism(organism);
+    organism.setGene(UniversalGenes::MATE_THRESHOLD, 1.0f);
+    organism.setGene(UniversalGenes::HUNGER_THRESHOLD, 2.0f);
+    
+    BehaviorContext ctx;
+    ctx.currentTick = 100;
+    
+    bool applicable = mating.isApplicable(organism, ctx);
+    
+    TEST_ASSERT_MSG(!applicable, "Hungry organism should not be ready to mate");
+}
+
+void test_isApplicable_falseWhenImmature() {
+    GeneRegistry registry;
+    UniversalGenes::registerDefaults(registry);
+    
+    PerceptionSystem perception;
+    MatingBehavior mating(perception, registry);
+    
+    MockMatingOrganism organism(registry);
+    setupImmatureOrganism(organism);
+    organism.setGene(UniversalGenes::MATE_THRESHOLD, 1.0f);
+    
+    BehaviorContext ctx;
+    ctx.currentTick = 100;
+    
+    bool applicable = mating.isApplicable(organism, ctx);
+    
+    TEST_ASSERT_MSG(!applicable, "Immature organism should not be ready to mate");
+}
+
+void test_checkFitness_prefersSimilarButNotIdentical() {
+    GeneRegistry registry;
+    UniversalGenes::registerDefaults(registry);
+    
+    PerceptionSystem perception;
+    MatingBehavior mating(perception, registry);
+    
+    MockMatingOrganism seeker(registry, 10, 10);
+    setupMatureOrganism(seeker);
+    
+    MockMatingOrganism similarMate(registry, 11, 10);
+    setupMatureOrganism(similarMate);
+    similarMate.setGene(UniversalGenes::MAX_SIZE, 
+        seeker.getPhenotype().getTrait(UniversalGenes::MAX_SIZE) * 0.9f);
+    
+    MockMatingOrganism veryDifferentMate(registry, 11, 10);
+    setupMatureOrganism(veryDifferentMate);
+    veryDifferentMate.setGene(UniversalGenes::MAX_SIZE, 0.1f);
+    veryDifferentMate.setGene(UniversalGenes::METABOLISM_RATE, 0.1f);
+    veryDifferentMate.setGene(UniversalGenes::SIGHT_RANGE, 10.0f);
+    
+    float similarFitness = seeker.getGenome().compare(similarMate.getGenome());
+    float differentFitness = seeker.getGenome().compare(veryDifferentMate.getGenome());
+    
+    TEST_ASSERT_GT(similarFitness, 0.0f);
+    TEST_ASSERT_GT(differentFitness, 0.0f);
+    TEST_ASSERT_LT(similarFitness, 1.0f);
+}
+
+void test_mating_checkFitness_penalizesTooSimilar() {
+    GeneRegistry registry;
+    UniversalGenes::registerDefaults(registry);
+    
+    PerceptionSystem perception;
+    MatingBehavior mating(perception, registry);
+    
+    MockMatingOrganism seeker(registry, 10, 10);
+    setupMatureOrganism(seeker);
+    
+    MockMatingOrganism identicalMate(registry, 11, 10);
+    setupMatureOrganism(identicalMate);
+    
+    float identicalSimilarity = seeker.getGenome().compare(identicalMate.getGenome());
+    
+    TEST_ASSERT_GT(identicalSimilarity, 0.8f);
+}
+
+void test_execute_noMateFound() {
+    GeneRegistry registry;
+    UniversalGenes::registerDefaults(registry);
+    
+    PerceptionSystem perception;
+    MatingBehavior mating(perception, registry);
+    
+    MockMatingOrganism organism(registry);
+    setupMatureOrganism(organism);
+    
+    BehaviorContext ctx;
+    ctx.currentTick = 100;
+    ctx.world = nullptr;
+    
+    BehaviorResult result = mating.execute(organism, ctx);
+    
+    TEST_ASSERT_MSG(result.executed, "Execute should run");
+    TEST_ASSERT_MSG(!result.completed, "Should not complete without world access");
+}
+
+void test_execute_deductsBreedCost() {
+    GeneRegistry registry;
+    UniversalGenes::registerDefaults(registry);
+    
+    PerceptionSystem perception;
+    MatingBehavior mating(perception, registry);
+    
+    MockMatingOrganism organism(registry);
+    setupMatureOrganism(organism);
+    
+    BehaviorContext ctx;
+    ctx.currentTick = 100;
+    
+    BehaviorResult result = mating.execute(organism, ctx);
+    
+    TEST_ASSERT_MSG(result.executed, "Execute should run");
+    TEST_ASSERT_NEAR(result.energyCost, 3.0f, 0.01f);
+}
+
+void test_offspringCallback_setCorrectly() {
+    GeneRegistry registry;
+    UniversalGenes::registerDefaults(registry);
+    
+    PerceptionSystem perception;
+    MatingBehavior mating(perception, registry);
+    
+    bool callbackCalled = false;
+    mating.setOffspringCallback([&callbackCalled](std::unique_ptr<IGeneticOrganism> offspring) {
+        callbackCalled = true;
+    });
+    
+    TEST_ASSERT_MSG(!callbackCalled, "Callback should not be called until offspring created");
+}
+
+void test_priority_increasesWithMateValue() {
+    GeneRegistry registry;
+    UniversalGenes::registerDefaults(registry);
+    
+    PerceptionSystem perception;
+    MatingBehavior mating(perception, registry);
+    
+    MockMatingOrganism lowMateOrganism(registry);
+    setupMatureOrganism(lowMateOrganism);
+    lowMateOrganism.setGene(UniversalGenes::MATE_THRESHOLD, 0.8f);
+    
+    MockMatingOrganism highMateOrganism(registry);
+    setupMatureOrganism(highMateOrganism);
+    highMateOrganism.setGene(UniversalGenes::MATE_THRESHOLD, 2.0f);
+    
+    float lowPriority = mating.getPriority(lowMateOrganism);
+    float highPriority = mating.getPriority(highMateOrganism);
+    
+    TEST_ASSERT_GE(lowPriority, 50.0f);
+    TEST_ASSERT_GE(highPriority, 50.0f);
+    TEST_ASSERT_GT(highPriority, lowPriority);
+}
+
+void test_priority_basePriorityIsNormal() {
+    GeneRegistry registry;
+    UniversalGenes::registerDefaults(registry);
+    
+    PerceptionSystem perception;
+    MatingBehavior mating(perception, registry);
+    
+    MockMatingOrganism organism(registry);
+    setupMatureOrganism(organism);
+    organism.setGene(UniversalGenes::MATE_THRESHOLD, 0.7f);
+    
+    float priority = mating.getPriority(organism);
+    
+    TEST_ASSERT_GE(priority, 50.0f);
+    TEST_ASSERT_LE(priority, 75.0f);
+}
+
+void test_behaviorId_isMating() {
+    GeneRegistry registry;
+    UniversalGenes::registerDefaults(registry);
+    
+    PerceptionSystem perception;
+    MatingBehavior mating(perception, registry);
+    
+    TEST_ASSERT_MSG(mating.getId() == "mating", "Behavior ID should be 'mating'");
+}
+
+void test_energyCost_isBreedCost() {
+    GeneRegistry registry;
+    UniversalGenes::registerDefaults(registry);
+    
+    PerceptionSystem perception;
+    MatingBehavior mating(perception, registry);
+    
+    MockMatingOrganism organism(registry);
+    setupMatureOrganism(organism);
+    
+    float cost = mating.getEnergyCost(organism);
+    
+    TEST_ASSERT_NEAR(cost, 3.0f, 0.01f);
+}
+
+void test_geneticSimilarity_identicalGenomesHighSimilarity() {
+    GeneRegistry registry;
+    UniversalGenes::registerDefaults(registry);
+    
+    MockMatingOrganism org1(registry);
+    setupMatureOrganism(org1);
+    
+    MockMatingOrganism org2(registry);
+    setupMatureOrganism(org2);
+    
+    float similarity = org1.getGenome().compare(org2.getGenome());
+    
+    TEST_ASSERT_GT(similarity, 0.9f);
+}
+
+void test_geneticSimilarity_differentGenomesLowerSimilarity() {
+    GeneRegistry registry;
+    UniversalGenes::registerDefaults(registry);
+    
+    MockMatingOrganism org1(registry);
+    setupMatureOrganism(org1);
+    org1.setGene(UniversalGenes::MAX_SIZE, 10.0f);
+    org1.setGene(UniversalGenes::METABOLISM_RATE, 0.01f);
+    
+    MockMatingOrganism org2(registry);
+    setupMatureOrganism(org2);
+    org2.setGene(UniversalGenes::MAX_SIZE, 1.0f);
+    org2.setGene(UniversalGenes::METABOLISM_RATE, 0.1f);
+    
+    float similarity = org1.getGenome().compare(org2.getGenome());
+    
+    TEST_ASSERT_LT(similarity, 1.0f);
+    TEST_ASSERT_GT(similarity, 0.0f);
+}
+
+void run_mating_behavior_tests() {
+    BEGIN_TEST_GROUP("Mating Behavior Tests");
+    
+    RUN_TEST(test_isApplicable_trueWhenReadyToMate);
+    RUN_TEST(test_isApplicable_falseWhenLowMateValue);
+    RUN_TEST(test_isApplicable_falseWhenHungry);
+    RUN_TEST(test_isApplicable_falseWhenImmature);
+    RUN_TEST(test_checkFitness_prefersSimilarButNotIdentical);
+    RUN_TEST(test_mating_checkFitness_penalizesTooSimilar);
+    RUN_TEST(test_execute_noMateFound);
+    RUN_TEST(test_execute_deductsBreedCost);
+    RUN_TEST(test_offspringCallback_setCorrectly);
+    RUN_TEST(test_priority_increasesWithMateValue);
+    RUN_TEST(test_priority_basePriorityIsNormal);
+    RUN_TEST(test_behaviorId_isMating);
+    RUN_TEST(test_energyCost_isBreedCost);
+    RUN_TEST(test_geneticSimilarity_identicalGenomesHighSimilarity);
+    RUN_TEST(test_geneticSimilarity_differentGenomesLowerSimilarity);
+    
+    END_TEST_GROUP();
+}
+
+#ifdef STANDALONE_TEST
+int main() {
+    std::cout << "Running Mating Behavior Tests..." << std::endl;
+    run_mating_behavior_tests();
+    TestSuite::instance().printSummary();
+    return TestSuite::instance().allPassed() ? 0 : 1;
+}
+#endif

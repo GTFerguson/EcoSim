@@ -2,27 +2,16 @@
 
 ## Quick Start
 
-### macOS
+### macOS/Linux
 ```bash
-# Install SDL2 (required for default build)
-brew install sdl2
+# Install dependencies
+brew install cmake sdl2          # macOS
+sudo apt-get install cmake libsdl2-dev  # Debian/Ubuntu
 
-# Clone and build
-cd EcoSim
-bash comp.sh
-./EcoSim
-```
-
-### Linux
-```bash
-# Install SDL2 (required for default build)
-sudo apt-get install libsdl2-dev                        # Debian/Ubuntu
-sudo yum install SDL2-devel                             # RHEL/CentOS
-sudo pacman -S sdl2                                     # Arch
-
-# Build
-bash comp.sh
-./EcoSim
+# Build with CMake
+cmake -B build
+cmake --build build
+./build/EcoSim
 ```
 
 ### Windows (WSL)
@@ -30,60 +19,103 @@ bash comp.sh
 # Install WSL2 with Ubuntu
 wsl --install
 
-# Inside WSL, same as Linux
+# Inside WSL
 sudo apt-get update
-sudo apt-get install build-essential libsdl2-dev
-bash comp.sh
-./EcoSim
+sudo apt-get install build-essential cmake libsdl2-dev
+cmake -B build
+cmake --build build
+./build/EcoSim
 ```
 
-## Build Scripts
+## CMake Build
 
-| Script | Description | Output |
-|--------|-------------|--------|
-| `comp.sh` | **Default** - SDL2 + Dear ImGui (recommended) | `EcoSim` |
-| `comp_ncurses.sh` | Terminal-only version (ncurses) | `EcoSim` |
+CMake provides a modern, flexible build system with out-of-source builds and configurable options.
 
 ### Default Build (SDL2 + ImGui)
 ```bash
-bash comp.sh
-./EcoSim
+cmake -B build
+cmake --build build
+./build/EcoSim
 ```
 Features: Hardware-accelerated rendering, ImGui debug panels, graphical UI.
 
-### Terminal Build (ncurses)
+### NCurses-Only Build
 ```bash
 # Install ncurses if needed
 brew install ncurses           # macOS
 sudo apt-get install libncurses5-dev  # Linux
 
-bash comp_ncurses.sh
-./EcoSim
+cmake -B build -DECOSIM_USE_SDL2=OFF
+cmake --build build
+./build/EcoSim
 ```
 Features: Runs in terminal, minimal dependencies, good for SSH sessions.
 
+### Building Tests
+```bash
+cmake -B build -DECOSIM_BUILD_TESTS=ON
+cmake --build build
+```
+
+### Running Tests
+```bash
+cd build && ctest           # Run all tests
+ctest -V                    # Verbose output
+ctest -R genetics           # Run tests matching "genetics"
+```
+
+### CMake Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `ECOSIM_USE_SDL2` | ON | Build with SDL2 + ImGui support |
+| `ECOSIM_USE_NCURSES` | ON | Build with NCurses support |
+| `ECOSIM_BUILD_TESTS` | ON | Build test suite |
+
+### Example Configurations
+
+**Minimal build (NCurses only, no tests):**
+```bash
+cmake -B build -DECOSIM_USE_SDL2=OFF -DECOSIM_BUILD_TESTS=OFF
+cmake --build build
+```
+
+**Full build with tests:**
+```bash
+cmake -B build -DECOSIM_BUILD_TESTS=ON
+cmake --build build
+cd build && ctest
+```
+
+**Release build:**
+```bash
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+```
+
 ## Build Options
 
-The compilation scripts automatically detect your system:
+### Compiler Selection
 - **macOS**: Uses `clang++` by default
 - **Linux**: Uses `g++` by default
-- **Custom compiler**: `CXX=g++-11 bash comp.sh`
-
-## Compilation Details
+- **Custom compiler**: `cmake -B build -DCMAKE_CXX_COMPILER=g++-11`
 
 ### Compiler Flags
 - `-g`: Debug symbols
 - `-std=c++17`: C++17 standard
-- `-lncurses`: Link ncurses library (both builds)
-- SDL2 flags via `sdl2-config` (default build)
+- `-lncurses`: Link ncurses library
+- SDL2 flags via `find_package(SDL2)`
 
-### Build Artifacts
-- `EcoSim`: Main executable
-- `err`: Temporary error log (deleted on success)
+## Build Artifacts
+
+All build artifacts are placed in the `build/` directory:
+- `build/EcoSim`: Main executable
+- `build/tests/GeneticsTest`: Test executable (if tests enabled)
+- `build/libecosim_*.a`: Library files
 
 ## Troubleshooting
 
-### "SDL2 not found" or "sdl2-config: command not found"
+### "SDL2 not found"
 **macOS**: `brew install sdl2`
 **Linux**: `sudo apt-get install libsdl2-dev`
 
@@ -95,6 +127,14 @@ The compilation scripts automatically detect your system:
 Check libraries are installed:
 - SDL2: `sdl2-config --version`
 - ncurses: `pkg-config --libs ncurses`
+
+### CMake configuration fails
+Ensure CMake is installed and up-to-date:
+```bash
+brew install cmake           # macOS
+sudo apt-get install cmake   # Linux
+cmake --version              # Should be 3.16+
+```
 
 ### Terminal colors don't work
 Use a modern terminal emulator:
@@ -116,34 +156,44 @@ Once running:
 
 ```
 EcoSim/
-├── comp.sh              # Build script (THIS)
-├── include/             # Header files
-│   ├── objects/         # Game objects
-│   ├── world/           # World generation
-│   └── statistics/      # Data collection
-├── src/                 # Implementation files
-├── saves/               # Saved simulations
-└── additional_documents/# Research papers
+├── CMakeLists.txt           # CMake build configuration
+├── cmake/                   # CMake helper modules
+├── build/                   # Build output (git-ignored)
+├── include/                 # Header files
+│   ├── genetics/            # Genetics system
+│   ├── rendering/           # Rendering backends
+│   └── statistics/          # Data collection
+├── src/                     # Implementation files
+│   └── testing/             # Test suite
+├── saves/                   # Saved simulations
+└── additional_documents/    # Research papers
 ```
 
 ## Next Steps
 
 After building successfully:
-1. Run `./EcoSim`
+1. Run `./build/EcoSim`
 2. Select "New World" (option 1)
 3. Press Enter to skip world editor
 4. Watch the ecosystem evolve!
 
 ## Advanced: Custom Builds
 
-### Optimized Build
+### Optimized Release Build
 ```bash
-CXX=clang++ CXXFLAGS="-O3 -march=native" bash comp.sh
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build
 ```
 
-### Debug Build (default)
+### Debug Build
 ```bash
-bash comp.sh  # Already includes -g flag
+cmake -B build -DCMAKE_BUILD_TYPE=Debug
+cmake --build build
+```
+
+### Parallel Build
+```bash
+cmake --build build -j8    # Use 8 cores
 ```
 
 ### Static Analysis
