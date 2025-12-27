@@ -13,9 +13,8 @@
 #include "../../../../include/rendering/backends/sdl2/ImGuiOverlay.hpp"
 #include "../../../../include/world/world.hpp"
 #include "../../../../include/world/tile.hpp"
+#include "../../../../include/world/Corpse.hpp"
 #include "../../../../include/objects/creature/creature.hpp"
-#include "../../../../include/objects/food.hpp"
-#include "../../../../include/objects/spawner.hpp"
 #include "../../../../include/genetics/organisms/Plant.hpp"
 
 #include <iostream>
@@ -71,16 +70,15 @@ bool SDL2Renderer::initialize() {
         _screenHeight = displayMode.h;
     }
     
-    // Create borderless fullscreen window (windowed borderless)
-    // This covers the entire screen without window decorations
-    // but allows easy Alt+Tab to other apps (unlike true fullscreen)
+    // Create fullscreen desktop window (covers entire screen including macOS Dock/Menu Bar)
+    // This covers the entire screen without exclusive mode, allowing easy Alt+Tab
     _window = SDL_CreateWindow(
         "EcoSim - Ecological Simulation",
-        0,  // Position at top-left
-        0,
+        SDL_WINDOWPOS_UNDEFINED,
+        SDL_WINDOWPOS_UNDEFINED,
         _screenWidth,
         _screenHeight,
-        SDL_WINDOW_SHOWN | SDL_WINDOW_BORDERLESS
+        SDL_WINDOW_SHOWN | SDL_WINDOW_FULLSCREEN_DESKTOP
     );
     
     if (_window == nullptr) {
@@ -225,27 +223,27 @@ void SDL2Renderer::renderWorld(const World& world, const Viewport& viewport) {
             SDL_Color terrainColor = getTerrainColor(curTile->getTerrainType());
             drawFilledRect(screenX, screenY, _tileSize, _tileSize, terrainColor);
             
-            // Render spawners (trees) - draw as smaller dark green square
-            const std::vector<Spawner>& spawners = curTile->getSpawners();
-            if (!spawners.empty()) {
-                SDL_Color spawnerColor = getEntityColor(spawners.begin()->getEntityType());
-                int padding = _tileSize / 4;
-                drawFilledRect(screenX + padding, screenY + padding, 
-                              _tileSize - 2 * padding, _tileSize - 2 * padding, 
-                              spawnerColor);
-            }
+            // LEGACY REMOVAL: Legacy Spawner rendering disabled
+            // const std::vector<Spawner>& spawners = curTile->getSpawners();
+            // if (!spawners.empty()) {
+            //     SDL_Color spawnerColor = getEntityColor(spawners.begin()->getEntityType());
+            //     int padding = _tileSize / 4;
+            //     drawFilledRect(screenX + padding, screenY + padding,
+            //                   _tileSize - 2 * padding, _tileSize - 2 * padding,
+            //                   spawnerColor);
+            // }
             
-            // Render food - draw as small colored circles (approximated as squares)
-            const std::vector<Food>& food = curTile->getFoodVec();
-            if (!food.empty()) {
-                SDL_Color foodColor = getEntityColor(food.begin()->getEntityType());
-                int padding = _tileSize / 3;
-                drawFilledRect(screenX + padding, screenY + padding,
-                              _tileSize - 2 * padding, _tileSize - 2 * padding,
-                              foodColor);
-            }
+            // LEGACY REMOVAL: Legacy Food rendering disabled
+            // const std::vector<Food>& food = curTile->getFoodVec();
+            // if (!food.empty()) {
+            //     SDL_Color foodColor = getEntityColor(food.begin()->getEntityType());
+            //     int padding = _tileSize / 3;
+            //     drawFilledRect(screenX + padding, screenY + padding,
+            //                   _tileSize - 2 * padding, _tileSize - 2 * padding,
+            //                   foodColor);
+            // }
             
-            // Render genetics-based plants (Phase 2.4)
+            // Render genetics-based plants (replaces legacy Food/Spawner)
             const auto& plants = curTile->getPlants();
             if (!plants.empty()) {
                 const auto& plant = plants.front();
@@ -255,6 +253,47 @@ void SDL2Renderer::renderWorld(const World& world, const Viewport& viewport) {
                     drawFilledRect(screenX + padding, screenY + padding,
                                   _tileSize - 2 * padding, _tileSize - 2 * padding,
                                   plantColor);
+                }
+            }
+        }
+    }
+    
+    // Render corpses (after terrain, before creatures)
+    const auto& corpses = mutableWorld.getCorpses();
+    for (const auto& corpse : corpses) {
+        int corpseX = corpse->getTileX();
+        int corpseY = corpse->getTileY();
+        
+        // Check if corpse is within the shown area of the map
+        if (corpseX >= static_cast<int>(viewport.originX) && corpseX < static_cast<int>(xRange) &&
+            corpseY >= static_cast<int>(viewport.originY) && corpseY < static_cast<int>(yRange)) {
+            
+            // Calculate screen position using float world coordinates for sub-tile positioning
+            float screenX = baseScreenX + (corpse->getX() - viewport.originX) * _tileSize;
+            float screenY = baseScreenY + (corpse->getY() - viewport.originY) * _tileSize;
+            int pixelX = static_cast<int>(screenX);
+            int pixelY = static_cast<int>(screenY);
+            
+            // Darker color as it decays (brown tones)
+            float decay = corpse->getDecayProgress();
+            Uint8 brightness = static_cast<Uint8>(150 * (1.0f - decay * 0.5f));
+            SDL_Color corpseColor = {brightness, static_cast<Uint8>(brightness / 2), 0, 255};
+            
+            // Draw corpse as an X shape
+            int padding = _tileSize / 4;
+            int size = _tileSize - 2 * padding;
+            SDL_SetRenderDrawColor(_renderer, corpseColor.r, corpseColor.g, corpseColor.b, corpseColor.a);
+            
+            // Draw X lines (two diagonal lines)
+            for (int i = 0; i < size; i++) {
+                // Top-left to bottom-right
+                SDL_RenderDrawPoint(_renderer, pixelX + padding + i, pixelY + padding + i);
+                // Top-right to bottom-left
+                SDL_RenderDrawPoint(_renderer, pixelX + padding + size - 1 - i, pixelY + padding + i);
+                // Make lines thicker
+                if (i > 0) {
+                    SDL_RenderDrawPoint(_renderer, pixelX + padding + i - 1, pixelY + padding + i);
+                    SDL_RenderDrawPoint(_renderer, pixelX + padding + size - i, pixelY + padding + i);
                 }
             }
         }
@@ -270,27 +309,27 @@ void SDL2Renderer::renderTile(const Tile& tile, int screenX, int screenY) {
     SDL_Color terrainColor = getTerrainColor(tile.getTerrainType());
     drawFilledRect(screenX, screenY, _tileSize, _tileSize, terrainColor);
     
-    // Render spawners
-    const std::vector<Spawner>& spawners = tile.getSpawners();
-    if (!spawners.empty()) {
-        SDL_Color spawnerColor = getEntityColor(spawners.begin()->getEntityType());
-        int padding = _tileSize / 4;
-        drawFilledRect(screenX + padding, screenY + padding,
-                      _tileSize - 2 * padding, _tileSize - 2 * padding,
-                      spawnerColor);
-    }
+    // LEGACY REMOVAL: Legacy Spawner rendering disabled
+    // const std::vector<Spawner>& spawners = tile.getSpawners();
+    // if (!spawners.empty()) {
+    //     SDL_Color spawnerColor = getEntityColor(spawners.begin()->getEntityType());
+    //     int padding = _tileSize / 4;
+    //     drawFilledRect(screenX + padding, screenY + padding,
+    //                   _tileSize - 2 * padding, _tileSize - 2 * padding,
+    //                   spawnerColor);
+    // }
     
-    // Render food
-    const std::vector<Food>& food = tile.getFoodVec();
-    if (!food.empty()) {
-        SDL_Color foodColor = getEntityColor(food.begin()->getEntityType());
-        int padding = _tileSize / 3;
-        drawFilledRect(screenX + padding, screenY + padding,
-                      _tileSize - 2 * padding, _tileSize - 2 * padding,
-                      foodColor);
-    }
+    // LEGACY REMOVAL: Legacy Food rendering disabled
+    // const std::vector<Food>& food = tile.getFoodVec();
+    // if (!food.empty()) {
+    //     SDL_Color foodColor = getEntityColor(food.begin()->getEntityType());
+    //     int padding = _tileSize / 3;
+    //     drawFilledRect(screenX + padding, screenY + padding,
+    //                   _tileSize - 2 * padding, _tileSize - 2 * padding,
+    //                   foodColor);
+    // }
     
-    // Render genetics-based plants (Phase 2.4)
+    // Render genetics-based plants (replaces legacy Food/Spawner)
     const auto& plants = tile.getPlants();
     if (!plants.empty()) {
         const auto& plant = plants.front();
@@ -351,7 +390,8 @@ void SDL2Renderer::renderCreatures(const std::vector<Creature>& creatures,
             int pixelY = static_cast<int>(screenY);
             
             // Special rendering for selected creature
-            if (static_cast<int>(idx) == selectedId) {
+            // Compare creature's unique ID, not vector index
+            if (creature.getId() == selectedId) {
                 renderSelectedCreature(creature, pixelX, pixelY);
             } else {
                 renderCreature(creature, pixelX, pixelY);
@@ -792,6 +832,36 @@ void SDL2Renderer::zoomOut() {
             _tileSize = MIN_TILE_SIZE;
         }
     }
+}
+
+//==============================================================================
+// Viewport Center Request Methods
+//==============================================================================
+
+bool SDL2Renderer::hasViewportCenterRequest() const {
+#ifdef ECOSIM_HAS_IMGUI
+    if (_imguiOverlay != nullptr) {
+        return _imguiOverlay->hasPendingCenterRequest();
+    }
+#endif
+    return false;
+}
+
+std::pair<int, int> SDL2Renderer::getViewportCenterRequest() const {
+#ifdef ECOSIM_HAS_IMGUI
+    if (_imguiOverlay != nullptr) {
+        return _imguiOverlay->getPendingCenterPosition();
+    }
+#endif
+    return {-1, -1};
+}
+
+void SDL2Renderer::clearViewportCenterRequest() {
+#ifdef ECOSIM_HAS_IMGUI
+    if (_imguiOverlay != nullptr) {
+        _imguiOverlay->clearCenterRequest();
+    }
+#endif
 }
 
 //==============================================================================

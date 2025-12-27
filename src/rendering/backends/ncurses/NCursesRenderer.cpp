@@ -13,8 +13,6 @@
 #include "../../../../include/world/world.hpp"
 #include "../../../../include/world/tile.hpp"
 #include "../../../../include/objects/creature/creature.hpp"
-#include "../../../../include/objects/food.hpp"
-#include "../../../../include/objects/spawner.hpp"
 #include "../../../../include/genetics/organisms/Plant.hpp"
 #include "../../../../include/colorPairs.hpp"
 
@@ -146,25 +144,25 @@ void NCursesRenderer::renderWorld(const World& world, const Viewport& viewport) 
             mvaddch(yScreen + y, xScreen + x, curTile->getChar());
             attroff(COLOR_PAIR(colorPair));
             
-            // Render spawners (trees) using EntityType
-            const std::vector<Spawner>& spawners = curTile->getSpawners();
-            if (!spawners.empty()) {
-                int spawnerColor = NCursesColorMapper::entityToColorPair(spawners.begin()->getEntityType());
-                attron(COLOR_PAIR(spawnerColor));
-                mvaddch(yScreen + y, xScreen + x, spawners.begin()->getChar());
-                attroff(COLOR_PAIR(spawnerColor));
-            }
+            // LEGACY REMOVAL: Legacy Spawner rendering disabled
+            // const std::vector<Spawner>& spawners = curTile->getSpawners();
+            // if (!spawners.empty()) {
+            //     int spawnerColor = NCursesColorMapper::entityToColorPair(spawners.begin()->getEntityType());
+            //     attron(COLOR_PAIR(spawnerColor));
+            //     mvaddch(yScreen + y, xScreen + x, spawners.begin()->getChar());
+            //     attroff(COLOR_PAIR(spawnerColor));
+            // }
             
-            // Render food using EntityType
-            const std::vector<Food>& food = curTile->getFoodVec();
-            if (!food.empty()) {
-                int foodColor = NCursesColorMapper::entityToColorPair(food.begin()->getEntityType());
-                attron(COLOR_PAIR(foodColor));
-                mvaddch(yScreen + y, xScreen + x, food.begin()->getChar());
-                attroff(COLOR_PAIR(foodColor));
-            }
+            // LEGACY REMOVAL: Legacy Food rendering disabled
+            // const std::vector<Food>& food = curTile->getFoodVec();
+            // if (!food.empty()) {
+            //     int foodColor = NCursesColorMapper::entityToColorPair(food.begin()->getEntityType());
+            //     attron(COLOR_PAIR(foodColor));
+            //     mvaddch(yScreen + y, xScreen + x, food.begin()->getChar());
+            //     attroff(COLOR_PAIR(foodColor));
+            // }
             
-            // Render genetics-based plants (Phase 2.4)
+            // Render genetics-based plants (replaces legacy Food/Spawner)
             const auto& plants = curTile->getPlants();
             if (!plants.empty()) {
                 const auto& plant = plants.front();
@@ -190,25 +188,25 @@ void NCursesRenderer::renderTile(const Tile& tile, int screenX, int screenY) {
     mvaddch(screenY, screenX, tile.getChar());
     attroff(COLOR_PAIR(colorPair));
     
-    // Render spawners using EntityType
-    const std::vector<Spawner>& spawners = tile.getSpawners();
-    if (!spawners.empty()) {
-        int spawnerColor = NCursesColorMapper::entityToColorPair(spawners.begin()->getEntityType());
-        attron(COLOR_PAIR(spawnerColor));
-        mvaddch(screenY, screenX, spawners.begin()->getChar());
-        attroff(COLOR_PAIR(spawnerColor));
-    }
+    // LEGACY REMOVAL: Legacy Spawner rendering disabled
+    // const std::vector<Spawner>& spawners = tile.getSpawners();
+    // if (!spawners.empty()) {
+    //     int spawnerColor = NCursesColorMapper::entityToColorPair(spawners.begin()->getEntityType());
+    //     attron(COLOR_PAIR(spawnerColor));
+    //     mvaddch(screenY, screenX, spawners.begin()->getChar());
+    //     attroff(COLOR_PAIR(spawnerColor));
+    // }
     
-    // Render food using EntityType
-    const std::vector<Food>& food = tile.getFoodVec();
-    if (!food.empty()) {
-        int foodColor = NCursesColorMapper::entityToColorPair(food.begin()->getEntityType());
-        attron(COLOR_PAIR(foodColor));
-        mvaddch(screenY, screenX, food.begin()->getChar());
-        attroff(COLOR_PAIR(foodColor));
-    }
+    // LEGACY REMOVAL: Legacy Food rendering disabled
+    // const std::vector<Food>& food = tile.getFoodVec();
+    // if (!food.empty()) {
+    //     int foodColor = NCursesColorMapper::entityToColorPair(food.begin()->getEntityType());
+    //     attron(COLOR_PAIR(foodColor));
+    //     mvaddch(screenY, screenX, food.begin()->getChar());
+    //     attroff(COLOR_PAIR(foodColor));
+    // }
     
-    // Render genetics-based plants (Phase 2.4)
+    // Render genetics-based plants (replaces legacy Food/Spawner)
     const auto& plants = tile.getPlants();
     if (!plants.empty()) {
         const auto& plant = plants.front();
@@ -460,13 +458,13 @@ void NCursesRenderer::printCentered(const std::string& str, int y) {
 }
 
 int NCursesRenderer::getColorPairForProfile(const Creature& creature) const {
-    // Map from the Profile enum to color pairs
-    switch (creature.getProfile()) {
-        case Profile::hungry:   return HUNGRY_PAIR;
-        case Profile::thirsty:  return THIRSTY_PAIR;
-        case Profile::sleep:    return SLEEP_PAIR;
-        case Profile::breed:    return BREED_PAIR;
-        case Profile::migrate:  return MIGRATE_PAIR;
-        default:                return DEFAULT_PAIR;
+    // Map from the Motivation enum to color pairs
+    switch (creature.getMotivation()) {
+        case Motivation::Hungry:   return HUNGRY_PAIR;
+        case Motivation::Thirsty:  return THIRSTY_PAIR;
+        case Motivation::Tired:    return SLEEP_PAIR;
+        case Motivation::Amorous:  return BREED_PAIR;
+        case Motivation::Content:  return MIGRATE_PAIR;
+        default:                   return DEFAULT_PAIR;
     }
 }

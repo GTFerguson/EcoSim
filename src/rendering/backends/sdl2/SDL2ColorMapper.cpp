@@ -110,22 +110,21 @@ SDL_Color SDL2ColorMapper::profileToColor(BehaviorProfile profile) {
 }
 
 SDL_Color SDL2ColorMapper::creatureProfileToColor(const Creature& creature) {
-    // Map creature's Profile enum to BehaviorProfile
-    Profile creatureProfile = creature.getProfile();
-    return legacyProfileToColor(creatureProfile);
+    // Map creature's Motivation enum to color
+    return motivationToColor(creature.getMotivation());
 }
 
-SDL_Color SDL2ColorMapper::legacyProfileToColor(Profile profile) {
-    switch (profile) {
-        case Profile::hungry:
+SDL_Color SDL2ColorMapper::motivationToColor(Motivation motivation) {
+    switch (motivation) {
+        case Motivation::Hungry:
             return hungryColor();
-        case Profile::thirsty:
+        case Motivation::Thirsty:
             return thirstyColor();
-        case Profile::sleep:
+        case Motivation::Tired:
             return sleepyColor();
-        case Profile::breed:
+        case Motivation::Amorous:
             return breedingColor();
-        case Profile::migrate:
+        case Motivation::Content:
             return migratingColor();
         default:
             return wanderingColor();

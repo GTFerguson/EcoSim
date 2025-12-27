@@ -157,15 +157,15 @@ int NCursesColorMapper::profileToColorPair(BehaviorProfile profile) {
     }
 }
 
-int NCursesColorMapper::legacyProfileToColorPair(Profile profile) {
-    // Map from the existing Profile enum in creature.hpp
-    switch (profile) {
-        case Profile::hungry:   return HUNGRY_PAIR;
-        case Profile::thirsty:  return THIRSTY_PAIR;
-        case Profile::sleep:    return SLEEP_PAIR;
-        case Profile::breed:    return BREED_PAIR;
-        case Profile::migrate:  return MIGRATE_PAIR;
-        default:                return DEFAULT_PAIR;
+int NCursesColorMapper::motivationToColorPair(Motivation motivation) {
+    // Map from the Motivation enum in creature.hpp
+    switch (motivation) {
+        case Motivation::Hungry:   return HUNGRY_PAIR;
+        case Motivation::Thirsty:  return THIRSTY_PAIR;
+        case Motivation::Tired:    return SLEEP_PAIR;
+        case Motivation::Amorous:  return BREED_PAIR;
+        case Motivation::Content:  return MIGRATE_PAIR;
+        default:                   return DEFAULT_PAIR;
     }
 }
 

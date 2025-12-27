@@ -16,7 +16,7 @@
 
 // Forward declarations
 class Creature;
-enum class Profile;
+enum class Motivation;
 
 /**
  * @brief Helper class for SDL2 color management
@@ -70,12 +70,12 @@ public:
     static SDL_Color creatureProfileToColor(const Creature& creature);
     
     /**
-     * @brief Convert legacy Profile enum to SDL_Color
-     * 
-     * @param profile The legacy Profile enum value
-     * @return SDL_Color for the profile
+     * @brief Convert Motivation enum to SDL_Color
+     *
+     * @param motivation The Motivation enum value
+     * @return SDL_Color for the motivation
      */
-    static SDL_Color legacyProfileToColor(Profile profile);
+    static SDL_Color motivationToColor(Motivation motivation);
     
     /**
      * @brief Convert EntityType to SDL_Color

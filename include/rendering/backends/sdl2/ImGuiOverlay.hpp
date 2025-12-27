@@ -207,6 +207,27 @@ public:
      * @param id Plant ID to select (-1 to deselect)
      */
     void setSelectedPlantId(int id) { _selectedPlantId = id; }
+    
+    //==========================================================================
+    // Viewport Centering Request Methods
+    //==========================================================================
+    
+    /**
+     * @brief Check if there's a pending viewport center request
+     * @return true if a centering request is pending
+     */
+    bool hasPendingCenterRequest() const { return _pendingCenterX >= 0 && _pendingCenterY >= 0; }
+    
+    /**
+     * @brief Get the pending center position (world tile coordinates)
+     * @return Pair of (x, y) tile coordinates to center on
+     */
+    std::pair<int, int> getPendingCenterPosition() const { return {_pendingCenterX, _pendingCenterY}; }
+    
+    /**
+     * @brief Clear the pending center request
+     */
+    void clearCenterRequest() { _pendingCenterX = -1; _pendingCenterY = -1; }
 
 private:
     // SDL2 references (not owned)
@@ -257,6 +278,10 @@ private:
     // Previous frame cumulative values for delta calculation
     unsigned int _lastBirths;
     unsigned int _lastDeaths;
+    
+    // Viewport centering request (set by double-click in creature list)
+    int _pendingCenterX;
+    int _pendingCenterY;
     
     //==========================================================================
     // Private Rendering Methods
@@ -321,11 +346,11 @@ private:
     const char* getProfileName(int profile) const;
     
     /**
-     * @brief Get diet name string from Diet enum (legacy)
-     * @param diet The Diet enum value
+     * @brief Get diet name string from DietType enum
+     * @param diet The DietType enum value
      * @return Human-readable diet name
      */
-    const char* getDietName(int diet) const;
+    const char* getDietName(EcoSim::Genetics::DietType diet) const;
     
     /**
      * @brief Get emergent diet type name from new genetics system

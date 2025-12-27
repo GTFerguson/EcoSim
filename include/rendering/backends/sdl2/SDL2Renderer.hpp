@@ -16,6 +16,7 @@
 #include <SDL.h>
 #include <string>
 #include <vector>
+#include <utility>  // for std::pair
 
 // Forward declarations
 class World;
@@ -280,6 +281,25 @@ public:
      * @return Current tile size in pixels
      */
     int getZoomLevel() const override { return _tileSize; }
+    
+    /**
+     * @brief Check if there's a pending viewport center request from ImGui
+     *
+     * @return true if a centering request is pending
+     */
+    bool hasViewportCenterRequest() const override;
+    
+    /**
+     * @brief Get the pending viewport center position (world tile coordinates)
+     *
+     * @return Pair of (x, y) tile coordinates to center on
+     */
+    std::pair<int, int> getViewportCenterRequest() const override;
+    
+    /**
+     * @brief Clear the pending viewport center request
+     */
+    void clearViewportCenterRequest() override;
     
     /**
      * @brief Get the ImGui overlay pointer

@@ -11,8 +11,8 @@
 
 #include "rendering/backends/sdl2/ImGuiOverlay.hpp"
 #include "world/world.hpp"
+#include "world/Corpse.hpp"
 #include "objects/creature/creature.hpp"
-#include "objects/creature/genome.hpp"
 
 // New genetics system includes
 #include "genetics/core/Genome.hpp"
@@ -25,6 +25,47 @@
 #include <algorithm>
 #include <cfloat>  // For FLT_MIN
 #include <cstdio>  // For debug logging
+
+//==============================================================================
+// Helper Functions for Action Display
+//==============================================================================
+
+static const char* getActionName(Action action) {
+    switch (action) {
+        case Action::Idle: return "Idle";
+        case Action::Wandering: return "Wandering";
+        case Action::Searching: return "Searching";
+        case Action::Navigating: return "Navigating";
+        case Action::Eating: return "Eating";
+        case Action::Grazing: return "Grazing";
+        case Action::Hunting: return "Hunting";
+        case Action::Chasing: return "Chasing";
+        case Action::Attacking: return "Attacking";
+        case Action::Fleeing: return "Fleeing";
+        case Action::Drinking: return "Drinking";
+        case Action::Courting: return "Courting";
+        case Action::Mating: return "Mating";
+        case Action::Resting: return "Resting";
+        default: return "Unknown";
+    }
+}
+
+static ImVec4 getActionColor(Action action) {
+    switch (action) {
+        case Action::Attacking: return ImVec4(1.0f, 0.3f, 0.3f, 1.0f);  // Red
+        case Action::Fleeing: return ImVec4(1.0f, 0.8f, 0.3f, 1.0f);    // Yellow
+        case Action::Hunting:
+        case Action::Chasing: return ImVec4(1.0f, 0.5f, 0.0f, 1.0f);    // Orange
+        case Action::Eating:
+        case Action::Grazing: return ImVec4(0.3f, 1.0f, 0.3f, 1.0f);    // Green
+        case Action::Mating:
+        case Action::Courting: return ImVec4(1.0f, 0.5f, 0.8f, 1.0f);   // Pink
+        case Action::Resting: return ImVec4(0.5f, 0.5f, 1.0f, 1.0f);    // Blue
+        case Action::Drinking: return ImVec4(0.3f, 0.7f, 1.0f, 1.0f);   // Light Blue
+        case Action::Searching: return ImVec4(0.9f, 0.9f, 0.5f, 1.0f);  // Light Yellow
+        default: return ImVec4(0.8f, 0.8f, 0.8f, 1.0f);                 // Gray
+    }
+}
 
 //==============================================================================
 // Constructor / Destructor
@@ -50,6 +91,8 @@ ImGuiOverlay::ImGuiOverlay()
     , _historyIndex(0)
     , _lastBirths(0)
     , _lastDeaths(0)
+    , _pendingCenterX(-1)
+    , _pendingCenterY(-1)
 {
     // Initialize filter text
     std::memset(_creatureFilterText, 0, sizeof(_creatureFilterText));
@@ -444,8 +487,14 @@ void ImGuiOverlay::renderStatisticsWindow(const HUDData& hudData) {
 }
 
 void ImGuiOverlay::renderWorldInfoWindow(const World* world, const std::vector<Creature>* creatures) {
-    ImGui::SetNextWindowPos(ImVec2(1070, 30), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(200, 200), ImGuiCond_FirstUseEver);
+    // Calculate right-side position dynamically based on window size
+    ImGuiIO& io = ImGui::GetIO();
+    const float rightMargin = 10.0f;
+    const float windowWidth = 200.0f;
+    float xPos = io.DisplaySize.x - windowWidth - rightMargin;
+    
+    ImGui::SetNextWindowPos(ImVec2(xPos, 30), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(windowWidth, 200), ImGuiCond_FirstUseEver);
     
     if (ImGui::Begin("World Information", &_showWorldInfo, ImGuiWindowFlags_NoCollapse)) {
         if (world) {
@@ -456,6 +505,44 @@ void ImGuiOverlay::renderWorldInfoWindow(const World* world, const std::vector<C
                 
                 unsigned int totalTiles = world->getCols() * world->getRows();
                 ImGui::Text("Total Tiles: %d", totalTiles);
+            }
+            
+            ImGui::Spacing();
+            
+            // Corpse information (cast to non-const to access corpses)
+            if (ImGui::CollapsingHeader("Corpses", ImGuiTreeNodeFlags_DefaultOpen)) {
+                World* mutableWorld = const_cast<World*>(world);
+                const auto& corpses = mutableWorld->getCorpses();
+                size_t corpseCount = corpses.size();
+                
+                ImGui::Text("Active Corpses: %zu", corpseCount);
+                ImGui::Text("Max Corpses: %zu", World::MAX_CORPSES);
+                
+                // Corpse usage bar
+                float corpseUsage = static_cast<float>(corpseCount) / static_cast<float>(World::MAX_CORPSES);
+                ImGui::Text("Usage:");
+                ImGui::SameLine(80);
+                ImVec4 usageColor;
+                if (corpseUsage > 0.8f) {
+                    usageColor = ImVec4(1.0f, 0.4f, 0.4f, 1.0f);  // Red - near limit
+                } else if (corpseUsage > 0.5f) {
+                    usageColor = ImVec4(1.0f, 0.8f, 0.4f, 1.0f);  // Yellow - moderate
+                } else {
+                    usageColor = ImVec4(0.6f, 0.4f, 0.2f, 1.0f);  // Brown - normal
+                }
+                ImGui::PushStyleColor(ImGuiCol_PlotHistogram, usageColor);
+                ImGui::ProgressBar(corpseUsage, ImVec2(-1, 0), "");
+                ImGui::PopStyleColor();
+                
+                // Optional: Show average decay if corpses exist
+                if (corpseCount > 0) {
+                    float totalDecay = 0.0f;
+                    for (const auto& corpse : corpses) {
+                        totalDecay += corpse->getDecayProgress();
+                    }
+                    float avgDecay = totalDecay / static_cast<float>(corpseCount);
+                    ImGui::Text("Avg Decay: %.0f%%", avgDecay * 100.0f);
+                }
             }
             
             ImGui::Spacing();
@@ -525,8 +612,14 @@ void ImGuiOverlay::renderPerformanceWindow() {
 }
 
 void ImGuiOverlay::renderCreatureListWindow(const std::vector<Creature>* creatures) {
-    ImGui::SetNextWindowPos(ImVec2(1070, 30), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(200, 330), ImGuiCond_FirstUseEver);
+    // Calculate right-side position dynamically based on window size
+    ImGuiIO& io = ImGui::GetIO();
+    const float rightMargin = 10.0f;
+    const float windowWidth = 200.0f;
+    float xPos = io.DisplaySize.x - windowWidth - rightMargin;
+    
+    ImGui::SetNextWindowPos(ImVec2(xPos, 30), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(windowWidth, 330), ImGuiCond_FirstUseEver);
     
     if (ImGui::Begin("Creatures", &_showCreatureList, ImGuiWindowFlags_NoCollapse)) {
         if (!creatures || creatures->empty()) {
@@ -538,26 +631,37 @@ void ImGuiOverlay::renderCreatureListWindow(const std::vector<Creature>* creatur
         // Population Summary (moved from World Info)
         ImGui::Text("Living: %zu", creatures->size());
         
-        // Count by diet
-        int herbivores = 0, carnivores = 0, omnivores = 0, scavengers = 0;
+        // Count by diet (using new emergent genetics system)
+        // H=Herbivore, F=Frugivore, O=Omnivore, C=Carnivore, N=Necrovore
+        int herbivores = 0, frugivores = 0, omnivores = 0, carnivores = 0, necrovores = 0;
         for (const auto& c : *creatures) {
-            switch (c.getGenome().getDiet()) {
-                case Diet::apple:
-                case Diet::banana:
-                    herbivores++;
-                    break;
-                case Diet::predator:
-                    carnivores++;
-                    break;
-                case Diet::scavenger:
-                    scavengers++;
-                    break;
-                default:
-                    omnivores++;
-                    break;
+            if (c.getPhenotype()) {
+                // Use emergent diet calculation from new genetics system
+                EcoSim::Genetics::DietType diet = c.getPhenotype()->calculateDietType();
+                switch (diet) {
+                    case EcoSim::Genetics::DietType::HERBIVORE:
+                        herbivores++;
+                        break;
+                    case EcoSim::Genetics::DietType::FRUGIVORE:
+                        frugivores++;
+                        break;
+                    case EcoSim::Genetics::DietType::CARNIVORE:
+                        carnivores++;
+                        break;
+                    case EcoSim::Genetics::DietType::NECROVORE:
+                        necrovores++;
+                        break;
+                    case EcoSim::Genetics::DietType::OMNIVORE:
+                    default:
+                        omnivores++;
+                        break;
+                }
+            } else {
+                // Fallback for any legacy creatures (should not exist after migration)
+                omnivores++;
             }
         }
-        ImGui::Text("H:%d C:%d O:%d S:%d", herbivores, carnivores, omnivores, scavengers);
+        ImGui::Text("H:%d F:%d O:%d C:%d N:%d", herbivores, frugivores, omnivores, carnivores, necrovores);
         ImGui::Separator();
         
         // Filter controls
@@ -656,27 +760,33 @@ void ImGuiOverlay::renderCreatureListWindow(const std::vector<Creature>* creatur
                     _showCreatureInspector = true;
                 }
                 
+                // Double-click to center viewport on this creature
+                if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+                    _pendingCenterX = creature.getX();
+                    _pendingCenterY = creature.getY();
+                }
+                
                 // Show profile on same line as selectable
                 ImGui::SameLine();
                 
                 // Color-coded profile
-                const char* profileStr = getProfileName(static_cast<int>(creature.getProfile()));
+                const char* profileStr = getProfileName(static_cast<int>(creature.getMotivation()));
                 ImVec4 profileColor;
                 
-                switch (creature.getProfile()) {
-                    case Profile::hungry:
+                switch (creature.getMotivation()) {
+                    case Motivation::Hungry:
                         profileColor = ImVec4(1.0f, 0.5f, 0.2f, 1.0f);
                         break;
-                    case Profile::thirsty:
+                    case Motivation::Thirsty:
                         profileColor = ImVec4(0.3f, 0.7f, 1.0f, 1.0f);
                         break;
-                    case Profile::breed:
+                    case Motivation::Amorous:
                         profileColor = ImVec4(1.0f, 0.4f, 0.7f, 1.0f);
                         break;
-                    case Profile::sleep:
+                    case Motivation::Tired:
                         profileColor = ImVec4(0.6f, 0.6f, 0.8f, 1.0f);
                         break;
-                    case Profile::migrate:
+                    case Motivation::Content:
                         profileColor = ImVec4(0.5f, 0.8f, 0.5f, 1.0f);
                         break;
                     default:
@@ -709,693 +819,935 @@ void ImGuiOverlay::renderCreatureListWindow(const std::vector<Creature>* creatur
     ImGui::End();
 }
 
+//==============================================================================
+// Creature Inspector Window - New Design with 5 Tabs + Genetics Sub-Tabs
+//==============================================================================
+
 void ImGuiOverlay::renderCreatureInspectorWindow(const Creature* creature) {
-    ImGui::SetNextWindowPos(ImVec2(1070, 370), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(280, 500), ImGuiCond_FirstUseEver);
+    // Calculate right-side position dynamically based on window size
+    ImGuiIO& io = ImGui::GetIO();
+    const float rightMargin = 10.0f;
+    const float windowWidth = 550.0f;
+    float xPos = io.DisplaySize.x - windowWidth - rightMargin;
     
-    char title[64];
-    snprintf(title, sizeof(title), "Creature Inspector - #%d###Inspector", _selectedCreatureId);
+    ImGui::SetNextWindowPos(ImVec2(xPos, 30), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(windowWidth, 600), ImGuiCond_FirstUseEver);
     
-    if (ImGui::Begin(title, &_showCreatureInspector, ImGuiWindowFlags_NoCollapse)) {
+    if (ImGui::Begin("Creature Inspector", &_showCreatureInspector, ImGuiWindowFlags_NoCollapse)) {
         if (!creature) {
             ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "Creature not found");
             ImGui::End();
             return;
         }
         
-        // Basic Info Section
-        if (ImGui::CollapsingHeader("Basic Information", ImGuiTreeNodeFlags_DefaultOpen)) {
-            ImGui::Text("ID: #%d", _selectedCreatureId);
-            ImGui::Text("Position: (%d, %d)", creature->getX(), creature->getY());
-            ImGui::Text("Age: %d / %d", creature->getAge(), creature->getLifespan());
-            
-            // Direction
-            const char* dirStr = "Unknown";
-            switch (creature->getDirection()) {
-                case Direction::N: dirStr = "North"; break;
-                case Direction::S: dirStr = "South"; break;
-                case Direction::E: dirStr = "East"; break;
-                case Direction::W: dirStr = "West"; break;
-                case Direction::NE: dirStr = "Northeast"; break;
-                case Direction::NW: dirStr = "Northwest"; break;
-                case Direction::SE: dirStr = "Southeast"; break;
-                case Direction::SW: dirStr = "Southwest"; break;
-                case Direction::none: dirStr = "Stationary"; break;
-            }
-            ImGui::Text("Direction: %s", dirStr);
-            
-            // Profile with color
-            const char* profileStr = getProfileName(static_cast<int>(creature->getProfile()));
-            ImGui::Text("Behavior: %s", profileStr);
-            
-            // Show diet type - use emergent if new genetics enabled
-            if (creature->usesNewGenetics() && creature->getPhenotype()) {
-                const auto& phenotype = *creature->getPhenotype();
-                EcoSim::Genetics::DietType diet = phenotype.calculateDietType();
-                const char* dietStr = getEmergentDietName(diet);
-                ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.6f, 1.0f), "Diet: %s (Emergent)", dietStr);
-            } else {
-                const Genome& genome = creature->getGenome();
-                ImGui::Text("Diet: %s (Legacy)", getDietName(static_cast<int>(genome.getDiet())));
-            }
-        }
+        // ============================================
+        // HEADER SECTION (Always visible above tabs)
+        // ============================================
         
-        // Needs Section
-        if (ImGui::CollapsingHeader("Needs & Status", ImGuiTreeNodeFlags_DefaultOpen)) {
-            // Progress bars for needs (values seem to be 0-10 scale based on code)
-            float hunger = creature->getHunger() / 10.0f;
-            float thirst = creature->getThirst() / 10.0f;
-            float fatigue = creature->getFatigue() / 10.0f;
-            float mate = creature->getMate() / 10.0f;
-            
-            // Clamp values
-            hunger = std::max(0.0f, std::min(1.0f, hunger));
-            thirst = std::max(0.0f, std::min(1.0f, thirst));
-            fatigue = std::max(0.0f, std::min(1.0f, fatigue));
-            mate = std::max(0.0f, std::min(1.0f, mate));
-            
-            ImGui::Text("Hunger:");
-            ImGui::SameLine(100);
-            ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(1.0f, 0.5f, 0.2f, 1.0f));
-            ImGui::ProgressBar(hunger, ImVec2(-1, 0), "");
-            ImGui::PopStyleColor();
-            
-            ImGui::Text("Thirst:");
-            ImGui::SameLine(100);
-            ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(0.3f, 0.7f, 1.0f, 1.0f));
-            ImGui::ProgressBar(thirst, ImVec2(-1, 0), "");
-            ImGui::PopStyleColor();
-            
-            ImGui::Text("Fatigue:");
-            ImGui::SameLine(100);
-            ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(0.6f, 0.6f, 0.8f, 1.0f));
-            ImGui::ProgressBar(fatigue, ImVec2(-1, 0), "");
-            ImGui::PopStyleColor();
-            
-            ImGui::Text("Mate Drive:");
-            ImGui::SameLine(100);
-            ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(1.0f, 0.4f, 0.7f, 1.0f));
-            ImGui::ProgressBar(mate, ImVec2(-1, 0), "");
-            ImGui::PopStyleColor();
-        }
+        // Common name from archetype label
+        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.5f, 1.0f), "%s", creature->getArchetypeLabel().c_str());
         
-        // New Genetics System - Digestion & Metabolism Section
-        if (creature->usesNewGenetics() && creature->getPhenotype()) {
-            const auto& phenotype = *creature->getPhenotype();
-            
-            if (ImGui::CollapsingHeader("Digestion & Metabolism", ImGuiTreeNodeFlags_DefaultOpen)) {
-                using UG = EcoSim::Genetics::UniversalGenes;
-                
-                // Digestion genes
-                float plantDigestion = phenotype.getTrait(UG::PLANT_DIGESTION_EFFICIENCY);
-                float meatDigestion = phenotype.getTrait(UG::MEAT_DIGESTION_EFFICIENCY);
-                float celluloseBreakdown = phenotype.getTrait(UG::CELLULOSE_BREAKDOWN);
-                float toxinTolerance = phenotype.getTrait(UG::TOXIN_TOLERANCE);
-                float toxinMetabolism = phenotype.getTrait(UG::TOXIN_METABOLISM);
-                
-                ImGui::Text("Plant Digestion:");
-                ImGui::SameLine(130);
-                ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(0.3f, 0.8f, 0.3f, 1.0f));
-                ImGui::ProgressBar(plantDigestion, ImVec2(-1, 0), "");
-                ImGui::PopStyleColor();
-                
-                ImGui::Text("Meat Digestion:");
-                ImGui::SameLine(130);
-                ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(0.8f, 0.3f, 0.3f, 1.0f));
-                ImGui::ProgressBar(meatDigestion, ImVec2(-1, 0), "");
-                ImGui::PopStyleColor();
-                
-                ImGui::Text("Cellulose:");
-                ImGui::SameLine(130);
-                ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(0.5f, 0.7f, 0.3f, 1.0f));
-                ImGui::ProgressBar(celluloseBreakdown, ImVec2(-1, 0), "");
-                ImGui::PopStyleColor();
-                
-                ImGui::Text("Toxin Tolerance:");
-                ImGui::SameLine(130);
-                ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(0.7f, 0.3f, 0.7f, 1.0f));
-                ImGui::ProgressBar(toxinTolerance, ImVec2(-1, 0), "");
-                ImGui::PopStyleColor();
-                
-                ImGui::Text("Toxin Metabolism:");
-                ImGui::SameLine(130);
-                ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(0.6f, 0.4f, 0.6f, 1.0f));
-                ImGui::ProgressBar(toxinMetabolism, ImVec2(-1, 0), "");
-                ImGui::PopStyleColor();
-            }
-            
-            // Senses Section
-            if (ImGui::CollapsingHeader("Senses")) {
-                using UG = EcoSim::Genetics::UniversalGenes;
-                
-                float sightRange = phenotype.getTrait(UG::SIGHT_RANGE);
-                float scentDetection = phenotype.getTrait(UG::SCENT_DETECTION);
-                float colorVision = phenotype.getTrait(UG::COLOR_VISION);
-                
-                ImGui::Text("Sight Range: %.1f", sightRange);
-                ImGui::Text("Scent Detection:");
-                ImGui::SameLine(130);
-                ImGui::ProgressBar(scentDetection, ImVec2(-1, 0), "");
-                
-                ImGui::Text("Color Vision:");
-                ImGui::SameLine(130);
-                ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(0.8f, 0.6f, 0.2f, 1.0f));
-                ImGui::ProgressBar(colorVision, ImVec2(-1, 0), "");
-                ImGui::PopStyleColor();
-            }
-            
-            // Physical Attributes Section
-            if (ImGui::CollapsingHeader("Physical Attributes")) {
-                using UG = EcoSim::Genetics::UniversalGenes;
-                
-                float maxSize = phenotype.getTrait(UG::MAX_SIZE);
-                float locomotion = phenotype.getTrait(UG::LOCOMOTION);
-                float hideThickness = phenotype.getTrait(UG::HIDE_THICKNESS);
-                float furDensity = phenotype.getTrait(UG::FUR_DENSITY);
-                float toothSharpness = phenotype.getTrait(UG::TOOTH_SHARPNESS);
-                float toothGrinding = phenotype.getTrait(UG::TOOTH_GRINDING);
-                float gutLength = phenotype.getTrait(UG::GUT_LENGTH);
-                float jawStrength = phenotype.getTrait(UG::JAW_STRENGTH);
-                
-                ImGui::Text("Max Size: %.1f", maxSize);
-                ImGui::Text("Locomotion: %.2f", locomotion);
-                
-                ImGui::Separator();
-                ImGui::Text("Hide Thickness:");
-                ImGui::SameLine(130);
-                ImGui::ProgressBar(hideThickness, ImVec2(-1, 0), "");
-                
-                ImGui::Text("Fur Density:");
-                ImGui::SameLine(130);
-                ImGui::ProgressBar(furDensity, ImVec2(-1, 0), "");
-                
-                ImGui::Separator();
-                ImGui::Text("Tooth Sharpness:");
-                ImGui::SameLine(130);
-                ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(0.9f, 0.5f, 0.5f, 1.0f));
-                ImGui::ProgressBar(toothSharpness, ImVec2(-1, 0), "");
-                ImGui::PopStyleColor();
-                
-                ImGui::Text("Tooth Grinding:");
-                ImGui::SameLine(130);
-                ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(0.5f, 0.9f, 0.5f, 1.0f));
-                ImGui::ProgressBar(toothGrinding, ImVec2(-1, 0), "");
-                ImGui::PopStyleColor();
-                
-                ImGui::Text("Gut Length: %.2f", gutLength);
-                ImGui::Text("Jaw Strength:");
-                ImGui::SameLine(130);
-                ImGui::ProgressBar(jawStrength, ImVec2(-1, 0), "");
-            }
-            
-            // Behavior Section
-            if (ImGui::CollapsingHeader("Behavior")) {
-                using UG = EcoSim::Genetics::UniversalGenes;
-                
-                float cachingInstinct = phenotype.getTrait(UG::CACHING_INSTINCT);
-                float groomingFrequency = phenotype.getTrait(UG::GROOMING_FREQUENCY);
-                float spatialMemory = phenotype.getTrait(UG::SPATIAL_MEMORY);
-                float sweetnessPreference = phenotype.getTrait(UG::SWEETNESS_PREFERENCE);
-                
-                ImGui::Text("Caching Instinct:");
-                ImGui::SameLine(130);
-                ImGui::ProgressBar(cachingInstinct, ImVec2(-1, 0), "");
-                
-                ImGui::Text("Grooming:");
-                ImGui::SameLine(130);
-                ImGui::ProgressBar(groomingFrequency, ImVec2(-1, 0), "");
-                
-                ImGui::Text("Spatial Memory:");
-                ImGui::SameLine(130);
-                ImGui::ProgressBar(spatialMemory, ImVec2(-1, 0), "");
-                
-                ImGui::Text("Sweet Preference:");
-                ImGui::SameLine(130);
-                ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(1.0f, 0.7f, 0.3f, 1.0f));
-                ImGui::ProgressBar(sweetnessPreference, ImVec2(-1, 0), "");
-                ImGui::PopStyleColor();
-            }
-            
-            // Energy Budget Section
-            if (ImGui::CollapsingHeader("Energy Budget", ImGuiTreeNodeFlags_DefaultOpen)) {
-                float maintenanceCost = phenotype.getTotalMaintenanceCost();
-                float specialistBonus = phenotype.getSpecialistBonus();
-                float metabolicOverhead = phenotype.getMetabolicOverhead();
-                
-                ImGui::Text("Maintenance Cost: %.3f/tick", maintenanceCost);
-                
-                // Specialist bonus color-coded (green for high specialization)
-                float bonusPercent = (specialistBonus - 1.0f) * 100.0f;
-                if (bonusPercent > 15.0f) {
-                    ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.3f, 1.0f),
-                        "Specialist Bonus: +%.0f%%", bonusPercent);
-                } else if (bonusPercent > 5.0f) {
-                    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.3f, 1.0f),
-                        "Specialist Bonus: +%.0f%%", bonusPercent);
-                } else {
-                    ImGui::Text("Specialist Bonus: +%.0f%%", bonusPercent);
-                }
-                
-                // Metabolic overhead color-coded (red for high cost)
-                float overheadPercent = (metabolicOverhead - 1.0f) * 100.0f;
-                if (overheadPercent > 20.0f) {
-                    ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f),
-                        "Metabolic Overhead: +%.0f%%", overheadPercent);
-                } else if (overheadPercent > 10.0f) {
-                    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.3f, 1.0f),
-                        "Metabolic Overhead: +%.0f%%", overheadPercent);
-                } else {
-                    ImGui::Text("Metabolic Overhead: +%.0f%%", overheadPercent);
-                }
-            }
-        } else {
-            // Legacy genome system display
-            if (ImGui::CollapsingHeader("Genome (Legacy)", ImGuiTreeNodeFlags_DefaultOpen)) {
-                const Genome& genome = creature->getGenome();
-                
-                ImGui::Text("Lifespan: %d", genome.getLifespan());
-                ImGui::Text("Sight Range: %d", genome.getSight());
-                ImGui::Text("Diet: %s", getDietName(static_cast<int>(genome.getDiet())));
-                ImGui::Text("Flocking: %s", genome.ifFlocks() ? "Yes" : "No");
-                
-                ImGui::Separator();
-                ImGui::Text("Thresholds:");
-                ImGui::BulletText("Hunger: %.2f", genome.getTHunger());
-                ImGui::BulletText("Thirst: %.2f", genome.getTThirst());
-                ImGui::BulletText("Fatigue: %.2f", genome.getTFatigue());
-                ImGui::BulletText("Mate: %.2f", genome.getTMate());
-                
-                ImGui::Separator();
-                ImGui::Text("Comfort:");
-                ImGui::BulletText("Increase: %.3f", genome.getComfInc());
-                ImGui::BulletText("Decrease: %.3f", genome.getComfDec());
-                
-                if (genome.getDiet() == Diet::predator || genome.getDiet() == Diet::scavenger) {
-                    ImGui::Separator();
-                    ImGui::Text("Combat:");
-                    ImGui::BulletText("Flee Distance: %d", genome.getFlee());
-                    ImGui::BulletText("Pursue Distance: %d", genome.getPursue());
-                }
-            }
-            
-            // Speed and metabolism
-            if (ImGui::CollapsingHeader("Physical Attributes")) {
-                ImGui::Text("Speed: %d", creature->getSpeed());
-                ImGui::Text("Metabolism: %.4f", creature->getMetabolism());
-            }
-        }
+        // Scientific name
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.9f, 1.0f), "%s", creature->getScientificName().c_str());
         
-        // Action buttons
+        // ID and Age
+        ImGui::Text("ID: #%d  Age: %d/%d", creature->getId(),
+                    creature->getAge(), creature->getLifespan());
         ImGui::Separator();
-        ImGui::Spacing();
         
-        if (ImGui::Button("Deselect", ImVec2(-1, 0))) {
-            _selectedCreatureId = -1;
-            _showCreatureInspector = false;
+        // ============================================
+        // TABBED INTERFACE - 5 Main Tabs
+        // ============================================
+        if (ImGui::BeginTabBar("InspectorTabs")) {
+            
+            // ==========================================
+            // TAB 1: OVERVIEW
+            // ==========================================
+            if (ImGui::BeginTabItem("Overview")) {
+                ImGui::Spacing();
+                
+                // --- CURRENT BEHAVIOR ---
+                ImGui::TextColored(ImVec4(0.8f, 0.9f, 0.7f, 1.0f), "CURRENT BEHAVIOR");
+                ImGui::Separator();
+                
+                // Motivation and Action
+                const char* motivationStr = getProfileName(static_cast<int>(creature->getMotivation()));
+                ImVec4 motivationColor;
+                switch (creature->getMotivation()) {
+                    case Motivation::Hungry: motivationColor = ImVec4(1.0f, 0.5f, 0.2f, 1.0f); break;
+                    case Motivation::Thirsty: motivationColor = ImVec4(0.3f, 0.7f, 1.0f, 1.0f); break;
+                    case Motivation::Amorous: motivationColor = ImVec4(1.0f, 0.4f, 0.7f, 1.0f); break;
+                    case Motivation::Tired: motivationColor = ImVec4(0.6f, 0.6f, 0.8f, 1.0f); break;
+                    case Motivation::Content: motivationColor = ImVec4(0.5f, 0.8f, 0.5f, 1.0f); break;
+                    default: motivationColor = ImVec4(0.7f, 0.7f, 0.7f, 1.0f);
+                }
+                ImGui::Text("Motivation:");
+                ImGui::SameLine(100);
+                ImGui::TextColored(motivationColor, "%s", motivationStr);
+                
+                // Action display using Action enum
+                Action action = creature->getAction();
+                ImGui::Text("Action:");
+                ImGui::SameLine(100);
+                ImGui::TextColored(getActionColor(action), "%s", getActionName(action));
+                
+                // Show target if in combat
+                if (creature->isInCombat()) {
+                    int targetId = creature->getTargetId();
+                    if (targetId >= 0) {
+                        ImGui::Text("Target:");
+                        ImGui::SameLine(100);
+                        ImGui::Text("#%d", targetId);
+                    }
+                }
+                
+                ImGui::Spacing();
+                
+                // --- DIET CLASSIFICATION (Emergent) ---
+                ImGui::TextColored(ImVec4(0.8f, 0.9f, 0.7f, 1.0f), "DIET CLASSIFICATION (Emergent)");
+                ImGui::Separator();
+                
+                if (creature->getPhenotype()) {
+                    const auto& phenotype = *creature->getPhenotype();
+                    using UG = EcoSim::Genetics::UniversalGenes;
+                    
+                    EcoSim::Genetics::DietType diet = phenotype.calculateDietType();
+                    ImGui::Text("Primary:");
+                    ImGui::SameLine(100);
+                    ImGui::Text("%s", getEmergentDietName(diet));
+                    
+                    float plantDigest = phenotype.getTrait(UG::PLANT_DIGESTION_EFFICIENCY);
+                    float meatDigest = phenotype.getTrait(UG::MEAT_DIGESTION_EFFICIENCY);
+                    
+                    ImGui::Text("Plant Digest:");
+                    ImGui::SameLine(100);
+                    ImGui::Text("%.2f", plantDigest);
+                    
+                    ImGui::Text("Meat Digest:");
+                    ImGui::SameLine(100);
+                    ImGui::Text("%.2f", meatDigest);
+                } else {
+                    ImGui::Text("Diet:");
+                    ImGui::SameLine(100);
+                    ImGui::Text("%s", getEmergentDietName(creature->getDietType()));
+                }
+                
+                ImGui::Spacing();
+                
+                // --- SIZE & POSITION ---
+                ImGui::TextColored(ImVec4(0.8f, 0.9f, 0.7f, 1.0f), "SIZE & POSITION");
+                ImGui::Separator();
+                
+                if (creature->getPhenotype()) {
+                    float maxSize = creature->getPhenotype()->getTrait(EcoSim::Genetics::UniversalGenes::MAX_SIZE);
+                    ImGui::Text("Size:");
+                    ImGui::SameLine(100);
+                    ImGui::Text("%.1f (Max: %.1f)", maxSize * 0.8f, maxSize);
+                } else {
+                    ImGui::Text("Size:");
+                    ImGui::SameLine(100);
+                    ImGui::Text("Medium");
+                }
+                
+                ImGui::Text("Position:");
+                ImGui::SameLine(100);
+                ImGui::Text("(%d, %d)", creature->tileX(), creature->tileY());
+                
+                ImGui::Text("World Pos:");
+                ImGui::SameLine(100);
+                ImGui::Text("(%.1f, %.1f)", creature->getWorldX(), creature->getWorldY());
+                
+                ImGui::Spacing();
+                
+                // --- KEY STATS SUMMARY ---
+                ImGui::TextColored(ImVec4(0.8f, 0.9f, 0.7f, 1.0f), "KEY STATS SUMMARY");
+                ImGui::Separator();
+                
+                // Health bar
+                float healthPercent = creature->getHealthPercent();
+                char healthLabel[32];
+                snprintf(healthLabel, sizeof(healthLabel), "%.0f/%.0f", creature->getHealth(), creature->getMaxHealth());
+                ImGui::Text("Health:");
+                ImGui::SameLine(80);
+                ImVec4 healthColor = (healthPercent > 0.5f) ? ImVec4(0.3f, 1.0f, 0.3f, 1.0f) :
+                                     (healthPercent > 0.25f) ? ImVec4(1.0f, 0.8f, 0.3f, 1.0f) :
+                                     ImVec4(1.0f, 0.3f, 0.3f, 1.0f);
+                ImGui::PushStyleColor(ImGuiCol_PlotHistogram, healthColor);
+                ImGui::ProgressBar(healthPercent, ImVec2(200, 0), healthLabel);
+                ImGui::PopStyleColor();
+                
+                // Hunger (0-10 scale)
+                float hunger = creature->getHunger();
+                char hungerLabel[16];
+                snprintf(hungerLabel, sizeof(hungerLabel), "%.1f/10", hunger);
+                ImGui::Text("Hunger:");
+                ImGui::SameLine(80);
+                ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(1.0f, 0.5f, 0.2f, 1.0f));
+                ImGui::ProgressBar(hunger / 10.0f, ImVec2(200, 0), hungerLabel);
+                ImGui::PopStyleColor();
+                
+                // Energy (inverse of fatigue)
+                float energy = 10.0f - creature->getFatigue();
+                char energyLabel[16];
+                snprintf(energyLabel, sizeof(energyLabel), "%.1f/10", energy);
+                ImGui::Text("Energy:");
+                ImGui::SameLine(80);
+                ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(0.3f, 0.8f, 1.0f, 1.0f));
+                ImGui::ProgressBar(energy / 10.0f, ImVec2(200, 0), energyLabel);
+                ImGui::PopStyleColor();
+                
+                ImGui::Spacing();
+                
+                // --- NOTABLE TRAITS ---
+                ImGui::TextColored(ImVec4(0.8f, 0.9f, 0.7f, 1.0f), "NOTABLE TRAITS");
+                ImGui::Separator();
+                
+                if (creature->getPhenotype()) {
+                    const auto& phenotype = *creature->getPhenotype();
+                    using UG = EcoSim::Genetics::UniversalGenes;
+                    
+                    int traitCount = 0;
+                    float locomotion = phenotype.getTrait(UG::LOCOMOTION);
+                    float sightRange = phenotype.getTrait(UG::SIGHT_RANGE);
+                    float huntInstinct = phenotype.getTrait(UG::HUNT_INSTINCT);
+                    float aggression = phenotype.getTrait(UG::COMBAT_AGGRESSION);
+                    float teethSharp = phenotype.getTrait(UG::TEETH_SHARPNESS);
+                    float clawLength = phenotype.getTrait(UG::CLAW_LENGTH);
+                    float hardiness = phenotype.getTrait(UG::HARDINESS);
+                    
+                    if (locomotion > 0.75f) { ImGui::BulletText("Fast runner (Locomotion: %.2f)", locomotion); traitCount++; }
+                    if (sightRange > 100.0f) { ImGui::BulletText("Excellent vision (Sight: %.0f)", sightRange); traitCount++; }
+                    if (huntInstinct > 0.75f) { ImGui::BulletText("Strong hunter (Hunt: %.2f)", huntInstinct); traitCount++; }
+                    if (aggression > 0.75f) { ImGui::BulletText("Highly aggressive (Aggression: %.2f)", aggression); traitCount++; }
+                    if (teethSharp > 0.75f) { ImGui::BulletText("Sharp teeth (Sharpness: %.2f)", teethSharp); traitCount++; }
+                    if (clawLength > 0.75f) { ImGui::BulletText("Long claws (Length: %.2f)", clawLength); traitCount++; }
+                    if (hardiness > 0.75f) { ImGui::BulletText("Very hardy (Hardiness: %.2f)", hardiness); traitCount++; }
+                    
+                    if (traitCount == 0) {
+                        ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "No exceptional traits");
+                    }
+                } else {
+                    ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "Legacy genome - no trait analysis");
+                }
+                
+                ImGui::EndTabItem();
+            }
+            
+            // ==========================================
+            // TAB 2: STATE
+            // ==========================================
+            if (ImGui::BeginTabItem("State")) {
+                ImGui::Spacing();
+                
+                // --- VITALS ---
+                ImGui::TextColored(ImVec4(0.8f, 0.9f, 0.7f, 1.0f), "VITALS");
+                ImGui::Separator();
+                
+                float healthPercent = creature->getHealthPercent();
+                float currentHealth = creature->getHealth();
+                float maxHealth = creature->getMaxHealth();
+                WoundState woundState = creature->getWoundState();
+                
+                ImVec4 healthBarColor;
+                const char* stateText;
+                switch (woundState) {
+                    case WoundState::Healthy:
+                        healthBarColor = ImVec4(0.3f, 1.0f, 0.3f, 1.0f);
+                        stateText = "Healthy";
+                        break;
+                    case WoundState::Injured:
+                        healthBarColor = ImVec4(1.0f, 1.0f, 0.3f, 1.0f);
+                        stateText = "Injured";
+                        break;
+                    case WoundState::Wounded:
+                        healthBarColor = ImVec4(1.0f, 0.5f, 0.0f, 1.0f);
+                        stateText = "Wounded";
+                        break;
+                    case WoundState::Critical:
+                        healthBarColor = ImVec4(1.0f, 0.0f, 0.0f, 1.0f);
+                        stateText = "Critical";
+                        break;
+                    default:
+                        healthBarColor = ImVec4(0.5f, 0.5f, 0.5f, 1.0f);
+                        stateText = "Dead";
+                        break;
+                }
+                
+                // Health bar styled like needs bars
+                char healthLabel[32];
+                snprintf(healthLabel, sizeof(healthLabel), "%.0f / %.0f", currentHealth, maxHealth);
+                ImGui::Text("Health");
+                ImGui::SameLine(80);
+                ImGui::PushStyleColor(ImGuiCol_PlotHistogram, healthBarColor);
+                ImGui::ProgressBar(healthPercent, ImVec2(200, 0), healthLabel);
+                ImGui::PopStyleColor();
+                ImGui::SameLine();
+                ImGui::TextColored(healthBarColor, "(%s)", stateText);
+                
+                float woundSeverity = creature->getWoundSeverity();
+                if (woundSeverity > 0.0f) {
+                    ImGui::Text("Wound Severity:");
+                    ImGui::SameLine(120);
+                    ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(0.8f, 0.2f, 0.2f, 1.0f));
+                    ImGui::ProgressBar(woundSeverity, ImVec2(200, 0), "");
+                    ImGui::PopStyleColor();
+                }
+                
+                if (creature->getPhenotype()) {
+                    const auto& phenotype = *creature->getPhenotype();
+                    using UG = EcoSim::Genetics::UniversalGenes;
+                    
+                    ImGui::Text("Regeneration Rate: %.2f", phenotype.getTrait(UG::REGENERATION_RATE));
+                    ImGui::Text("Wound Tolerance: %.2f", phenotype.getTrait(UG::WOUND_TOLERANCE));
+                    ImGui::Text("Bleeding Resistance: %.2f", phenotype.getTrait(UG::BLEEDING_RESISTANCE));
+                } else {
+                    ImGui::Text("Healing: %.3f/tick", creature->getHealingRate());
+                }
+                
+                ImGui::Spacing();
+                
+                // --- NEEDS ---
+                ImGui::TextColored(ImVec4(0.8f, 0.9f, 0.7f, 1.0f), "NEEDS");
+                ImGui::Separator();
+                
+                // All needs on 0-10 scale with progress bars
+                float hunger = creature->getHunger();
+                float thirst = creature->getThirst();
+                float fatigue = creature->getFatigue();
+                float mate = creature->getMate();
+                
+                char needLabel[32];
+                
+                // Hunger
+                snprintf(needLabel, sizeof(needLabel), "%.1f / 10", hunger);
+                ImGui::Text("Hunger");
+                ImGui::SameLine(80);
+                ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(1.0f, 0.5f, 0.2f, 1.0f));
+                ImGui::ProgressBar(hunger / 10.0f, ImVec2(200, 0), needLabel);
+                ImGui::PopStyleColor();
+                
+                // Thirst
+                snprintf(needLabel, sizeof(needLabel), "%.1f / 10", thirst);
+                ImGui::Text("Thirst");
+                ImGui::SameLine(80);
+                ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(0.3f, 0.7f, 1.0f, 1.0f));
+                ImGui::ProgressBar(thirst / 10.0f, ImVec2(200, 0), needLabel);
+                ImGui::PopStyleColor();
+                
+                // Fatigue
+                snprintf(needLabel, sizeof(needLabel), "%.1f / 10", fatigue);
+                ImGui::Text("Fatigue");
+                ImGui::SameLine(80);
+                ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(0.6f, 0.6f, 0.8f, 1.0f));
+                ImGui::ProgressBar(fatigue / 10.0f, ImVec2(200, 0), needLabel);
+                ImGui::PopStyleColor();
+                
+                // Mate Drive
+                snprintf(needLabel, sizeof(needLabel), "%.1f / 10", mate);
+                ImGui::Text("Mate");
+                ImGui::SameLine(80);
+                ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(1.0f, 0.4f, 0.7f, 1.0f));
+                ImGui::ProgressBar(mate / 10.0f, ImVec2(200, 0), needLabel);
+                ImGui::PopStyleColor();
+                
+                ImGui::Spacing();
+                
+                // --- ENERGY BUDGET ---
+                ImGui::TextColored(ImVec4(0.8f, 0.9f, 0.7f, 1.0f), "ENERGY BUDGET");
+                ImGui::Separator();
+                
+                if (creature->getPhenotype()) {
+                    const auto& phenotype = *creature->getPhenotype();
+                    float maintenanceCost = phenotype.getTotalMaintenanceCost();
+                    float metabolism = phenotype.getTrait(EcoSim::Genetics::UniversalGenes::METABOLISM_RATE);
+                    
+                    ImGui::Text("Metabolism: %.3f", metabolism);
+                    ImGui::Text("Maintenance Cost: %.3f/tick", maintenanceCost);
+                } else {
+                    ImGui::Text("Metabolism: %.4f", creature->getMetabolism());
+                }
+                
+                ImGui::Text("Speed: %d", creature->getSpeed());
+                
+                ImGui::Spacing();
+                
+                // --- STRESS & CONDITION ---
+                ImGui::TextColored(ImVec4(0.8f, 0.9f, 0.7f, 1.0f), "STRESS & CONDITION");
+                ImGui::Separator();
+                
+                if (creature->getPhenotype()) {
+                    float hardiness = creature->getPhenotype()->getTrait(EcoSim::Genetics::UniversalGenes::HARDINESS);
+                    ImGui::Text("Hardiness: %.2f", hardiness);
+                }
+                
+                ImGui::Text("World Position: (%.1f, %.1f)", creature->getWorldX(), creature->getWorldY());
+                
+                ImGui::EndTabItem();
+            }
+            
+            // ==========================================
+            // TAB 3: COMBAT
+            // ==========================================
+            if (ImGui::BeginTabItem("Combat")) {
+                ImGui::Spacing();
+                
+                // --- COMBAT STATUS ---
+                ImGui::TextColored(ImVec4(0.8f, 0.9f, 0.7f, 1.0f), "COMBAT STATUS");
+                ImGui::Separator();
+                
+                if (creature->isInCombat()) {
+                    ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "Status: IN COMBAT");
+                    int targetId = creature->getTargetId();
+                    if (targetId >= 0) {
+                        ImGui::Text("Target: #%d", targetId);
+                    }
+                } else if (creature->isFleeing()) {
+                    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.3f, 1.0f), "Status: FLEEING");
+                } else {
+                    ImGui::Text("Status: Peaceful");
+                }
+                
+                int cooldown = creature->getCombatCooldown();
+                if (cooldown > 0) {
+                    ImGui::Text("Cooldown: %d ticks", cooldown);
+                } else {
+                    ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.3f, 1.0f), "Ready to Attack");
+                }
+                
+                ImGui::Spacing();
+                
+                // --- COMBAT BEHAVIOR ---
+                ImGui::TextColored(ImVec4(0.8f, 0.9f, 0.7f, 1.0f), "COMBAT BEHAVIOR");
+                ImGui::Separator();
+                
+                if (creature->getPhenotype()) {
+                    const auto& phenotype = *creature->getPhenotype();
+                    using UG = EcoSim::Genetics::UniversalGenes;
+                    
+                    float aggression = phenotype.getTrait(UG::COMBAT_AGGRESSION);
+                    float retreat = phenotype.getTrait(UG::RETREAT_THRESHOLD);
+                    float territorial = phenotype.getTrait(UG::TERRITORIAL_AGGRESSION);
+                    float packCoord = phenotype.getTrait(UG::PACK_COORDINATION);
+                    
+                    ImGui::Text("Aggression:");
+                    ImGui::SameLine(120);
+                    ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(0.9f, 0.3f, 0.3f, 1.0f));
+                    ImGui::ProgressBar(aggression, ImVec2(200, 0), "");
+                    ImGui::PopStyleColor();
+                    ImGui::SameLine();
+                    ImGui::Text("%.2f", aggression);
+                    
+                    ImGui::Text("Retreat Thresh:");
+                    ImGui::SameLine(120);
+                    ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(0.3f, 0.6f, 0.9f, 1.0f));
+                    ImGui::ProgressBar(retreat, ImVec2(200, 0), "");
+                    ImGui::PopStyleColor();
+                    ImGui::SameLine();
+                    ImGui::Text("%.2f", retreat);
+                    
+                    ImGui::Text("Territorial:");
+                    ImGui::SameLine(120);
+                    ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(0.9f, 0.6f, 0.3f, 1.0f));
+                    ImGui::ProgressBar(territorial, ImVec2(200, 0), "");
+                    ImGui::PopStyleColor();
+                    ImGui::SameLine();
+                    ImGui::Text("%.2f", territorial);
+                    
+                    ImGui::Text("Pack Coord:");
+                    ImGui::SameLine(120);
+                    ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(0.6f, 0.9f, 0.6f, 1.0f));
+                    ImGui::ProgressBar(packCoord, ImVec2(200, 0), "");
+                    ImGui::PopStyleColor();
+                    ImGui::SameLine();
+                    ImGui::Text("%.2f", packCoord);
+                } else {
+                    ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "Legacy genome");
+                }
+                
+                ImGui::Spacing();
+                
+                // --- WEAPONS BREAKDOWN ---
+                ImGui::TextColored(ImVec4(0.8f, 0.9f, 0.7f, 1.0f), "WEAPONS BREAKDOWN");
+                ImGui::Separator();
+                
+                if (creature->getPhenotype()) {
+                    const auto& phenotype = *creature->getPhenotype();
+                    using UG = EcoSim::Genetics::UniversalGenes;
+                    
+                    // Teeth
+                    if (ImGui::TreeNode("Teeth")) {
+                        ImGui::Text("%-20s: %.2f", "Sharpness", phenotype.getTrait(UG::TEETH_SHARPNESS));
+                        ImGui::Text("%-20s: %.2f", "Serration", phenotype.getTrait(UG::TEETH_SERRATION));
+                        ImGui::Text("%-20s: %.2f", "Size", phenotype.getTrait(UG::TEETH_SIZE));
+                        ImGui::TreePop();
+                    }
+                    
+                    // Claws
+                    if (ImGui::TreeNode("Claws")) {
+                        ImGui::Text("%-20s: %.2f", "Length", phenotype.getTrait(UG::CLAW_LENGTH));
+                        ImGui::Text("%-20s: %.2f", "Sharpness", phenotype.getTrait(UG::CLAW_SHARPNESS));
+                        ImGui::Text("%-20s: %.2f", "Curvature", phenotype.getTrait(UG::CLAW_CURVATURE));
+                        ImGui::TreePop();
+                    }
+                    
+                    // Horns
+                    if (ImGui::TreeNode("Horns")) {
+                        ImGui::Text("%-20s: %.2f", "Length", phenotype.getTrait(UG::HORN_LENGTH));
+                        ImGui::Text("%-20s: %.2f", "Pointiness", phenotype.getTrait(UG::HORN_POINTINESS));
+                        ImGui::Text("%-20s: %.2f", "Spread", phenotype.getTrait(UG::HORN_SPREAD));
+                        ImGui::TreePop();
+                    }
+                    
+                    // Tail Weapons
+                    if (ImGui::TreeNode("Tail")) {
+                        ImGui::Text("%-20s: %.2f", "Length", phenotype.getTrait(UG::TAIL_LENGTH));
+                        ImGui::Text("%-20s: %.2f", "Mass", phenotype.getTrait(UG::TAIL_MASS));
+                        ImGui::Text("%-20s: %.2f", "Spines", phenotype.getTrait(UG::TAIL_SPINES));
+                        ImGui::Text("%-20s: %.2f", "Body Spines", phenotype.getTrait(UG::BODY_SPINES));
+                        ImGui::TreePop();
+                    }
+                } else {
+                    ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "Legacy genome");
+                }
+                
+                ImGui::Spacing();
+                
+                // --- DEFENSE BREAKDOWN ---
+                ImGui::TextColored(ImVec4(0.8f, 0.9f, 0.7f, 1.0f), "DEFENSE BREAKDOWN");
+                ImGui::Separator();
+                
+                if (creature->getPhenotype()) {
+                    const auto& phenotype = *creature->getPhenotype();
+                    using UG = EcoSim::Genetics::UniversalGenes;
+                    
+                    float hideThick = phenotype.getTrait(UG::HIDE_THICKNESS);
+                    float scaleCover = phenotype.getTrait(UG::SCALE_COVERAGE);
+                    float fatLayer = phenotype.getTrait(UG::FAT_LAYER_THICKNESS);
+                    
+                    ImGui::Text("Hide:");
+                    ImGui::SameLine(100);
+                    ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(0.6f, 0.4f, 0.2f, 1.0f));
+                    ImGui::ProgressBar(hideThick, ImVec2(200, 0), "");
+                    ImGui::PopStyleColor();
+                    ImGui::SameLine();
+                    ImGui::Text("%.2f", hideThick);
+                    
+                    ImGui::Text("Scales:");
+                    ImGui::SameLine(100);
+                    ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(0.3f, 0.5f, 0.3f, 1.0f));
+                    ImGui::ProgressBar(scaleCover, ImVec2(200, 0), "");
+                    ImGui::PopStyleColor();
+                    ImGui::SameLine();
+                    ImGui::Text("%.2f", scaleCover);
+                    
+                    ImGui::Text("Fat Layer:");
+                    ImGui::SameLine(100);
+                    ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(0.9f, 0.8f, 0.5f, 1.0f));
+                    ImGui::ProgressBar(fatLayer, ImVec2(200, 0), "");
+                    ImGui::PopStyleColor();
+                    ImGui::SameLine();
+                    ImGui::Text("%.2f", fatLayer);
+                    
+                    // Calculate approximate damage reduction
+                    float damageReduction = (hideThick * 0.15f + scaleCover * 0.25f + fatLayer * 0.1f) * 100.0f;
+                    ImGui::Spacing();
+                    ImGui::Text("Est. Damage Reduction: ~%.0f%%", damageReduction);
+                } else {
+                    ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "Legacy genome");
+                }
+                
+                ImGui::EndTabItem();
+            }
+            
+            // ==========================================
+            // TAB 4: PHYSICAL
+            // ==========================================
+            if (ImGui::BeginTabItem("Physical")) {
+                ImGui::Spacing();
+                
+                if (creature->getPhenotype()) {
+                    const auto& phenotype = *creature->getPhenotype();
+                    using UG = EcoSim::Genetics::UniversalGenes;
+                    
+                    // --- MORPHOLOGY ---
+                    ImGui::TextColored(ImVec4(0.8f, 0.9f, 0.7f, 1.0f), "MORPHOLOGY");
+                    ImGui::Separator();
+                    
+                    ImGui::Columns(2, "morphology_cols", false);
+                    ImGui::Text("%-20s: %.2f", "Hide Thickness", phenotype.getTrait(UG::HIDE_THICKNESS));
+                    ImGui::Text("%-20s: %.2f", "Fur Density", phenotype.getTrait(UG::FUR_DENSITY));
+                    ImGui::Text("%-20s: %.2f", "Scale Coverage", phenotype.getTrait(UG::SCALE_COVERAGE));
+                    ImGui::Text("%-20s: %.2f", "Fat Layer", phenotype.getTrait(UG::FAT_LAYER_THICKNESS));
+                    ImGui::NextColumn();
+                    ImGui::Text("%-20s: %.2f", "Tooth Sharpness", phenotype.getTrait(UG::TOOTH_SHARPNESS));
+                    ImGui::Text("%-20s: %.2f", "Tooth Grinding", phenotype.getTrait(UG::TOOTH_GRINDING));
+                    ImGui::Text("%-20s: %.2f", "Gut Length", phenotype.getTrait(UG::GUT_LENGTH));
+                    ImGui::Text("%-20s: %.2f", "Jaw Strength", phenotype.getTrait(UG::JAW_STRENGTH));
+                    ImGui::Text("%-20s: %.2f", "Tail Length", phenotype.getTrait(UG::TAIL_LENGTH));
+                    ImGui::Columns(1);
+                    
+                    ImGui::Spacing();
+                    
+                    // --- MOBILITY ---
+                    ImGui::TextColored(ImVec4(0.8f, 0.9f, 0.7f, 1.0f), "MOBILITY");
+                    ImGui::Separator();
+                    
+                    ImGui::Text("Locomotion: %.2f", phenotype.getTrait(UG::LOCOMOTION));
+                    ImGui::Text("Navigation: %.2f", phenotype.getTrait(UG::NAVIGATION_ABILITY));
+                    ImGui::Text("Speed: %d", creature->getSpeed());
+                    
+                    ImGui::Spacing();
+                    
+                    // --- SENSORY ABILITIES ---
+                    ImGui::TextColored(ImVec4(0.8f, 0.9f, 0.7f, 1.0f), "SENSORY ABILITIES");
+                    ImGui::Separator();
+                    
+                    ImGui::Text("Sight Range: %.1f", phenotype.getTrait(UG::SIGHT_RANGE));
+                    ImGui::Text("Color Vision: %.2f", phenotype.getTrait(UG::COLOR_VISION));
+                    ImGui::Text("Scent Detection: %.2f", phenotype.getTrait(UG::SCENT_DETECTION));
+                    ImGui::Text("Olfactory Acuity: %.2f", phenotype.getTrait(UG::OLFACTORY_ACUITY));
+                    
+                    ImGui::Spacing();
+                    
+                    // --- APPEARANCE ---
+                    ImGui::TextColored(ImVec4(0.8f, 0.9f, 0.7f, 1.0f), "APPEARANCE");
+                    ImGui::Separator();
+                    
+                    ImGui::Text("Color Hue: %.2f", phenotype.getTrait(UG::COLOR_HUE));
+                    
+                } else {
+                    ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "Legacy genome - limited physical data");
+                    ImGui::Text("Speed: %d", creature->getSpeed());
+                }
+                
+                ImGui::EndTabItem();
+            }
+            
+            // ==========================================
+            // TAB 5: GENETICS (with 12 Sub-Tabs)
+            // ==========================================
+            if (ImGui::BeginTabItem("Genetics")) {
+                ImGui::Spacing();
+                
+                if (creature->getPhenotype()) {
+                    const auto& phenotype = *creature->getPhenotype();
+                    using UG = EcoSim::Genetics::UniversalGenes;
+                    
+                    // Nested tab bar for chromosome categories
+                    if (ImGui::BeginTabBar("GeneticsSubTabs", ImGuiTabBarFlags_FittingPolicyScroll)) {
+                        
+                        // Sub-Tab 1: Universal (7 genes)
+                        if (ImGui::BeginTabItem("Universal")) {
+                            ImGui::Spacing();
+                            ImGui::TextColored(ImVec4(0.7f, 0.9f, 0.7f, 1.0f), "Universal Genes (7)");
+                            ImGui::Separator();
+                            ImGui::Text("%-28s: %.2f", "LIFESPAN", phenotype.getTrait(UG::LIFESPAN));
+                            ImGui::Text("%-28s: %.2f", "MAX_SIZE", phenotype.getTrait(UG::MAX_SIZE));
+                            ImGui::Text("%-28s: %.2f", "METABOLISM_RATE", phenotype.getTrait(UG::METABOLISM_RATE));
+                            ImGui::Text("%-28s: %.2f", "COLOR_HUE", phenotype.getTrait(UG::COLOR_HUE));
+                            ImGui::Text("%-28s: %.2f", "HARDINESS", phenotype.getTrait(UG::HARDINESS));
+                            ImGui::Text("%-28s: %.2f", "TEMP_TOLERANCE_LOW", phenotype.getTrait(UG::TEMP_TOLERANCE_LOW));
+                            ImGui::Text("%-28s: %.2f", "TEMP_TOLERANCE_HIGH", phenotype.getTrait(UG::TEMP_TOLERANCE_HIGH));
+                            ImGui::EndTabItem();
+                        }
+                        
+                        // Sub-Tab 2: Mobility (5 genes)
+                        if (ImGui::BeginTabItem("Mobility")) {
+                            ImGui::Spacing();
+                            ImGui::TextColored(ImVec4(0.7f, 0.9f, 0.7f, 1.0f), "Mobility Genes (5)");
+                            ImGui::Separator();
+                            ImGui::Text("%-28s: %.2f", "LOCOMOTION", phenotype.getTrait(UG::LOCOMOTION));
+                            ImGui::Text("%-28s: %.2f", "SIGHT_RANGE", phenotype.getTrait(UG::SIGHT_RANGE));
+                            ImGui::Text("%-28s: %.2f", "NAVIGATION_ABILITY", phenotype.getTrait(UG::NAVIGATION_ABILITY));
+                            ImGui::Text("%-28s: %.2f", "FLEE_THRESHOLD", phenotype.getTrait(UG::FLEE_THRESHOLD));
+                            ImGui::Text("%-28s: %.2f", "PURSUE_THRESHOLD", phenotype.getTrait(UG::PURSUE_THRESHOLD));
+                            ImGui::EndTabItem();
+                        }
+                        
+                        // Sub-Tab 3: Heterotrophy (13 genes)
+                        if (ImGui::BeginTabItem("Heterotrophy")) {
+                            ImGui::Spacing();
+                            ImGui::TextColored(ImVec4(0.7f, 0.9f, 0.7f, 1.0f), "Heterotrophy Genes (13)");
+                            ImGui::Separator();
+                            ImGui::Text("%-28s: %.2f", "PLANT_DIGESTION_EFFICIENCY", phenotype.getTrait(UG::PLANT_DIGESTION_EFFICIENCY));
+                            ImGui::Text("%-28s: %.2f", "MEAT_DIGESTION_EFFICIENCY", phenotype.getTrait(UG::MEAT_DIGESTION_EFFICIENCY));
+                            ImGui::Text("%-28s: %.2f", "CELLULOSE_BREAKDOWN", phenotype.getTrait(UG::CELLULOSE_BREAKDOWN));
+                            ImGui::Text("%-28s: %.2f", "TOXIN_TOLERANCE", phenotype.getTrait(UG::TOXIN_TOLERANCE));
+                            ImGui::Text("%-28s: %.2f", "TOXIN_METABOLISM", phenotype.getTrait(UG::TOXIN_METABOLISM));
+                            ImGui::Text("%-28s: %.2f", "SCENT_DETECTION", phenotype.getTrait(UG::SCENT_DETECTION));
+                            ImGui::Text("%-28s: %.2f", "COLOR_VISION", phenotype.getTrait(UG::COLOR_VISION));
+                            ImGui::Text("%-28s: %.2f", "HUNT_INSTINCT", phenotype.getTrait(UG::HUNT_INSTINCT));
+                            ImGui::Text("%-28s: %.2f", "DIGESTIVE_EFFICIENCY", phenotype.getTrait(UG::DIGESTIVE_EFFICIENCY));
+                            ImGui::Text("%-28s: %.2f", "NUTRIENT_VALUE", phenotype.getTrait(UG::NUTRIENT_VALUE));
+                            ImGui::EndTabItem();
+                        }
+                        
+                        // Sub-Tab 4: Morphology (9 genes)
+                        if (ImGui::BeginTabItem("Morphology")) {
+                            ImGui::Spacing();
+                            ImGui::TextColored(ImVec4(0.7f, 0.9f, 0.7f, 1.0f), "Morphology Genes (9)");
+                            ImGui::Separator();
+                            ImGui::Text("%-28s: %.2f", "HIDE_THICKNESS", phenotype.getTrait(UG::HIDE_THICKNESS));
+                            ImGui::Text("%-28s: %.2f", "FUR_DENSITY", phenotype.getTrait(UG::FUR_DENSITY));
+                            ImGui::Text("%-28s: %.2f", "SCALE_COVERAGE", phenotype.getTrait(UG::SCALE_COVERAGE));
+                            ImGui::Text("%-28s: %.2f", "FAT_LAYER_THICKNESS", phenotype.getTrait(UG::FAT_LAYER_THICKNESS));
+                            ImGui::Text("%-28s: %.2f", "TOOTH_SHARPNESS", phenotype.getTrait(UG::TOOTH_SHARPNESS));
+                            ImGui::Text("%-28s: %.2f", "TOOTH_GRINDING", phenotype.getTrait(UG::TOOTH_GRINDING));
+                            ImGui::Text("%-28s: %.2f", "GUT_LENGTH", phenotype.getTrait(UG::GUT_LENGTH));
+                            ImGui::Text("%-28s: %.2f", "JAW_STRENGTH", phenotype.getTrait(UG::JAW_STRENGTH));
+                            ImGui::Text("%-28s: %.2f", "TAIL_LENGTH", phenotype.getTrait(UG::TAIL_LENGTH));
+                            ImGui::EndTabItem();
+                        }
+                        
+                        // Sub-Tab 5: Seed Interaction (2 genes)
+                        if (ImGui::BeginTabItem("Seed")) {
+                            ImGui::Spacing();
+                            ImGui::TextColored(ImVec4(0.7f, 0.9f, 0.7f, 1.0f), "Seed Interaction Genes (2)");
+                            ImGui::Separator();
+                            ImGui::Text("%-28s: %.2f", "GUT_TRANSIT_TIME", phenotype.getTrait(UG::GUT_TRANSIT_TIME));
+                            ImGui::Text("%-28s: %.2f", "SEED_DESTRUCTION_RATE", phenotype.getTrait(UG::SEED_DESTRUCTION_RATE));
+                            ImGui::EndTabItem();
+                        }
+                        
+                        // Sub-Tab 6: Reproduction (6 genes)
+                        if (ImGui::BeginTabItem("Reproduction")) {
+                            ImGui::Spacing();
+                            ImGui::TextColored(ImVec4(0.7f, 0.9f, 0.7f, 1.0f), "Reproduction Genes (6)");
+                            ImGui::Separator();
+                            ImGui::Text("%-28s: %.2f", "OFFSPRING_COUNT", phenotype.getTrait(UG::OFFSPRING_COUNT));
+                            ImGui::Text("%-28s: %.2f", "MATE_THRESHOLD", phenotype.getTrait(UG::MATE_THRESHOLD));
+                            ImGui::Text("%-28s: %.2f", "SPREAD_DISTANCE", phenotype.getTrait(UG::SPREAD_DISTANCE));
+                            ImGui::Text("%-28s: %.2f", "FATIGUE_THRESHOLD", phenotype.getTrait(UG::FATIGUE_THRESHOLD));
+                            ImGui::Text("%-28s: %.2f", "COMFORT_INCREASE", phenotype.getTrait(UG::COMFORT_INCREASE));
+                            ImGui::Text("%-28s: %.2f", "COMFORT_DECREASE", phenotype.getTrait(UG::COMFORT_DECREASE));
+                            ImGui::EndTabItem();
+                        }
+                        
+                        // Sub-Tab 7: Olfactory (4 genes)
+                        if (ImGui::BeginTabItem("Olfactory")) {
+                            ImGui::Spacing();
+                            ImGui::TextColored(ImVec4(0.7f, 0.9f, 0.7f, 1.0f), "Olfactory Genes (4)");
+                            ImGui::Separator();
+                            ImGui::Text("%-28s: %.2f", "SCENT_PRODUCTION", phenotype.getTrait(UG::SCENT_PRODUCTION));
+                            ImGui::Text("%-28s: %.2f", "SCENT_SIGNATURE_VARIANCE", phenotype.getTrait(UG::SCENT_SIGNATURE_VARIANCE));
+                            ImGui::Text("%-28s: %.2f", "OLFACTORY_ACUITY", phenotype.getTrait(UG::OLFACTORY_ACUITY));
+                            ImGui::Text("%-28s: %.2f", "SCENT_MASKING", phenotype.getTrait(UG::SCENT_MASKING));
+                            ImGui::EndTabItem();
+                        }
+                        
+                        // Sub-Tab 8: Behavior (5 genes)
+                        if (ImGui::BeginTabItem("Behavior")) {
+                            ImGui::Spacing();
+                            ImGui::TextColored(ImVec4(0.7f, 0.9f, 0.7f, 1.0f), "Behavior Genes (5)");
+                            ImGui::Separator();
+                            ImGui::Text("%-28s: %.2f", "CACHING_INSTINCT", phenotype.getTrait(UG::CACHING_INSTINCT));
+                            ImGui::Text("%-28s: %.2f", "GROOMING_FREQUENCY", phenotype.getTrait(UG::GROOMING_FREQUENCY));
+                            ImGui::Text("%-28s: %.2f", "SPATIAL_MEMORY", phenotype.getTrait(UG::SPATIAL_MEMORY));
+                            ImGui::Text("%-28s: %.2f", "SWEETNESS_PREFERENCE", phenotype.getTrait(UG::SWEETNESS_PREFERENCE));
+                            ImGui::Text("%-28s: %.2f", "PAIN_SENSITIVITY", phenotype.getTrait(UG::PAIN_SENSITIVITY));
+                            ImGui::EndTabItem();
+                        }
+                        
+                        // Sub-Tab 9: Health (3 genes)
+                        if (ImGui::BeginTabItem("Health")) {
+                            ImGui::Spacing();
+                            ImGui::TextColored(ImVec4(0.7f, 0.9f, 0.7f, 1.0f), "Health Genes (3)");
+                            ImGui::Separator();
+                            ImGui::Text("%-28s: %.2f", "REGENERATION_RATE", phenotype.getTrait(UG::REGENERATION_RATE));
+                            ImGui::Text("%-28s: %.2f", "WOUND_TOLERANCE", phenotype.getTrait(UG::WOUND_TOLERANCE));
+                            ImGui::Text("%-28s: %.2f", "BLEEDING_RESISTANCE", phenotype.getTrait(UG::BLEEDING_RESISTANCE));
+                            ImGui::EndTabItem();
+                        }
+                        
+                        // Sub-Tab 10: Combat Weapons (13 genes)
+                        if (ImGui::BeginTabItem("Cbt:Weapons")) {
+                            ImGui::Spacing();
+                            ImGui::TextColored(ImVec4(0.7f, 0.9f, 0.7f, 1.0f), "Combat Weapon Genes (13)");
+                            ImGui::Separator();
+                            ImGui::Text("%-28s: %.2f", "TEETH_SHARPNESS", phenotype.getTrait(UG::TEETH_SHARPNESS));
+                            ImGui::Text("%-28s: %.2f", "TEETH_SERRATION", phenotype.getTrait(UG::TEETH_SERRATION));
+                            ImGui::Text("%-28s: %.2f", "TEETH_SIZE", phenotype.getTrait(UG::TEETH_SIZE));
+                            ImGui::Text("%-28s: %.2f", "CLAW_LENGTH", phenotype.getTrait(UG::CLAW_LENGTH));
+                            ImGui::Text("%-28s: %.2f", "CLAW_SHARPNESS", phenotype.getTrait(UG::CLAW_SHARPNESS));
+                            ImGui::Text("%-28s: %.2f", "CLAW_CURVATURE", phenotype.getTrait(UG::CLAW_CURVATURE));
+                            ImGui::Text("%-28s: %.2f", "HORN_LENGTH", phenotype.getTrait(UG::HORN_LENGTH));
+                            ImGui::Text("%-28s: %.2f", "HORN_POINTINESS", phenotype.getTrait(UG::HORN_POINTINESS));
+                            ImGui::Text("%-28s: %.2f", "HORN_SPREAD", phenotype.getTrait(UG::HORN_SPREAD));
+                            ImGui::Text("%-28s: %.2f", "TAIL_LENGTH", phenotype.getTrait(UG::TAIL_LENGTH));
+                            ImGui::Text("%-28s: %.2f", "TAIL_MASS", phenotype.getTrait(UG::TAIL_MASS));
+                            ImGui::Text("%-28s: %.2f", "TAIL_SPINES", phenotype.getTrait(UG::TAIL_SPINES));
+                            ImGui::Text("%-28s: %.2f", "BODY_SPINES", phenotype.getTrait(UG::BODY_SPINES));
+                            ImGui::EndTabItem();
+                        }
+                        
+                        // Sub-Tab 11: Combat Defense (2 genes)
+                        if (ImGui::BeginTabItem("Cbt:Defense")) {
+                            ImGui::Spacing();
+                            ImGui::TextColored(ImVec4(0.7f, 0.9f, 0.7f, 1.0f), "Combat Defense Genes (2)");
+                            ImGui::Separator();
+                            ImGui::Text("%-28s: %.2f", "SCALE_COVERAGE", phenotype.getTrait(UG::SCALE_COVERAGE));
+                            ImGui::Text("%-28s: %.2f", "FAT_LAYER_THICKNESS", phenotype.getTrait(UG::FAT_LAYER_THICKNESS));
+                            ImGui::Spacing();
+                            ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "(HIDE_THICKNESS in Morphology)");
+                            ImGui::EndTabItem();
+                        }
+                        
+                        // Sub-Tab 12: Combat Behavior (4 genes)
+                        if (ImGui::BeginTabItem("Cbt:Behavior")) {
+                            ImGui::Spacing();
+                            ImGui::TextColored(ImVec4(0.7f, 0.9f, 0.7f, 1.0f), "Combat Behavior Genes (4)");
+                            ImGui::Separator();
+                            ImGui::Text("%-28s: %.2f", "COMBAT_AGGRESSION", phenotype.getTrait(UG::COMBAT_AGGRESSION));
+                            ImGui::Text("%-28s: %.2f", "RETREAT_THRESHOLD", phenotype.getTrait(UG::RETREAT_THRESHOLD));
+                            ImGui::Text("%-28s: %.2f", "TERRITORIAL_AGGRESSION", phenotype.getTrait(UG::TERRITORIAL_AGGRESSION));
+                            ImGui::Text("%-28s: %.2f", "PACK_COORDINATION", phenotype.getTrait(UG::PACK_COORDINATION));
+                            ImGui::EndTabItem();
+                        }
+                        
+                        ImGui::EndTabBar();
+                    }
+                } else {
+                    ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "Legacy genome - genetics data not available");
+                    ImGui::Spacing();
+                    ImGui::Text("This creature uses the old genome system.");
+                    ImGui::Text("Create new creatures to see full genetic data.");
+                }
+                
+                ImGui::EndTabItem();
+            }
+            
+            ImGui::EndTabBar();
         }
     }
     ImGui::End();
 }
 
 void ImGuiOverlay::renderControlsWindow() {
-    ImGui::SetNextWindowPos(ImVec2(660, 30), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(200, 280), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowPos(ImVec2(270, 30), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(200, 150), ImGuiCond_FirstUseEver);
     
     if (ImGui::Begin("Controls", &_showControls, ImGuiWindowFlags_NoCollapse)) {
-        // Simulation status
-        if (ImGui::CollapsingHeader("Simulation", ImGuiTreeNodeFlags_DefaultOpen)) {
-            // Pause state indicator
-            if (_lastHudData.paused) {
-                ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "Status: PAUSED");
-            } else {
-                ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "Status: RUNNING");
-            }
-            
-            ImGui::Text("Tick Rate: %dx", _lastHudData.tickRate);
-            
-            ImGui::Separator();
-            ImGui::TextWrapped("Press SPACE to toggle pause");
-        }
-        
-        // Time display
-        if (ImGui::CollapsingHeader("Time", ImGuiTreeNodeFlags_DefaultOpen)) {
-            ImGui::Text("Time: %s", _lastHudData.timeString.c_str());
-            ImGui::Text("Date: %s", _lastHudData.dateString.c_str());
-        }
-        
-        // Quick stats
-        if (ImGui::CollapsingHeader("Quick Stats", ImGuiTreeNodeFlags_DefaultOpen)) {
-            ImGui::Text("Population: %d", _lastHudData.population);
-            ImGui::Text("Births: %d", _lastHudData.births);
-            ImGui::Text("Food Eaten: %d", _lastHudData.foodEaten);
-            
-            unsigned int totalDeaths = _lastHudData.deaths.oldAge +
-                                       _lastHudData.deaths.starved +
-                                       _lastHudData.deaths.dehydrated +
-                                       _lastHudData.deaths.discomfort +
-                                       _lastHudData.deaths.predator;
-            ImGui::Text("Total Deaths: %d", totalDeaths);
-        }
-        
-        // Keyboard shortcuts help
-        if (ImGui::CollapsingHeader("Keyboard Shortcuts")) {
-            ImGui::BulletText("WASD/Arrows: Move camera");
-            ImGui::BulletText("SPACE: Pause/Resume");
-            ImGui::BulletText("H: Toggle HUD");
-            ImGui::BulletText("A: Add 100 creatures");
-            ImGui::BulletText("S: Save state");
-            ImGui::BulletText("ESC: Quit");
-        }
-    }
-    ImGui::End();
-}
-
-const char* ImGuiOverlay::getProfileName(int profile) const {
-    switch (static_cast<Profile>(profile)) {
-        case Profile::hungry: return "Hungry";
-        case Profile::thirsty: return "Thirsty";
-        case Profile::breed: return "Breeding";
-        case Profile::sleep: return "Sleeping";
-        case Profile::migrate: return "Migrating";
-        default: return "Unknown";
-    }
-}
-
-// DRY refactoring: Uses centralized DietInfo lookup table instead of switch statement
-const char* ImGuiOverlay::getDietName(int diet) const {
-    return getDietInfo(static_cast<Diet>(diet)).displayName;
-}
-
-const char* ImGuiOverlay::getEmergentDietName(EcoSim::Genetics::DietType type) const {
-    switch (type) {
-        case EcoSim::Genetics::DietType::HERBIVORE: return "Herbivore";
-        case EcoSim::Genetics::DietType::FRUGIVORE: return "Frugivore";
-        case EcoSim::Genetics::DietType::OMNIVORE: return "Omnivore";
-        case EcoSim::Genetics::DietType::CARNIVORE: return "Carnivore";
-        default: return "Unknown";
-    }
-}
-
-const char* ImGuiOverlay::getDispersalStrategyName(int strategy) const {
-    switch (static_cast<EcoSim::Genetics::DispersalStrategy>(strategy)) {
-        case EcoSim::Genetics::DispersalStrategy::GRAVITY: return "Gravity";
-        case EcoSim::Genetics::DispersalStrategy::WIND: return "Wind";
-        case EcoSim::Genetics::DispersalStrategy::ANIMAL_FRUIT: return "Animal (Fruit)";
-        case EcoSim::Genetics::DispersalStrategy::ANIMAL_BURR: return "Animal (Burr)";
-        case EcoSim::Genetics::DispersalStrategy::EXPLOSIVE: return "Explosive";
-        case EcoSim::Genetics::DispersalStrategy::VEGETATIVE: return "Vegetative";
-        default: return "Unknown";
-    }
-}
-
-void ImGuiOverlay::renderPlantInspectorWindow(const EcoSim::Genetics::Plant* plant) {
-    ImGui::SetNextWindowPos(ImVec2(800, 370), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(280, 450), ImGuiCond_FirstUseEver);
-    
-    char title[64];
-    snprintf(title, sizeof(title), "Plant Inspector - #%d###PlantInspector", _selectedPlantId);
-    
-    if (ImGui::Begin(title, &_showPlantInspector, ImGuiWindowFlags_NoCollapse)) {
-        if (!plant) {
-            ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "Plant not found");
-            ImGui::End();
-            return;
-        }
-        
-        const auto& phenotype = plant->getPhenotype();
-        using UG = EcoSim::Genetics::UniversalGenes;
-        
-        // Basic Info Section
-        if (ImGui::CollapsingHeader("Basic Information", ImGuiTreeNodeFlags_DefaultOpen)) {
-            ImGui::Text("ID: #%d", _selectedPlantId);
-            ImGui::Text("Position: (%d, %d)", plant->getX(), plant->getY());
-            ImGui::Text("Age: %u / %u", plant->getAge(), plant->getMaxLifespan());
-            ImGui::Text("Alive: %s", plant->isAlive() ? "Yes" : "No");
-        }
-        
-        // Growth Section
-        if (ImGui::CollapsingHeader("Growth", ImGuiTreeNodeFlags_DefaultOpen)) {
-            float currentSize = plant->getCurrentSize();
-            float maxSize = plant->getMaxSize();
-            float growthProgress = (maxSize > 0) ? (currentSize / maxSize) : 0.0f;
-            
-            ImGui::Text("Current Size: %.2f", currentSize);
-            ImGui::Text("Max Size: %.2f", maxSize);
-            
-            ImGui::Text("Growth:");
-            ImGui::SameLine(100);
-            ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(0.3f, 0.8f, 0.3f, 1.0f));
-            ImGui::ProgressBar(growthProgress, ImVec2(-1, 0), "");
-            ImGui::PopStyleColor();
-            
-            ImGui::Text("Growth Rate: %.2f", plant->getGrowthRate());
-            ImGui::Text("Can Spread Seeds: %s", plant->canSpreadSeeds() ? "Yes" : "No");
-        }
-        
-        // Defense Section
-        if (ImGui::CollapsingHeader("Defenses")) {
-            float toxicity = plant->getToxicity();
-            float thornDamage = plant->getThornDamage();
-            float regrowth = plant->getRegrowthRate();
-            
-            ImGui::Text("Toxicity:");
-            ImGui::SameLine(100);
-            ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(0.7f, 0.3f, 0.7f, 1.0f));
-            ImGui::ProgressBar(toxicity, ImVec2(-1, 0), "");
-            ImGui::PopStyleColor();
-            
-            ImGui::Text("Thorns:");
-            ImGui::SameLine(100);
-            ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(0.8f, 0.5f, 0.3f, 1.0f));
-            ImGui::ProgressBar(thornDamage, ImVec2(-1, 0), "");
-            ImGui::PopStyleColor();
-            
-            ImGui::Text("Regrowth:");
-            ImGui::SameLine(100);
-            ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(0.4f, 0.9f, 0.4f, 1.0f));
-            ImGui::ProgressBar(regrowth, ImVec2(-1, 0), "");
-            ImGui::PopStyleColor();
-        }
-        
-        // Reproduction Section
-        if (ImGui::CollapsingHeader("Reproduction")) {
-            float fruitRate = plant->getFruitProductionRate();
-            float fruitAppeal = plant->getFruitAppeal();
-            float spreadDist = plant->getSpreadDistance();
-            int seedCount = plant->getSeedCount();
-            
-            ImGui::Text("Fruit Production:");
-            ImGui::SameLine(130);
-            ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(1.0f, 0.6f, 0.3f, 1.0f));
-            ImGui::ProgressBar(fruitRate, ImVec2(-1, 0), "");
-            ImGui::PopStyleColor();
-            
-            ImGui::Text("Fruit Appeal:");
-            ImGui::SameLine(130);
-            ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(1.0f, 0.8f, 0.3f, 1.0f));
-            ImGui::ProgressBar(fruitAppeal, ImVec2(-1, 0), "");
-            ImGui::PopStyleColor();
-            
-            ImGui::Text("Spread Distance: %.1f", spreadDist);
-            ImGui::Text("Seeds per Cycle: %d", seedCount);
-            ImGui::Text("Can Produce Fruit: %s", plant->canProduceFruit() ? "Yes" : "No");
-            
-            // Dispersal strategy
-            auto strategy = plant->getPrimaryDispersalStrategy();
-            const char* strategyName = getDispersalStrategyName(static_cast<int>(strategy));
-            ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "Dispersal: %s", strategyName);
-        }
-        
-        // Seed Properties Section
-        if (ImGui::CollapsingHeader("Seed Properties")) {
-            float seedMass = plant->getSeedMass();
-            float seedAero = plant->getSeedAerodynamics();
-            float seedHook = plant->getSeedHookStrength();
-            float seedCoat = plant->getSeedCoatDurability();
-            
-            ImGui::Text("Seed Mass: %.3f mg", seedMass);
-            
-            ImGui::Text("Aerodynamics:");
-            ImGui::SameLine(130);
-            ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(0.6f, 0.8f, 1.0f, 1.0f));
-            ImGui::ProgressBar(seedAero, ImVec2(-1, 0), "");
-            ImGui::PopStyleColor();
-            
-            ImGui::Text("Hook Strength:");
-            ImGui::SameLine(130);
-            ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(0.8f, 0.6f, 0.4f, 1.0f));
-            ImGui::ProgressBar(seedHook, ImVec2(-1, 0), "");
-            ImGui::PopStyleColor();
-            
-            ImGui::Text("Coat Durability:");
-            ImGui::SameLine(130);
-            ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(0.5f, 0.5f, 0.8f, 1.0f));
-            ImGui::ProgressBar(seedCoat, ImVec2(-1, 0), "");
-            ImGui::PopStyleColor();
-        }
-        
-        // Environment Requirements Section
-        if (ImGui::CollapsingHeader("Environment")) {
-            float lightNeed = plant->getLightNeed();
-            float waterNeed = plant->getWaterNeed();
-            float hardiness = plant->getHardiness();
-            
-            ImGui::Text("Light Need:");
-            ImGui::SameLine(100);
-            ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(1.0f, 1.0f, 0.3f, 1.0f));
-            ImGui::ProgressBar(lightNeed, ImVec2(-1, 0), "");
-            ImGui::PopStyleColor();
-            
-            ImGui::Text("Water Need:");
-            ImGui::SameLine(100);
-            ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(0.3f, 0.6f, 1.0f, 1.0f));
-            ImGui::ProgressBar(waterNeed, ImVec2(-1, 0), "");
-            ImGui::PopStyleColor();
-            
-            ImGui::Text("Hardiness:");
-            ImGui::SameLine(100);
-            ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(0.6f, 0.8f, 0.6f, 1.0f));
-            ImGui::ProgressBar(hardiness, ImVec2(-1, 0), "");
-            ImGui::PopStyleColor();
-        }
-        
-        // Energy Budget Section
-        if (ImGui::CollapsingHeader("Energy Budget")) {
-            const auto& energyState = plant->getEnergyState();
-            
-            float energyRatio = energyState.getEnergyRatio();
-            ImGui::Text("Energy:");
-            ImGui::SameLine(100);
-            
-            // Color code based on energy level
-            ImVec4 energyColor;
-            if (energyRatio > 0.5f) {
-                energyColor = ImVec4(0.3f, 0.9f, 0.3f, 1.0f);
-            } else if (energyRatio > 0.2f) {
-                energyColor = ImVec4(0.9f, 0.9f, 0.3f, 1.0f);
-            } else {
-                energyColor = ImVec4(0.9f, 0.3f, 0.3f, 1.0f);
-            }
-            ImGui::PushStyleColor(ImGuiCol_PlotHistogram, energyColor);
-            ImGui::ProgressBar(energyRatio, ImVec2(-1, 0), "");
-            ImGui::PopStyleColor();
-            
-            ImGui::Text("%.1f / %.1f", energyState.currentEnergy, energyState.maxEnergy);
-            ImGui::Text("Maintenance: %.3f/tick", energyState.maintenanceCost);
-        }
-        
-        // Action buttons
+        ImGui::Text("Simulation Controls");
         ImGui::Separator();
-        ImGui::Spacing();
         
-        if (ImGui::Button("Deselect", ImVec2(-1, 0))) {
-            _selectedPlantId = -1;
-            _showPlantInspector = false;
-        }
+        ImGui::Text("Tick Rate: %d", _lastHudData.tickRate);
+        ImGui::Text("Paused: %s", _lastHudData.paused ? "Yes" : "No");
+        
+        ImGui::Spacing();
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Keyboard Shortcuts:");
+        ImGui::Text("Space - Pause/Resume");
+        ImGui::Text("+/- - Adjust tick rate");
+        ImGui::Text("F1-F6 - Toggle panels");
     }
     ImGui::End();
 }
 
 //==============================================================================
-// Style Setup
+// Helper Methods
 //==============================================================================
 
 void ImGuiOverlay::setupStyle() {
-    // Use dark style as base
-    ImGui::StyleColorsDark();
-    
     ImGuiStyle& style = ImGui::GetStyle();
     
-    // Window styling
-    style.WindowRounding = 6.0f;
-    style.WindowBorderSize = 1.0f;
-    style.WindowPadding = ImVec2(10, 10);
+    // Dark theme with nature-inspired accents
+    style.WindowRounding = 4.0f;
+    style.FrameRounding = 2.0f;
+    style.GrabRounding = 2.0f;
+    style.PopupRounding = 2.0f;
+    style.ScrollbarRounding = 2.0f;
     
-    // Frame styling
-    style.FrameRounding = 4.0f;
-    style.FrameBorderSize = 0.0f;
-    style.FramePadding = ImVec2(6, 4);
-    
-    // Widget styling
-    style.GrabRounding = 4.0f;
-    style.GrabMinSize = 10.0f;
-    style.ScrollbarRounding = 4.0f;
-    style.ScrollbarSize = 12.0f;
-    
-    // Tab styling
-    style.TabRounding = 4.0f;
-    
-    // Popup styling
-    style.PopupRounding = 4.0f;
-    style.PopupBorderSize = 1.0f;
-    
-    // Colors - EcoSim themed
     ImVec4* colors = style.Colors;
     
-    // Background colors - deep blue-gray
-    colors[ImGuiCol_WindowBg] = ImVec4(0.08f, 0.10f, 0.14f, 0.94f);
-    colors[ImGuiCol_PopupBg] = ImVec4(0.10f, 0.12f, 0.16f, 0.96f);
-    colors[ImGuiCol_MenuBarBg] = ImVec4(0.12f, 0.14f, 0.18f, 1.00f);
+    // Window backgrounds - dark with slight transparency
+    colors[ImGuiCol_WindowBg] = ImVec4(0.08f, 0.10f, 0.08f, 0.94f);
+    colors[ImGuiCol_PopupBg] = ImVec4(0.08f, 0.10f, 0.08f, 0.94f);
+    colors[ImGuiCol_ChildBg] = ImVec4(0.06f, 0.08f, 0.06f, 0.90f);
     
-    // Header colors - forest green accent
-    colors[ImGuiCol_Header] = ImVec4(0.20f, 0.40f, 0.30f, 0.70f);
-    colors[ImGuiCol_HeaderHovered] = ImVec4(0.25f, 0.50f, 0.35f, 0.80f);
-    colors[ImGuiCol_HeaderActive] = ImVec4(0.30f, 0.55f, 0.40f, 1.00f);
+    // Headers - forest green tones
+    colors[ImGuiCol_Header] = ImVec4(0.15f, 0.30f, 0.15f, 0.80f);
+    colors[ImGuiCol_HeaderHovered] = ImVec4(0.20f, 0.40f, 0.20f, 0.80f);
+    colors[ImGuiCol_HeaderActive] = ImVec4(0.25f, 0.50f, 0.25f, 0.80f);
     
-    // Title bar
-    colors[ImGuiCol_TitleBg] = ImVec4(0.10f, 0.14f, 0.12f, 1.00f);
-    colors[ImGuiCol_TitleBgActive] = ImVec4(0.15f, 0.25f, 0.20f, 1.00f);
-    colors[ImGuiCol_TitleBgCollapsed] = ImVec4(0.08f, 0.10f, 0.08f, 0.75f);
+    // Buttons - earth tones
+    colors[ImGuiCol_Button] = ImVec4(0.20f, 0.25f, 0.18f, 0.80f);
+    colors[ImGuiCol_ButtonHovered] = ImVec4(0.30f, 0.35f, 0.25f, 0.80f);
+    colors[ImGuiCol_ButtonActive] = ImVec4(0.40f, 0.45f, 0.30f, 0.80f);
     
-    // Tab colors
-    colors[ImGuiCol_Tab] = ImVec4(0.15f, 0.25f, 0.20f, 0.86f);
-    colors[ImGuiCol_TabHovered] = ImVec4(0.25f, 0.45f, 0.35f, 0.80f);
-    colors[ImGuiCol_TabActive] = ImVec4(0.20f, 0.40f, 0.30f, 1.00f);
+    // Frames - subtle borders
+    colors[ImGuiCol_FrameBg] = ImVec4(0.12f, 0.15f, 0.12f, 0.80f);
+    colors[ImGuiCol_FrameBgHovered] = ImVec4(0.18f, 0.22f, 0.18f, 0.80f);
+    colors[ImGuiCol_FrameBgActive] = ImVec4(0.24f, 0.28f, 0.24f, 0.80f);
     
-    // Button colors
-    colors[ImGuiCol_Button] = ImVec4(0.20f, 0.35f, 0.28f, 0.80f);
-    colors[ImGuiCol_ButtonHovered] = ImVec4(0.28f, 0.48f, 0.38f, 1.00f);
-    colors[ImGuiCol_ButtonActive] = ImVec4(0.35f, 0.55f, 0.45f, 1.00f);
+    // Title bar - darker
+    colors[ImGuiCol_TitleBg] = ImVec4(0.06f, 0.08f, 0.06f, 1.00f);
+    colors[ImGuiCol_TitleBgActive] = ImVec4(0.10f, 0.15f, 0.10f, 1.00f);
+    colors[ImGuiCol_TitleBgCollapsed] = ImVec4(0.04f, 0.05f, 0.04f, 0.75f);
     
-    // Frame (input fields, etc.)
-    colors[ImGuiCol_FrameBg] = ImVec4(0.12f, 0.16f, 0.14f, 0.70f);
-    colors[ImGuiCol_FrameBgHovered] = ImVec4(0.18f, 0.24f, 0.20f, 0.80f);
-    colors[ImGuiCol_FrameBgActive] = ImVec4(0.22f, 0.30f, 0.26f, 1.00f);
+    // Menu bar
+    colors[ImGuiCol_MenuBarBg] = ImVec4(0.10f, 0.12f, 0.10f, 1.00f);
     
-    // Slider grab
-    colors[ImGuiCol_SliderGrab] = ImVec4(0.30f, 0.55f, 0.40f, 1.00f);
-    colors[ImGuiCol_SliderGrabActive] = ImVec4(0.40f, 0.65f, 0.50f, 1.00f);
-    
-    // Check mark
-    colors[ImGuiCol_CheckMark] = ImVec4(0.45f, 0.80f, 0.55f, 1.00f);
-    
-    // Separator
-    colors[ImGuiCol_Separator] = ImVec4(0.25f, 0.35f, 0.30f, 0.50f);
-    
-    // Resize grip
-    colors[ImGuiCol_ResizeGrip] = ImVec4(0.20f, 0.40f, 0.30f, 0.50f);
-    colors[ImGuiCol_ResizeGripHovered] = ImVec4(0.30f, 0.55f, 0.40f, 0.67f);
-    colors[ImGuiCol_ResizeGripActive] = ImVec4(0.40f, 0.65f, 0.50f, 0.95f);
+    // Tabs - nature tones
+    colors[ImGuiCol_Tab] = ImVec4(0.12f, 0.18f, 0.12f, 0.86f);
+    colors[ImGuiCol_TabHovered] = ImVec4(0.20f, 0.35f, 0.20f, 0.80f);
+    colors[ImGuiCol_TabActive] = ImVec4(0.18f, 0.30f, 0.18f, 1.00f);
+    colors[ImGuiCol_TabUnfocused] = ImVec4(0.10f, 0.14f, 0.10f, 0.97f);
+    colors[ImGuiCol_TabUnfocusedActive] = ImVec4(0.14f, 0.22f, 0.14f, 1.00f);
     
     // Scrollbar
-    colors[ImGuiCol_ScrollbarBg] = ImVec4(0.08f, 0.10f, 0.10f, 0.50f);
-    colors[ImGuiCol_ScrollbarGrab] = ImVec4(0.25f, 0.35f, 0.30f, 1.00f);
-    colors[ImGuiCol_ScrollbarGrabHovered] = ImVec4(0.30f, 0.45f, 0.35f, 1.00f);
-    colors[ImGuiCol_ScrollbarGrabActive] = ImVec4(0.35f, 0.55f, 0.45f, 1.00f);
+    colors[ImGuiCol_ScrollbarBg] = ImVec4(0.06f, 0.08f, 0.06f, 0.60f);
+    colors[ImGuiCol_ScrollbarGrab] = ImVec4(0.20f, 0.25f, 0.20f, 0.80f);
+    colors[ImGuiCol_ScrollbarGrabHovered] = ImVec4(0.28f, 0.35f, 0.28f, 0.80f);
+    colors[ImGuiCol_ScrollbarGrabActive] = ImVec4(0.35f, 0.45f, 0.35f, 0.80f);
     
-    // Plot lines (for graphs)
-    colors[ImGuiCol_PlotLines] = ImVec4(0.50f, 0.80f, 0.60f, 1.00f);
-    colors[ImGuiCol_PlotLinesHovered] = ImVec4(0.70f, 1.00f, 0.80f, 1.00f);
-    colors[ImGuiCol_PlotHistogram] = ImVec4(0.40f, 0.70f, 0.50f, 1.00f);
-    colors[ImGuiCol_PlotHistogramHovered] = ImVec4(0.55f, 0.85f, 0.65f, 1.00f);
+    // Slider
+    colors[ImGuiCol_SliderGrab] = ImVec4(0.30f, 0.50f, 0.30f, 0.80f);
+    colors[ImGuiCol_SliderGrabActive] = ImVec4(0.40f, 0.60f, 0.40f, 0.80f);
     
-    // Table colors
-    colors[ImGuiCol_TableHeaderBg] = ImVec4(0.15f, 0.22f, 0.18f, 1.00f);
-    colors[ImGuiCol_TableBorderStrong] = ImVec4(0.25f, 0.35f, 0.30f, 1.00f);
-    colors[ImGuiCol_TableBorderLight] = ImVec4(0.20f, 0.28f, 0.24f, 1.00f);
-    colors[ImGuiCol_TableRowBg] = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
-    colors[ImGuiCol_TableRowBgAlt] = ImVec4(1.00f, 1.00f, 1.00f, 0.04f);
+    // Check mark
+    colors[ImGuiCol_CheckMark] = ImVec4(0.40f, 0.70f, 0.40f, 1.00f);
     
-    // Nav highlight
-    colors[ImGuiCol_NavHighlight] = ImVec4(0.40f, 0.70f, 0.50f, 1.00f);
+    // Separator
+    colors[ImGuiCol_Separator] = ImVec4(0.25f, 0.30f, 0.25f, 0.50f);
+    colors[ImGuiCol_SeparatorHovered] = ImVec4(0.35f, 0.45f, 0.35f, 0.78f);
+    colors[ImGuiCol_SeparatorActive] = ImVec4(0.45f, 0.55f, 0.45f, 1.00f);
+    
+    // Text
+    colors[ImGuiCol_Text] = ImVec4(0.90f, 0.92f, 0.88f, 1.00f);
+    colors[ImGuiCol_TextDisabled] = ImVec4(0.50f, 0.52f, 0.48f, 1.00f);
+    
+    // Borders
+    colors[ImGuiCol_Border] = ImVec4(0.25f, 0.30f, 0.25f, 0.50f);
+    colors[ImGuiCol_BorderShadow] = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+    
+    // Plot colors
+    colors[ImGuiCol_PlotLines] = ImVec4(0.50f, 0.80f, 0.50f, 1.00f);
+    colors[ImGuiCol_PlotLinesHovered] = ImVec4(0.70f, 1.00f, 0.70f, 1.00f);
+    colors[ImGuiCol_PlotHistogram] = ImVec4(0.40f, 0.70f, 0.40f, 1.00f);
+    colors[ImGuiCol_PlotHistogramHovered] = ImVec4(0.55f, 0.85f, 0.55f, 1.00f);
+}
+
+const char* ImGuiOverlay::getProfileName(int profile) const {
+    switch (static_cast<Motivation>(profile)) {
+        case Motivation::Hungry:  return "Hungry";
+        case Motivation::Thirsty: return "Thirsty";
+        case Motivation::Amorous: return "Amorous";
+        case Motivation::Tired:   return "Tired";
+        case Motivation::Content: return "Content";
+        default:                  return "Unknown";
+    }
+}
+
+const char* ImGuiOverlay::getDietName(EcoSim::Genetics::DietType diet) const {
+    return getEmergentDietName(diet);
+}
+
+const char* ImGuiOverlay::getEmergentDietName(EcoSim::Genetics::DietType diet) const {
+    switch (diet) {
+        case EcoSim::Genetics::DietType::HERBIVORE:  return "Herbivore";
+        case EcoSim::Genetics::DietType::FRUGIVORE:  return "Frugivore";
+        case EcoSim::Genetics::DietType::OMNIVORE:   return "Omnivore";
+        case EcoSim::Genetics::DietType::CARNIVORE:  return "Carnivore";
+        case EcoSim::Genetics::DietType::NECROVORE:  return "Necrovore";
+        default:                                      return "Unknown";
+    }
 }

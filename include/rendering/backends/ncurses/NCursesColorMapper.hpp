@@ -14,8 +14,8 @@
 #include "../../../rendering/RenderTypes.hpp"
 
 // Forward declarations to avoid ncurses include in header
-// Profile enum from creature.hpp
-enum class Profile;
+// Motivation enum from creature.hpp (replaces legacy Profile enum)
+enum class Motivation;
 
 /**
  * @brief Helper class for ncurses color management
@@ -92,15 +92,14 @@ public:
     static int profileToColorPair(BehaviorProfile profile);
     
     /**
-     * @brief Convert legacy Profile enum to ncurses color pair index
-     * 
-     * This method handles the existing Profile enum from creature.hpp
-     * for backward compatibility during migration.
-     * 
-     * @param profile The legacy Profile enum value
+     * @brief Convert Motivation enum to ncurses color pair index
+     *
+     * This method handles the Motivation enum from creature.hpp.
+     *
+     * @param motivation The Motivation enum value
      * @return ncurses color pair index
      */
-    static int legacyProfileToColorPair(Profile profile);
+    static int motivationToColorPair(Motivation motivation);
     
     /**
      * @brief Convert EntityType to ncurses color pair index

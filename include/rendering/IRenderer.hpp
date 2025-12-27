@@ -16,6 +16,7 @@
 #include "RenderTypes.hpp"
 #include <string>
 #include <vector>
+#include <utility>  // for std::pair
 
 // Forward declarations to minimize include dependencies
 class World;
@@ -256,6 +257,32 @@ public:
      * @return Current zoom level (tile size in pixels for SDL2, 1 for NCurses)
      */
     virtual int getZoomLevel() const { return 1; }
+
+    //==========================================================================
+    // Viewport Center Request Methods (for UI-driven viewport changes)
+    //==========================================================================
+    
+    /**
+     * @brief Check if there's a pending viewport center request
+     *
+     * Used by ImGui or other UI to request centering viewport on a position.
+     * Default implementation returns false (no UI support).
+     *
+     * @return true if a centering request is pending
+     */
+    virtual bool hasViewportCenterRequest() const { return false; }
+    
+    /**
+     * @brief Get the pending viewport center position (world tile coordinates)
+     *
+     * @return Pair of (x, y) tile coordinates to center on, or (-1, -1) if none
+     */
+    virtual std::pair<int, int> getViewportCenterRequest() const { return {-1, -1}; }
+    
+    /**
+     * @brief Clear the pending viewport center request
+     */
+    virtual void clearViewportCenterRequest() {}
 
     //==========================================================================
     // Capability Query Methods
