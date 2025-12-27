@@ -219,7 +219,7 @@ void Logger::combatEvent(const CombatLogEvent& event) {
     
     // Get string representations of enums
     const char* weaponStr = weaponTypeToString(event.weapon);
-    const char* damageTypeStr = damageTypeToString(event.primaryDamageType);
+    const char* damageTypeStr = combatDamageTypeToString(event.primaryDamageType);
     const char* defenseStr = defenseTypeToString(event.defenseUsed);
     
     // Build output based on verbosity level

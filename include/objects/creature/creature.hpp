@@ -1,7 +1,13 @@
 #ifndef CREATURE_H
 #define CREATURE_H
 
-// CREATURE-017 fix: Removed SIZE() macro that polluted global namespace
+// Feature flag for new behavior system (Phase 3 - Creature God Class decomposition)
+// Set to 1 to enable the new BehaviorController-based update system
+// Set to 0 to use the legacy decideBehaviour() system
+#ifndef USE_NEW_BEHAVIOR_SYSTEM
+#define USE_NEW_BEHAVIOR_SYSTEM 0
+#endif
+
 // If needed elsewhere, use: template<typename T, size_t N> constexpr size_t arraySize(T(&)[N]) { return N; }
 
 /**
@@ -30,6 +36,8 @@
 #include "genetics/expression/Phenotype.hpp"
 #include "genetics/expression/EnvironmentState.hpp"
 #include "genetics/defaults/UniversalGenes.hpp"  // For DietType
+#include "genetics/interfaces/ILifecycle.hpp"
+#include "genetics/interfaces/IGeneticOrganism.hpp"
 
 // Creature-Plant interaction includes (Phase 2.4)
 #include "genetics/interactions/FeedingInteraction.hpp"
@@ -37,6 +45,14 @@
 
 // Classification system (Phase 2 - Unified Identity)
 #include "genetics/classification/ArchetypeIdentity.hpp"
+
+// Behavior system (Phase 3 - Creature God Class decomposition)
+#if USE_NEW_BEHAVIOR_SYSTEM
+#include "genetics/behaviors/BehaviorController.hpp"
+#include "genetics/behaviors/BehaviorContext.hpp"
+#include "genetics/systems/PerceptionSystem.hpp"
+#include "genetics/interactions/CombatInteraction.hpp"
+#endif
 
 #include <stdlib.h>   //  abs
 #include <algorithm>  //  max
@@ -87,7 +103,9 @@ enum class WoundState { Healthy, Injured, Wounded, Critical, Dead };
 //  Deprecated - use Motivation instead
 enum class Profile { thirsty, hungry, breed, sleep, migrate };
 
-class Creature: public GameObject {
+class Creature: public GameObject,
+                public EcoSim::Genetics::ILifecycle,
+                public EcoSim::Genetics::IGeneticOrganism {
   public:
     //============================================================================
     //  Public Constants (for balance analysis and external tools)
@@ -109,36 +127,36 @@ class Creature: public GameObject {
     //  What fraction of resources is shared
     const static unsigned RESOURCE_SHARED;
     
-    //  DRY refactoring: Scent detection constants
+    //  Scent detection constants
     const static float SCENT_DETECTION_BASE_RANGE;
     const static float SCENT_DETECTION_ACUITY_MULT;
     const static float DEFAULT_OLFACTORY_ACUITY;
     const static float DEFAULT_SCENT_PRODUCTION;
     
-    //  DRY refactoring: Seed dispersal constants
+    //  Seed dispersal constants
     const static float BURR_SEED_VIABILITY;
     const static float GUT_SEED_SCARIFICATION_BONUS;
     const static float GUT_SEED_ACID_DAMAGE;
     const static float DEFAULT_GUT_TRANSIT_HOURS;
     const static float TICKS_PER_HOUR;
     
-    //  DRY refactoring: Feeding interaction constants
+    //  Feeding interaction constants
     const static float FEEDING_MATE_BOOST;
     const static float DAMAGE_HUNGER_COST;
     const static float SEEKING_FOOD_MATE_PENALTY;
     
-    //  DRY refactoring: Sense enhancement constants
+    //  Sense enhancement constants
     const static float COLOR_VISION_RANGE_BONUS;
     const static float SCENT_DETECTION_RANGE_BONUS;
     
-    //  Movement system constants (Phase 1: Float Movement)
+    //  Movement system constants
     const static float BASE_MOVEMENT_SPEED;   // Base speed multiplier
     const static float MIN_MOVEMENT_SPEED;    // Minimum speed floor
     const static float DEFAULT_LEG_LENGTH;    // Default leg length for creatures without gene
     const static float DEFAULT_BODY_MASS;     // Default body mass for creatures without gene
     
     //  State Variables
-    //  Float-based world coordinates (Phase 1: Float Movement System)
+    //  Float-based world coordinates
     float     _worldX, _worldY;   // Precise position in world coordinates
     unsigned  _age;
     int       _id;  // Unique creature ID for logging
@@ -147,7 +165,7 @@ class Creature: public GameObject {
     Motivation _motivation = Motivation::Content;  // Current motivation/drive
     Action    _action = Action::Idle;              // Current action being performed
     
-    //  Health & Combat System (Phase 1: Legacy Removal)
+    //  Health & Combat System
     float     _health = 10.0f;     // Current health (safe default, actual set by constructors)
     bool      _inCombat = false;   // Currently in combat
     bool      _isFleeing = false;  // Currently fleeing from threat
@@ -186,7 +204,7 @@ class Creature: public GameObject {
     const EcoSim::Genetics::ArchetypeIdentity* _archetype = nullptr;
     
     //============================================================================
-    //  Creature-Plant Interaction Data (Phase 2.4)
+    //  Creature-Plant Interaction Data
     //============================================================================
     // Attached burrs: (plant dispersal strategy, origin X, origin Y, ticks attached)
     std::vector<std::tuple<int, int, int, int>> _attachedBurrs;
@@ -199,6 +217,17 @@ class Creature: public GameObject {
     
     // Shared seed dispersal calculator
     static std::unique_ptr<EcoSim::Genetics::SeedDispersal> s_seedDispersal;
+
+#if USE_NEW_BEHAVIOR_SYSTEM
+    //============================================================================
+    //  Behavior System (Phase 3 - Creature God Class decomposition)
+    //============================================================================
+    std::unique_ptr<EcoSim::Genetics::BehaviorController> _behaviorController;
+    
+    // Shared services for behavior system
+    static std::unique_ptr<EcoSim::Genetics::PerceptionSystem> s_perceptionSystem;
+    static std::unique_ptr<EcoSim::Genetics::CombatInteraction> s_combatInteraction;
+#endif
 
   public:
     //============================================================================
@@ -229,10 +258,10 @@ class Creature: public GameObject {
     Creature(Creature&& other) noexcept;
     Creature& operator=(const Creature& other);
     Creature& operator=(Creature&& other) noexcept;
-    ~Creature();  // Decrements archetype population count
+    ~Creature() noexcept override;  // Decrements archetype population count
   
     //============================================================================
-    //  New Genetics System - Static Methods (M5)
+    //  New Genetics System - Static Methods
     //============================================================================
     /**
      * @brief Initialize the shared gene registry with default gene definitions.
@@ -250,22 +279,22 @@ class Creature: public GameObject {
     //  Genetics System - Instance Methods
     //============================================================================
     /**
-     * @brief Get the genome.
-     * @return Pointer to the Genome, or nullptr if not initialized
+     * @brief Get the genome (IGeneticOrganism interface).
+     * @return Reference to the Genome
      */
-    const EcoSim::Genetics::Genome* getGenome() const;
+    const EcoSim::Genetics::Genome& getGenome() const override;
     
     /**
-     * @brief Get the genome (mutable).
-     * @return Pointer to the Genome, or nullptr if not initialized
+     * @brief Get the genome (mutable, IGeneticOrganism interface).
+     * @return Reference to the Genome
      */
-    EcoSim::Genetics::Genome* getGenomeMutable();
+    EcoSim::Genetics::Genome& getGenomeMutable() override;
     
     /**
-     * @brief Get the phenotype.
-     * @return Pointer to the Phenotype, or nullptr if not initialized
+     * @brief Get the phenotype (IGeneticOrganism interface).
+     * @return Reference to the Phenotype
      */
-    const EcoSim::Genetics::Phenotype* getPhenotype() const;
+    const EcoSim::Genetics::Phenotype& getPhenotype() const override;
     
     /**
      * @brief Update phenotype context with current environment and organism state.
@@ -273,6 +302,12 @@ class Creature: public GameObject {
      * @param env Current environment state
      */
     void updatePhenotypeContext(const EcoSim::Genetics::EnvironmentState& env);
+    
+    /**
+     * @brief Recalculate phenotype from genome (IGeneticOrganism interface).
+     *        Simple wrapper that calls updatePhenotypeContext with default environment.
+     */
+    void updatePhenotype() override;
     
     /**
      * @brief Get the expressed value of a gene from the phenotype.
@@ -296,7 +331,7 @@ class Creature: public GameObject {
     void setAction     (Action a);
     
     //============================================================================
-    //  Float Position Setters (Phase 1: Float Movement System)
+    //  Float Position Setters
     //============================================================================
     /**
      * @brief Set precise world coordinates.
@@ -321,23 +356,31 @@ class Creature: public GameObject {
     //  Getters
     //============================================================================
     float     getTMate      () const;
-    unsigned  getAge        () const;
-    int       getId         () const;
+    int       getId         () const override;
+    
+    //============================================================================
+    //  ILifecycle Interface Implementation
+    //============================================================================
+    unsigned int getAge() const override;
+    unsigned int getMaxLifespan() const override;
+    float getAgeNormalized() const override;
+    bool isAlive() const override;
+    void age(unsigned int ticks = 1) override;
     float     getHunger     () const;
     float     getThirst     () const;
     float     getFatigue    () const;
     float     getMate       () const;
     float     getMetabolism () const;
     unsigned  getSpeed      () const;
-    int       getX          () const;
-    int       getY          () const;
+    int       getX          () const override;
+    int       getY          () const override;
     Direction   getDirection  () const;
     Profile     getProfile    () const;  // Deprecated - use getMotivation()
     Motivation  getMotivation () const;
     Action      getAction     () const;
     
     //============================================================================
-    //  Float Position Getters (Phase 1: Float Movement System)
+    //  Float Position Getters
     //============================================================================
     /**
      * @brief Get precise world X coordinate.
@@ -556,20 +599,14 @@ class Creature: public GameObject {
                              const unsigned &cols,
                              const int &x,
                              const int &y);
-    // CREATURE-013 fix: Generic spiral search helper to eliminate duplication
-    // DRY refactoring: Added maxRadius parameter with default to support different search ranges
     template<typename Predicate>
     bool spiralSearch       (const std::vector<std::vector<Tile>> &map,
                              const int &rows,
                              const int &cols,
                              Predicate predicate,
                              unsigned maxRadius = 0);  // 0 = use getSightRange()
-    
-    // DRY refactoring: Iterator for visiting all tiles in a spiral pattern
-    // Unlike spiralSearch, this doesn't stop early - useful for finding closest match
     template<typename Visitor>
     void forEachTileInRange (unsigned maxRadius, Visitor visitor);
-    // GENETICS-MIGRATION: Find and eat genetics-based plants
     bool  findGeneticsPlants(World &world, unsigned &feedingCounter);
     bool  findFood          (std::vector<std::vector<Tile>> &map,
                              const int &rows,
@@ -599,7 +636,7 @@ class Creature: public GameObject {
     Creature  breedCreature (Creature &mate);
     
     //============================================================================
-    //  Sensory System (Phase 1 & 2)
+    //  Sensory System
     //============================================================================
     /**
      * @brief Deposit breeding pheromone when in breeding state.
@@ -662,7 +699,7 @@ class Creature: public GameObject {
         const std::array<float, 8>& sig2);
 
     //============================================================================
-    //  Plant Interaction (Phase 2.4)
+    //  Plant Interaction
     //============================================================================
     /**
      * @brief Attempt to eat a plant using the new genetics-based feeding system.
@@ -727,6 +764,49 @@ class Creature: public GameObject {
      * @brief Initialize shared interaction calculators (call once at startup).
      */
     static void initializeInteractionSystems();
+
+#if USE_NEW_BEHAVIOR_SYSTEM
+    //============================================================================
+    //  Behavior System (Phase 3 - Creature God Class decomposition)
+    //============================================================================
+    /**
+     * @brief Get the behavior controller for this creature.
+     * @return Pointer to BehaviorController, or nullptr if not initialized
+     */
+    EcoSim::Genetics::BehaviorController* getBehaviorController();
+    const EcoSim::Genetics::BehaviorController* getBehaviorController() const;
+    
+    /**
+     * @brief Update creature using the new behavior system.
+     * @param ctx Behavior context with world access and timing
+     * @return Result of behavior execution
+     *
+     * Called instead of decideBehaviour() when USE_NEW_BEHAVIOR_SYSTEM is enabled.
+     * The BehaviorController selects and executes the highest priority
+     * applicable behavior.
+     */
+    EcoSim::Genetics::BehaviorResult updateWithBehaviors(EcoSim::Genetics::BehaviorContext& ctx);
+    
+    /**
+     * @brief Build a behavior context from current creature and world state.
+     * @param world Reference to the world
+     * @param scentLayer Reference to the scent layer
+     * @param currentTick Current simulation tick
+     * @return BehaviorContext populated with current state
+     */
+    EcoSim::Genetics::BehaviorContext buildBehaviorContext(
+        World& world,
+        EcoSim::ScentLayer& scentLayer,
+        unsigned int currentTick) const;
+    
+    /**
+     * @brief Initialize the behavior controller with default behaviors.
+     *
+     * Called during construction when USE_NEW_BEHAVIOR_SYSTEM is enabled.
+     * Registers all standard behaviors (feeding, hunting, mating, rest, movement, zoochory).
+     */
+    void initializeBehaviorController();
+#endif
 
 public:
     //============================================================================

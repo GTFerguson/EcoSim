@@ -135,22 +135,19 @@ bool FileHandling::saveGenomes (const string &filename,
 
     for (const Creature & creature : creatures) {
       // Use new genetics system - output genome chromosome data
-      const auto* genome = creature.getGenome();
-      if (genome) {
-        // Output basic genome stats for analysis
-        file << creature.getLifespan() << ","
-             << creature.getTHunger() << ","
-             << creature.getTThirst() << ","
-             << creature.getTFatigue() << ","
-             << creature.getTMate() << ","
-             << creature.getComfInc() << ","
-             << creature.getComfDec() << ","
-             << creature.getSightRange() << ","
-             << static_cast<int>(creature.getDietType()) << ","
-             << (creature.ifFlocks() ? 1 : 0) << ","
-             << creature.getFlee() << ","
-             << creature.getPursue() << endl;
-      }
+      // Output basic genome stats for analysis
+      file << creature.getLifespan() << ","
+           << creature.getTHunger() << ","
+           << creature.getTThirst() << ","
+           << creature.getTFatigue() << ","
+           << creature.getTMate() << ","
+           << creature.getComfInc() << ","
+           << creature.getComfDec() << ","
+           << creature.getSightRange() << ","
+           << static_cast<int>(creature.getDietType()) << ","
+           << (creature.ifFlocks() ? 1 : 0) << ","
+           << creature.getFlee() << ","
+           << creature.getPursue() << endl;
     }
 
     file.close();

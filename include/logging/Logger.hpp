@@ -14,7 +14,7 @@
 // Forward declarations for combat types
 namespace EcoSim { namespace Genetics {
     enum class WeaponType;
-    enum class DamageType;
+    enum class CombatDamageType;
     enum class DefenseType;
 }}
 
@@ -145,7 +145,7 @@ struct CombatLogEvent {
     
     // === Weapon & Attack Info ===
     EcoSim::Genetics::WeaponType weapon;    ///< Type of weapon used
-    EcoSim::Genetics::DamageType primaryDamageType;  ///< Main damage type dealt
+    EcoSim::Genetics::CombatDamageType primaryDamageType;  ///< Main damage type dealt
     
     // === Damage Calculation ===
     float rawDamage = 0.0f;                 ///< Damage before defense

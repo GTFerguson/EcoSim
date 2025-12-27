@@ -217,10 +217,10 @@ public:
     /**
      * @brief Apply damage with type effectiveness and defense
      * @param rawDamage Base damage before modifiers
-     * @param attackType The damage type being dealt
+     * @param attackType The combat damage type being dealt
      * @param defenderPhenotype The defender's expressed traits
      * @return Final damage after all reductions
-     * 
+     *
      * Formula:
      * 1. Get type effectiveness (0.5, 1.0, or 1.5)
      * 2. Get defense value for countering type
@@ -228,7 +228,7 @@ public:
      */
     static float applyDamageWithDefense(
         float rawDamage,
-        DamageType attackType,
+        CombatDamageType attackType,
         const Phenotype& defenderPhenotype
     );
     
@@ -389,9 +389,9 @@ public:
     // ========================================================================
     
     /**
-     * @brief Get defense type that counters a damage type
+     * @brief Get defense type that counters a combat damage type
      */
-    static DefenseType getCounteringDefense(DamageType attackType);
+    static DefenseType getCounteringDefense(CombatDamageType attackType);
     
 private:
     // ========================================================================

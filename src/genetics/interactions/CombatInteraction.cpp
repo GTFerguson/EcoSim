@@ -54,7 +54,7 @@ float CombatInteraction::getDefenseValue(const Phenotype& phenotype, DefenseType
 
 float CombatInteraction::applyDamageWithDefense(
     float rawDamage,
-    DamageType attackType,
+    CombatDamageType attackType,
     const Phenotype& defenderPhenotype
 ) {
     // Get the defense type that counters this attack type
@@ -159,12 +159,12 @@ CombatAction CombatInteraction::selectBestAction(
     }
     
     // Map weakest defense to best attack type
-    DamageType targetType;
+    CombatDamageType targetType;
     switch (weakestDefense) {
-        case DefenseType::ThickHide: targetType = DamageType::Blunt; break;  // Blunt beats Hide
-        case DefenseType::Scales: targetType = DamageType::Piercing; break;  // Pierce beats Scales
-        case DefenseType::FatLayer: targetType = DamageType::Slashing; break; // Slash beats Fat
-        default: targetType = DamageType::Blunt;
+        case DefenseType::ThickHide: targetType = CombatDamageType::Blunt; break;  // Blunt beats Hide
+        case DefenseType::Scales: targetType = CombatDamageType::Piercing; break;  // Pierce beats Scales
+        case DefenseType::FatLayer: targetType = CombatDamageType::Slashing; break; // Slash beats Fat
+        default: targetType = CombatDamageType::Blunt;
     }
     
     // Get available weapons
@@ -272,7 +272,7 @@ AttackResult CombatInteraction::resolveAttack(
     );
     
     // Check for bleeding (pierce damage can cause bleeding)
-    if (result.primaryType == DamageType::Piercing && 
+    if (result.primaryType == CombatDamageType::Piercing &&
         damage.piercing > BLEEDING_DAMAGE_THRESHOLD) {
         // Bleeding resistance check
         float bleedResist = getTraitSafe(defenderPhenotype, 
@@ -470,11 +470,11 @@ float CombatInteraction::getTraitSafe(
     return defaultValue;
 }
 
-DefenseType CombatInteraction::getCounteringDefense(DamageType attackType) {
+DefenseType CombatInteraction::getCounteringDefense(CombatDamageType attackType) {
     switch (attackType) {
-        case DamageType::Piercing: return DefenseType::ThickHide;
-        case DamageType::Slashing: return DefenseType::Scales;
-        case DamageType::Blunt: return DefenseType::FatLayer;
+        case CombatDamageType::Piercing: return DefenseType::ThickHide;
+        case CombatDamageType::Slashing: return DefenseType::Scales;
+        case CombatDamageType::Blunt: return DefenseType::FatLayer;
         default: return DefenseType::ThickHide;
     }
 }

@@ -6,14 +6,17 @@ namespace EcoSim {
 namespace Genetics {
 
 /**
- * @brief Three damage types with rock-paper-scissors effectiveness
- * 
+ * @brief Three combat damage types with rock-paper-scissors effectiveness
+ *
  * Each damage type has strengths and weaknesses against different defense types:
  * - Piercing: Countered by ThickHide, strong vs Scales
  * - Slashing: Countered by Scales, strong vs FatLayer
  * - Blunt: Countered by FatLayer, strong vs ThickHide
+ *
+ * @note Named CombatDamageType to distinguish from HealthSystem::DamageType
+ *       which covers broader damage categories (Physical, Toxin, etc.)
  */
-enum class DamageType {
+enum class CombatDamageType {
     Piercing,  ///< Puncture damage (teeth, claws sharp)
     Slashing,  ///< Cutting damage (claws, horns sweep)
     Blunt      ///< Impact damage (tail, body mass)
@@ -55,7 +58,7 @@ constexpr float EFFECTIVENESS_TABLE[3][3] = {
  * @param defense The defense type being applied
  * @return Effectiveness multiplier (0.5 = resisted, 1.0 = neutral, 1.5 = strong)
  */
-inline float getTypeEffectiveness(DamageType attack, DefenseType defense) {
+inline float getTypeEffectiveness(CombatDamageType attack, DefenseType defense) {
     return EFFECTIVENESS_TABLE[static_cast<int>(attack)][static_cast<int>(defense)];
 }
 
@@ -79,7 +82,7 @@ enum class WeaponType {
 struct WeaponStats {
     float baseDamage;          ///< Base damage before modifiers
     int baseCooldown;          ///< Ticks between attacks
-    DamageType primaryType;    ///< Primary damage type dealt
+    CombatDamageType primaryType;    ///< Primary damage type dealt
 };
 
 /**
@@ -93,11 +96,11 @@ struct WeaponStats {
  * - Body: 8 dmg / 3 ticks = 2.67 DPS (always available)
  */
 constexpr WeaponStats WEAPON_BASE_STATS[] = {
-    {10.0f, 3, DamageType::Piercing},   // Teeth
-    {6.0f, 2, DamageType::Slashing},    // Claws
-    {12.0f, 4, DamageType::Piercing},   // Horns (can also be Blunt based on genes)
-    {5.0f, 2, DamageType::Blunt},       // Tail
-    {8.0f, 3, DamageType::Blunt}        // Body
+    {10.0f, 3, CombatDamageType::Piercing},   // Teeth
+    {6.0f, 2, CombatDamageType::Slashing},    // Claws
+    {12.0f, 4, CombatDamageType::Piercing},   // Horns (can also be Blunt based on genes)
+    {5.0f, 2, CombatDamageType::Blunt},       // Tail
+    {8.0f, 3, CombatDamageType::Blunt}        // Body
 };
 
 /**
@@ -110,15 +113,15 @@ inline const WeaponStats& getWeaponStats(WeaponType weapon) {
 }
 
 /**
- * @brief Get string representation of a damage type
- * @param type The damage type
+ * @brief Get string representation of a combat damage type
+ * @param type The combat damage type
  * @return Human-readable string
  */
-inline const char* damageTypeToString(DamageType type) {
+inline const char* combatDamageTypeToString(CombatDamageType type) {
     switch (type) {
-        case DamageType::Piercing: return "Piercing";
-        case DamageType::Slashing: return "Slashing";
-        case DamageType::Blunt: return "Blunt";
+        case CombatDamageType::Piercing: return "Piercing";
+        case CombatDamageType::Slashing: return "Slashing";
+        case CombatDamageType::Blunt: return "Blunt";
         default: return "Unknown";
     }
 }

@@ -42,16 +42,16 @@ struct DamageDistribution {
     
     /**
      * @brief Get the dominant damage type
-     * @return DamageType with highest damage value
+     * @return CombatDamageType with highest damage value
      */
-    DamageType getDominantType() const {
+    CombatDamageType getDominantType() const {
         if (piercing >= slashing && piercing >= blunt) {
-            return DamageType::Piercing;
+            return CombatDamageType::Piercing;
         }
         if (slashing >= blunt) {
-            return DamageType::Slashing;
+            return CombatDamageType::Slashing;
         }
-        return DamageType::Blunt;
+        return CombatDamageType::Blunt;
     }
     
     /**
@@ -59,11 +59,11 @@ struct DamageDistribution {
      * @param type The damage type to query
      * @return Damage value for that type
      */
-    float getDamageForType(DamageType type) const {
+    float getDamageForType(CombatDamageType type) const {
         switch (type) {
-            case DamageType::Piercing: return piercing;
-            case DamageType::Slashing: return slashing;
-            case DamageType::Blunt: return blunt;
+            case CombatDamageType::Piercing: return piercing;
+            case CombatDamageType::Slashing: return slashing;
+            case CombatDamageType::Blunt: return blunt;
             default: return 0.0f;
         }
     }
@@ -122,7 +122,7 @@ struct AttackResult {
     bool hit = true;                              ///< Did the attack connect?
     float rawDamage = 0.0f;                       ///< Damage before defense
     float finalDamage = 0.0f;                     ///< Damage after defense reduction
-    DamageType primaryType = DamageType::Blunt;  ///< Main damage type dealt
+    CombatDamageType primaryType = CombatDamageType::Blunt;  ///< Main damage type dealt
     bool causedBleeding = false;                  ///< Did attack cause bleeding?
     float effectivenessMultiplier = 1.0f;        ///< Type effectiveness applied
     WeaponType weaponUsed = WeaponType::Body;    ///< Which weapon was used
@@ -140,7 +140,7 @@ struct AttackResult {
         desc += " attack dealt ";
         desc += std::to_string(static_cast<int>(finalDamage));
         desc += " ";
-        desc += damageTypeToString(primaryType);
+        desc += combatDamageTypeToString(primaryType);
         desc += " damage";
         
         if (effectivenessMultiplier > 1.0f) {

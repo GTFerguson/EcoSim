@@ -635,9 +635,9 @@ void ImGuiOverlay::renderCreatureListWindow(const std::vector<Creature>* creatur
         // H=Herbivore, F=Frugivore, O=Omnivore, C=Carnivore, N=Necrovore
         int herbivores = 0, frugivores = 0, omnivores = 0, carnivores = 0, necrovores = 0;
         for (const auto& c : *creatures) {
-            if (c.getPhenotype()) {
+            if (true) {
                 // Use emergent diet calculation from new genetics system
-                EcoSim::Genetics::DietType diet = c.getPhenotype()->calculateDietType();
+                EcoSim::Genetics::DietType diet = c.getPhenotype().calculateDietType();
                 switch (diet) {
                     case EcoSim::Genetics::DietType::HERBIVORE:
                         herbivores++;
@@ -907,8 +907,8 @@ void ImGuiOverlay::renderCreatureInspectorWindow(const Creature* creature) {
                 ImGui::TextColored(ImVec4(0.8f, 0.9f, 0.7f, 1.0f), "DIET CLASSIFICATION (Emergent)");
                 ImGui::Separator();
                 
-                if (creature->getPhenotype()) {
-                    const auto& phenotype = *creature->getPhenotype();
+                if (true) {
+                    const auto& phenotype = creature->getPhenotype();
                     using UG = EcoSim::Genetics::UniversalGenes;
                     
                     EcoSim::Genetics::DietType diet = phenotype.calculateDietType();
@@ -938,8 +938,8 @@ void ImGuiOverlay::renderCreatureInspectorWindow(const Creature* creature) {
                 ImGui::TextColored(ImVec4(0.8f, 0.9f, 0.7f, 1.0f), "SIZE & POSITION");
                 ImGui::Separator();
                 
-                if (creature->getPhenotype()) {
-                    float maxSize = creature->getPhenotype()->getTrait(EcoSim::Genetics::UniversalGenes::MAX_SIZE);
+                if (true) {
+                    float maxSize = creature->getPhenotype().getTrait(EcoSim::Genetics::UniversalGenes::MAX_SIZE);
                     ImGui::Text("Size:");
                     ImGui::SameLine(100);
                     ImGui::Text("%.1f (Max: %.1f)", maxSize * 0.8f, maxSize);
@@ -1002,8 +1002,8 @@ void ImGuiOverlay::renderCreatureInspectorWindow(const Creature* creature) {
                 ImGui::TextColored(ImVec4(0.8f, 0.9f, 0.7f, 1.0f), "NOTABLE TRAITS");
                 ImGui::Separator();
                 
-                if (creature->getPhenotype()) {
-                    const auto& phenotype = *creature->getPhenotype();
+                if (true) {
+                    const auto& phenotype = creature->getPhenotype();
                     using UG = EcoSim::Genetics::UniversalGenes;
                     
                     int traitCount = 0;
@@ -1093,8 +1093,8 @@ void ImGuiOverlay::renderCreatureInspectorWindow(const Creature* creature) {
                     ImGui::PopStyleColor();
                 }
                 
-                if (creature->getPhenotype()) {
-                    const auto& phenotype = *creature->getPhenotype();
+                if (true) {
+                    const auto& phenotype = creature->getPhenotype();
                     using UG = EcoSim::Genetics::UniversalGenes;
                     
                     ImGui::Text("Regeneration Rate: %.2f", phenotype.getTrait(UG::REGENERATION_RATE));
@@ -1156,8 +1156,8 @@ void ImGuiOverlay::renderCreatureInspectorWindow(const Creature* creature) {
                 ImGui::TextColored(ImVec4(0.8f, 0.9f, 0.7f, 1.0f), "ENERGY BUDGET");
                 ImGui::Separator();
                 
-                if (creature->getPhenotype()) {
-                    const auto& phenotype = *creature->getPhenotype();
+                if (true) {
+                    const auto& phenotype = creature->getPhenotype();
                     float maintenanceCost = phenotype.getTotalMaintenanceCost();
                     float metabolism = phenotype.getTrait(EcoSim::Genetics::UniversalGenes::METABOLISM_RATE);
                     
@@ -1175,8 +1175,8 @@ void ImGuiOverlay::renderCreatureInspectorWindow(const Creature* creature) {
                 ImGui::TextColored(ImVec4(0.8f, 0.9f, 0.7f, 1.0f), "STRESS & CONDITION");
                 ImGui::Separator();
                 
-                if (creature->getPhenotype()) {
-                    float hardiness = creature->getPhenotype()->getTrait(EcoSim::Genetics::UniversalGenes::HARDINESS);
+                if (true) {
+                    float hardiness = creature->getPhenotype().getTrait(EcoSim::Genetics::UniversalGenes::HARDINESS);
                     ImGui::Text("Hardiness: %.2f", hardiness);
                 }
                 
@@ -1220,8 +1220,8 @@ void ImGuiOverlay::renderCreatureInspectorWindow(const Creature* creature) {
                 ImGui::TextColored(ImVec4(0.8f, 0.9f, 0.7f, 1.0f), "COMBAT BEHAVIOR");
                 ImGui::Separator();
                 
-                if (creature->getPhenotype()) {
-                    const auto& phenotype = *creature->getPhenotype();
+                if (true) {
+                    const auto& phenotype = creature->getPhenotype();
                     using UG = EcoSim::Genetics::UniversalGenes;
                     
                     float aggression = phenotype.getTrait(UG::COMBAT_AGGRESSION);
@@ -1270,8 +1270,8 @@ void ImGuiOverlay::renderCreatureInspectorWindow(const Creature* creature) {
                 ImGui::TextColored(ImVec4(0.8f, 0.9f, 0.7f, 1.0f), "WEAPONS BREAKDOWN");
                 ImGui::Separator();
                 
-                if (creature->getPhenotype()) {
-                    const auto& phenotype = *creature->getPhenotype();
+                if (true) {
+                    const auto& phenotype = creature->getPhenotype();
                     using UG = EcoSim::Genetics::UniversalGenes;
                     
                     // Teeth
@@ -1316,8 +1316,8 @@ void ImGuiOverlay::renderCreatureInspectorWindow(const Creature* creature) {
                 ImGui::TextColored(ImVec4(0.8f, 0.9f, 0.7f, 1.0f), "DEFENSE BREAKDOWN");
                 ImGui::Separator();
                 
-                if (creature->getPhenotype()) {
-                    const auto& phenotype = *creature->getPhenotype();
+                if (true) {
+                    const auto& phenotype = creature->getPhenotype();
                     using UG = EcoSim::Genetics::UniversalGenes;
                     
                     float hideThick = phenotype.getTrait(UG::HIDE_THICKNESS);
@@ -1365,8 +1365,8 @@ void ImGuiOverlay::renderCreatureInspectorWindow(const Creature* creature) {
             if (ImGui::BeginTabItem("Physical")) {
                 ImGui::Spacing();
                 
-                if (creature->getPhenotype()) {
-                    const auto& phenotype = *creature->getPhenotype();
+                if (true) {
+                    const auto& phenotype = creature->getPhenotype();
                     using UG = EcoSim::Genetics::UniversalGenes;
                     
                     // --- MORPHOLOGY ---
@@ -1429,8 +1429,8 @@ void ImGuiOverlay::renderCreatureInspectorWindow(const Creature* creature) {
             if (ImGui::BeginTabItem("Genetics")) {
                 ImGui::Spacing();
                 
-                if (creature->getPhenotype()) {
-                    const auto& phenotype = *creature->getPhenotype();
+                if (true) {
+                    const auto& phenotype = creature->getPhenotype();
                     using UG = EcoSim::Genetics::UniversalGenes;
                     
                     // Nested tab bar for chromosome categories

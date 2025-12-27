@@ -16,6 +16,18 @@
 #include "logging/Logger.hpp"
 #include <unordered_map>
 
+#if USE_NEW_BEHAVIOR_SYSTEM
+#include "genetics/behaviors/BehaviorController.hpp"
+#include "genetics/behaviors/BehaviorContext.hpp"
+#include "genetics/behaviors/FeedingBehavior.hpp"
+#include "genetics/behaviors/HuntingBehavior.hpp"
+#include "genetics/behaviors/MatingBehavior.hpp"
+#include "genetics/behaviors/MovementBehavior.hpp"
+#include "genetics/behaviors/RestBehavior.hpp"
+#include "genetics/behaviors/ZoochoryBehavior.hpp"
+#include "genetics/systems/HealthSystem.hpp"
+#endif
+
 using namespace std;
 
 //================================================================================
@@ -59,6 +71,14 @@ static int s_nextCreatureId = 1;
 //================================================================================
 std::unique_ptr<EcoSim::Genetics::FeedingInteraction> Creature::s_feedingInteraction = nullptr;
 std::unique_ptr<EcoSim::Genetics::SeedDispersal> Creature::s_seedDispersal = nullptr;
+
+#if USE_NEW_BEHAVIOR_SYSTEM
+//================================================================================
+//  Static Member Initialization - Behavior System Services
+//================================================================================
+std::unique_ptr<EcoSim::Genetics::PerceptionSystem> Creature::s_perceptionSystem = nullptr;
+std::unique_ptr<EcoSim::Genetics::CombatInteraction> Creature::s_combatInteraction = nullptr;
+#endif
 
 //================================================================================
 //  Constants
@@ -132,7 +152,9 @@ Creature::Creature(const Creature& other)
       _mate(other._mate),
       _metabolism(other._metabolism),
       _speed(other._speed),
-      _archetype(other._archetype) {
+      _archetype(other._archetype),
+      _attachedBurrs(other._attachedBurrs),
+      _gutSeeds(other._gutSeeds) {
     // Deep copy unique_ptr members if they exist
     if (other._genome) {
         _genome = std::make_unique<EcoSim::Genetics::Genome>(*other._genome);
@@ -144,6 +166,11 @@ Creature::Creature(const Creature& other)
     if (_archetype) {
         _archetype->incrementPopulation();
     }
+#if USE_NEW_BEHAVIOR_SYSTEM
+    // Behavior controller is NOT copied - use lazy initialization
+    // _behaviorController remains nullptr and will be initialized on first use
+    _behaviorController = nullptr;
+#endif
 }
 
 /**
@@ -171,7 +198,13 @@ Creature::Creature(Creature&& other) noexcept
       _speed(other._speed),
       _genome(std::move(other._genome)),
       _phenotype(std::move(other._phenotype)),
-      _archetype(other._archetype) {
+      _archetype(other._archetype),
+      _attachedBurrs(std::move(other._attachedBurrs)),
+      _gutSeeds(std::move(other._gutSeeds))
+#if USE_NEW_BEHAVIOR_SYSTEM
+      , _behaviorController(std::move(other._behaviorController))
+#endif
+{
     // Transfer archetype without incrementing - just null out source
     other._archetype = nullptr;
 }
@@ -224,6 +257,15 @@ Creature& Creature::operator=(const Creature& other) {
         if (_archetype) {
             _archetype->incrementPopulation();
         }
+        
+        // Copy vector members
+        _attachedBurrs = other._attachedBurrs;
+        _gutSeeds = other._gutSeeds;
+        
+#if USE_NEW_BEHAVIOR_SYSTEM
+        // Reset behavior controller - lazy initialization will recreate it when needed
+        _behaviorController.reset();
+#endif
     }
     return *this;
 }
@@ -264,6 +306,15 @@ Creature& Creature::operator=(Creature&& other) noexcept {
         // Transfer archetype - don't increment, just null source
         _archetype = other._archetype;
         other._archetype = nullptr;
+        
+        // Move vector members
+        _attachedBurrs = std::move(other._attachedBurrs);
+        _gutSeeds = std::move(other._gutSeeds);
+        
+#if USE_NEW_BEHAVIOR_SYSTEM
+        // Move behavior controller from source
+        _behaviorController = std::move(other._behaviorController);
+#endif
     }
     return *this;
 }
@@ -302,7 +353,28 @@ void Creature::setWorldY(float y) { _worldY = y; }
 //================================================================================
 //  Getters
 //================================================================================
-unsigned  Creature::getAge        () const { return _age;                   }
+//================================================================================
+//  ILifecycle Interface Implementation
+//================================================================================
+unsigned int Creature::getMaxLifespan() const {
+    return getLifespan();
+}
+
+float Creature::getAgeNormalized() const {
+    unsigned int lifespan = getLifespan();
+    if (lifespan == 0) return 0.0f;
+    return static_cast<float>(_age) / static_cast<float>(lifespan);
+}
+
+bool Creature::isAlive() const {
+    return deathCheck() == 0;
+}
+
+void Creature::age(unsigned int ticks) {
+    _age += ticks;
+}
+
+unsigned int Creature::getAge     () const { return _age;                   }
 int       Creature::getId         () const { return _id;                    }
 float     Creature::getHunger     () const { return _hunger;                }
 float     Creature::getThirst     () const { return _thirst;                }
@@ -476,8 +548,8 @@ EcoSim::Genetics::GeneRegistry& Creature::getGeneRegistry() {
 /**
  * Get the phenotype.
  */
-const EcoSim::Genetics::Phenotype* Creature::getPhenotype() const {
-    return _phenotype.get();
+const EcoSim::Genetics::Phenotype& Creature::getPhenotype() const {
+    return *_phenotype;
 }
 
 /**
@@ -512,6 +584,15 @@ void Creature::updatePhenotypeContext(const EcoSim::Genetics::EnvironmentState& 
             _health = maxHP;
         }
     }
+}
+
+/**
+ * Recalculate phenotype from genome (IGeneticOrganism interface).
+ * Simple wrapper that calls updatePhenotypeContext with default environment.
+ */
+void Creature::updatePhenotype() {
+    EcoSim::Genetics::EnvironmentState defaultEnv;
+    updatePhenotypeContext(defaultEnv);
 }
 
 //================================================================================
@@ -1251,13 +1332,14 @@ bool Creature::findPrey (vector<vector<Tile>> &map,
         setAction(Action::Attacking);
         
         // Use CombatInteraction to resolve attack
-        if (_phenotype && closestPrey->getPhenotype()) {
+        if (_phenotype) {
           // Select best attack and resolve it
+          const Phenotype& preyPhenotype = closestPrey->getPhenotype();
           CombatAction action = CombatInteraction::selectBestAction(
-              *_phenotype, *closestPrey->getPhenotype());
+              *_phenotype, preyPhenotype);
           
           AttackResult result = CombatInteraction::resolveAttack(
-              *_phenotype, *closestPrey->getPhenotype(), action);
+              *_phenotype, preyPhenotype, action);
           
           // Capture health BEFORE applying damage for accurate logging
           float defenderHealthBefore = closestPrey->getHealth();
@@ -1277,7 +1359,7 @@ bool Creature::findPrey (vector<vector<Tile>> &map,
           logEvent.finalDamage = result.finalDamage;
           logEvent.effectivenessMultiplier = result.effectivenessMultiplier;
           logEvent.defenseUsed = CombatInteraction::getCounteringDefense(result.primaryType);
-          logEvent.defenseValue = CombatInteraction::getDefenseProfile(*closestPrey->getPhenotype())
+          logEvent.defenseValue = CombatInteraction::getDefenseProfile(preyPhenotype)
                                   .getDefenseForType(logEvent.defenseUsed);
           logEvent.attackerHealthBefore = getHealth();
           logEvent.attackerHealthAfter = getHealth();
@@ -1417,9 +1499,9 @@ float Creature::checkFitness (const Creature &c2) const {
   
   // Calculate genetic similarity using Genome::compare()
   float similarity = 0.5f;  // Default moderate similarity
-  if (_genome && c2.getGenome()) {
+  if (_genome) {
     // Use Genome's built-in compare() method
-    similarity = _genome->compare(*c2.getGenome());
+    similarity = _genome->compare(c2.getGenome());
   }
 
   //  Penalise if too similar
@@ -1460,9 +1542,9 @@ Creature Creature::breedCreature (Creature &mate) {
   // Create offspring genome using Genome::crossover()
   std::unique_ptr<EcoSim::Genetics::Genome> offspringGenome;
   
-  if (_genome && mate.getGenome()) {
+  if (_genome) {
     // Use Genome's built-in crossover method (recombination_rate = 0.5f)
-    EcoSim::Genetics::Genome crossed = EcoSim::Genetics::Genome::crossover(*_genome, *mate.getGenome(), 0.5f);
+    EcoSim::Genetics::Genome crossed = EcoSim::Genetics::Genome::crossover(*_genome, mate.getGenome(), 0.5f);
     
     // Apply mutation (5% rate)
     crossed.mutate(0.05f, getGeneRegistry().getAllDefinitions());
@@ -2212,19 +2294,17 @@ string Creature::toString () const {
 //================================================================================
 
 /**
- * Get the new genetics genome pointer.
- * Returns nullptr if new genetics system is not enabled.
+ * Get the genome (IGeneticOrganism interface).
  */
-const EcoSim::Genetics::Genome* Creature::getGenome() const {
-    return _genome.get();
+const EcoSim::Genetics::Genome& Creature::getGenome() const {
+    return *_genome;
 }
 
 /**
- * Get the mutable new genetics genome pointer.
- * Returns nullptr if new genetics system is not enabled.
+ * Get the mutable genome (IGeneticOrganism interface).
  */
-EcoSim::Genetics::Genome* Creature::getGenomeMutable() {
-    return _genome.get();
+EcoSim::Genetics::Genome& Creature::getGenomeMutable() {
+    return *_genome;
 }
 
 /**
@@ -2495,12 +2575,19 @@ Creature::Creature(int x, int y, std::unique_ptr<EcoSim::Genetics::Genome> genom
       _profile(Profile::migrate),
       _motivation(Motivation::Content),
       _action(Action::Idle),
+      _health(0.0f),  // Will be set to maxHealth after phenotype init
+      _inCombat(false),
+      _isFleeing(false),
+      _targetId(-1),
+      _combatCooldown(0),
       _hunger(1.0f),
       _thirst(1.0f),
       _fatigue(INIT_FATIGUE),
       _mate(0.0f),
+      _metabolism(0.001f),  // Default, will be updated from phenotype
       _speed(1),
-      _genome(std::move(genome)) {
+      _genome(std::move(genome)),
+      _archetype(nullptr) {
     
     // Initialize phenotype from genome
     _phenotype = std::make_unique<EcoSim::Genetics::Phenotype>(
@@ -2547,12 +2634,19 @@ Creature::Creature(int x, int y, float hunger, float thirst,
       _profile(Profile::migrate),
       _motivation(Motivation::Content),
       _action(Action::Idle),
+      _health(0.0f),  // Will be set to maxHealth after phenotype init
+      _inCombat(false),
+      _isFleeing(false),
+      _targetId(-1),
+      _combatCooldown(0),
       _hunger(hunger),
       _thirst(thirst),
       _fatigue(INIT_FATIGUE),
       _mate(0.0f),
+      _metabolism(0.001f),  // Default, will be updated from phenotype
       _speed(1),
-      _genome(std::move(genome)) {
+      _genome(std::move(genome)),
+      _archetype(nullptr) {
     
     // Initialize phenotype from genome
     _phenotype = std::make_unique<EcoSim::Genetics::Phenotype>(
@@ -2585,3 +2679,148 @@ Creature::Creature(int x, int y, float hunger, float thirst,
     EcoSim::Genetics::EnvironmentState defaultEnv;
     updatePhenotypeContext(defaultEnv);
 }
+
+//================================================================================
+//  Behavior System Integration (Phase 3: God Class Decomposition)
+//================================================================================
+
+#if USE_NEW_BEHAVIOR_SYSTEM
+
+/**
+ * Get the behavior controller for this creature.
+ * Returns nullptr if behavior system is not initialized.
+ */
+EcoSim::Genetics::BehaviorController* Creature::getBehaviorController() {
+    return _behaviorController.get();
+}
+
+/**
+ * Get the behavior controller for this creature (const version).
+ * Returns nullptr if behavior system is not initialized.
+ */
+const EcoSim::Genetics::BehaviorController* Creature::getBehaviorController() const {
+    return _behaviorController.get();
+}
+
+/**
+ * Initialize the behavior controller with all behaviors.
+ * Called once during creature construction or on first use.
+ */
+void Creature::initializeBehaviorController() {
+    using namespace EcoSim::Genetics;
+    
+    if (_behaviorController) {
+        return;  // Already initialized
+    }
+    
+    // Initialize static services if needed (following existing pattern with s_feedingInteraction)
+    if (!s_perceptionSystem) {
+        s_perceptionSystem = std::make_unique<PerceptionSystem>();
+    }
+    if (!s_combatInteraction) {
+        s_combatInteraction = std::make_unique<CombatInteraction>();
+    }
+    if (!s_feedingInteraction) {
+        s_feedingInteraction = std::make_unique<FeedingInteraction>();
+    }
+    if (!s_seedDispersal) {
+        s_seedDispersal = std::make_unique<SeedDispersal>();
+    }
+    
+    _behaviorController = std::make_unique<BehaviorController>();
+    
+    // Register behaviors in priority order
+    // RestBehavior - CRITICAL priority when exhausted (no dependencies)
+    _behaviorController->addBehavior(std::make_unique<RestBehavior>());
+    
+    // HuntingBehavior - HIGH priority for carnivores
+    _behaviorController->addBehavior(std::make_unique<HuntingBehavior>(
+        *s_combatInteraction, *s_perceptionSystem));
+    
+    // FeedingBehavior - NORMAL priority for herbivores
+    _behaviorController->addBehavior(std::make_unique<FeedingBehavior>(
+        *s_feedingInteraction, *s_perceptionSystem));
+    
+    // MatingBehavior - NORMAL priority when ready to mate
+    _behaviorController->addBehavior(std::make_unique<MatingBehavior>(
+        *s_perceptionSystem, *s_geneRegistry));
+    
+    // ZoochoryBehavior - LOW priority for seed dispersal
+    _behaviorController->addBehavior(std::make_unique<ZoochoryBehavior>(
+        *s_seedDispersal));
+    
+    // MovementBehavior - IDLE priority as default fallback (no dependencies)
+    _behaviorController->addBehavior(std::make_unique<MovementBehavior>());
+}
+
+/**
+ * Build a behavior context from current creature and world state.
+ * Creates an immutable snapshot for behavior execution.
+ *
+ * @note The organismState pointer in the returned context points to
+ * a static local, which is valid for the duration of the behavior
+ * update cycle. Do not store the pointer beyond a single tick.
+ */
+EcoSim::Genetics::BehaviorContext Creature::buildBehaviorContext(
+    World& world,
+    EcoSim::ScentLayer& scentLayer,
+    unsigned int currentTick) const {
+    
+    using namespace EcoSim::Genetics;
+    
+    // Create organism state snapshot
+    // Using thread_local static for safe temporary storage
+    thread_local OrganismState tempState;
+    tempState.age_normalized = getAgeNormalized();
+    tempState.energy_level = std::max(0.0f, std::min(1.0f, _hunger / RESOURCE_LIMIT));
+    tempState.health = getHealthPercent();
+    
+    BehaviorContext ctx;
+    ctx.scentLayer = &scentLayer;
+    ctx.world = &world;
+    ctx.organismState = &tempState;
+    ctx.deltaTime = 1.0f;  // One tick = 1.0 time unit
+    ctx.currentTick = currentTick;
+    ctx.worldRows = world.getRows();
+    ctx.worldCols = world.getCols();
+    
+    return ctx;
+}
+
+/**
+ * Execute behavior update using the BehaviorController.
+ * Replaces legacy decideBehaviour() + profile-based execution.
+ */
+EcoSim::Genetics::BehaviorResult Creature::updateWithBehaviors(EcoSim::Genetics::BehaviorContext& ctx) {
+    using namespace EcoSim::Genetics;
+    
+    // Ensure behavior controller is initialized
+    if (!_behaviorController) {
+        initializeBehaviorController();
+    }
+    
+    // Update the behavior controller
+    BehaviorResult result = _behaviorController->update(*this, ctx);
+    
+    // Apply energy cost from behavior execution
+    if (result.executed && result.energyCost > 0.0f) {
+        _hunger -= result.energyCost;
+    }
+    
+    // Update metabolism effects (similar to legacy update())
+    float change = _metabolism;
+    if (_profile == Profile::sleep) {
+        _fatigue -= _metabolism;
+        change /= 2;
+    } else {
+        _fatigue += _metabolism;
+    }
+    
+    _hunger -= change;
+    _thirst -= change;
+    _age++;
+    
+    return result;
+}
+
+#endif // USE_NEW_BEHAVIOR_SYSTEM

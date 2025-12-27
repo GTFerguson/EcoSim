@@ -96,15 +96,12 @@ void CoevolutionTracker::recordCreatureGeneration(const std::vector<Creature>& c
     // Extract gene values from each creature
     for (const auto& creature : creatures) {
         // Get phenotype from creature's new genetics system
-        const Phenotype* phenotype = creature.getPhenotype();
-        if (!phenotype) {
-            continue;
-        }
+        const Phenotype& phenotype = creature.getPhenotype();
         
         for (const auto& pair : config_.trackedPairs) {
             const std::string& geneName = pair.first;
-            if (phenotype->hasTrait(geneName.c_str())) {
-                geneValues[geneName].push_back(phenotype->getTrait(geneName.c_str()));
+            if (phenotype.hasTrait(geneName.c_str())) {
+                geneValues[geneName].push_back(phenotype.getTrait(geneName.c_str()));
             }
         }
     }
