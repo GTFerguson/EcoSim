@@ -1149,6 +1149,18 @@ int main() {
   // This ensures the new genetics system is ready for creature-plant interactions
   Creature::initializeGeneRegistry();
   
+  // Configure logger to suppress noisy plant/seed events
+  // Keep COMBAT and other important events visible
+  {
+    logging::Logger& logger = logging::Logger::getInstance();
+    logger.disableEventType("SEED_DISPERSAL");
+    logger.disableEventType("PLANT_SPAWNED");
+    logger.disableEventType("PLANT_DIED");
+    logger.disableEventType("STARVATION");
+    // Combat events use the new detailed format via combatEvent()
+    logger.setCombatLogDetail(logging::CombatLogDetail::STANDARD);
+  }
+  
   World w = initializeWorld();
 
   std::vector<Creature> creatures;

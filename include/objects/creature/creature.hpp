@@ -148,7 +148,7 @@ class Creature: public GameObject {
     Action    _action = Action::Idle;              // Current action being performed
     
     //  Health & Combat System (Phase 1: Legacy Removal)
-    float     _health = 100.0f;    // Current health
+    float     _health = 10.0f;     // Current health (safe default, actual set by constructors)
     bool      _inCombat = false;   // Currently in combat
     bool      _isFleeing = false;  // Currently fleeing from threat
     int       _targetId = -1;      // ID of combat/pursuit target (-1 = none)

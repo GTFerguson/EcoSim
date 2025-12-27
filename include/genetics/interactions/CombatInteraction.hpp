@@ -383,19 +383,25 @@ private:
      */
     static DamageDistribution calculateBodyDamage(const Phenotype& phenotype);
     
+public:
     // ========================================================================
-    // Helper Methods
+    // Public Helper Methods (for combat logging)
+    // ========================================================================
+    
+    /**
+     * @brief Get defense type that counters a damage type
+     */
+    static DefenseType getCounteringDefense(DamageType attackType);
+    
+private:
+    // ========================================================================
+    // Private Helper Methods
     // ========================================================================
     
     /**
      * @brief Safe trait getter with default value
      */
     static float getTraitSafe(const Phenotype& phenotype, const char* traitName, float defaultValue = 0.0f);
-    
-    /**
-     * @brief Get defense type that counters a damage type
-     */
-    static DefenseType getCounteringDefense(DamageType attackType);
     
     /**
      * @brief Get the size/magnitude factor for a weapon type

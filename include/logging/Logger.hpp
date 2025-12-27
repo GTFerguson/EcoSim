@@ -5,6 +5,7 @@
 #include <fstream>
 #include <vector>
 #include <map>
+#include <set>
 #include <memory>
 #include <sstream>
 #include <chrono>
@@ -201,6 +202,14 @@ public:
     void setFileOutput(bool enabled);
     void setLogFile(const std::string& path);
 
+    // === Event Type Filtering ===
+    void enableEventType(const std::string& eventType);
+    void disableEventType(const std::string& eventType);
+    void enableAllEventTypes();
+    void disableAllEventTypes();
+    bool isEventTypeEnabled(const std::string& eventType) const;
+    void setEventTypeFilter(const std::set<std::string>& allowedTypes);
+
     // === Tick Management ===
     void setCurrentTick(int tick);
     int getCurrentTick() const;
@@ -303,6 +312,11 @@ private:
     // File output
     std::ofstream m_fileStream;
     std::vector<std::string> m_pendingFileWrites;
+    
+    // Event type filtering
+    std::set<std::string> m_disabledEventTypes;
+    bool m_useEventTypeWhitelist = false;  // false = blacklist mode (disable specific), true = whitelist mode (enable only specific)
+    std::set<std::string> m_enabledEventTypes;
     
     // Thread safety
     mutable std::mutex m_mutex;

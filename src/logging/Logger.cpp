@@ -88,6 +88,52 @@ void Logger::setLogFile(const std::string& path) {
     }
 }
 
+// === Event Type Filtering ===
+
+void Logger::enableEventType(const std::string& eventType) {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    m_disabledEventTypes.erase(eventType);
+    if (m_useEventTypeWhitelist) {
+        m_enabledEventTypes.insert(eventType);
+    }
+}
+
+void Logger::disableEventType(const std::string& eventType) {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    if (m_useEventTypeWhitelist) {
+        m_enabledEventTypes.erase(eventType);
+    } else {
+        m_disabledEventTypes.insert(eventType);
+    }
+}
+
+void Logger::enableAllEventTypes() {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    m_disabledEventTypes.clear();
+    m_useEventTypeWhitelist = false;
+}
+
+void Logger::disableAllEventTypes() {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    m_useEventTypeWhitelist = true;
+    m_enabledEventTypes.clear();
+}
+
+bool Logger::isEventTypeEnabled(const std::string& eventType) const {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    if (m_useEventTypeWhitelist) {
+        return m_enabledEventTypes.find(eventType) != m_enabledEventTypes.end();
+    }
+    return m_disabledEventTypes.find(eventType) == m_disabledEventTypes.end();
+}
+
+void Logger::setEventTypeFilter(const std::set<std::string>& allowedTypes) {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    m_useEventTypeWhitelist = true;
+    m_enabledEventTypes = allowedTypes;
+    m_disabledEventTypes.clear();
+}
+
 // === Tick Management ===
 
 void Logger::setCurrentTick(int tick) {
@@ -116,7 +162,12 @@ void Logger::creatureBorn(int id, const std::string& type, int parentId1, int pa
 
 void Logger::creatureDied(int id, const std::string& type, const std::string& cause, float energy, int age) {
     std::ostringstream details;
-    details << "cause:" << cause << ",energy:" << std::fixed << std::setprecision(1) << energy << ",age:" << age;
+    // Capitalize cause for better readability
+    std::string capitalizedCause = cause;
+    if (!capitalizedCause.empty()) {
+        capitalizedCause[0] = std::toupper(capitalizedCause[0]);
+    }
+    details << "| 💀 " << capitalizedCause << " | Age:" << age;
     log(LogLevel::INFO, "CREATURE_DIED", id, type, details.str());
     
     // Update death statistics
@@ -293,10 +344,13 @@ void Logger::plantDied(int id, const std::string& species, const std::string& ca
 
 void Logger::feeding(int creatureId, int plantId, bool success, float nutritionGained, float damageReceived) {
     std::ostringstream details;
-    details << "plant:" << plantId 
-            << ",success:" << (success ? "true" : "false")
-            << ",nutrition:" << std::fixed << std::setprecision(1) << nutritionGained 
-            << ",damage:" << std::fixed << std::setprecision(1) << damageReceived;
+    // Format: →🌿#26 | ✓ | +12.9 cal | -0.0 dmg
+    details << "→🌿#" << plantId
+            << " | " << (success ? "✓" : "✗")
+            << " | +" << std::fixed << std::setprecision(1) << nutritionGained << " cal";
+    if (damageReceived > 0.0f) {
+        details << " | -" << std::fixed << std::setprecision(1) << damageReceived << " dmg";
+    }
     log(LogLevel::INFO, "FEEDING", creatureId, "", details.str());
     
     // Update feeding statistics
@@ -317,9 +371,9 @@ void Logger::foodConsumed(int creatureId, int foodId, float calories) {
 
 void Logger::starvation(int creatureId, float energyBefore, float energyAfter) {
     std::ostringstream details;
-    details << "energyBefore:" << std::fixed << std::setprecision(1) << energyBefore 
+    details << "energyBefore:" << std::fixed << std::setprecision(1) << energyBefore
             << ",energyAfter:" << std::fixed << std::setprecision(1) << energyAfter;
-    log(LogLevel::WARN, "STARVATION", creatureId, "", details.str());
+    log(LogLevel::DEBUG, "STARVATION", creatureId, "", details.str());
 }
 
 // === Reproduction ===
@@ -605,6 +659,20 @@ void Logger::log(LogLevel level, const std::string& event, int entityId,
     // Check log level filter
     if (level < m_config.minLevel) {
         return;
+    }
+    
+    // Check event type filter (without holding lock - use separate check)
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        if (m_useEventTypeWhitelist) {
+            if (m_enabledEventTypes.find(event) == m_enabledEventTypes.end()) {
+                return;
+            }
+        } else {
+            if (m_disabledEventTypes.find(event) != m_disabledEventTypes.end()) {
+                return;
+            }
+        }
     }
     
     std::lock_guard<std::mutex> lock(m_mutex);
