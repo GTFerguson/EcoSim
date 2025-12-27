@@ -243,18 +243,22 @@ AttackResult CombatInteraction::resolveAttack(
     // Get base damage from weapon stats
     const WeaponStats& baseStats = getWeaponStats(action.weapon);
     
-    // Calculate damage distribution from shape genes
+    // Calculate damage distribution from shape genes (now normalized to sum to 1.0)
     DamageDistribution damage = action.damage;
     
     // Calculate specialization bonus
     float specBonus = calculateSpecializationBonus(damage);
     float specMultiplier = 1.0f + specBonus;
     
+    // Get size gene based on weapon type for magnitude multiplier
+    float sizeFactor = getSizeFactorForWeapon(attackerPhenotype, action.weapon);
+    
     // Get the dominant damage type
     result.primaryType = damage.getDominantType();
     
-    // Calculate raw damage (total damage × base weapon damage × specialization)
-    result.rawDamage = damage.total() * baseStats.baseDamage * specMultiplier;
+    // Calculate raw damage (total damage × base weapon damage × size × specialization)
+    // Note: damage.total() should now be ~1.0 (normalized distribution)
+    result.rawDamage = damage.total() * baseStats.baseDamage * sizeFactor * specMultiplier;
     
     // Get type effectiveness against defender's defense
     DefenseType counterDefense = getCounteringDefense(result.primaryType);
@@ -341,15 +345,20 @@ DamageDistribution CombatInteraction::calculateTeethDamage(const Phenotype& phen
     
     float sharpness = getTraitSafe(phenotype, UniversalGenes::TEETH_SHARPNESS, 0.7f);
     float serration = getTraitSafe(phenotype, UniversalGenes::TEETH_SERRATION, 0.3f);
-    float size = getTraitSafe(phenotype, UniversalGenes::TEETH_SIZE, 0.5f);
+    // Note: TEETH_SIZE is now applied as magnitude multiplier in resolveAttack()
     
-    // Formulas from design doc section 4.5:
-    // pierce = TEETH_SHARPNESS × TEETH_SIZE
-    // slash  = TEETH_SERRATION × TEETH_SIZE × 0.5
-    // blunt  = (1.0 - TEETH_SHARPNESS) × TEETH_SIZE
-    damage.piercing = sharpness * size;
-    damage.slashing = serration * size * 0.5f;
-    damage.blunt = (1.0f - sharpness) * size;
+    // Calculate raw weights for each damage type
+    float pierceWeight = sharpness;
+    float slashWeight = serration * 0.5f;
+    float bluntWeight = 1.0f - sharpness;
+    
+    // Normalize so distribution sums to 1.0
+    float totalWeight = pierceWeight + slashWeight + bluntWeight;
+    if (totalWeight > 0.0f) {
+        damage.piercing = pierceWeight / totalWeight;
+        damage.slashing = slashWeight / totalWeight;
+        damage.blunt = bluntWeight / totalWeight;
+    }
     
     return damage;
 }
@@ -358,16 +367,21 @@ DamageDistribution CombatInteraction::calculateClawsDamage(const Phenotype& phen
     DamageDistribution damage;
     
     float curvature = getTraitSafe(phenotype, UniversalGenes::CLAW_CURVATURE, 0.4f);
-    float length = getTraitSafe(phenotype, UniversalGenes::CLAW_LENGTH, 0.5f);
     float sharpness = getTraitSafe(phenotype, UniversalGenes::CLAW_SHARPNESS, 0.6f);
+    // Note: CLAW_LENGTH is now applied as magnitude multiplier in resolveAttack()
     
-    // Formulas from design doc section 4.5:
-    // pierce = CLAW_CURVATURE × CLAW_LENGTH × CLAW_SHARPNESS
-    // slash  = (1.0 - CLAW_CURVATURE) × CLAW_LENGTH × CLAW_SHARPNESS
-    // blunt  = CLAW_LENGTH × (1.0 - CLAW_SHARPNESS) × 0.3
-    damage.piercing = curvature * length * sharpness;
-    damage.slashing = (1.0f - curvature) * length * sharpness;
-    damage.blunt = length * (1.0f - sharpness) * 0.3f;
+    // Calculate raw weights for each damage type
+    float pierceWeight = curvature * sharpness;
+    float slashWeight = (1.0f - curvature) * sharpness;
+    float bluntWeight = (1.0f - sharpness) * 0.3f;
+    
+    // Normalize so distribution sums to 1.0
+    float totalWeight = pierceWeight + slashWeight + bluntWeight;
+    if (totalWeight > 0.0f) {
+        damage.piercing = pierceWeight / totalWeight;
+        damage.slashing = slashWeight / totalWeight;
+        damage.blunt = bluntWeight / totalWeight;
+    }
     
     return damage;
 }
@@ -376,16 +390,21 @@ DamageDistribution CombatInteraction::calculateHornsDamage(const Phenotype& phen
     DamageDistribution damage;
     
     float pointiness = getTraitSafe(phenotype, UniversalGenes::HORN_POINTINESS, 0.5f);
-    float length = getTraitSafe(phenotype, UniversalGenes::HORN_LENGTH, 0.5f);
     float spread = getTraitSafe(phenotype, UniversalGenes::HORN_SPREAD, 0.3f);
+    // Note: HORN_LENGTH is now applied as magnitude multiplier in resolveAttack()
     
-    // Formulas from design doc section 4.5:
-    // pierce = HORN_POINTINESS × HORN_LENGTH
-    // slash  = HORN_SPREAD × HORN_LENGTH × 0.3 (sweep attacks)
-    // blunt  = (1.0 - HORN_POINTINESS) × HORN_LENGTH
-    damage.piercing = pointiness * length;
-    damage.slashing = spread * length * 0.3f;
-    damage.blunt = (1.0f - pointiness) * length;
+    // Calculate raw weights for each damage type
+    float pierceWeight = pointiness;
+    float slashWeight = spread * 0.3f;
+    float bluntWeight = 1.0f - pointiness;
+    
+    // Normalize so distribution sums to 1.0
+    float totalWeight = pierceWeight + slashWeight + bluntWeight;
+    if (totalWeight > 0.0f) {
+        damage.piercing = pierceWeight / totalWeight;
+        damage.slashing = slashWeight / totalWeight;
+        damage.blunt = bluntWeight / totalWeight;
+    }
     
     return damage;
 }
@@ -394,16 +413,21 @@ DamageDistribution CombatInteraction::calculateTailDamage(const Phenotype& pheno
     DamageDistribution damage;
     
     float spines = getTraitSafe(phenotype, UniversalGenes::TAIL_SPINES, 0.1f);
-    float length = getTraitSafe(phenotype, UniversalGenes::TAIL_LENGTH, 0.5f);
     float mass = getTraitSafe(phenotype, UniversalGenes::TAIL_MASS, 0.4f);
+    // Note: TAIL_LENGTH is now applied as magnitude multiplier in resolveAttack()
     
-    // Formulas from design doc section 4.5:
-    // pierce = TAIL_SPINES × TAIL_LENGTH
-    // slash  = (1.0 - TAIL_MASS) × TAIL_LENGTH × 0.5 (whip)
-    // blunt  = TAIL_MASS × TAIL_LENGTH
-    damage.piercing = spines * length;
-    damage.slashing = (1.0f - mass) * length * 0.5f;
-    damage.blunt = mass * length;
+    // Calculate raw weights for each damage type
+    float pierceWeight = spines;
+    float slashWeight = (1.0f - mass) * 0.5f;
+    float bluntWeight = mass;
+    
+    // Normalize so distribution sums to 1.0
+    float totalWeight = pierceWeight + slashWeight + bluntWeight;
+    if (totalWeight > 0.0f) {
+        damage.piercing = pierceWeight / totalWeight;
+        damage.slashing = slashWeight / totalWeight;
+        damage.blunt = bluntWeight / totalWeight;
+    }
     
     return damage;
 }
@@ -412,15 +436,21 @@ DamageDistribution CombatInteraction::calculateBodyDamage(const Phenotype& pheno
     DamageDistribution damage;
     
     float spines = getTraitSafe(phenotype, UniversalGenes::BODY_SPINES, 0.0f);
-    float maxSize = getTraitSafe(phenotype, UniversalGenes::MAX_SIZE, 1.0f);
+    // Note: MAX_SIZE is now applied as magnitude multiplier in resolveAttack()
     
-    // Formulas from design doc section 4.5:
-    // pierce = BODY_SPINES × MAX_SIZE (counter-damage)
-    // slash  = 0.0
-    // blunt  = MAX_SIZE (body slam uses size)
-    damage.piercing = spines * maxSize;
-    damage.slashing = 0.0f;
-    damage.blunt = maxSize;
+    // Calculate raw weights for each damage type
+    // Body is special: primarily blunt with optional spine piercing
+    float pierceWeight = spines;
+    float slashWeight = 0.0f;
+    float bluntWeight = 1.0f;
+    
+    // Normalize so distribution sums to 1.0
+    float totalWeight = pierceWeight + slashWeight + bluntWeight;
+    if (totalWeight > 0.0f) {
+        damage.piercing = pierceWeight / totalWeight;
+        damage.slashing = slashWeight / totalWeight;
+        damage.blunt = bluntWeight / totalWeight;
+    }
     
     return damage;
 }
@@ -446,6 +476,22 @@ DefenseType CombatInteraction::getCounteringDefense(DamageType attackType) {
         case DamageType::Slashing: return DefenseType::Scales;
         case DamageType::Blunt: return DefenseType::FatLayer;
         default: return DefenseType::ThickHide;
+    }
+}
+
+float CombatInteraction::getSizeFactorForWeapon(const Phenotype& phenotype, WeaponType weapon) {
+    switch (weapon) {
+        case WeaponType::Teeth:
+            return getTraitSafe(phenotype, UniversalGenes::TEETH_SIZE, 0.5f);
+        case WeaponType::Claws:
+            return getTraitSafe(phenotype, UniversalGenes::CLAW_LENGTH, 0.5f);
+        case WeaponType::Horns:
+            return getTraitSafe(phenotype, UniversalGenes::HORN_LENGTH, 0.5f);
+        case WeaponType::Tail:
+            return getTraitSafe(phenotype, UniversalGenes::TAIL_LENGTH, 0.5f);
+        case WeaponType::Body:
+        default:
+            return getTraitSafe(phenotype, UniversalGenes::MAX_SIZE, 1.0f);
     }
 }
 

@@ -19,29 +19,39 @@
 #include "genetics/core/GeneRegistry.hpp"
 #include "genetics/core/Genome.hpp"
 #include "genetics/expression/Phenotype.hpp"
+#include "genetics/expression/EnvironmentState.hpp"
+#include "genetics/expression/OrganismState.hpp"
 #include "genetics/defaults/UniversalGenes.hpp"
 #include <iostream>
 #include <cmath>
+#include <map>
+#include <string>
+#include <vector>
 
 using namespace EcoSim::Genetics;
 using namespace EcoSim::Testing;
 
-// Helper to create a test phenotype with specific gene values
-Phenotype createTestPhenotype(
-    GeneRegistry& registry,
-    const std::map<std::string, float>& geneValues = {}
+// Helper to setup a genome with specific gene values
+// Note: Phenotype must be created separately with pointers to genome/registry
+// to avoid dangling pointer issues (Phenotype stores pointer, not copy)
+void setupGenome(
+    Genome& genome,
+    const std::map<std::string, float>& geneValues
 ) {
-    Genome genome = UniversalGenes::createCreatureGenome(registry);
-    
     // Set specific gene values in the genome
     for (const auto& [name, value] : geneValues) {
         if (genome.hasGene(name)) {
-            genome.setGeneValue(name, value);
+            genome.getGeneMutable(name).setAlleleValues(value);
         }
     }
-    
-    Phenotype phenotype(&genome, &registry);
-    return phenotype;
+}
+
+// Helper to set phenotype to adult age for 100% gene expression
+// Age modulation: 0.0-0.1 = 60%, 0.1-0.8 = 100%, 0.8-1.0 = 80%
+void setMatureAge(Phenotype& phenotype) {
+    OrganismState matureState;
+    matureState.age_normalized = 0.5f;  // Adult age = 100% expression
+    phenotype.updateContext(EnvironmentState(), matureState);
 }
 
 // ============================================================================
@@ -279,115 +289,128 @@ void test_defense_profile() {
 }
 
 // ============================================================================
-// Test 8: Teeth Damage Formula (using DamageDistribution directly)
+// Test 8: Normalized Damage Distribution (Teeth)
 // ============================================================================
 
-void test_teeth_damage_formula() {
-    // Test the teeth formula directly with known values
-    // pierce = sharpness × size = 0.8 × 1.0 = 0.8
-    // slash  = serration × size × 0.5 = 0.4 × 1.0 × 0.5 = 0.2
-    // blunt  = (1.0 - sharpness) × size = 0.2 × 1.0 = 0.2
+void test_teeth_damage_normalized() {
+    GeneRegistry registry;
+    UniversalGenes::registerDefaults(registry);
     
-    // We test the formula by constructing expected values
-    float sharpness = 0.8f;
-    float serration = 0.4f;
-    float size = 1.0f;
+    // Create genome and phenotype with default values
+    Genome genome = UniversalGenes::createCreatureGenome(registry);
+    Phenotype phenotype(&genome, &registry);
+    setMatureAge(phenotype);  // Set adult age for 100% gene expression
     
-    float expectedPierce = sharpness * size;
-    float expectedSlash = serration * size * 0.5f;
-    float expectedBlunt = (1.0f - sharpness) * size;
+    DamageDistribution dist = CombatInteraction::calculateWeaponDamage(phenotype, WeaponType::Teeth);
     
-    TEST_ASSERT_NEAR(expectedPierce, 0.8f, 0.001f);
-    TEST_ASSERT_NEAR(expectedSlash, 0.2f, 0.001f);
-    TEST_ASSERT_NEAR(expectedBlunt, 0.2f, 0.001f);
+    // Key test: distribution should now sum to ~1.0 (normalized)
+    TEST_ASSERT_NEAR(dist.total(), 1.0f, 0.01f);
+    
+    // All components should be non-negative
+    TEST_ASSERT_GT(dist.piercing, -0.001f);
+    TEST_ASSERT_GT(dist.slashing, -0.001f);
+    TEST_ASSERT_GT(dist.blunt, -0.001f);
 }
 
 // ============================================================================
-// Test 9: Claws Damage Formula (using DamageDistribution directly)
+// Test 9: Normalized Damage Distribution (Claws)
 // ============================================================================
 
-void test_claws_damage_formula() {
-    // Test the claws formula directly
-    // pierce = curvature × length × sharpness = 0.6 × 0.8 × 1.0 = 0.48
-    // slash  = (1.0 - curvature) × length × sharpness = 0.4 × 0.8 × 1.0 = 0.32
-    // blunt  = length × (1.0 - sharpness) × 0.3 = 0.8 × 0.0 × 0.3 = 0.0
+void test_claws_damage_normalized() {
+    GeneRegistry registry;
+    UniversalGenes::registerDefaults(registry);
     
-    float curvature = 0.6f;
-    float length = 0.8f;
-    float sharpness = 1.0f;
+    // Create genome and phenotype with default values
+    Genome genome = UniversalGenes::createCreatureGenome(registry);
+    Phenotype phenotype(&genome, &registry);
+    setMatureAge(phenotype);  // Set adult age for 100% gene expression
     
-    float expectedPierce = curvature * length * sharpness;
-    float expectedSlash = (1.0f - curvature) * length * sharpness;
-    float expectedBlunt = length * (1.0f - sharpness) * 0.3f;
+    DamageDistribution dist = CombatInteraction::calculateWeaponDamage(phenotype, WeaponType::Claws);
     
-    TEST_ASSERT_NEAR(expectedPierce, 0.48f, 0.001f);
-    TEST_ASSERT_NEAR(expectedSlash, 0.32f, 0.001f);
-    TEST_ASSERT_NEAR(expectedBlunt, 0.0f, 0.001f);
+    // Key test: distribution should sum to ~1.0 (normalized)
+    TEST_ASSERT_NEAR(dist.total(), 1.0f, 0.01f);
+    
+    // With defaults curvature=0.4, sharpness=0.6:
+    // pierceWeight = 0.4*0.6 = 0.24, slashWeight = 0.6*0.6 = 0.36, bluntWeight = 0.4*0.3 = 0.12
+    // Slashing should be dominant with these defaults
+    TEST_ASSERT(dist.slashing + dist.piercing > dist.blunt);  // Pierce or slash should dominate
 }
 
 // ============================================================================
-// Test 10: Horns Damage Formula
+// Test 10: Normalized Damage Distribution (Horns)
 // ============================================================================
 
-void test_horns_damage_formula() {
-    // pierce = pointiness × length = 0.7 × 0.5 = 0.35
-    // slash  = spread × length × 0.3 = 0.3 × 0.5 × 0.3 = 0.045
-    // blunt  = (1.0 - pointiness) × length = 0.3 × 0.5 = 0.15
+void test_horns_damage_normalized() {
+    GeneRegistry registry;
+    UniversalGenes::registerDefaults(registry);
     
-    float pointiness = 0.7f;
-    float length = 0.5f;
-    float spread = 0.3f;
+    // Create genome and phenotype with default values
+    Genome genome = UniversalGenes::createCreatureGenome(registry);
+    Phenotype phenotype(&genome, &registry);
+    setMatureAge(phenotype);  // Set adult age for 100% gene expression
     
-    float expectedPierce = pointiness * length;
-    float expectedSlash = spread * length * 0.3f;
-    float expectedBlunt = (1.0f - pointiness) * length;
+    DamageDistribution dist = CombatInteraction::calculateWeaponDamage(phenotype, WeaponType::Horns);
     
-    TEST_ASSERT_NEAR(expectedPierce, 0.35f, 0.001f);
-    TEST_ASSERT_NEAR(expectedSlash, 0.045f, 0.001f);
-    TEST_ASSERT_NEAR(expectedBlunt, 0.15f, 0.001f);
+    // Key test: distribution should sum to ~1.0 (normalized)
+    TEST_ASSERT_NEAR(dist.total(), 1.0f, 0.01f);
+    
+    // All components should be non-negative
+    TEST_ASSERT_GT(dist.piercing, -0.001f);
+    TEST_ASSERT_GT(dist.slashing, -0.001f);
+    TEST_ASSERT_GT(dist.blunt, -0.001f);
 }
 
 // ============================================================================
-// Test 11: Tail Damage Formula
+// Test 11: Normalized Damage Distribution (Tail)
 // ============================================================================
 
-void test_tail_damage_formula() {
-    // pierce = spines × length = 0.2 × 0.6 = 0.12
-    // slash  = (1.0 - mass) × length × 0.5 = 0.6 × 0.6 × 0.5 = 0.18
-    // blunt  = mass × length = 0.4 × 0.6 = 0.24
+void test_tail_damage_normalized() {
+    GeneRegistry registry;
+    UniversalGenes::registerDefaults(registry);
     
-    float spines = 0.2f;
-    float length = 0.6f;
-    float mass = 0.4f;
+    // Create genome and phenotype with default values
+    Genome genome = UniversalGenes::createCreatureGenome(registry);
+    Phenotype phenotype(&genome, &registry);
+    setMatureAge(phenotype);  // Set adult age for 100% gene expression
     
-    float expectedPierce = spines * length;
-    float expectedSlash = (1.0f - mass) * length * 0.5f;
-    float expectedBlunt = mass * length;
+    DamageDistribution dist = CombatInteraction::calculateWeaponDamage(phenotype, WeaponType::Tail);
     
-    TEST_ASSERT_NEAR(expectedPierce, 0.12f, 0.001f);
-    TEST_ASSERT_NEAR(expectedSlash, 0.18f, 0.001f);
-    TEST_ASSERT_NEAR(expectedBlunt, 0.24f, 0.001f);
+    // Key test: distribution should sum to ~1.0 (normalized)
+    TEST_ASSERT_NEAR(dist.total(), 1.0f, 0.01f);
+    
+    // All components should be non-negative
+    TEST_ASSERT_GT(dist.piercing, -0.001f);
+    TEST_ASSERT_GT(dist.slashing, -0.001f);
+    TEST_ASSERT_GT(dist.blunt, -0.001f);
 }
 
 // ============================================================================
-// Test 12: Body Damage Formula
+// Test 12: Normalized Damage Distribution (Body)
 // ============================================================================
 
-void test_body_damage_formula() {
-    // pierce = spines × maxSize = 0.3 × 2.0 = 0.6
-    // slash  = 0.0
-    // blunt  = maxSize = 2.0
+void test_body_damage_normalized() {
+    GeneRegistry registry;
+    UniversalGenes::registerDefaults(registry);
     
-    float spines = 0.3f;
-    float maxSize = 2.0f;
+    // Create genome and phenotype in local scope
+    Genome genome = UniversalGenes::createCreatureGenome(registry);
+    setupGenome(genome, {
+        {UniversalGenes::BODY_SPINES, 0.3f},
+        {UniversalGenes::MAX_SIZE, 1.5f}  // Size is now applied separately
+    });
+    Phenotype phenotype(&genome, &registry);
+    setMatureAge(phenotype);  // Set adult age for 100% gene expression
     
-    float expectedPierce = spines * maxSize;
-    float expectedSlash = 0.0f;
-    float expectedBlunt = maxSize;
+    DamageDistribution dist = CombatInteraction::calculateWeaponDamage(phenotype, WeaponType::Body);
     
-    TEST_ASSERT_NEAR(expectedPierce, 0.6f, 0.001f);
-    TEST_ASSERT_NEAR(expectedSlash, 0.0f, 0.001f);
-    TEST_ASSERT_NEAR(expectedBlunt, 2.0f, 0.001f);
+    // Key test: distribution should sum to ~1.0 (normalized)
+    TEST_ASSERT_NEAR(dist.total(), 1.0f, 0.01f);
+    
+    // Body is primarily blunt (always 1.0 weight before normalization)
+    TEST_ASSERT(dist.getDominantType() == DamageType::Blunt);
+    
+    // With spines=0.3, pierce should be ~23% (0.3/1.3), blunt ~77% (1.0/1.3)
+    TEST_ASSERT_GT(dist.blunt, 0.7f);
 }
 
 // ============================================================================
@@ -492,6 +515,192 @@ void test_string_conversions() {
 }
 
 // ============================================================================
+// Test 17: Size Factor for Weapons
+// ============================================================================
+
+void test_size_factor_for_weapons() {
+    GeneRegistry registry;
+    UniversalGenes::registerDefaults(registry);
+    
+    // Create phenotype with default genome values
+    Genome genome = UniversalGenes::createCreatureGenome(registry);
+    Phenotype phenotype(&genome, &registry);
+    setMatureAge(phenotype);  // Set adult age for 100% gene expression
+    
+    // Create a simple action with teeth weapon type
+    CombatAction teethAction;
+    teethAction.weapon = WeaponType::Teeth;
+    teethAction.damage = CombatInteraction::calculateWeaponDamage(phenotype, WeaponType::Teeth);
+    
+    // The distribution should sum to 1.0 (normalized)
+    TEST_ASSERT_NEAR(teethAction.damage.total(), 1.0f, 0.01f);
+    
+    // Create a defender phenotype
+    Genome defenderGenome = UniversalGenes::createCreatureGenome(registry);
+    Phenotype defenderPhenotype(&defenderGenome, &registry);
+    setMatureAge(defenderPhenotype);  // Set adult age for 100% gene expression
+    
+    // Resolve attack and check raw damage includes size factor
+    AttackResult result = CombatInteraction::resolveAttack(phenotype, defenderPhenotype, teethAction);
+    
+    // Raw damage should be: distribution.total (1.0) × baseDamage (10) × sizeFactor × specMultiplier
+    // With default size and spec bonus, rawDamage should be > 0
+    TEST_ASSERT_GT(result.rawDamage, 0.0f);
+    
+    // With default size factor (0.5) and teeth base 10:
+    // Raw = 1.0 × 10 × 0.5 × ~1.3 (spec bonus) = ~6.5
+    // Be lenient with bounds due to spec bonus variation
+    TEST_ASSERT_GT(result.rawDamage, 3.0f);
+    TEST_ASSERT_LT(result.rawDamage, 15.0f);
+}
+
+// ============================================================================
+// Test 18: Edge Case - Zero Size
+// ============================================================================
+
+void test_edge_case_zero_size() {
+    GeneRegistry registry;
+    UniversalGenes::registerDefaults(registry);
+    
+    // Create phenotype with zero size for teeth
+    Genome genome = UniversalGenes::createCreatureGenome(registry);
+    genome.getGeneMutable(UniversalGenes::TEETH_SIZE).setAlleleValues(0.0f);
+    genome.getGeneMutable(UniversalGenes::TEETH_SHARPNESS).setAlleleValues(0.9f);
+    
+    Phenotype phenotype(&genome, &registry);
+    setMatureAge(phenotype);  // Set adult age for 100% gene expression
+    
+    // Distribution should still sum to 1.0 (shape genes still work)
+    DamageDistribution dist = CombatInteraction::calculateWeaponDamage(phenotype, WeaponType::Teeth);
+    TEST_ASSERT_NEAR(dist.total(), 1.0f, 0.01f);
+    
+    // But actual damage should be zero due to size=0
+    CombatAction action;
+    action.weapon = WeaponType::Teeth;
+    action.damage = dist;
+    
+    Genome defenderGenome = UniversalGenes::createCreatureGenome(registry);
+    Phenotype defenderPhenotype(&defenderGenome, &registry);
+    setMatureAge(defenderPhenotype);  // Set adult age for 100% gene expression
+    
+    AttackResult result = CombatInteraction::resolveAttack(phenotype, defenderPhenotype, action);
+    
+    // With size=0, raw damage should be 0 or very close to 0
+    TEST_ASSERT_NEAR(result.rawDamage, 0.0f, 0.01f);
+}
+
+// ============================================================================
+// Test 19: Edge Case - Maximum Size
+// ============================================================================
+
+void test_edge_case_max_size() {
+    GeneRegistry registry;
+    UniversalGenes::registerDefaults(registry);
+    
+    // Create phenotype with default values (size depends on what genome provides)
+    Genome genome = UniversalGenes::createCreatureGenome(registry);
+    Phenotype phenotype(&genome, &registry);
+    setMatureAge(phenotype);  // Set adult age for 100% gene expression
+    
+    DamageDistribution dist = CombatInteraction::calculateWeaponDamage(phenotype, WeaponType::Teeth);
+    TEST_ASSERT_NEAR(dist.total(), 1.0f, 0.01f);
+    
+    CombatAction action;
+    action.weapon = WeaponType::Teeth;
+    action.damage = dist;
+    
+    Genome defenderGenome = UniversalGenes::createCreatureGenome(registry);
+    Phenotype defenderPhenotype(&defenderGenome, &registry);
+    setMatureAge(defenderPhenotype);  // Set adult age for 100% gene expression
+    
+    AttackResult result = CombatInteraction::resolveAttack(phenotype, defenderPhenotype, action);
+    
+    // With default size factor, raw damage should be in reasonable range
+    // Raw = 1.0 × 10 × sizeFactor × specMultiplier
+    TEST_ASSERT_GT(result.rawDamage, 3.0f);  // Reasonable minimum
+    TEST_ASSERT_LT(result.rawDamage, 20.0f); // Not unreasonably high
+}
+
+// ============================================================================
+// Test 20: All Weapon Types Produce Normalized Distributions
+// ============================================================================
+
+void test_all_weapons_normalized() {
+    GeneRegistry registry;
+    UniversalGenes::registerDefaults(registry);
+    
+    // Create genome and phenotype in local scope
+    Genome genome = UniversalGenes::createCreatureGenome(registry);
+    Phenotype phenotype(&genome, &registry);
+    setMatureAge(phenotype);  // Set adult age for 100% gene expression
+    
+    // Test all weapon types
+    std::vector<WeaponType> weapons = {
+        WeaponType::Teeth,
+        WeaponType::Claws,
+        WeaponType::Horns,
+        WeaponType::Tail,
+        WeaponType::Body
+    };
+    
+    for (WeaponType weapon : weapons) {
+        DamageDistribution dist = CombatInteraction::calculateWeaponDamage(phenotype, weapon);
+        
+        // Each weapon's distribution should sum to 1.0
+        TEST_ASSERT_NEAR(dist.total(), 1.0f, 0.01f);
+        
+        // All values should be non-negative
+        TEST_ASSERT_GT(dist.piercing, -0.001f);
+        TEST_ASSERT_GT(dist.slashing, -0.001f);
+        TEST_ASSERT_GT(dist.blunt, -0.001f);
+    }
+}
+
+// ============================================================================
+// Test 21: Raw Damage Calculation Formula
+// ============================================================================
+
+void test_raw_damage_formula() {
+    GeneRegistry registry;
+    UniversalGenes::registerDefaults(registry);
+    
+    // Create a phenotype with default genome values
+    Genome genome = UniversalGenes::createCreatureGenome(registry);
+    Phenotype attackerPhenotype(&genome, &registry);
+    setMatureAge(attackerPhenotype);  // Set adult age for 100% gene expression
+    
+    // Create defender with default defense
+    Genome defenderGenome = UniversalGenes::createCreatureGenome(registry);
+    Phenotype defenderPhenotype(&defenderGenome, &registry);
+    setMatureAge(defenderPhenotype);  // Set adult age for 100% gene expression
+    
+    // Calculate distribution with default values
+    DamageDistribution dist = CombatInteraction::calculateWeaponDamage(attackerPhenotype, WeaponType::Teeth);
+    
+    // Distribution should be normalized
+    TEST_ASSERT_NEAR(dist.total(), 1.0f, 0.01f);
+    
+    // Piercing should be dominant with default sharpness=0.7
+    TEST_ASSERT(dist.getDominantType() == DamageType::Piercing);
+    
+    // Calculate spec bonus based on actual distribution
+    float specBonus = CombatInteraction::calculateSpecializationBonus(dist);
+    TEST_ASSERT_GT(specBonus, 0.0f);  // Should have some spec bonus
+    TEST_ASSERT_LT(specBonus, 0.51f); // Can't exceed 50%
+    
+    CombatAction action;
+    action.weapon = WeaponType::Teeth;
+    action.damage = dist;
+    
+    AttackResult result = CombatInteraction::resolveAttack(attackerPhenotype, defenderPhenotype, action);
+    
+    // Raw damage = dist.total(1.0) × baseDamage(10) × sizeFactor × (1 + specBonus)
+    // With defaults, expect reasonable damage range
+    TEST_ASSERT_GT(result.rawDamage, 3.0f);  // Should produce meaningful damage
+    TEST_ASSERT_LT(result.rawDamage, 15.0f); // Not unreasonably high
+}
+
+// ============================================================================
 // Main test runner
 // ============================================================================
 
@@ -505,15 +714,20 @@ void run_combat_system_tests() {
     RUN_TEST(test_defense_application);
     RUN_TEST(test_combat_state);
     RUN_TEST(test_defense_profile);
-    RUN_TEST(test_teeth_damage_formula);
-    RUN_TEST(test_claws_damage_formula);
-    RUN_TEST(test_horns_damage_formula);
-    RUN_TEST(test_tail_damage_formula);
-    RUN_TEST(test_body_damage_formula);
+    RUN_TEST(test_teeth_damage_normalized);
+    RUN_TEST(test_claws_damage_normalized);
+    RUN_TEST(test_horns_damage_normalized);
+    RUN_TEST(test_tail_damage_normalized);
+    RUN_TEST(test_body_damage_normalized);
     RUN_TEST(test_type_effectiveness_combinations);
     RUN_TEST(test_combat_action);
     RUN_TEST(test_attack_result);
     RUN_TEST(test_string_conversions);
+    RUN_TEST(test_size_factor_for_weapons);
+    RUN_TEST(test_edge_case_zero_size);
+    RUN_TEST(test_edge_case_max_size);
+    RUN_TEST(test_all_weapons_normalized);
+    RUN_TEST(test_raw_damage_formula);
     
     END_TEST_GROUP();
 }

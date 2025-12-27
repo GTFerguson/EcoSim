@@ -29,6 +29,10 @@ extern void runBerryBushDiagnosticTests();
 // Naming system test runners
 extern void runNamingSystemTests();
 
+// Combat system test runners
+extern void run_combat_system_tests();
+extern void run_combat_behavior_tests();
+
 int main() {
     auto start = std::chrono::high_resolution_clock::now();
     
@@ -95,6 +99,16 @@ int main() {
     // Berry Bush Diagnostic Tests
     std::cout << "=== Diagnostic: Berry Bush Lifecycle ===" << std::endl;
     runBerryBushDiagnosticTests();
+    std::cout << std::endl;
+    
+    // Combat System Tests
+    std::cout << "=== Combat System Tests ===" << std::endl;
+    run_combat_system_tests();
+    std::cout << std::endl;
+    
+    // Combat Behavior Tests
+    std::cout << "=== Combat Behavior Tests ===" << std::endl;
+    run_combat_behavior_tests();
     std::cout << std::endl;
     
     auto end = std::chrono::high_resolution_clock::now();

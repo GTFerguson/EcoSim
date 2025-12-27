@@ -32,29 +32,26 @@ using namespace EcoSim::Testing;
 //==============================================================================
 
 /**
- * Create a phenotype for testing combat calculations.
+ * Set up a genome with combat-relevant gene values.
+ * NOTE: Do NOT create Phenotype in a helper that returns by value,
+ * because Phenotype stores a pointer to the Genome.
  */
-Phenotype createCombatPhenotype(
-    GeneRegistry& registry,
+void setupCombatGenome(
+    Genome& genome,
     float aggression,
     float meatDigestion,
     float toothSharpness = 0.5f
 ) {
-    Genome genome = UniversalGenes::createCreatureGenome(registry);
-    
     // Set combat-relevant genes
     if (genome.hasGene(UniversalGenes::COMBAT_AGGRESSION)) {
-        genome.setGeneValue(UniversalGenes::COMBAT_AGGRESSION, aggression);
+        genome.getGeneMutable(UniversalGenes::COMBAT_AGGRESSION).setAlleleValues(aggression);
     }
     if (genome.hasGene(UniversalGenes::MEAT_DIGESTION_EFFICIENCY)) {
-        genome.setGeneValue(UniversalGenes::MEAT_DIGESTION_EFFICIENCY, meatDigestion);
+        genome.getGeneMutable(UniversalGenes::MEAT_DIGESTION_EFFICIENCY).setAlleleValues(meatDigestion);
     }
     if (genome.hasGene(UniversalGenes::TOOTH_SHARPNESS)) {
-        genome.setGeneValue(UniversalGenes::TOOTH_SHARPNESS, toothSharpness);
+        genome.getGeneMutable(UniversalGenes::TOOTH_SHARPNESS).setAlleleValues(toothSharpness);
     }
-    
-    Phenotype phenotype(&genome, &registry);
-    return phenotype;
 }
 
 //==============================================================================
@@ -65,11 +62,15 @@ void test_combat_initiation() {
     GeneRegistry registry;
     UniversalGenes::registerDefaults(registry);
     
-    // High aggression predator
-    Phenotype predatorPhenotype = createCombatPhenotype(registry, 0.9f, 0.9f, 0.8f);
+    // High aggression predator - create genome in local scope
+    Genome predatorGenome = UniversalGenes::createCreatureGenome(registry);
+    setupCombatGenome(predatorGenome, 0.9f, 0.9f, 0.8f);
+    Phenotype predatorPhenotype(&predatorGenome, &registry);
     
-    // Low aggression prey
-    Phenotype preyPhenotype = createCombatPhenotype(registry, 0.1f, 0.2f, 0.2f);
+    // Low aggression prey - create genome in local scope
+    Genome preyGenome = UniversalGenes::createCreatureGenome(registry);
+    setupCombatGenome(preyGenome, 0.1f, 0.2f, 0.2f);
+    Phenotype preyPhenotype(&preyGenome, &registry);
     
     // Test 1: Hungry predator should initiate combat
     float hungerLevel = 0.8f;  // Very hungry (low food)
@@ -87,11 +88,15 @@ void test_attack_damage() {
     GeneRegistry registry;
     UniversalGenes::registerDefaults(registry);
     
-    // Create attacker with high damage traits
-    Phenotype attackerPhenotype = createCombatPhenotype(registry, 0.9f, 0.9f, 0.9f);
+    // Create attacker with high damage traits - genome in local scope
+    Genome attackerGenome = UniversalGenes::createCreatureGenome(registry);
+    setupCombatGenome(attackerGenome, 0.9f, 0.9f, 0.9f);
+    Phenotype attackerPhenotype(&attackerGenome, &registry);
     
-    // Create defender with moderate defense
-    Phenotype defenderPhenotype = createCombatPhenotype(registry, 0.3f, 0.3f, 0.3f);
+    // Create defender with moderate defense - genome in local scope
+    Genome defenderGenome = UniversalGenes::createCreatureGenome(registry);
+    setupCombatGenome(defenderGenome, 0.3f, 0.3f, 0.3f);
+    Phenotype defenderPhenotype(&defenderGenome, &registry);
     
     // Select best attack action
     CombatAction action = CombatInteraction::selectBestAction(
@@ -117,7 +122,7 @@ void test_retreat_threshold() {
     
     // Set retreat threshold to 30%
     if (genome.hasGene(UniversalGenes::RETREAT_THRESHOLD)) {
-        genome.setGeneValue(UniversalGenes::RETREAT_THRESHOLD, 0.3f);
+        genome.getGeneMutable(UniversalGenes::RETREAT_THRESHOLD).setAlleleValues(0.3f);
     }
     
     Phenotype phenotype(&genome, &registry);
@@ -234,7 +239,7 @@ void test_weapon_selection() {
     // Create attacker with high tooth sharpness
     Genome attackerGenome = UniversalGenes::createCreatureGenome(registry);
     if (attackerGenome.hasGene(UniversalGenes::TOOTH_SHARPNESS)) {
-        attackerGenome.setGeneValue(UniversalGenes::TOOTH_SHARPNESS, 0.9f);
+        attackerGenome.getGeneMutable(UniversalGenes::TOOTH_SHARPNESS).setAlleleValues(0.9f);
     }
     Phenotype attackerPhenotype(&attackerGenome, &registry);
     
@@ -253,63 +258,6 @@ void test_weapon_selection() {
                         action.weapon == WeaponType::Tail ||
                         action.weapon == WeaponType::Body);
     TEST_ASSERT_MSG(validWeapon, "Should select a valid weapon for attack");
-}
-
-//==============================================================================
-// Combat State Tests
-//==============================================================================
-
-void test_combat_state() {
-    CombatState state;
-    
-    // Initial state
-    TEST_ASSERT_MSG(!state.inCombat, "Should not be in combat initially");
-    TEST_ASSERT_EQ(state.ticksSinceCombatStart, 0);
-    
-    // All weapons should be ready initially
-    TEST_ASSERT_MSG(state.isWeaponReady(WeaponType::Teeth), "Teeth should be ready initially");
-    TEST_ASSERT_MSG(state.isWeaponReady(WeaponType::Claws), "Claws should be ready initially");
-    
-    // Start cooldown on teeth (3 ticks)
-    state.startCooldown(WeaponType::Teeth);
-    TEST_ASSERT_MSG(!state.isWeaponReady(WeaponType::Teeth), "Teeth should be on cooldown");
-    
-    // Other weapons still ready
-    TEST_ASSERT_MSG(state.isWeaponReady(WeaponType::Claws), "Claws should still be ready");
-    
-    // Tick down cooldowns
-    state.tickAllCooldowns();
-    state.tickAllCooldowns();
-    TEST_ASSERT_MSG(!state.isWeaponReady(WeaponType::Teeth), "Teeth should still have 1 tick left");
-    
-    state.tickAllCooldowns();
-    TEST_ASSERT_MSG(state.isWeaponReady(WeaponType::Teeth), "Teeth should be ready after 3 ticks");
-    
-    // Reset should clear everything
-    state.reset();
-    TEST_ASSERT_MSG(!state.inCombat, "Should not be in combat after reset");
-}
-
-//==============================================================================
-// Defense Profile Tests
-//==============================================================================
-
-void test_defense_profile() {
-    DefenseProfile profile;
-    profile.thickHide = 0.8f;
-    profile.scales = 0.3f;
-    profile.fatLayer = 0.5f;
-    
-    // Test get defense for type
-    TEST_ASSERT_NEAR(profile.getDefenseForType(DefenseType::ThickHide), 0.8f, 0.001f);
-    TEST_ASSERT_NEAR(profile.getDefenseForType(DefenseType::Scales), 0.3f, 0.001f);
-    TEST_ASSERT_NEAR(profile.getDefenseForType(DefenseType::FatLayer), 0.5f, 0.001f);
-    
-    // Test strongest defense
-    TEST_ASSERT(profile.getStrongestDefense() == DefenseType::ThickHide);
-    
-    // Test total investment
-    TEST_ASSERT_NEAR(profile.totalInvestment(), 1.6f, 0.001f);
 }
 
 //==============================================================================
@@ -356,8 +304,6 @@ void run_combat_behavior_tests() {
     RUN_TEST(test_scavenging);
     RUN_TEST(test_body_condition_nutrition);
     RUN_TEST(test_weapon_selection);
-    RUN_TEST(test_combat_state);
-    RUN_TEST(test_defense_profile);
     RUN_TEST(test_type_effectiveness);
     
     END_TEST_GROUP();

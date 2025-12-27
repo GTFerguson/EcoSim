@@ -397,6 +397,21 @@ private:
      */
     static DefenseType getCounteringDefense(DamageType attackType);
     
+    /**
+     * @brief Get the size/magnitude factor for a weapon type
+     * @param phenotype The creature's expressed traits
+     * @param weapon The weapon type
+     * @return Size factor value from the appropriate gene (0.0 to 1.0+)
+     *
+     * Maps weapons to their size genes:
+     * - Teeth → TEETH_SIZE
+     * - Claws → CLAW_LENGTH
+     * - Horns → HORN_LENGTH
+     * - Tail → TAIL_LENGTH
+     * - Body → MAX_SIZE
+     */
+    static float getSizeFactorForWeapon(const Phenotype& phenotype, WeaponType weapon);
+    
     // ========================================================================
     // Constants
     // ========================================================================

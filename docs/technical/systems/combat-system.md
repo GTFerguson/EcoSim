@@ -1,7 +1,7 @@
 ---
 title: Combat System
 created: 2025-12-25
-updated: 2025-12-26
+updated: 2025-12-27
 status: complete
 audience: developer
 type: system
@@ -82,32 +82,87 @@ A weapon is available if the creature's relevant shape genes exceed the threshol
 
 ---
 
-## Shape Gene to Damage Formulas
+## Damage Calculation
 
-### Teeth Damage
-- pierce = TEETH_SHARPNESS × TEETH_SIZE
-- slash = TEETH_SERRATION × TEETH_SIZE × 0.5
-- blunt = (1.0 - TEETH_SHARPNESS) × TEETH_SIZE
+### Core Formula
 
-### Claws Damage
-- pierce = CLAW_CURVATURE × CLAW_LENGTH × CLAW_SHARPNESS
-- slash = (1.0 - CLAW_CURVATURE) × CLAW_LENGTH × CLAW_SHARPNESS
-- blunt = CLAW_LENGTH × (1.0 - CLAW_SHARPNESS) × 0.3
+The damage formula separates **damage type distribution** (what kind of damage) from **damage magnitude** (how much damage):
 
-### Horns Damage
-- pierce = HORN_POINTINESS × HORN_LENGTH
-- slash = HORN_SPREAD × HORN_LENGTH × 0.3
-- blunt = (1.0 - HORN_POINTINESS) × HORN_LENGTH
+```
+rawDamage = distribution.total() × baseDamage × sizeFactor × specMultiplier
+```
 
-### Tail Damage
-- pierce = TAIL_SPINES × TAIL_LENGTH
-- slash = (1.0 - TAIL_MASS) × TAIL_LENGTH × 0.5
-- blunt = TAIL_MASS × TAIL_LENGTH
+Where:
+- `distribution.total()` = Sum of normalized damage distribution (always 1.0)
+- `baseDamage` = Weapon's base damage value
+- `sizeFactor` = Multiplier from size-related genes (magnitude)
+- `specMultiplier` = Specialization bonus (1.0 to 1.5)
 
-### Body Damage
-- pierce = BODY_SPINES × MAX_SIZE
+### Key Concepts
+
+#### Normalized Distributions
+
+Damage type distributions are **always normalized to sum to 1.0**. This ensures that shape genes determine the *type* of damage, not the amount.
+
+For example, a creature with teeth that produce:
+- Raw values: pierce=0.8, slash=0.2, blunt=0.4 (total=1.4)
+- After normalization: pierce=0.57, slash=0.14, blunt=0.29 (total=1.0)
+
+This means:
+- 57% of damage is Piercing
+- 14% of damage is Slashing
+- 29% of damage is Blunt
+
+#### Size as Magnitude Multiplier
+
+Size genes (like `teeth_size`, `claw_length`, etc.) act as **magnitude multipliers** applied separately from the distribution:
+
+```
+sizeFactor = relevantSizeGene
+```
+
+This creates a clean separation:
+- **Shape genes** → What TYPE of damage (distribution ratios)
+- **Size genes** → How MUCH damage (magnitude multiplier)
+
+---
+
+## Shape Gene to Damage Distribution
+
+Shape genes determine the **proportions** of each damage type. These raw values are then normalized to sum to 1.0.
+
+### Teeth Distribution
+- pierce = TEETH_SHARPNESS
+- slash = TEETH_SERRATION × 0.5
+- blunt = (1.0 - TEETH_SHARPNESS)
+- **Size factor**: TEETH_SIZE
+
+### Claws Distribution
+- pierce = CLAW_CURVATURE × CLAW_SHARPNESS
+- slash = (1.0 - CLAW_CURVATURE) × CLAW_SHARPNESS
+- blunt = (1.0 - CLAW_SHARPNESS) × 0.3
+- **Size factor**: CLAW_LENGTH
+
+### Horns Distribution
+- pierce = HORN_POINTINESS
+- slash = HORN_SPREAD × 0.3
+- blunt = (1.0 - HORN_POINTINESS)
+- **Size factor**: HORN_LENGTH
+
+### Tail Distribution
+- pierce = TAIL_SPINES
+- slash = (1.0 - TAIL_MASS) × 0.5
+- blunt = TAIL_MASS
+- **Size factor**: TAIL_LENGTH
+
+### Body Distribution
+- pierce = BODY_SPINES
 - slash = 0.0
-- blunt = MAX_SIZE
+- blunt = 1.0
+- **Size factor**: MAX_SIZE
+
+> [!NOTE]
+> All distributions are normalized after calculation. A creature with high TEETH_SHARPNESS and low TEETH_SERRATION will deal mostly Piercing damage, regardless of the raw values. The TEETH_SIZE gene then determines how much total damage is dealt.
 
 ---
 

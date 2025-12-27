@@ -26,6 +26,8 @@ clang++ -g -std=c++17 -Iinclude \
     src/testing/genetics/test_creature_gene_api.cpp \
     src/testing/genetics/test_naming_system.cpp \
     src/testing/genetics/test_berry_bush_diagnostic.cpp \
+    src/testing/genetics/test_combat_system.cpp \
+    src/testing/genetics/test_combat_behavior.cpp \
     src/genetics/core/*.cpp \
     src/genetics/defaults/*.cpp \
     src/genetics/expression/*.cpp \
