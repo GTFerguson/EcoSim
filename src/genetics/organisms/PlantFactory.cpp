@@ -143,6 +143,9 @@ SpeciesTemplate PlantFactory::createBerryBushTemplate() {
     tmpl.geneRanges[UniversalGenes::FRUIT_PRODUCTION_RATE] = {0.7f, 0.9f};  // High ~0.8
     tmpl.geneRanges[UniversalGenes::FRUIT_APPEAL] = {0.7f, 0.9f};           // Attractive fruit
     
+    // Moderate-high scent - berries are fragrant to attract animal dispersers
+    tmpl.geneRanges[UniversalGenes::SCENT_PRODUCTION] = {0.3f, 0.5f};       // ~0.4
+    
     // Low defense (invests in reproduction instead)
     tmpl.geneRanges[UniversalGenes::THORN_DENSITY] = {0.05f, 0.15f};        // Low thorns ~0.1
     tmpl.geneRanges[UniversalGenes::TOXIN_PRODUCTION] = {0.0f, 0.1f};       // Non-toxic
@@ -189,6 +192,9 @@ SpeciesTemplate PlantFactory::createOakTreeTemplate() {
     // Low fruit production (acorns, not berries)
     tmpl.geneRanges[UniversalGenes::FRUIT_PRODUCTION_RATE] = {0.15f, 0.25f}; // Low ~0.2
     tmpl.geneRanges[UniversalGenes::FRUIT_APPEAL] = {0.2f, 0.4f};           // Low appeal (acorns)
+    
+    // Very low scent - acorns have minimal fragrance
+    tmpl.geneRanges[UniversalGenes::SCENT_PRODUCTION] = {0.02f, 0.08f};     // ~0.05
     
     // Moderate defense (bark protects, but not chemically defended)
     tmpl.geneRanges[UniversalGenes::THORN_DENSITY] = {0.0f, 0.1f};          // No thorns
@@ -237,6 +243,9 @@ SpeciesTemplate PlantFactory::createGrassTemplate() {
     tmpl.geneRanges[UniversalGenes::FRUIT_PRODUCTION_RATE] = {0.0f, 0.1f};  // Minimal
     tmpl.geneRanges[UniversalGenes::FRUIT_APPEAL] = {0.0f, 0.1f};           // Seeds, not fruit
     
+    // No scent - grass doesn't produce fragrant parts
+    tmpl.geneRanges[UniversalGenes::SCENT_PRODUCTION] = {0.0f, 0.01f};      // ~0.005 (below threshold)
+    
     // Key adaptation: maximum regrowth after grazing
     tmpl.geneRanges[UniversalGenes::THORN_DENSITY] = {0.0f, 0.05f};         // No thorns
     tmpl.geneRanges[UniversalGenes::TOXIN_PRODUCTION] = {0.0f, 0.1f};       // Non-toxic
@@ -248,7 +257,7 @@ SpeciesTemplate PlantFactory::createGrassTemplate() {
     tmpl.geneRanges[UniversalGenes::SEED_AERODYNAMICS] = {0.3f, 0.5f};      // Some wind dispersal
     tmpl.geneRanges[UniversalGenes::SEED_HOOK_STRENGTH] = {0.0f, 0.1f};     // No hooks
     tmpl.geneRanges[UniversalGenes::EXPLOSIVE_POD_FORCE] = {0.0f, 0.05f};   // No explosive
-    tmpl.geneRanges[UniversalGenes::RUNNER_PRODUCTION] = {1.3f, 1.7f};      // High vegetative ~1.5
+    tmpl.geneRanges[UniversalGenes::RUNNER_PRODUCTION] = {0.6f, 0.9f};      // Moderate vegetative ~0.75 (balanced for spread rate)
     
     // Medium spread (stolons/rhizomes)
     tmpl.geneRanges[UniversalGenes::SPREAD_DISTANCE] = {2.0f, 6.0f};
@@ -283,6 +292,9 @@ SpeciesTemplate PlantFactory::createThornBushTemplate() {
     // Moderate fruit production
     tmpl.geneRanges[UniversalGenes::FRUIT_PRODUCTION_RATE] = {0.3f, 0.5f};
     tmpl.geneRanges[UniversalGenes::FRUIT_APPEAL] = {0.3f, 0.5f};           // Protected by thorns
+    
+    // Low scent - some berries but defended, not heavily fragrant
+    tmpl.geneRanges[UniversalGenes::SCENT_PRODUCTION] = {0.1f, 0.2f};       // ~0.15
     
     // Key adaptation: high defense
     tmpl.geneRanges[UniversalGenes::THORN_DENSITY] = {0.7f, 0.9f};          // High thorns ~0.8

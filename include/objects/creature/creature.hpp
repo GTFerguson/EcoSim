@@ -19,9 +19,7 @@
 #include "../../world/world.hpp"
 #include "../../world/tile.hpp"
 #include "../gameObject.hpp"
-#include "../food.hpp"
 #include "navigator.hpp"
-#include "genome.hpp"
 
 // Sensory system includes (Phase 1)
 #include "world/ScentLayer.hpp"
@@ -31,12 +29,14 @@
 #include "genetics/core/GeneRegistry.hpp"
 #include "genetics/expression/Phenotype.hpp"
 #include "genetics/expression/EnvironmentState.hpp"
-#include "genetics/defaults/DefaultGenes.hpp"
-#include "genetics/migration/LegacyGenomeAdapter.hpp"
+#include "genetics/defaults/UniversalGenes.hpp"  // For DietType
 
 // Creature-Plant interaction includes (Phase 2.4)
 #include "genetics/interactions/FeedingInteraction.hpp"
 #include "genetics/interactions/SeedDispersal.hpp"
+
+// Classification system (Phase 2 - Unified Identity)
+#include "genetics/classification/ArchetypeIdentity.hpp"
 
 #include <stdlib.h>   //  abs
 #include <algorithm>  //  max
@@ -53,18 +53,52 @@
 
 class World;
 
+// DietType is now defined in genetics/defaults/UniversalGenes.hpp
+// Import via: using EcoSim::Genetics::DietType;
+using EcoSim::Genetics::DietType;
+
  //  Allows simple 8-direction system
 enum class Direction { N, E, S, W, NE, NW, SE, SW, none };
-//  Makes code for the profiles cleaner
+
+//  Motivation enum - what the creature currently wants/needs most
+enum class Motivation { Hungry, Thirsty, Amorous, Tired, Content };
+
+//  Action enum - what the creature is currently doing
+enum class Action {
+    Idle,       // No specific action
+    Wandering,  // Moving randomly
+    Searching,  // Looking for something (food/water/mate)
+    Navigating, // Moving toward a target
+    Eating,     // Consuming food
+    Grazing,    // Eating plants (herbivore)
+    Hunting,    // Pursuing prey (predator)
+    Chasing,    // Actively chasing target
+    Attacking,  // In combat
+    Fleeing,    // Running away from threat
+    Drinking,   // Consuming water
+    Courting,   // Looking for mate
+    Mating,     // Breeding
+    Resting     // Sleeping/recovering
+};
+
+//  Wound state enum for health system
+enum class WoundState { Healthy, Injured, Wounded, Critical, Dead };
+
+//  Deprecated - use Motivation instead
 enum class Profile { thirsty, hungry, breed, sleep, migrate };
 
 class Creature: public GameObject {
+  public:
+    //============================================================================
+    //  Public Constants (for balance analysis and external tools)
+    //============================================================================
+    const static float RESOURCE_LIMIT;
+    const static float BREED_COST;
+    
   private:
     // Adjustment to cost for diagonal movements
     const static float DIAG_ADJUST;
-    const static float RESOURCE_LIMIT;
     const static float INIT_FATIGUE;
-    const static float BREED_COST;
     const static float IDEAL_SIMILARITY;
     const static float PENALTY_EXPONENT;
     const static float PREY_CALORIES;
@@ -109,30 +143,47 @@ class Creature: public GameObject {
     unsigned  _age;
     int       _id;  // Unique creature ID for logging
     Direction _direction;
-    Profile   _profile;
+    Profile   _profile;          // Deprecated - use _motivation instead
+    Motivation _motivation = Motivation::Content;  // Current motivation/drive
+    Action    _action = Action::Idle;              // Current action being performed
+    
+    //  Health & Combat System (Phase 1: Legacy Removal)
+    float     _health = 100.0f;    // Current health
+    bool      _inCombat = false;   // Currently in combat
+    bool      _isFleeing = false;  // Currently fleeing from threat
+    int       _targetId = -1;      // ID of combat/pursuit target (-1 = none)
+    int       _combatCooldown = 0; // Ticks until can attack again
 
-    //  Will Variables 
+    //  Will Variables
     float _hunger, _thirst, _fatigue, _mate;
 
     //  How quickly the creature burns through food
     float     _metabolism = 0.001f;
     unsigned  _speed      = 1;
 
-    //  Genetic information of the creature (legacy system)
-    Genome    _genome;
-
     //============================================================================
-    //  New Genetics System (M5 integration - for gradual migration)
+    //  Genetics System
     //============================================================================
     // Shared gene registry for all creatures (singleton-like pattern)
     static std::shared_ptr<EcoSim::Genetics::GeneRegistry> s_geneRegistry;
     
-    // New genetics objects (optional, for gradual migration)
-    std::unique_ptr<EcoSim::Genetics::Genome> _newGenome;
+    // Primary genetics objects
+    std::unique_ptr<EcoSim::Genetics::Genome> _genome;
     std::unique_ptr<EcoSim::Genetics::Phenotype> _phenotype;
     
-    // Flag to switch between legacy and new genetics systems
-    bool _useNewGenetics = false;
+    //============================================================================
+    //  Archetype Identity (Phase 2 - Unified Identity System)
+    //============================================================================
+    /**
+     * @brief Shared archetype flyweight (non-owning)
+     *
+     * Points to one of the ArchetypeIdentity singleton objects.
+     * Lifetime: The pointed-to object lives for program duration.
+     * Never null after construction completes (unless legacy creature).
+     *
+     * @note Do NOT delete this pointer - it's a shared flyweight.
+     */
+    const EcoSim::Genetics::ArchetypeIdentity* _archetype = nullptr;
     
     //============================================================================
     //  Creature-Plant Interaction Data (Phase 2.4)
@@ -153,36 +204,32 @@ class Creature: public GameObject {
     //============================================================================
     //  Constructors
     //============================================================================
-    Creature (const int &x,
-              const int &y,
-              const float &hunger,
-              const float &thirst,
-              const Genome &genes);
-    Creature (const int &x, const int &y, const Genome &genes);
-    Creature (const std::string &name,
-              const std::string &desc,
-              const bool &passable,
-              const char &character,
-              const unsigned &colour,
-              const int &x,
-              const int &y,
-              const unsigned &age,
-              const std::string &profile,
-              const std::string &direction,
-              const float &hunger,
-              const float &thirst,
-              const float &fatigue,
-              const float &mate,
-              const float &metabolism,
-              const unsigned &speed,
-              const Genome &genes);
+    /**
+     * @brief Construct a creature with the new genetics system.
+     * @param x X position in world
+     * @param y Y position in world
+     * @param genome New genetics genome (ownership transferred)
+     */
+    Creature(int x, int y, std::unique_ptr<EcoSim::Genetics::Genome> genome);
     
-    // Copy/Move constructors and assignment operators (M5: required due to unique_ptr members)
+    /**
+     * @brief Construct a creature with hunger/thirst values and genome.
+     * @param x X position in world
+     * @param y Y position in world
+     * @param hunger Initial hunger value
+     * @param thirst Initial thirst value
+     * @param genome New genetics genome (ownership transferred)
+     */
+    Creature(int x, int y, float hunger, float thirst,
+             std::unique_ptr<EcoSim::Genetics::Genome> genome);
+    
+   
+   // Copy/Move constructors and assignment operators (M5: required due to unique_ptr members)
     Creature(const Creature& other);
     Creature(Creature&& other) noexcept;
     Creature& operator=(const Creature& other);
     Creature& operator=(Creature&& other) noexcept;
-    ~Creature() = default;
+    ~Creature();  // Decrements archetype population count
   
     //============================================================================
     //  New Genetics System - Static Methods (M5)
@@ -200,30 +247,23 @@ class Creature: public GameObject {
     static EcoSim::Genetics::GeneRegistry& getGeneRegistry();
   
     //============================================================================
-    //  New Genetics System - Instance Methods (M5)
+    //  Genetics System - Instance Methods
     //============================================================================
     /**
-     * @brief Enable or disable the new genetics system for this creature.
-     *        When enabled, converts legacy genome to new format if not already done.
-     * @param enable True to use new genetics, false for legacy
+     * @brief Get the genome.
+     * @return Pointer to the Genome, or nullptr if not initialized
      */
-    void enableNewGenetics(bool enable = true);
+    const EcoSim::Genetics::Genome* getGenome() const;
     
     /**
-     * @brief Check if this creature uses the new genetics system.
-     * @return True if new genetics is enabled
+     * @brief Get the genome (mutable).
+     * @return Pointer to the Genome, or nullptr if not initialized
      */
-    bool usesNewGenetics() const { return _useNewGenetics; }
+    EcoSim::Genetics::Genome* getGenomeMutable();
     
     /**
-     * @brief Get the new genome (if enabled).
-     * @return Pointer to the new Genome, or nullptr if not using new genetics
-     */
-    const EcoSim::Genetics::Genome* getNewGenome() const;
-    
-    /**
-     * @brief Get the phenotype (if new genetics enabled).
-     * @return Pointer to the Phenotype, or nullptr if not using new genetics
+     * @brief Get the phenotype.
+     * @return Pointer to the Phenotype, or nullptr if not initialized
      */
     const EcoSim::Genetics::Phenotype* getPhenotype() const;
     
@@ -233,18 +273,27 @@ class Creature: public GameObject {
      * @param env Current environment state
      */
     void updatePhenotypeContext(const EcoSim::Genetics::EnvironmentState& env);
+    
+    /**
+     * @brief Get the expressed value of a gene from the phenotype.
+     * @param geneId The gene ID to look up
+     * @return The expressed trait value, or 0.0 if not found or not using new genetics
+     */
+    float getExpressedValue(const std::string& geneId) const;
 
     //============================================================================
     //  Setters
     //============================================================================
-    void setAge     (unsigned age);
-    void setHunger  (float hunger);
-    void setThirst  (float thirst);
-    void setFatigue (float fatigue);
-    void setMate    (float mate);
-    void setXY      (int x, int y);
-    void setX       (int x);
-    void setY       (int y);
+    void setAge        (unsigned age);
+    void setHunger     (float hunger);
+    void setThirst     (float thirst);
+    void setFatigue    (float fatigue);
+    void setMate       (float mate);
+    void setXY         (int x, int y);
+    void setX          (int x);
+    void setY          (int y);
+    void setMotivation (Motivation m);
+    void setAction     (Action a);
     
     //============================================================================
     //  Float Position Setters (Phase 1: Float Movement System)
@@ -282,8 +331,10 @@ class Creature: public GameObject {
     unsigned  getSpeed      () const;
     int       getX          () const;
     int       getY          () const;
-    Direction getDirection  () const;
-    Profile   getProfile    () const;
+    Direction   getDirection  () const;
+    Profile     getProfile    () const;  // Deprecated - use getMotivation()
+    Motivation  getMotivation () const;
+    Action      getAction     () const;
     
     //============================================================================
     //  Float Position Getters (Phase 1: Float Movement System)
@@ -320,8 +371,124 @@ class Creature: public GameObject {
      * @return Calculated movement speed (tiles per tick)
      */
     float getMovementSpeed() const;
-    //  Genome Getters (CREATURE-010 fix: return by const reference)
-    const Genome& getGenome () const;
+    
+    /**
+     * @brief Get maximum health based on genetics.
+     *        Uses MASS gene as proxy (larger creatures have more health).
+     * @return Maximum health value
+     */
+    float getMaxHealth() const;
+    
+    /**
+     * @brief Get current health.
+     * @return Current health value
+     */
+    float getHealth() const;
+    
+    /**
+     * @brief Get health as percentage (0.0 to 1.0).
+     * @return Health percentage
+     */
+    float getHealthPercent() const;
+    
+    /**
+     * @brief Get current wound state.
+     * @return WoundState enum value
+     */
+    WoundState getWoundState() const;
+    
+    /**
+     * @brief Get wound severity (0.0 = healthy, 1.0 = critical).
+     * @return Wound severity value
+     */
+    float getWoundSeverity() const;
+    
+    /**
+     * @brief Get healing rate per tick.
+     * @return Healing rate
+     */
+    float getHealingRate() const;
+    
+    /**
+     * @brief Apply damage to creature's health.
+     * @param amount Damage to apply (positive value)
+     *
+     * - Reduces _health directly
+     * - Floors health at 0 (never negative)
+     * - Zero/negative amounts are no-ops
+     */
+    void takeDamage(float amount);
+    
+    /**
+     * @brief Heal creature's health.
+     * @param amount Health to restore (positive value)
+     *
+     * - Caps at getMaxHealth()
+     * - Zero/negative amounts are no-ops
+     */
+    void heal(float amount);
+    
+    /**
+     * @brief Set combat state.
+     * @param combat True if entering combat
+     */
+    void setInCombat(bool combat);
+    
+    /**
+     * @brief Set combat target ID.
+     * @param targetId Target creature's ID, or -1 for none
+     */
+    void setTargetId(int targetId);
+    
+    /**
+     * @brief Set combat cooldown ticks.
+     * @param cooldown Ticks until next attack
+     */
+    void setCombatCooldown(int cooldown);
+    
+    /**
+     * @brief Set fleeing state.
+     * @param fleeing True if fleeing
+     */
+    void setFleeing(bool fleeing);
+    
+    /**
+     * @brief Check if creature is currently in combat.
+     * @return True if in combat
+     */
+    bool isInCombat() const;
+    
+    /**
+     * @brief Check if creature is currently fleeing.
+     * @return True if fleeing
+     */
+    bool isFleeing() const;
+    
+    /**
+     * @brief Get ID of current combat target.
+     * @return Target creature ID, or -1 if none
+     */
+    int getTargetId() const;
+    
+    /**
+     * @brief Get remaining combat cooldown ticks.
+     * @return Cooldown ticks remaining
+     */
+    int getCombatCooldown() const;
+    
+    /**
+     * @brief Get creature archetype label (e.g., "Herbivore", "Predator").
+     * @return Archetype label string
+     */
+    std::string getArchetypeLabel() const;
+    
+    /**
+     * @brief Get scientific name (species classification).
+     * @return Scientific name string
+     */
+    std::string getScientificName() const;
+    
+    //  Genetics-Derived Getters (derived from new genetics system)
     unsigned  getLifespan   () const;
     unsigned  getSightRange () const;
     float     getTHunger    () const;
@@ -329,27 +496,48 @@ class Creature: public GameObject {
     float     getTFatigue   () const;
     float     getComfInc    () const;
     float     getComfDec    () const;
-    Diet      getDiet       () const;
+    DietType  getDietType   () const;  // Derived from calculateDietType()
     bool      ifFlocks      () const;
     unsigned  getFlee       () const;
     unsigned  getPursue     () const;
 
     //============================================================================
-    //  Behaviours
+    //  Behaviours - New Motivation/Action System
+    //============================================================================
+    void hungryBehavior     (World &world,
+                             std::vector<Creature> &creatures,
+                             const unsigned index,
+                             GeneralStats &gs);
+    void thirstyBehavior    (World &world,
+                             std::vector<Creature> &creatures,
+                             const unsigned index);
+    void amorousBehavior    (World &world,
+                             std::vector<Creature> &creatures,
+                             const unsigned index,
+                             GeneralStats &gs);
+    void contentBehavior    (World &world,
+                             std::vector<Creature> &creatures,
+                             const unsigned index);
+    void tiredBehavior      (World &world,
+                             std::vector<Creature> &creatures,
+                             const unsigned index);
+    
+    //============================================================================
+    //  Behaviours - Legacy Profile System (Deprecated)
     //============================================================================
     void migrateProfile     (World &world,
                              std::vector<Creature> &creatures,
                              const unsigned index);
     void hungryProfile      (World &world,
                              std::vector<Creature> &creatures,
-                             const unsigned index, 
+                             const unsigned index,
                              GeneralStats &gs);
     void thirstyProfile     (World &world,
                              std::vector<Creature> &creatures,
                              const unsigned index);
     void breedProfile       (World &world,
                              std::vector<Creature> &creatures,
-                             const unsigned index, 
+                             const unsigned index,
                              GeneralStats &gs);
     bool  flock             (World &world, std::vector<Creature> &creatures);
     void  update            ();
@@ -447,6 +635,23 @@ class Creature: public GameObject {
     bool findMateScent(const EcoSim::ScentLayer& scentLayer, int& outX, int& outY) const;
     
     /**
+     * @brief Check if creature has meaningful scent detection capability.
+     *        Used to determine if scent-based fallback navigation is available.
+     * @return True if scent_detection trait exceeds threshold (0.1)
+     */
+    bool hasScentDetection() const;
+    
+    /**
+     * @brief Find the coordinates of food scent (plant scent) in range.
+     *        Used as a fallback when visual plant detection fails.
+     * @param scentLayer The world's scent layer to query
+     * @param outX Output parameter for scent X coordinate
+     * @param outY Output parameter for scent Y coordinate
+     * @return True if a valid food scent was found, false otherwise
+     */
+    bool findFoodScent(const EcoSim::ScentLayer& scentLayer, int& outX, int& outY) const;
+    
+    /**
      * @brief Calculate genetic similarity between two scent signatures.
      * @param sig1 First signature
      * @param sig2 Second signature
@@ -523,19 +728,12 @@ class Creature: public GameObject {
      */
     static void initializeInteractionSystems();
 
-private:
-    /**
-     * @brief Overlay legacy genome values onto a new UniversalGenes genome.
-     * @param newGenome The new genome to update with legacy values
-     * @param legacy The legacy genome to read values from
-     */
-    void overlayLegacyGenome(EcoSim::Genetics::Genome& newGenome, const ::Genome& legacy);
-
 public:
     //============================================================================
     //  Variable Generators
     //============================================================================
     char        generateChar ();
+    [[deprecated("Use CreatureTaxonomy::generateScientificName() instead")]]
     std::string generateName ();
     //============================================================================
     //  To String 

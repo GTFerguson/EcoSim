@@ -10,12 +10,12 @@
 
 #include "../objects/creature/creature.hpp"
 #include "../objects/gameObject.hpp"
-#include "../objects/spawner.hpp"
 #include "../colorPairs.hpp"
 #include "../rendering/RenderTypes.hpp"
 #include "tile.hpp"
 #include "SimplexNoise.hpp"
 #include "ScentLayer.hpp"
+#include "Corpse.hpp"
 
 // Genetics system integration (Phase 2.4)
 #include "../genetics/core/GeneRegistry.hpp"
@@ -81,8 +81,11 @@ class World {
     // Scent-based sensory system (Phase 1: Sensory System)
     EcoSim::ScentLayer _scentLayer;
     unsigned int _currentTick;
+    
+    // Corpse management
+    std::vector<std::unique_ptr<world::Corpse>> _corpses;
 
-	public:
+ public:
     //============================================================================
 		//	Constructor
     //============================================================================
@@ -125,16 +128,6 @@ class World {
 		Tile  assignTerrain (const double &height);
 		void  simplexGen		();
 
-    //============================================================================
-  //	Game Object Handling (Legacy Spawners)
-    //============================================================================
-  void addFood          (const int &x, const int &y, const Food    &obj);
-  void addSpawner	      (const int &x, const int &y, const Spawner &obj);
-  void addTrees 	      (const unsigned int &lowElev, const unsigned int &highElev,
-                           const unsigned int &rate,    const Spawner& tree);
-  void removeFood       (const int &x, const int &y, const std::string &objName);
-  void removeSpawner		(const int &x, const int &y, const std::string &objName);
-    
     //============================================================================
     //  Genetics-Based Plants (Phase 2.4)
     //============================================================================
@@ -197,11 +190,9 @@ class World {
     std::shared_ptr<EcoSim::Genetics::GeneRegistry> getPlantRegistry();
  
     //============================================================================
-  //	Update Objects
+    //	Update Objects
     //============================================================================
-  void updateAllObjects	();
-  void updateSpawners   (std::vector<Spawner> &spawners,
-                           const int &curX, const int &curY);
+    void updateAllObjects();
     
     /**
      * @brief Update all genetics-based plants in the world
@@ -236,6 +227,49 @@ class World {
      * @return Current tick count
      */
     unsigned int getCurrentTick() const;
+    
+    //============================================================================
+    //  Corpse Management
+    //============================================================================
+    
+    /**
+     * @brief Add a corpse at a location when a creature dies
+     * @param x X coordinate
+     * @param y Y coordinate
+     * @param size Size of the creature (affects nutrition and decay time)
+     * @param speciesName Species name for the corpse
+     * @param bodyCondition Body condition (0.0-1.0) based on creature's energy when it died
+     */
+    void addCorpse(float x, float y, float size, const std::string& speciesName, float bodyCondition = 0.5f);
+    
+    /**
+     * @brief Update all corpses (advance decay, remove fully decayed)
+     */
+    void tickCorpses();
+    
+    /**
+     * @brief Get all corpses in the world
+     * @return Const reference to corpse vector
+     */
+    const std::vector<std::unique_ptr<world::Corpse>>& getCorpses() const;
+    
+    /**
+     * @brief Find the nearest corpse within range
+     * @param x X coordinate to search from
+     * @param y Y coordinate to search from
+     * @param maxRange Maximum search range
+     * @return Pointer to nearest corpse, or nullptr if none found
+     */
+    world::Corpse* findNearestCorpse(float x, float y, float maxRange);
+    
+    /**
+     * @brief Remove a specific corpse from the world
+     * @param corpse Pointer to the corpse to remove
+     */
+    void removeCorpse(world::Corpse* corpse);
+    
+    /// Maximum number of corpses for performance
+    static constexpr size_t MAX_CORPSES = 100;
 
     //============================================================================
   //	To String

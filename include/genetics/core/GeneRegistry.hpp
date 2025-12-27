@@ -127,8 +127,24 @@ public:
      */
     bool empty() const;
     
+    /**
+     * @brief Mark that default genes have been registered
+     *
+     * Called by UniversalGenes::registerDefaults() after successfully registering
+     * all default genes. This allows the method to be idempotent - subsequent
+     * calls will return early without attempting to re-register genes.
+     */
+    void markDefaultsRegistered();
+    
+    /**
+     * @brief Check if default genes have been registered
+     * @return true if markDefaultsRegistered() has been called
+     */
+    bool areDefaultsRegistered() const;
+    
 private:
     std::unordered_map<std::string, GeneDefinition> definitions_;
+    bool defaultsRegistered_ = false;
 };
 
 } // namespace Genetics

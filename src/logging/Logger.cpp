@@ -1,4 +1,5 @@
 #include "logging/Logger.hpp"
+#include "genetics/interactions/DamageTypes.hpp"
 #include <iostream>
 #include <iomanip>
 #include <algorithm>
@@ -123,6 +124,149 @@ void Logger::creatureDied(int id, const std::string& type, const std::string& ca
     m_deathStats.totalCreatureDeaths++;
     m_deathStats.creatureDeathsByCause[cause]++;
     m_deathStats.creatureDeathsByType[type]++;
+}
+
+// === Combat Events ===
+
+void Logger::combatEngaged(int attackerId, const std::string& attackerName, int defenderId, const std::string& defenderName) {
+    std::ostringstream details;
+    details << "attacker:" << attackerId << "(" << attackerName << ")"
+            << ",defender:" << defenderId << "(" << defenderName << ")";
+    log(LogLevel::INFO, "COMBAT_ENGAGED", attackerId, attackerName, details.str());
+}
+
+void Logger::combatAttack(int attackerId, int defenderId, float damage) {
+    std::ostringstream details;
+    details << "defender:" << defenderId
+            << ",damage:" << std::fixed << std::setprecision(1) << damage;
+    log(LogLevel::INFO, "COMBAT_ATTACK", attackerId, "", details.str());
+}
+
+void Logger::combatKill(int killerId, const std::string& killerName, int victimId, const std::string& victimName) {
+    std::ostringstream details;
+    details << "killer:" << killerId << "(" << killerName << ")"
+            << ",victim:" << victimId << "(" << victimName << ")";
+    log(LogLevel::INFO, "COMBAT_KILL", victimId, victimName, details.str());
+}
+
+void Logger::combatFlee(int fleeingId, const std::string& fleeingName, int threatId, const std::string& threatName) {
+    std::ostringstream details;
+    details << "threat:" << threatId << "(" << threatName << ")";
+    log(LogLevel::INFO, "COMBAT_FLEE", fleeingId, fleeingName, details.str());
+}
+
+void Logger::scavenging(int creatureId, const std::string& creatureName, float nutritionGained) {
+    std::ostringstream details;
+    details << "nutrition:" << std::fixed << std::setprecision(1) << nutritionGained;
+    log(LogLevel::DEBUG, "SCAVENGING", creatureId, creatureName, details.str());
+}
+
+void Logger::combatEvent(const CombatLogEvent& event) {
+    using namespace EcoSim::Genetics;
+    
+    std::ostringstream details;
+    
+    // Get string representations of enums
+    const char* weaponStr = weaponTypeToString(event.weapon);
+    const char* damageTypeStr = damageTypeToString(event.primaryDamageType);
+    const char* defenseStr = defenseTypeToString(event.defenseUsed);
+    
+    // Build output based on verbosity level
+    switch (m_config.combatDetail) {
+        case CombatLogDetail::MINIMAL:
+            // Minimal: "#3→#4 15.8 dmg | Atk:95/100 Def:100→84/100"
+            details << "#" << event.attackerId << "→#" << event.defenderId
+                    << " " << std::fixed << std::setprecision(1) << event.finalDamage << " dmg"
+                    << " | Atk:" << static_cast<int>(event.attackerHealthBefore)
+                    << "/" << static_cast<int>(event.attackerMaxHealth)
+                    << " Def:" << static_cast<int>(event.defenderHealthBefore)
+                    << "→" << static_cast<int>(event.defenderHealthAfter)
+                    << "/" << static_cast<int>(event.defenderMaxHealth);
+            if (event.defenderDied) details << " [KILL]";
+            break;
+            
+        case CombatLogDetail::STANDARD:
+            // Standard: "#3→#4 Teeth 15.8 Piercing | Atk:95/100 | Def:100→84/100"
+            details << "#" << event.attackerId << "→#" << event.defenderId
+                    << " " << weaponStr << " "
+                    << std::fixed << std::setprecision(1) << event.finalDamage
+                    << " " << damageTypeStr
+                    << " | Atk:" << static_cast<int>(event.attackerHealthBefore)
+                    << "/" << static_cast<int>(event.attackerMaxHealth)
+                    << " | Def:" << static_cast<int>(event.defenderHealthBefore)
+                    << "→" << static_cast<int>(event.defenderHealthAfter)
+                    << "/" << static_cast<int>(event.defenderMaxHealth);
+            if (event.causedBleeding) details << " [BLEEDING]";
+            if (event.defenderDied) details << " [KILL]";
+            break;
+            
+        case CombatLogDetail::DETAILED:
+            // Detailed: Names + weapon details + both HP values
+            details << event.attackerName << " #" << event.attackerId
+                    << " → " << event.defenderName << " #" << event.defenderId << "\n";
+            details << "  " << weaponStr << " (" << damageTypeStr << ") "
+                    << std::fixed << std::setprecision(1) << event.rawDamage
+                    << " raw → " << event.finalDamage << " final"
+                    << " (x" << std::setprecision(2) << event.effectivenessMultiplier
+                    << " vs " << defenseStr << ")\n";
+            details << "  Attacker: " << std::fixed << std::setprecision(1)
+                    << event.attackerHealthBefore << "/" << event.attackerMaxHealth
+                    << " | Defender: " << event.defenderHealthBefore
+                    << " → " << event.defenderHealthAfter
+                    << "/" << event.defenderMaxHealth;
+            if (event.causedBleeding) details << " [BLEEDING]";
+            if (event.defenderDied) details << " [KILL]";
+            break;
+            
+        case CombatLogDetail::DEBUG:
+            // Debug: Full multi-line output with all data
+            details << "=== COMBAT ===\n";
+            details << "  Attacker: " << event.attackerName << " (#" << event.attackerId << ")\n";
+            details << "    Health: " << std::fixed << std::setprecision(1)
+                    << event.attackerHealthBefore << "/" << event.attackerMaxHealth
+                    << " → " << event.attackerHealthAfter << "/" << event.attackerMaxHealth;
+            if (event.attackerStaminaBefore > 0 || event.attackerStaminaAfter > 0) {
+                details << " | Stamina: " << event.attackerStaminaBefore
+                        << " → " << event.attackerStaminaAfter;
+            }
+            details << "\n  Defender: " << event.defenderName << " (#" << event.defenderId << ")\n";
+            details << "    Health: " << std::fixed << std::setprecision(1)
+                    << event.defenderHealthBefore << "/" << event.defenderMaxHealth
+                    << " → " << event.defenderHealthAfter << "/" << event.defenderMaxHealth
+                    << " (Taking " << event.finalDamage << " damage)\n";
+            details << "  Attack: " << weaponStr
+                    << " | Type: " << damageTypeStr
+                    << " | Raw: " << std::setprecision(1) << event.rawDamage << "\n";
+            details << "  Defense: " << defenseStr
+                    << " (" << std::setprecision(2) << event.defenseValue << ")"
+                    << " | Effectiveness: x" << event.effectivenessMultiplier << "\n";
+            details << "  Effects:";
+            if (event.causedBleeding) details << " [BLEEDING]";
+            if (event.critical) details << " [CRITICAL]";
+            if (!event.causedBleeding && !event.critical) details << " none";
+            details << "\n  Outcome: ";
+            if (event.hit) {
+                details << "Hit";
+                if (event.defenderDied) details << ", Defender Killed";
+                else details << ", Defender Alive";
+            } else {
+                details << "Missed";
+            }
+            break;
+    }
+    
+    // Use -1 and empty string to avoid duplicate header from log()
+    log(LogLevel::INFO, "COMBAT", -1, "", details.str());
+}
+
+void Logger::setCombatLogDetail(CombatLogDetail level) {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    m_config.combatDetail = level;
+}
+
+CombatLogDetail Logger::getCombatLogDetail() const {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    return m_config.combatDetail;
 }
 
 // === Plant Lifecycle ===

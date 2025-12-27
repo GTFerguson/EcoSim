@@ -1,7 +1,6 @@
 #ifndef GENOME_STATS_H
 #define GENOME_STATS_H
 
-#include "../objects/creature/genome.hpp"
 #include "../objects/creature/creature.hpp"
 
 #include <vector>
@@ -109,10 +108,10 @@ class GenomeStats {
     void checkMaxValue  (float &current,        const float &value);
     /// Helper to update minimum value during min/max scanning (float version)
     void checkMinValue  (float &current,        const float &value);
-    /// Scan genome for maximum trait values
-    void checkMaxValues (const Genome *g);
-    /// Scan genome for minimum trait values
-    void checkMinValues (const Genome *g);
+    /// Scan creature for maximum trait values
+    void checkMaxValues (const Creature &c);
+    /// Scan creature for minimum trait values
+    void checkMinValues (const Creature &c);
     /// Calculate mean values from accumulated sums
     void setMeans       (const SGenome &sums, const size_t &size);
     /// Calculate standard deviations from variances
@@ -120,8 +119,8 @@ class GenomeStats {
     /// Calculate variances using two-pass algorithm
     void setVariances   (const std::vector<Creature> &c,
                          const SGenome &sums, const size_t &size);
-    /// Add genome trait values to running sums
-    void accumulateSum  (SGenome &sums, const Genome *g);
+    /// Add creature trait values to running sums
+    void accumulateSum  (SGenome &sums, const Creature &c);
 
   public:
     /**

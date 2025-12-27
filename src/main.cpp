@@ -12,9 +12,11 @@
 #include "../include/statistics/genomeStats.hpp"
 #include "../include/objects/creature/creature.hpp"
 #include "../include/objects/creature/navigator.hpp"
-#include "../include/objects/food.hpp"
-#include "../include/objects/spawner.hpp"
+// LEGACY REMOVAL: Food and Spawner classes removed - using genetics Plants only
+// #include "../include/objects/food.hpp"
+// #include "../include/objects/spawner.hpp"
 #include "../include/world/world.hpp"
+#include "../include/world/Corpse.hpp"
 #include "../include/fileHandling.hpp"
 #include "../include/calendar.hpp"
 #include "../include/timing.hpp"
@@ -53,6 +55,7 @@ const static double   SIMULATION_TICK_MS      = EcoSim::Timing::SimulationSpeed:
 const static unsigned INITIAL_POPULATION      = 200;
 const static float    STARTING_RESOURCE_MIN   = 4.0f;
 const static float    STARTING_RESOURCE_MAX   = 10.0f;
+const static unsigned PLANT_WARMUP            = 100;   // Ticks for plants to mature before creatures spawn
 
 //================================================================================
 //  World generation defualt values
@@ -64,25 +67,23 @@ const static double   WORLD_DEFAULT_FREQUENCY = 4;
 const static double   WORLD_DEFAULT_EXPONENT  = 0.8;
 const static unsigned WORLD_DEFAULT_TERRACES  = 64;
 
-//================================================================================
-//  Food Type constants
-//================================================================================
-const static float    APPLE_CALS              = 1.5f;
-const static unsigned APPLE_LIFESPAN          = 1000;
-const static unsigned APPLE_RATE              = 1500;
-const static unsigned APPLE_MIN_RANGE         = 2;
-const static unsigned APPLE_MAX_RANGE         = 4;
-const static unsigned APPLE_MIN_ALTITUDE      = 180;
-const static unsigned APPLE_MAX_ALTITUDE      = 195;
-const static float    BANANA_CALS             = 2.0f;
-const static unsigned BANANA_LIFESPAN         = 500;
-const static unsigned BANANA_RATE             = 1000;
-const static unsigned BANANA_MIN_RANGE        = 2;
-const static unsigned BANANA_MAX_RANGE        = 4;
-const static unsigned BANANA_MIN_ALTITUDE     = 160;
-const static unsigned BANANA_MAX_ALTITUDE     = 170;
-const static float    CORPSE_CALS             = 1.0f;
-const static unsigned CORPSE_LIFESPAN         = 2000;
+// LEGACY REMOVAL: Food Type constants removed - using genetics Plants only
+// const static float    APPLE_CALS              = 1.5f;
+// const static unsigned APPLE_LIFESPAN          = 1000;
+// const static unsigned APPLE_RATE              = 1500;
+// const static unsigned APPLE_MIN_RANGE         = 2;
+// const static unsigned APPLE_MAX_RANGE         = 4;
+// const static unsigned APPLE_MIN_ALTITUDE      = 180;
+// const static unsigned APPLE_MAX_ALTITUDE      = 195;
+// const static float    BANANA_CALS             = 2.0f;
+// const static unsigned BANANA_LIFESPAN         = 500;
+// const static unsigned BANANA_RATE             = 1000;
+// const static unsigned BANANA_MIN_RANGE        = 2;
+// const static unsigned BANANA_MAX_RANGE        = 4;
+// const static unsigned BANANA_MIN_ALTITUDE     = 160;
+// const static unsigned BANANA_MAX_ALTITUDE     = 170;
+// const static float    CORPSE_CALS             = 1.0f;
+// const static unsigned CORPSE_LIFESPAN         = 2000;
 
 //================================================================================
 //  Genetics-based Plant Constants (Phase 2.4)
@@ -285,11 +286,15 @@ void takeTurn (World &w, GeneralStats &gs, vector<Creature> &c,
       activeC->getAge()
     );
 
-    //  Create and add corpse
-    float calories = CORPSE_CALS + activeC->getHunger();
-    if (calories > 0.0f) {
-      Food corpse (2, "Corpse", "Dead animal", true, 'c', 1, calories, CORPSE_LIFESPAN);
-      w.addFood (activeC->getX(), activeC->getY(), corpse);
+    //  Create corpse for scavengers
+    //  Size is based on creature's max health (larger creatures = more nutrition)
+    float creatureSize = activeC->getMaxHealth() / 50.0f;  // 50 HP per size unit
+    if (creatureSize > 0.1f) {
+      // Body condition is based on creature's energy level when they died (0-1 range)
+      // Higher energy = better fed = more nutritious corpse
+      // RESOURCE_LIMIT is 10.0f - max hunger value
+      float bodyCondition = std::max(0.0f, std::min(1.0f, activeC->getHunger() / 10.0f));
+      w.addCorpse(activeC->getWorldX(), activeC->getWorldY(), creatureSize, activeC->generateName(), bodyCondition);
     }
 
     c.erase(c.begin() + cIndex);
@@ -298,12 +303,22 @@ void takeTurn (World &w, GeneralStats &gs, vector<Creature> &c,
   } else {
     activeC->update ();
 
-    switch(activeC->getProfile ()) {
-      case Profile::migrate:  activeC->migrateProfile  (w, c, cIndex);      break;
-      case Profile::hungry:   activeC->hungryProfile   (w, c, cIndex, gs);  break;
-      case Profile::thirsty:  activeC->thirstyProfile  (w, c, cIndex);      break;
-      case Profile::breed:    activeC->breedProfile    (w, c, cIndex, gs);  break;
-      case Profile::sleep:    break;
+    switch(activeC->getMotivation()) {
+      case Motivation::Hungry:
+        activeC->hungryBehavior(w, c, cIndex, gs);
+        break;
+      case Motivation::Thirsty:
+        activeC->thirstyBehavior(w, c, cIndex);
+        break;
+      case Motivation::Amorous:
+        activeC->amorousBehavior(w, c, cIndex, gs);
+        break;
+      case Motivation::Content:
+        activeC->contentBehavior(w, c, cIndex);
+        break;
+      case Motivation::Tired:
+        activeC->tiredBehavior(w, c, cIndex);
+        break;
     }
   }
 }
@@ -321,12 +336,15 @@ void advanceSimulation (World &w, vector<Creature> &c, GeneralStats &gs) {
   // Update scent layer for pheromone decay (Phase 2: Sensory System)
   w.updateScentLayer();
   
+  // Update corpses (decay, remove fully decayed)
+  w.tickCorpses();
+  
   // PRE-PASS: Have ALL breeding creatures deposit scents BEFORE any creature acts
   // This ensures scents from all potential mates are available during detection
   // (Phase 2: Gradient Navigation)
   unsigned int currentTick = w.getCurrentTick();
   for (auto& creature : c) {
-    if (creature.getProfile() == Profile::breed) {
+    if (creature.getMotivation() == Motivation::Amorous) {
       creature.depositBreedingScent(w.getScentLayer(), currentTick);
     }
   }
@@ -344,80 +362,67 @@ void advanceSimulation (World &w, vector<Creature> &c, GeneralStats &gs) {
  * This method creates an initial population of creatures and
  * adds them to the world using the CreatureFactory for ecological balance.
  *
- * Population distribution (to match plant ecosystem):
- * - 40% Grazers (herbivores eating grass/leaves)
- * - 25% Browsers (herbivores eating fruits/berries)
- * - 10% Hunters (carnivores)
- * - 10% Foragers (omnivores)
- * - 5% Scavengers (carrion specialists)
- * - 10% Random (for genetic diversity)
+ * Uses the combat-balanced archetype system with 10 distinct creature types:
+ *
+ * PREDATORS (25%):
+ * - Apex Predator: Large territorial dominant hunters
+ * - Pack Hunter: Coordinated group hunters
+ * - Ambush Predator: Patient opportunistic attackers
+ * - Pursuit Hunter: Speed-based chasers
+ *
+ * HERBIVORES (60%):
+ * - Tank Herbivore: Large armored horn defenders
+ * - Armored Grazer: Scaled tail-club defenders
+ * - Fleet Runner: Speed-based escape artists
+ * - Spiky Defender: Counter-attack spine bearers
+ *
+ * OPPORTUNISTS (15%):
+ * - Scavenger: Corpse-feeding specialists
+ * - Omnivore Generalist: Adaptable generalists
  *
  * @param w       A reference to the world map.
  * @param c       A vector containing all of the creatures.
  * @param amount  The amount of creatures to be added.
  */
 void populateWorld (World &w, vector<Creature> &c, unsigned amount) {
-  uniform_int_distribution<int> colDis (0, MAP_COLS-1);
-  uniform_int_distribution<int> rowDis (0, MAP_ROWS-1);
-  
-  //  Maximum attempts to find a passable tile before giving up
-  //  Prevents infinite loop if world has no passable tiles
-  const unsigned MAX_ATTEMPTS = 10000;
-  RandomGenerator& rng = RandomGenerator::instance();
-  
   // Create creature factory with gene registry
-  // Note: CreatureFactory constructor handles registering UniversalGenes defaults
   auto registry = std::make_shared<EcoSim::Genetics::GeneRegistry>();
   EcoSim::Genetics::CreatureFactory factory(registry);
   factory.registerDefaultTemplates();
   
-  // Calculate population distribution
-  // Mostly herbivores, with carnivores and omnivores representation
-  unsigned grazers = static_cast<unsigned>(amount * 0.40);   // 40% grazers
-  unsigned browsers = static_cast<unsigned>(amount * 0.25);  // 25% browsers
-  unsigned hunters = static_cast<unsigned>(amount * 0.10);   // 10% hunters
-  unsigned foragers = static_cast<unsigned>(amount * 0.10);  // 10% foragers
-  unsigned scavengers = static_cast<unsigned>(amount * 0.05); // 5% scavengers
-  unsigned randoms = amount - grazers - browsers - hunters - foragers - scavengers; // Rest random
+  std::cout << "[World] Populating with " << amount << " combat-balanced creatures:" << std::endl;
+  std::cout << "  Distribution: 60% Herbivores, 25% Predators, 15% Opportunists" << std::endl;
   
-  // Template spawn order with counts
-  std::vector<std::pair<std::string, unsigned>> spawnOrder = {
-    {"grazer", grazers},
-    {"browser", browsers},
-    {"hunter", hunters},
-    {"forager", foragers},
-    {"scavenger", scavengers},
-    {"", randoms}  // Empty string means random creature
-  };
+  // Use the balanced ecosystem mix for combat-focused archetypes
+  std::vector<Creature> newCreatures = factory.createEcosystemMix(amount, MAP_COLS, MAP_ROWS);
   
-  std::cout << "[World] Populating with " << amount << " creatures:" << std::endl;
-  std::cout << "  - Grazers: " << grazers << std::endl;
-  std::cout << "  - Browsers: " << browsers << std::endl;
-  std::cout << "  - Hunters: " << hunters << std::endl;
-  std::cout << "  - Foragers: " << foragers << std::endl;
-  std::cout << "  - Scavengers: " << scavengers << std::endl;
-  std::cout << "  - Random: " << randoms << std::endl;
+  // Verify positions are passable, relocate if needed
+  uniform_int_distribution<int> colDis(0, MAP_COLS-1);
+  uniform_int_distribution<int> rowDis(0, MAP_ROWS-1);
+  const unsigned MAX_ATTEMPTS = 10000;
+  RandomGenerator& rng = RandomGenerator::instance();
   
-  for (const auto& [templateName, count] : spawnOrder) {
-    for (unsigned i = 0; i < count; i++) {
-      int x, y;
+  for (auto& creature : newCreatures) {
+    int x = creature.getX();
+    int y = creature.getY();
+    
+    // Check if position is passable, if not find a new one
+    if (!w.getGrid().at(x).at(y).isPassable()) {
       unsigned attempts = 0;
       do {
         x = rng.generate(colDis);
         y = rng.generate(rowDis);
         if (++attempts > MAX_ATTEMPTS) {
           std::cerr << "[World] Warning: Could not find passable tile for creature" << std::endl;
-          return;
+          continue;
         }
-      } while (w.getGrid().at(x).at(y).isPassable() == false);
+      } while (!w.getGrid().at(x).at(y).isPassable());
       
-      // Create creature from template or random
-      Creature newC = templateName.empty()
-        ? factory.createRandom(x, y)
-        : factory.createFromTemplate(templateName, x, y);
-      
-      c.push_back(std::move(newC));
+      creature.setXY(x, y);
+      creature.setWorldPosition(static_cast<float>(x) + 0.5f, static_cast<float>(y) + 0.5f);
     }
+    
+    c.push_back(std::move(creature));
   }
   
   std::cout << "[World] Successfully added " << c.size() << " creatures" << std::endl;
@@ -813,27 +818,21 @@ void runWorldEditor(World& w, vector<Creature>& creatures,
   }
 }
 
-/**
- *  Adds food spawners to the world.
- */
-void addFoodSpawners (World &w) {
-  //  Food prefabs
-  Food banana (0, "Banana", "A curved yellow fruit", true, ')', 1,
-               BANANA_CALS, BANANA_LIFESPAN);
-  Food apple  (1, "Apple", "A delicious red apple", true, '*', 1,
-               APPLE_CALS, APPLE_LIFESPAN);
-
-  //  Spawner prefabs
-  Spawner bananaPlant ("Banana Plant", "A tall plant that makes bananas",
-                       true, 'T', 13, BANANA_RATE, BANANA_MIN_RANGE,
-                       BANANA_MAX_RANGE, banana);
-  Spawner appleTree   ("Apple Tree", "A big tree that makes apples",
-                       true, '^', 13, APPLE_RATE, APPLE_MIN_RANGE,
-                       APPLE_MAX_RANGE, apple);
-
-  w.addTrees (APPLE_MIN_ALTITUDE,  APPLE_MAX_ALTITUDE,  2, appleTree);
-  w.addTrees (BANANA_MIN_ALTITUDE, BANANA_MAX_ALTITUDE, 2, bananaPlant);
-}
+// LEGACY REMOVAL: addFoodSpawners function removed - using genetics Plants only
+// void addFoodSpawners (World &w) {
+//   Food banana (0, "Banana", "A curved yellow fruit", true, ')', 1,
+//                BANANA_CALS, BANANA_LIFESPAN);
+//   Food apple  (1, "Apple", "A delicious red apple", true, '*', 1,
+//                APPLE_CALS, APPLE_LIFESPAN);
+//   Spawner bananaPlant ("Banana Plant", "A tall plant that makes bananas",
+//                        true, 'T', 13, BANANA_RATE, BANANA_MIN_RANGE,
+//                        BANANA_MAX_RANGE, banana);
+//   Spawner appleTree   ("Apple Tree", "A big tree that makes apples",
+//                        true, '^', 13, APPLE_RATE, APPLE_MIN_RANGE,
+//                        APPLE_MAX_RANGE, apple);
+//   w.addTrees (APPLE_MIN_ALTITUDE,  APPLE_MAX_ALTITUDE,  2, appleTree);
+//   w.addTrees (BANANA_MIN_ALTITUDE, BANANA_MAX_ALTITUDE, 2, bananaPlant);
+// }
 
 /**
  *  Initializes the genetics system and adds genetics-based plants.
@@ -869,14 +868,61 @@ void handleNewWorld(World& w, vector<Creature>& creatures,
   // Edit world to liking
   runWorldEditor(w, creatures, xOrigin, yOrigin);
 
-  // Add Creatures
-  populateWorld(w, creatures, INITIAL_POPULATION);
+  // LEGACY REMOVAL: Food spawners removed - using genetics Plants only
+  // addFoodSpawners(w);
   
-  // Add food spawners (legacy system)
-  addFoodSpawners(w);
-  
-  // Add genetics-based plants (Phase 2.4)
+  // Add genetics-based plants FIRST (Phase 2.4 - now the only plant system)
   addGeneticsPlants(w);
+  
+  // Plant establishment period - allow plants to mature before creatures spawn
+  // This ensures herbivores have viable food sources from the start
+  // (seedlings are too small to provide sufficient nutrition vs their defenses)
+  // Render the world during warmup so users can watch plants grow
+  std::cout << "[World] Running plant establishment period ("
+            << PLANT_WARMUP << " ticks)..." << std::endl;
+  
+  const unsigned RENDER_INTERVAL = 10;  // Render every N ticks for smooth visualization
+  
+  for (unsigned i = 0; i < PLANT_WARMUP; ++i) {
+    w.updateAllObjects();
+    
+    // Render the world periodically during warmup
+    if (i % RENDER_INTERVAL == 0) {
+      unsigned mapHeight = renderer.getViewportMaxHeight();
+      unsigned mapWidth = renderer.getViewportMaxWidth();
+      int startx = renderer.getScreenCenterX() - mapWidth / 2;
+      int starty = renderer.getScreenCenterY() - mapHeight / 2;
+      
+      // Create viewport for rendering
+      Viewport viewport;
+      viewport.originX = xOrigin;
+      viewport.originY = yOrigin;
+      viewport.width = mapWidth;
+      viewport.height = mapHeight;
+      viewport.screenX = startx;
+      viewport.screenY = starty;
+      
+      renderer.beginFrame();
+      renderWorldAndCreatures(w, creatures, viewport);
+      
+      // Show warmup progress message
+      int progress = static_cast<int>((i * 100) / PLANT_WARMUP);
+      std::string progressMsg = "Plant Establishment: " + std::to_string(progress) + "% (" +
+                                std::to_string(i) + "/" + std::to_string(PLANT_WARMUP) + " ticks)";
+      renderer.renderMessage(progressMsg, -2);
+      renderer.renderMessage("Watch the plants grow across the world...", 0);
+      
+      renderer.endFrame();
+    }
+    
+    if (i % 200 == 0) {
+      std::cout << "  Plant warmup: " << i << "/" << PLANT_WARMUP << std::endl;
+    }
+  }
+  std::cout << "[World] Plant establishment complete." << std::endl;
+  
+  // Add Creatures AFTER plants have matured
+  populateWorld(w, creatures, INITIAL_POPULATION);
 }
 
 /**
@@ -982,6 +1028,25 @@ void runGameLoop(World& w, vector<Creature>& creatures,
     // This ensures viewport movement and UI controls feel responsive.
     takeInput(w, creatures, calendar, stats, file,
               xOrigin, yOrigin, settings, mapHeight, mapWidth);
+    
+    // Check for UI-driven viewport centering requests (e.g., double-click creature list)
+    if (renderer.hasViewportCenterRequest()) {
+      auto [targetX, targetY] = renderer.getViewportCenterRequest();
+      if (targetX >= 0 && targetY >= 0) {
+        // Center viewport on target position with bounds clamping
+        xOrigin = targetX - static_cast<int>(mapWidth) / 2;
+        yOrigin = targetY - static_cast<int>(mapHeight) / 2;
+        
+        // Clamp to world boundaries
+        if (xOrigin < 0) xOrigin = 0;
+        if (yOrigin < 0) yOrigin = 0;
+        int maxX = static_cast<int>(MAP_COLS) - static_cast<int>(mapWidth);
+        int maxY = static_cast<int>(MAP_ROWS) - static_cast<int>(mapHeight);
+        if (xOrigin > maxX) xOrigin = maxX;
+        if (yOrigin > maxY) yOrigin = maxY;
+      }
+      renderer.clearViewportCenterRequest();
+    }
 
     // =========================================================================
     // 2. UPDATE SIMULATION (fixed timestep - consistent simulation)

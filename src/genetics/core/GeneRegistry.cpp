@@ -106,6 +106,7 @@ std::vector<std::string> GeneRegistry::getAllGeneIds() const {
 
 void GeneRegistry::clear() {
     definitions_.clear();
+    defaultsRegistered_ = false;  // Reset the flag when clearing
 }
 
 size_t GeneRegistry::size() const {
@@ -114,6 +115,14 @@ size_t GeneRegistry::size() const {
 
 bool GeneRegistry::empty() const {
     return definitions_.empty();
+}
+
+void GeneRegistry::markDefaultsRegistered() {
+    defaultsRegistered_ = true;
+}
+
+bool GeneRegistry::areDefaultsRegistered() const {
+    return defaultsRegistered_;
 }
 
 } // namespace Genetics

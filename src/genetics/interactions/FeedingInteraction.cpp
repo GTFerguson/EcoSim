@@ -22,13 +22,19 @@ FeedingResult FeedingInteraction::attemptToEatPlant(
     float colorVision = getTraitSafe(creaturePhenotype, UniversalGenes::COLOR_VISION, 0.3f);
     float scentDetection = getTraitSafe(creaturePhenotype, UniversalGenes::SCENT_DETECTION, 0.5f);
     float sweetnessPreference = getTraitSafe(creaturePhenotype, UniversalGenes::SWEETNESS_PREFERENCE, 0.5f);
+    float plantDigestion = getTraitSafe(creaturePhenotype, UniversalGenes::PLANT_DIGESTION_EFFICIENCY, 0.5f);
     
     // Plant genes
     float fruitAppeal = plant.getFruitAppeal();
     
-    // Detection threshold: needs color vision OR scent
+    // Detection threshold: needs color vision OR scent OR herbivore recognition
     // Both colorVision and scentDetection are 0-1 normalized values
     float detectionScore = (colorVision * fruitAppeal) + (scentDetection * 0.5f);
+    
+    // Herbivores can recognize plants as food through their digestive specialization
+    // This represents evolved instinctive recognition of edible vegetation
+    // A grazer evolved to eat grass doesn't need grass to look like colorful fruit!
+    detectionScore += plantDigestion * 0.3f;  // Up to +0.3 for pure herbivores
     
     if (detectionScore < DETECTION_THRESHOLD) {
         result.success = false;
@@ -38,6 +44,10 @@ FeedingResult FeedingInteraction::attemptToEatPlant(
     
     // Attraction: will creature bother eating this?
     float attraction = fruitAppeal * sweetnessPreference;
+    
+    // Herbivores are attracted to plants as forage, not just sweet fruit
+    // This represents evolved appetite for vegetation as food source
+    attraction += plantDigestion * 0.2f;  // Up to +0.2 for pure herbivores
     
     // Desperation: very hungry creatures will eat less appealing food
     float desperationBonus = creatureHunger * 0.3f;
@@ -181,19 +191,22 @@ float FeedingInteraction::getDetectionRange(
     const Plant& plant
 ) const {
     float colorVision = getTraitSafe(creature, UniversalGenes::COLOR_VISION, 0.3f);
-    float scentDetection = getTraitSafe(creature, UniversalGenes::SCENT_DETECTION, 10.0f);
+    float scentDetection = getTraitSafe(creature, UniversalGenes::SCENT_DETECTION, 0.5f);
     float sightRange = getTraitSafe(creature, UniversalGenes::SIGHT_RANGE, 50.0f);
     
     float fruitAppeal = plant.getFruitAppeal();
     
-    // Visual detection depends on color vision and fruit appeal
-    float visualRange = sightRange * colorVision * fruitAppeal;
+    // CORRECT FORMULA:
+    // Color vision specifically helps spot COLORFUL plants (high fruit appeal)
+    // - High CV + high fruit appeal = big range bonus (fruit is easy to see)
+    // - High CV + low fruit appeal = minimal bonus (green grass blends in)
+    // Scent works independently of color
     
-    // Scent detection works beyond sight
-    float scentRange = scentDetection;
+    float visualBonus = colorVision * fruitAppeal * 100.0f;  // 0.9 × 0.8 × 100 = 72 tiles
+    float scentBonus = scentDetection * 100.0f;              // 0.9 × 100 = 90 tiles
+    float effectiveRange = sightRange + std::max(visualBonus, scentBonus);
     
-    // Return the better of the two
-    return std::max(visualRange, scentRange);
+    return effectiveRange;
 }
 
 // ============================================================================

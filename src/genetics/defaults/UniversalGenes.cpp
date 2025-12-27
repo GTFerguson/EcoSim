@@ -1,15 +1,12 @@
 /**
  * @file UniversalGenes.cpp
  * @brief Implementation of unified gene definitions for all organism types
- * 
+ *
  * This file creates a single gene registry that can be used by any organism.
  * Expression levels determine which genes are active:
  * - Creatures: High mobility/heterotrophy, dormant autotrophy
  * - Plants: High autotrophy, dormant mobility/heterotrophy
  * - Hybrids: Can evolve any combination!
- * 
- * Phase 2.1 Update: Added 29 new genes for coevolution system with
- * pleiotropy effects to create realistic trade-offs.
  */
 
 #include "genetics/defaults/UniversalGenes.hpp"
@@ -84,7 +81,37 @@ void UniversalGenes::initializeCategories() {
     s_geneCategories[GROOMING_FREQUENCY] = GeneCategory::Behavior;
     s_geneCategories[PAIN_SENSITIVITY] = GeneCategory::Behavior;
     
-    // Olfactory System genes (Phase 1: Sensory System)
+    // Health/Healing genes
+    s_geneCategories[REGENERATION_RATE] = GeneCategory::Morphology;
+    s_geneCategories[WOUND_TOLERANCE] = GeneCategory::Behavior;
+    s_geneCategories[BLEEDING_RESISTANCE] = GeneCategory::Morphology;
+    
+    // Combat Weapon Shape genes
+    s_geneCategories[TEETH_SHARPNESS] = GeneCategory::Morphology;
+    s_geneCategories[TEETH_SERRATION] = GeneCategory::Morphology;
+    s_geneCategories[TEETH_SIZE] = GeneCategory::Morphology;
+    s_geneCategories[CLAW_LENGTH] = GeneCategory::Morphology;
+    s_geneCategories[CLAW_CURVATURE] = GeneCategory::Morphology;
+    s_geneCategories[CLAW_SHARPNESS] = GeneCategory::Morphology;
+    s_geneCategories[HORN_LENGTH] = GeneCategory::Morphology;
+    s_geneCategories[HORN_POINTINESS] = GeneCategory::Morphology;
+    s_geneCategories[HORN_SPREAD] = GeneCategory::Morphology;
+    s_geneCategories[TAIL_LENGTH] = GeneCategory::Morphology;
+    s_geneCategories[TAIL_MASS] = GeneCategory::Morphology;
+    s_geneCategories[TAIL_SPINES] = GeneCategory::Morphology;
+    s_geneCategories[BODY_SPINES] = GeneCategory::Morphology;
+    
+    // Combat Defense genes
+    s_geneCategories[SCALE_COVERAGE] = GeneCategory::Morphology;
+    s_geneCategories[FAT_LAYER_THICKNESS] = GeneCategory::Morphology;
+    
+    // Combat Behavior genes
+    s_geneCategories[COMBAT_AGGRESSION] = GeneCategory::Behavior;
+    s_geneCategories[RETREAT_THRESHOLD] = GeneCategory::Behavior;
+    s_geneCategories[TERRITORIAL_AGGRESSION] = GeneCategory::Behavior;
+    s_geneCategories[PACK_COORDINATION] = GeneCategory::Behavior;
+    
+    // Olfactory System genes
     s_geneCategories[SCENT_PRODUCTION] = GeneCategory::Behavior;
     s_geneCategories[SCENT_SIGNATURE_VARIANCE] = GeneCategory::Reproduction;
     s_geneCategories[OLFACTORY_ACUITY] = GeneCategory::Behavior;
@@ -110,7 +137,7 @@ void UniversalGenes::initializeCategories() {
     s_geneCategories[COMFORT_INCREASE] = GeneCategory::Reproduction;
     s_geneCategories[COMFORT_DECREASE] = GeneCategory::Reproduction;
     
-    // Seed propagation genes (Phase 2.3)
+    // Seed propagation genes
     s_geneCategories[SEED_MASS] = GeneCategory::Reproduction;
     s_geneCategories[SEED_AERODYNAMICS] = GeneCategory::Reproduction;
     s_geneCategories[SEED_HOOK_STRENGTH] = GeneCategory::Reproduction;
@@ -130,6 +157,11 @@ GeneCategory UniversalGenes::getCategory(const std::string& gene_id) {
 }
 
 void UniversalGenes::registerDefaults(GeneRegistry& registry) {
+    // Early exit if defaults already registered - makes this function idempotent
+    if (registry.areDefaultsRegistered()) {
+        return;
+    }
+    
     initializeCategories();
     
     registerUniversalGenes(registry);
@@ -138,18 +170,23 @@ void UniversalGenes::registerDefaults(GeneRegistry& registry) {
     registerHeterotrophyGenes(registry);
     registerReproductionGenes(registry);
     
-    // Phase 2.1: New gene categories
+    // Additional gene categories
     registerCoevolutionHeterotrophyGenes(registry);
     registerMorphologyGenes(registry);
     registerBehaviorGenes(registry);
     registerSeedInteractionGenes(registry);
     registerPlantDefenseGenes(registry);
-    
-    // Phase 2.3: Seed propagation genes
     registerSeedPropagationGenes(registry);
-    
-    // Phase 1: Sensory System - Olfactory genes
     registerOlfactoryGenes(registry);
+    registerHealthHealingGenes(registry);
+    
+    // Combat system genes (Phase 1c)
+    registerWeaponShapeGenes(registry);
+    registerCombatDefenseGenes(registry);
+    registerCombatBehaviorGenes(registry);
+    
+    // Mark that defaults have been registered
+    registry.markDefaultsRegistered();
 }
 
 void UniversalGenes::registerUniversalGenes(GeneRegistry& registry) {
@@ -169,10 +206,10 @@ void UniversalGenes::registerUniversalGenes(GeneRegistry& registry) {
     registry.tryRegisterGene(std::move(lifespan));
     
     // Max Size - maximum organism size
-    // [0.5, 20.0], creep 0.5
+    // [0.2, 20.0], creep 0.2 - lowered from 0.5 to help prevent baby cannibalism exploit
     // Cost: 0.05 - larger bodies need proportionally more maintenance (superlinear)
     GeneDefinition maxSize(MAX_SIZE, ChromosomeType::Morphology,
-        GeneLimits(0.5f, 20.0f, 0.5f), DominanceType::Incomplete);
+        GeneLimits(0.2f, 20.0f, 0.2f), DominanceType::Incomplete);
     maxSize.addEffect(EffectBinding("morphology", "max_size", EffectType::Direct, 1.0f));
     maxSize.setMaintenanceCost(0.05f);
     maxSize.setCostScaling(1.5f);  // Superlinear - size is expensive
@@ -513,6 +550,8 @@ void UniversalGenes::registerMorphologyGenes(GeneRegistry& registry) {
     gutLen.addEffect(EffectBinding("morphology", "gut_length", EffectType::Direct, 1.0f));
     // Pleiotropy: reduces locomotion speed (30% inverse effect)
     gutLen.addEffect(EffectBinding("locomotion", "speed_multiplier", EffectType::Additive, -0.3f));
+    // Diet contribution: longer gut helps plant digestion (+35% contribution)
+    gutLen.addEffect(EffectBinding("metabolism", "plant_digestion_efficiency", EffectType::Additive, 0.35f));
     gutLen.setMaintenanceCost(0.04f);
     gutLen.setCostScaling(1.0f);
     registry.tryRegisterGene(std::move(gutLen));
@@ -526,6 +565,8 @@ void UniversalGenes::registerMorphologyGenes(GeneRegistry& registry) {
     toothSharp.addEffect(EffectBinding("morphology", "tooth_sharpness", EffectType::Direct, 1.0f));
     // Pleiotropy: reduces tooth grinding (50% inverse effect)
     toothSharp.addEffect(EffectBinding("morphology", "tooth_grinding", EffectType::Additive, -0.5f));
+    // Diet contribution: sharp teeth help meat processing (+15% contribution)
+    toothSharp.addEffect(EffectBinding("metabolism", "meat_digestion_efficiency", EffectType::Additive, 0.15f));
     toothSharp.setMaintenanceCost(0.02f);
     toothSharp.setCostScaling(1.0f);
     registry.tryRegisterGene(std::move(toothSharp));
@@ -539,6 +580,8 @@ void UniversalGenes::registerMorphologyGenes(GeneRegistry& registry) {
     toothGrind.addEffect(EffectBinding("morphology", "tooth_grinding", EffectType::Direct, 1.0f));
     // Pleiotropy: reduces tooth sharpness (50% inverse effect)
     toothGrind.addEffect(EffectBinding("morphology", "tooth_sharpness", EffectType::Additive, -0.5f));
+    // Diet contribution: grinding teeth help plant processing (+15% contribution)
+    toothGrind.addEffect(EffectBinding("metabolism", "plant_digestion_efficiency", EffectType::Additive, 0.15f));
     toothGrind.setMaintenanceCost(0.02f);
     toothGrind.setCostScaling(1.0f);
     registry.tryRegisterGene(std::move(toothGrind));
@@ -552,6 +595,8 @@ void UniversalGenes::registerMorphologyGenes(GeneRegistry& registry) {
     stomachAcid.addEffect(EffectBinding("morphology", "stomach_acidity", EffectType::Direct, 1.0f));
     // Pleiotropy: reduces cellulose breakdown (50% inverse effect)
     stomachAcid.addEffect(EffectBinding("metabolism", "cellulose_breakdown", EffectType::Additive, -0.5f));
+    // Diet contribution: acidic stomach helps meat digestion (+35% contribution)
+    stomachAcid.addEffect(EffectBinding("metabolism", "meat_digestion_efficiency", EffectType::Additive, 0.35f));
     stomachAcid.setMaintenanceCost(0.05f);
     stomachAcid.setCostScaling(1.0f);
     registry.tryRegisterGene(std::move(stomachAcid));
@@ -827,7 +872,7 @@ void UniversalGenes::registerReproductionGenes(GeneRegistry& registry) {
 
 void UniversalGenes::registerSeedPropagationGenes(GeneRegistry& registry) {
     // ============================================================================
-    // SEED PROPAGATION GENES - Phase 2.3 (5 genes)
+    // SEED PROPAGATION GENES (5 genes)
     // Physical properties that determine emergent dispersal strategy
     // Energy Cost Range: 0.03-0.08 (seed production structures)
     // ============================================================================
@@ -944,6 +989,271 @@ void UniversalGenes::registerOlfactoryGenes(GeneRegistry& registry) {
     scentMask.setMaintenanceCost(0.06f);
     scentMask.setCostScaling(1.0f);
     registry.tryRegisterGene(std::move(scentMask));
+}
+
+void UniversalGenes::registerHealthHealingGenes(GeneRegistry& registry) {
+    // ============================================================================
+    // HEALTH/HEALING GENES (3 genes)
+    // These genes control wound recovery and health management
+    // Energy Cost Range: 0.05-0.10 (regenerative systems)
+    // ============================================================================
+    
+    // Regeneration Rate - multiplier on base healing rate
+    // [0.0, 2.0], creep 0.1
+    // Higher values = faster wound recovery, but costs more energy during healing
+    // Cost: 0.10 - regenerative tissue maintenance is expensive
+    GeneDefinition regenRate(REGENERATION_RATE, ChromosomeType::Morphology,
+        GeneLimits(0.0f, 2.0f, 0.1f), DominanceType::Incomplete);
+    regenRate.addEffect(EffectBinding("morphology", "regeneration_rate", EffectType::Direct, 1.0f));
+    regenRate.setMaintenanceCost(0.10f);
+    regenRate.setCostScaling(1.3f);  // Fast healing is expensive
+    registry.tryRegisterGene(std::move(regenRate));
+    
+    // Wound Tolerance - reduces behavioral penalty from wounds
+    // [0.0, 1.0], creep 0.05
+    // Higher values = less speed/behavior penalty when injured
+    // Cost: 0.05 - pain management systems
+    GeneDefinition woundTol(WOUND_TOLERANCE, ChromosomeType::Behavior,
+        GeneLimits(0.0f, 1.0f, 0.05f), DominanceType::Incomplete);
+    woundTol.addEffect(EffectBinding("behavior", "wound_tolerance", EffectType::Direct, 1.0f));
+    woundTol.setMaintenanceCost(0.05f);
+    woundTol.setCostScaling(1.0f);
+    registry.tryRegisterGene(std::move(woundTol));
+    
+    // Bleeding Resistance - reduces bleed damage over time
+    // [0.0, 1.0], creep 0.05
+    // Higher values = wounds stop bleeding faster
+    // Cost: 0.08 - coagulation factor production
+    GeneDefinition bleedRes(BLEEDING_RESISTANCE, ChromosomeType::Morphology,
+        GeneLimits(0.0f, 1.0f, 0.05f), DominanceType::Incomplete);
+    bleedRes.addEffect(EffectBinding("morphology", "bleeding_resistance", EffectType::Direct, 1.0f));
+    bleedRes.setMaintenanceCost(0.08f);
+    bleedRes.setCostScaling(1.0f);
+    registry.tryRegisterGene(std::move(bleedRes));
+}
+
+void UniversalGenes::registerWeaponShapeGenes(GeneRegistry& registry) {
+    // ============================================================================
+    // WEAPON SHAPE GENES (13 genes) - Phase 1c Combat
+    // Physical weapon morphology affecting combat damage types
+    // Energy Cost Range: 0.05-0.10 (weapons cost energy to maintain)
+    // ============================================================================
+    
+    // ========== TEETH (3 genes) ==========
+    
+    // Teeth Sharpness - determines damage type (sharp→pierce, dull→blunt)
+    // [0.0, 1.0], creep 0.05
+    // Cost: 0.05 - enamel maintenance for sharp points
+    GeneDefinition teethSharp(TEETH_SHARPNESS, ChromosomeType::Morphology,
+        GeneLimits(0.0f, 1.0f, 0.05f), DominanceType::Incomplete);
+    teethSharp.addEffect(EffectBinding("morphology", "teeth_sharpness", EffectType::Direct, 1.0f));
+    teethSharp.setMaintenanceCost(0.05f);
+    teethSharp.setCostScaling(1.0f);
+    registry.tryRegisterGene(std::move(teethSharp));
+    
+    // Teeth Serration - adds slash damage component
+    // [0.0, 1.0], creep 0.05
+    // Cost: 0.06 - serrated edges require more maintenance
+    GeneDefinition teethSerr(TEETH_SERRATION, ChromosomeType::Morphology,
+        GeneLimits(0.0f, 1.0f, 0.05f), DominanceType::Incomplete);
+    teethSerr.addEffect(EffectBinding("morphology", "teeth_serration", EffectType::Direct, 1.0f));
+    teethSerr.setMaintenanceCost(0.06f);
+    teethSerr.setCostScaling(1.0f);
+    registry.tryRegisterGene(std::move(teethSerr));
+    
+    // Teeth Size - scales base bite damage
+    // [0.0, 1.0], creep 0.05
+    // Cost: 0.07 - larger teeth require more calcium/resources
+    GeneDefinition teethSize(TEETH_SIZE, ChromosomeType::Morphology,
+        GeneLimits(0.0f, 1.0f, 0.05f), DominanceType::Incomplete);
+    teethSize.addEffect(EffectBinding("morphology", "teeth_size", EffectType::Direct, 1.0f));
+    teethSize.setMaintenanceCost(0.07f);
+    teethSize.setCostScaling(1.2f);
+    registry.tryRegisterGene(std::move(teethSize));
+    
+    // ========== CLAWS (3 genes) ==========
+    
+    // Claw Length - reach and damage scaling
+    // [0.0, 1.0], creep 0.05
+    // Cost: 0.06 - keratin production for long claws
+    GeneDefinition clawLen(CLAW_LENGTH, ChromosomeType::Morphology,
+        GeneLimits(0.0f, 1.0f, 0.05f), DominanceType::Incomplete);
+    clawLen.addEffect(EffectBinding("morphology", "claw_length", EffectType::Direct, 1.0f));
+    clawLen.setMaintenanceCost(0.06f);
+    clawLen.setCostScaling(1.0f);
+    registry.tryRegisterGene(std::move(clawLen));
+    
+    // Claw Curvature - determines damage type (curved→pierce, straight→slash)
+    // [0.0, 1.0], creep 0.05
+    // Cost: 0.05 - structural maintenance
+    GeneDefinition clawCurv(CLAW_CURVATURE, ChromosomeType::Morphology,
+        GeneLimits(0.0f, 1.0f, 0.05f), DominanceType::Incomplete);
+    clawCurv.addEffect(EffectBinding("morphology", "claw_curvature", EffectType::Direct, 1.0f));
+    clawCurv.setMaintenanceCost(0.05f);
+    clawCurv.setCostScaling(1.0f);
+    registry.tryRegisterGene(std::move(clawCurv));
+    
+    // Claw Sharpness - overall cutting ability
+    // [0.0, 1.0], creep 0.05
+    // Cost: 0.06 - keeping claws sharp requires energy
+    GeneDefinition clawSharp(CLAW_SHARPNESS, ChromosomeType::Morphology,
+        GeneLimits(0.0f, 1.0f, 0.05f), DominanceType::Incomplete);
+    clawSharp.addEffect(EffectBinding("morphology", "claw_sharpness", EffectType::Direct, 1.0f));
+    clawSharp.setMaintenanceCost(0.06f);
+    clawSharp.setCostScaling(1.0f);
+    registry.tryRegisterGene(std::move(clawSharp));
+    
+    // ========== HORNS (3 genes) ==========
+    
+    // Horn Length - reach and charge damage
+    // [0.0, 1.0], creep 0.05
+    // Cost: 0.08 - horns are bone/keratin intensive structures
+    GeneDefinition hornLen(HORN_LENGTH, ChromosomeType::Morphology,
+        GeneLimits(0.0f, 1.0f, 0.05f), DominanceType::Incomplete);
+    hornLen.addEffect(EffectBinding("morphology", "horn_length", EffectType::Direct, 1.0f));
+    hornLen.setMaintenanceCost(0.08f);
+    hornLen.setCostScaling(1.2f);
+    registry.tryRegisterGene(std::move(hornLen));
+    
+    // Horn Pointiness - determines damage type (pointed→pierce, broad→blunt)
+    // [0.0, 1.0], creep 0.05
+    // Cost: 0.05 - point maintenance
+    GeneDefinition hornPoint(HORN_POINTINESS, ChromosomeType::Morphology,
+        GeneLimits(0.0f, 1.0f, 0.05f), DominanceType::Incomplete);
+    hornPoint.addEffect(EffectBinding("morphology", "horn_pointiness", EffectType::Direct, 1.0f));
+    hornPoint.setMaintenanceCost(0.05f);
+    hornPoint.setCostScaling(1.0f);
+    registry.tryRegisterGene(std::move(hornPoint));
+    
+    // Horn Spread - attack mode (narrow→gore, wide→sweep)
+    // [0.0, 1.0], creep 0.05
+    // Cost: 0.06 - wider spread = more structural bone
+    GeneDefinition hornSpread(HORN_SPREAD, ChromosomeType::Morphology,
+        GeneLimits(0.0f, 1.0f, 0.05f), DominanceType::Incomplete);
+    hornSpread.addEffect(EffectBinding("morphology", "horn_spread", EffectType::Direct, 1.0f));
+    hornSpread.setMaintenanceCost(0.06f);
+    hornSpread.setCostScaling(1.0f);
+    registry.tryRegisterGene(std::move(hornSpread));
+    
+    // ========== TAIL (3 genes) ==========
+    
+    // Tail Length - reach and whip damage
+    // [0.0, 1.0], creep 0.05
+    // Cost: 0.06 - longer tails require more vertebrae/muscle
+    GeneDefinition tailLen(TAIL_LENGTH, ChromosomeType::Morphology,
+        GeneLimits(0.0f, 1.0f, 0.05f), DominanceType::Incomplete);
+    tailLen.addEffect(EffectBinding("morphology", "tail_length", EffectType::Direct, 1.0f));
+    tailLen.setMaintenanceCost(0.06f);
+    tailLen.setCostScaling(1.0f);
+    registry.tryRegisterGene(std::move(tailLen));
+    
+    // Tail Mass - determines damage type (heavy→blunt club, light→slash whip)
+    // [0.0, 1.0], creep 0.05
+    // Cost: 0.07 - heavier tail = more muscle to carry
+    GeneDefinition tailMass(TAIL_MASS, ChromosomeType::Morphology,
+        GeneLimits(0.0f, 1.0f, 0.05f), DominanceType::Incomplete);
+    tailMass.addEffect(EffectBinding("morphology", "tail_mass", EffectType::Direct, 1.0f));
+    tailMass.setMaintenanceCost(0.07f);
+    tailMass.setCostScaling(1.2f);
+    registry.tryRegisterGene(std::move(tailMass));
+    
+    // Tail Spines - adds pierce component
+    // [0.0, 1.0], creep 0.05
+    // Cost: 0.06 - spine production/maintenance
+    GeneDefinition tailSpine(TAIL_SPINES, ChromosomeType::Morphology,
+        GeneLimits(0.0f, 1.0f, 0.05f), DominanceType::Incomplete);
+    tailSpine.addEffect(EffectBinding("morphology", "tail_spines", EffectType::Direct, 1.0f));
+    tailSpine.setMaintenanceCost(0.06f);
+    tailSpine.setCostScaling(1.0f);
+    registry.tryRegisterGene(std::move(tailSpine));
+    
+    // ========== BODY (1 gene) ==========
+    
+    // Body Spines - counter-damage pierce (porcupine-like defense)
+    // [0.0, 1.0], creep 0.05
+    // Cost: 0.10 - extensive spine coverage is expensive
+    GeneDefinition bodySpines(BODY_SPINES, ChromosomeType::Morphology,
+        GeneLimits(0.0f, 1.0f, 0.05f), DominanceType::Incomplete);
+    bodySpines.addEffect(EffectBinding("morphology", "body_spines", EffectType::Direct, 1.0f));
+    bodySpines.setMaintenanceCost(0.10f);
+    bodySpines.setCostScaling(1.3f);  // Very expensive at high values
+    registry.tryRegisterGene(std::move(bodySpines));
+}
+
+void UniversalGenes::registerCombatDefenseGenes(GeneRegistry& registry) {
+    // ============================================================================
+    // COMBAT DEFENSE GENES (2 new genes) - Phase 1c Combat
+    // Note: HIDE_THICKNESS already exists in registerMorphologyGenes
+    // Energy Cost Range: 0.05-0.08 (passive defensive structures)
+    // ============================================================================
+    
+    // Scale Coverage - reduces slashing damage
+    // [0.0, 1.0], creep 0.05
+    // Cost: 0.06 - scale production and maintenance
+    GeneDefinition scaleCov(SCALE_COVERAGE, ChromosomeType::Morphology,
+        GeneLimits(0.0f, 1.0f, 0.05f), DominanceType::Incomplete);
+    scaleCov.addEffect(EffectBinding("morphology", "scale_coverage", EffectType::Direct, 1.0f));
+    scaleCov.setMaintenanceCost(0.06f);
+    scaleCov.setCostScaling(1.0f);
+    registry.tryRegisterGene(std::move(scaleCov));
+    
+    // Fat Layer Thickness - reduces blunt damage
+    // [0.0, 1.0], creep 0.05
+    // Cost: 0.08 - fat storage requires metabolic investment
+    GeneDefinition fatLayer(FAT_LAYER_THICKNESS, ChromosomeType::Morphology,
+        GeneLimits(0.0f, 1.0f, 0.05f), DominanceType::Incomplete);
+    fatLayer.addEffect(EffectBinding("morphology", "fat_layer_thickness", EffectType::Direct, 1.0f));
+    fatLayer.setMaintenanceCost(0.08f);
+    fatLayer.setCostScaling(1.2f);  // Thick fat layers require significant calories
+    registry.tryRegisterGene(std::move(fatLayer));
+}
+
+void UniversalGenes::registerCombatBehaviorGenes(GeneRegistry& registry) {
+    // ============================================================================
+    // COMBAT BEHAVIOR GENES (4 genes) - Phase 1c Combat
+    // Combat behavioral traits affecting aggression and retreat
+    // Energy Cost Range: 0.03-0.05 (neural/behavioral patterns)
+    // ============================================================================
+    
+    // Combat Aggression - willingness to initiate/continue combat
+    // [0.0, 1.0], creep 0.05
+    // Cost: 0.05 - aggressive behavior requires more adrenaline/vigilance
+    GeneDefinition combatAgg(COMBAT_AGGRESSION, ChromosomeType::Behavior,
+        GeneLimits(0.0f, 1.0f, 0.05f), DominanceType::Incomplete);
+    combatAgg.addEffect(EffectBinding("behavior", "combat_aggression", EffectType::Direct, 1.0f));
+    combatAgg.setMaintenanceCost(0.05f);
+    combatAgg.setCostScaling(1.0f);
+    registry.tryRegisterGene(std::move(combatAgg));
+    
+    // Retreat Threshold - health % at which creature flees
+    // [0.0, 1.0], creep 0.05
+    // Cost: 0.03 - self-preservation instinct (low cost)
+    GeneDefinition retreatThr(RETREAT_THRESHOLD, ChromosomeType::Behavior,
+        GeneLimits(0.0f, 1.0f, 0.05f), DominanceType::Incomplete);
+    retreatThr.addEffect(EffectBinding("behavior", "retreat_threshold", EffectType::Direct, 1.0f));
+    retreatThr.setMaintenanceCost(0.03f);
+    retreatThr.setCostScaling(1.0f);
+    registry.tryRegisterGene(std::move(retreatThr));
+    
+    // Territorial Aggression - aggression toward same-species
+    // [0.0, 1.0], creep 0.05
+    // Cost: 0.04 - territorial marking and defense behavior
+    GeneDefinition terrAgg(TERRITORIAL_AGGRESSION, ChromosomeType::Behavior,
+        GeneLimits(0.0f, 1.0f, 0.05f), DominanceType::Incomplete);
+    terrAgg.addEffect(EffectBinding("behavior", "territorial_aggression", EffectType::Direct, 1.0f));
+    terrAgg.setMaintenanceCost(0.04f);
+    terrAgg.setCostScaling(1.0f);
+    registry.tryRegisterGene(std::move(terrAgg));
+    
+    // Pack Coordination - future: pack hunting behavior
+    // [0.0, 1.0], creep 0.05
+    // Cost: 0.05 - social cognition requires brain resources
+    GeneDefinition packCoord(PACK_COORDINATION, ChromosomeType::Behavior,
+        GeneLimits(0.0f, 1.0f, 0.05f), DominanceType::Incomplete);
+    packCoord.addEffect(EffectBinding("behavior", "pack_coordination", EffectType::Direct, 1.0f));
+    packCoord.setMaintenanceCost(0.05f);
+    packCoord.setCostScaling(1.0f);
+    registry.tryRegisterGene(std::move(packCoord));
 }
 
 Genome UniversalGenes::createCreatureGenome(const GeneRegistry& registry) {
@@ -1310,6 +1620,129 @@ Genome UniversalGenes::createCreatureGenome(const GeneRegistry& registry) {
         Allele a(0.0f, 0.1f);  // Dormant
         Gene gene(RUNNER_PRODUCTION, a, a);
         genome.addGene(gene, ChromosomeType::Reproduction);
+    }
+    
+    // ========== HEALTH/HEALING GENES - Full expression ==========
+    if (registry.hasGene(REGENERATION_RATE)) {
+        Allele a(0.5f, 1.0f);  // Moderate regeneration
+        Gene gene(REGENERATION_RATE, a, a);
+        genome.addGene(gene, ChromosomeType::Morphology);
+    }
+    if (registry.hasGene(WOUND_TOLERANCE)) {
+        Allele a(0.5f, 1.0f);
+        Gene gene(WOUND_TOLERANCE, a, a);
+        genome.addGene(gene, ChromosomeType::Behavior);
+    }
+    if (registry.hasGene(BLEEDING_RESISTANCE)) {
+        Allele a(0.5f, 1.0f);
+        Gene gene(BLEEDING_RESISTANCE, a, a);
+        genome.addGene(gene, ChromosomeType::Morphology);
+    }
+    
+    // ========== COMBAT WEAPON SHAPE GENES - Phase 1c ==========
+    // Teeth (3 genes) - predator-oriented defaults
+    if (registry.hasGene(TEETH_SHARPNESS)) {
+        Allele a(0.7f, 1.0f);  // Sharp teeth
+        Gene gene(TEETH_SHARPNESS, a, a);
+        genome.addGene(gene, ChromosomeType::Morphology);
+    }
+    if (registry.hasGene(TEETH_SERRATION)) {
+        Allele a(0.3f, 1.0f);  // Moderate serration
+        Gene gene(TEETH_SERRATION, a, a);
+        genome.addGene(gene, ChromosomeType::Morphology);
+    }
+    if (registry.hasGene(TEETH_SIZE)) {
+        Allele a(0.5f, 1.0f);  // Medium teeth
+        Gene gene(TEETH_SIZE, a, a);
+        genome.addGene(gene, ChromosomeType::Morphology);
+    }
+    // Claws (3 genes)
+    if (registry.hasGene(CLAW_LENGTH)) {
+        Allele a(0.5f, 1.0f);
+        Gene gene(CLAW_LENGTH, a, a);
+        genome.addGene(gene, ChromosomeType::Morphology);
+    }
+    if (registry.hasGene(CLAW_CURVATURE)) {
+        Allele a(0.4f, 1.0f);
+        Gene gene(CLAW_CURVATURE, a, a);
+        genome.addGene(gene, ChromosomeType::Morphology);
+    }
+    if (registry.hasGene(CLAW_SHARPNESS)) {
+        Allele a(0.6f, 1.0f);
+        Gene gene(CLAW_SHARPNESS, a, a);
+        genome.addGene(gene, ChromosomeType::Morphology);
+    }
+    // Horns (3 genes) - defensive-oriented defaults
+    if (registry.hasGene(HORN_LENGTH)) {
+        Allele a(0.5f, 1.0f);
+        Gene gene(HORN_LENGTH, a, a);
+        genome.addGene(gene, ChromosomeType::Morphology);
+    }
+    if (registry.hasGene(HORN_POINTINESS)) {
+        Allele a(0.5f, 1.0f);
+        Gene gene(HORN_POINTINESS, a, a);
+        genome.addGene(gene, ChromosomeType::Morphology);
+    }
+    if (registry.hasGene(HORN_SPREAD)) {
+        Allele a(0.3f, 1.0f);
+        Gene gene(HORN_SPREAD, a, a);
+        genome.addGene(gene, ChromosomeType::Morphology);
+    }
+    // Tail (3 genes)
+    if (registry.hasGene(TAIL_LENGTH)) {
+        Allele a(0.5f, 1.0f);
+        Gene gene(TAIL_LENGTH, a, a);
+        genome.addGene(gene, ChromosomeType::Morphology);
+    }
+    if (registry.hasGene(TAIL_MASS)) {
+        Allele a(0.4f, 1.0f);
+        Gene gene(TAIL_MASS, a, a);
+        genome.addGene(gene, ChromosomeType::Morphology);
+    }
+    if (registry.hasGene(TAIL_SPINES)) {
+        Allele a(0.1f, 1.0f);  // Low by default
+        Gene gene(TAIL_SPINES, a, a);
+        genome.addGene(gene, ChromosomeType::Morphology);
+    }
+    // Body (1 gene)
+    if (registry.hasGene(BODY_SPINES)) {
+        Allele a(0.0f, 1.0f);  // Rare trait
+        Gene gene(BODY_SPINES, a, a);
+        genome.addGene(gene, ChromosomeType::Morphology);
+    }
+    
+    // ========== COMBAT DEFENSE GENES - Phase 1c ==========
+    if (registry.hasGene(SCALE_COVERAGE)) {
+        Allele a(0.3f, 1.0f);  // Some scale coverage
+        Gene gene(SCALE_COVERAGE, a, a);
+        genome.addGene(gene, ChromosomeType::Morphology);
+    }
+    if (registry.hasGene(FAT_LAYER_THICKNESS)) {
+        Allele a(0.4f, 1.0f);  // Moderate fat layer
+        Gene gene(FAT_LAYER_THICKNESS, a, a);
+        genome.addGene(gene, ChromosomeType::Morphology);
+    }
+    
+    // ========== COMBAT BEHAVIOR GENES - Phase 1c ==========
+    if (registry.hasGene(COMBAT_AGGRESSION)) {
+        Allele a(0.5f, 1.0f);  // Balanced aggression
+        Gene gene(COMBAT_AGGRESSION, a, a);
+        genome.addGene(gene, ChromosomeType::Behavior);
+    }
+    if (registry.hasGene(RETREAT_THRESHOLD)) {
+        Allele a(0.3f, 1.0f);  // Flee at 30% health
+        Gene gene(RETREAT_THRESHOLD, a, a);
+        genome.addGene(gene, ChromosomeType::Behavior);
+    }
+    if (registry.hasGene(TERRITORIAL_AGGRESSION)) {
+        Allele a(0.3f, 1.0f);  // Low intra-species aggression
+        Gene gene(TERRITORIAL_AGGRESSION, a, a);
+        genome.addGene(gene, ChromosomeType::Behavior);
+    }
+    if (registry.hasGene(PACK_COORDINATION)) {
+        Allele a(0.0f, 1.0f);  // No pack behavior (future)
+        Gene gene(PACK_COORDINATION, a, a);
+        genome.addGene(gene, ChromosomeType::Behavior);
     }
     
     return genome;
@@ -1680,6 +2113,131 @@ Genome UniversalGenes::createPlantGenome(const GeneRegistry& registry) {
         Allele a(0.2f, 1.0f);  // Low runner production by default
         Gene gene(RUNNER_PRODUCTION, a, a);
         genome.addGene(gene, ChromosomeType::Reproduction);
+    }
+    
+    // ========== HEALTH/HEALING GENES - Active in plants ==========
+    if (registry.hasGene(REGENERATION_RATE)) {
+        Allele a(0.7f, 1.0f);  // Plants have good regeneration
+        Gene gene(REGENERATION_RATE, a, a);
+        genome.addGene(gene, ChromosomeType::Morphology);
+    }
+    if (registry.hasGene(WOUND_TOLERANCE)) {
+        Allele a(0.6f, 1.0f);  // Plants tolerate wounds well
+        Gene gene(WOUND_TOLERANCE, a, a);
+        genome.addGene(gene, ChromosomeType::Behavior);
+    }
+    if (registry.hasGene(BLEEDING_RESISTANCE)) {
+        Allele a(0.4f, 1.0f);  // Some sap loss resistance
+        Gene gene(BLEEDING_RESISTANCE, a, a);
+        genome.addGene(gene, ChromosomeType::Morphology);
+    }
+    
+    // ========== COMBAT WEAPON SHAPE GENES - Dormant in plants (Phase 1c) ==========
+    // Plants don't have physical weapons - all set to 0.0 with low expression
+    // Teeth (3 genes)
+    if (registry.hasGene(TEETH_SHARPNESS)) {
+        Allele a(0.0f, 0.1f);  // No teeth
+        Gene gene(TEETH_SHARPNESS, a, a);
+        genome.addGene(gene, ChromosomeType::Morphology);
+    }
+    if (registry.hasGene(TEETH_SERRATION)) {
+        Allele a(0.0f, 0.1f);  // No teeth
+        Gene gene(TEETH_SERRATION, a, a);
+        genome.addGene(gene, ChromosomeType::Morphology);
+    }
+    if (registry.hasGene(TEETH_SIZE)) {
+        Allele a(0.0f, 0.1f);  // No teeth
+        Gene gene(TEETH_SIZE, a, a);
+        genome.addGene(gene, ChromosomeType::Morphology);
+    }
+    // Claws (3 genes)
+    if (registry.hasGene(CLAW_LENGTH)) {
+        Allele a(0.0f, 0.1f);  // No claws
+        Gene gene(CLAW_LENGTH, a, a);
+        genome.addGene(gene, ChromosomeType::Morphology);
+    }
+    if (registry.hasGene(CLAW_CURVATURE)) {
+        Allele a(0.0f, 0.1f);  // No claws
+        Gene gene(CLAW_CURVATURE, a, a);
+        genome.addGene(gene, ChromosomeType::Morphology);
+    }
+    if (registry.hasGene(CLAW_SHARPNESS)) {
+        Allele a(0.0f, 0.1f);  // No claws
+        Gene gene(CLAW_SHARPNESS, a, a);
+        genome.addGene(gene, ChromosomeType::Morphology);
+    }
+    // Horns (3 genes)
+    if (registry.hasGene(HORN_LENGTH)) {
+        Allele a(0.0f, 0.1f);  // No horns
+        Gene gene(HORN_LENGTH, a, a);
+        genome.addGene(gene, ChromosomeType::Morphology);
+    }
+    if (registry.hasGene(HORN_POINTINESS)) {
+        Allele a(0.0f, 0.1f);  // No horns
+        Gene gene(HORN_POINTINESS, a, a);
+        genome.addGene(gene, ChromosomeType::Morphology);
+    }
+    if (registry.hasGene(HORN_SPREAD)) {
+        Allele a(0.0f, 0.1f);  // No horns
+        Gene gene(HORN_SPREAD, a, a);
+        genome.addGene(gene, ChromosomeType::Morphology);
+    }
+    // Tail (3 genes)
+    if (registry.hasGene(TAIL_LENGTH)) {
+        Allele a(0.0f, 0.1f);  // No tail
+        Gene gene(TAIL_LENGTH, a, a);
+        genome.addGene(gene, ChromosomeType::Morphology);
+    }
+    if (registry.hasGene(TAIL_MASS)) {
+        Allele a(0.0f, 0.1f);  // No tail
+        Gene gene(TAIL_MASS, a, a);
+        genome.addGene(gene, ChromosomeType::Morphology);
+    }
+    if (registry.hasGene(TAIL_SPINES)) {
+        Allele a(0.0f, 0.1f);  // No tail spines
+        Gene gene(TAIL_SPINES, a, a);
+        genome.addGene(gene, ChromosomeType::Morphology);
+    }
+    // Body (1 gene) - could evolve for defensive thorns
+    if (registry.hasGene(BODY_SPINES)) {
+        Allele a(0.0f, 0.3f);  // Dormant but could evolve (thorns!)
+        Gene gene(BODY_SPINES, a, a);
+        genome.addGene(gene, ChromosomeType::Morphology);
+    }
+    
+    // ========== COMBAT DEFENSE GENES - Moderate in plants (Phase 1c) ==========
+    // scale_coverage → bark, fat_layer → waxy coating
+    if (registry.hasGene(SCALE_COVERAGE)) {
+        Allele a(0.4f, 0.8f);  // Bark-like protection
+        Gene gene(SCALE_COVERAGE, a, a);
+        genome.addGene(gene, ChromosomeType::Morphology);
+    }
+    if (registry.hasGene(FAT_LAYER_THICKNESS)) {
+        Allele a(0.3f, 0.8f);  // Waxy cuticle coating
+        Gene gene(FAT_LAYER_THICKNESS, a, a);
+        genome.addGene(gene, ChromosomeType::Morphology);
+    }
+    
+    // ========== COMBAT BEHAVIOR GENES - Dormant in plants (Phase 1c) ==========
+    if (registry.hasGene(COMBAT_AGGRESSION)) {
+        Allele a(0.0f, 0.1f);  // Plants don't fight
+        Gene gene(COMBAT_AGGRESSION, a, a);
+        genome.addGene(gene, ChromosomeType::Behavior);
+    }
+    if (registry.hasGene(RETREAT_THRESHOLD)) {
+        Allele a(0.0f, 0.1f);  // Plants can't flee
+        Gene gene(RETREAT_THRESHOLD, a, a);
+        genome.addGene(gene, ChromosomeType::Behavior);
+    }
+    if (registry.hasGene(TERRITORIAL_AGGRESSION)) {
+        Allele a(0.0f, 0.1f);  // No territorial behavior
+        Gene gene(TERRITORIAL_AGGRESSION, a, a);
+        genome.addGene(gene, ChromosomeType::Behavior);
+    }
+    if (registry.hasGene(PACK_COORDINATION)) {
+        Allele a(0.0f, 0.1f);  // No pack behavior
+        Gene gene(PACK_COORDINATION, a, a);
+        genome.addGene(gene, ChromosomeType::Behavior);
     }
     
     return genome;

@@ -10,8 +10,6 @@
 
 #include "objects/creature/creature.hpp"
 #include "objects/gameObject.hpp"
-#include "objects/food.hpp"
-#include "objects/spawner.hpp"
 #include "world/world.hpp"
 #include "calendar.hpp"
 
@@ -44,8 +42,6 @@ class FileHandling {
     //============================================================================
     static constexpr size_t WORLD_HEADER_FIELDS = 17;
     static constexpr size_t TILE_COORD_FIELDS = 2;
-    static constexpr size_t FOOD_FIELDS = 9;
-    static constexpr size_t SPAWNER_FIELDS = 18;
     static constexpr size_t CREATURE_FIELDS = 28;
     static constexpr size_t STATS_FIELDS = 13;
 
@@ -86,8 +82,6 @@ class FileHandling {
     //  Loading
     //============================================================================
     GameObject loadGameObject  (const std::vector<std::string> &str,
-                                unsigned int &start);
-    Food       loadFood        (const std::vector<std::string> &str,
                                 unsigned int &start);
     Calendar   loadCalendar    (const std::vector<std::string> &str, unsigned &start);
     bool       loadState       (World &w,

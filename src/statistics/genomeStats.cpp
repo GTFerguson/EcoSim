@@ -10,9 +10,6 @@
  * 1. First pass: Find min/max values and accumulate sums for means
  * 2. Second pass: Calculate variances using computed means
  * 3. Finally: Compute standard deviations from variances
- *
- * This approach is numerically stable and easy to understand, though it requires
- * iterating through the population twice.
  */
 
 #include "../../include/statistics/genomeStats.hpp"
@@ -31,11 +28,11 @@ GenomeStats::GenomeStats (const vector<Creature> &c, const unsigned int &t) : ti
   if (cSize == 0) return;
 
   for (size_t i = 0; i < cSize; i++) {
-    const Genome& genome = c.at(i).getGenome();
+    const Creature& creature = c.at(i);
 
-    checkMaxValues  (&genome);
-    checkMinValues  (&genome);
-    accumulateSum   (sumValues, &genome);
+    checkMaxValues  (creature);
+    checkMinValues  (creature);
+    accumulateSum   (sumValues, creature);
   }
   //  Means
   setMeans (sumValues, cSize);
@@ -59,40 +56,40 @@ void GenomeStats::checkMinValue (float &current, const float &value) {
   if (value < current) current = value;
 }
 
-void GenomeStats::checkMaxValues (const Genome *g) {
-  checkMaxValue (lifespan.max, g->getLifespan());
-  checkMaxValue (sight.max,    g->getSight()   );
-  checkMaxValue (flee.max,     g->getFlee()    );
-  checkMaxValue (pursue.max,   g->getPursue()  );
-  checkMaxValue (hunger.max,   g->getTHunger() );
-  checkMaxValue (thirst.max,   g->getTThirst() );
-  checkMaxValue (mate.max,     g->getTMate()   );
-  checkMaxValue (comfInc.max,  g->getComfInc() );
-  checkMaxValue (comfDec.max,  g->getComfDec() );
+void GenomeStats::checkMaxValues (const Creature &c) {
+  checkMaxValue (lifespan.max, c.getLifespan());
+  checkMaxValue (sight.max,    c.getSightRange());
+  checkMaxValue (flee.max,     c.getFlee());
+  checkMaxValue (pursue.max,   c.getPursue());
+  checkMaxValue (hunger.max,   c.getTHunger());
+  checkMaxValue (thirst.max,   c.getTThirst());
+  checkMaxValue (mate.max,     c.getTMate());
+  checkMaxValue (comfInc.max,  c.getComfInc());
+  checkMaxValue (comfDec.max,  c.getComfDec());
 }
 
-void GenomeStats::checkMinValues (const Genome *g) {
-  checkMinValue (lifespan.min, g->getLifespan());
-  checkMinValue (sight.min,    g->getSight()   );
-  checkMinValue (flee.min,     g->getFlee()    );
-  checkMinValue (pursue.min,   g->getPursue()  );
-  checkMinValue (hunger.min,   g->getTHunger() );
-  checkMinValue (thirst.min,   g->getTThirst() );
-  checkMinValue (mate.min,     g->getTMate()   );
-  checkMinValue (comfInc.min,  g->getComfInc() );
-  checkMinValue (comfDec.min,  g->getComfDec() );
+void GenomeStats::checkMinValues (const Creature &c) {
+  checkMinValue (lifespan.min, c.getLifespan());
+  checkMinValue (sight.min,    c.getSightRange());
+  checkMinValue (flee.min,     c.getFlee());
+  checkMinValue (pursue.min,   c.getPursue());
+  checkMinValue (hunger.min,   c.getTHunger());
+  checkMinValue (thirst.min,   c.getTThirst());
+  checkMinValue (mate.min,     c.getTMate());
+  checkMinValue (comfInc.min,  c.getComfInc());
+  checkMinValue (comfDec.min,  c.getComfDec());
 }
 
-void GenomeStats::accumulateSum (SGenome &sums, const Genome *g) {
-  sums.lifespan += g->getLifespan  ();
-  sums.sight    += g->getSight     ();
-  sums.flee     += g->getFlee      ();
-  sums.pursue   += g->getPursue    ();
-  sums.hunger   += g->getTHunger   ();
-  sums.thirst   += g->getTThirst   ();
-  sums.mate     += g->getTMate     ();
-  sums.comfInc  += g->getComfInc   ();
-  sums.comfDec  += g->getComfDec   ();
+void GenomeStats::accumulateSum (SGenome &sums, const Creature &c) {
+  sums.lifespan += c.getLifespan();
+  sums.sight    += c.getSightRange();
+  sums.flee     += c.getFlee();
+  sums.pursue   += c.getPursue();
+  sums.hunger   += c.getTHunger();
+  sums.thirst   += c.getTThirst();
+  sums.mate     += c.getTMate();
+  sums.comfInc  += c.getComfInc();
+  sums.comfDec  += c.getComfDec();
 }
 
 void GenomeStats::setMeans (const SGenome &sums, const size_t &size) {
@@ -110,18 +107,18 @@ void GenomeStats::setMeans (const SGenome &sums, const size_t &size) {
 void GenomeStats::setVariances (const std::vector<Creature> &c,
                                 const SGenome &sums, const size_t &size) {
   for (size_t i = 0; i < c.size(); i++) {
-    const Genome& genome = c.at(i).getGenome();
+    const Creature& creature = c.at(i);
 
     // Variance = sum of squared differences from mean
-    float lifespanDiff = genome.getLifespan() - lifespan.mean;
-    float sightDiff    = genome.getSight()    - sight.mean;
-    float fleeDiff     = genome.getFlee()     - flee.mean;
-    float pursueDiff   = genome.getPursue()   - pursue.mean;
-    float hungerDiff   = genome.getTHunger()  - hunger.mean;
-    float thirstDiff   = genome.getTThirst()  - thirst.mean;
-    float mateDiff     = genome.getTMate()    - mate.mean;
-    float comfIncDiff  = genome.getComfInc()  - comfInc.mean;
-    float comfDecDiff  = genome.getComfDec()  - comfDec.mean;
+    float lifespanDiff = creature.getLifespan() - lifespan.mean;
+    float sightDiff    = creature.getSightRange() - sight.mean;
+    float fleeDiff     = creature.getFlee()     - flee.mean;
+    float pursueDiff   = creature.getPursue()   - pursue.mean;
+    float hungerDiff   = creature.getTHunger()  - hunger.mean;
+    float thirstDiff   = creature.getTThirst()  - thirst.mean;
+    float mateDiff     = creature.getTMate()    - mate.mean;
+    float comfIncDiff  = creature.getComfInc()  - comfInc.mean;
+    float comfDecDiff  = creature.getComfDec()  - comfDec.mean;
 
     lifespan.variance += lifespanDiff * lifespanDiff;
     sight.variance    += sightDiff    * sightDiff;

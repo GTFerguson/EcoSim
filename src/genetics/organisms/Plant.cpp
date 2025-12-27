@@ -14,7 +14,6 @@
 #include "genetics/defaults/PlantGenes.hpp"
 #include "genetics/defaults/UniversalGenes.hpp"
 #include "genetics/expression/OrganismState.hpp"
-#include "objects/food.hpp"
 #include "logging/Logger.hpp"
 #include <random>
 #include <algorithm>
@@ -291,16 +290,10 @@ bool Plant::canSpreadSeeds() const {
 }
 
 bool Plant::canSurviveTemperature(float temperature) const {
-    float tempLow = 5.0f;   // Default min
-    float tempHigh = 35.0f; // Default max
-    
-    if (phenotype_.hasTrait(PlantGenes::TEMP_TOLERANCE_LOW)) {
-        tempLow = phenotype_.getTrait(PlantGenes::TEMP_TOLERANCE_LOW);
-    }
-    if (phenotype_.hasTrait(PlantGenes::TEMP_TOLERANCE_HIGH)) {
-        tempHigh = phenotype_.getTrait(PlantGenes::TEMP_TOLERANCE_HIGH);
-    }
-    
+    // Use the more reliable getGeneValueFromGenome helper
+    // Note: PlantFactory sets temperature tolerance using UniversalGenes, not PlantGenes
+    float tempLow = getGeneValueFromGenome(UniversalGenes::TEMP_TOLERANCE_LOW, 5.0f);
+    float tempHigh = getGeneValueFromGenome(UniversalGenes::TEMP_TOLERANCE_HIGH, 35.0f);
     return temperature >= tempLow && temperature <= tempHigh;
 }
 
@@ -528,41 +521,36 @@ bool Plant::canProduceFruit() const {
     return fruitTimer_ >= cooldown;
 }
 
-Food Plant::produceFruit() {
-    // Reset fruit timer
-    fruitTimer_ = 0;
-    
-    // Calculate fruit calories based on size and genes
-    float baseCalories = current_size_ * 10.0f;  // Larger plants make more nutritious fruit
-    float productionRate = getFruitProductionRate();
-    float calories = baseCalories * (0.5f + productionRate * 0.5f);
-    
-    // Generate a unique ID for the fruit
-    static unsigned int fruitIdCounter = 100000;  // Start high to avoid conflicts
-    unsigned int fruitId = fruitIdCounter++;
-    
-    // Fruit lifespan based on size and appeal
-    unsigned int fruitLifespan = static_cast<unsigned int>(100 + getFruitAppeal() * 200);
-    
-    // Get color for the fruit (use plant's color hue)
-    float hue = getColorHue();
-    
-    // Map hue to a simple color index (0-7 for basic colors)
-    // Green plants often have red/orange fruit for visibility
-    unsigned int colorIndex = static_cast<unsigned int>((hue + 180.0f) / 45.0f) % 8;
-    
-    // Create character based on fruit appeal
-    char fruitChar = getFruitAppeal() > 0.5f ? 'o' : '.';
-    
-    // Produce the fruit
-    return Food(fruitId, "Fruit", "A fruit from a plant",
-                true, fruitChar, colorIndex,
-                calories, fruitLifespan,
-                EntityType::FOOD_APPLE);
-}
+// NOTE: produceFruit() method removed - Food class has been deleted.
+// Creatures now feed directly on plants via FeedingInteraction.
+// The nutrition value comes from Plant::getNutrientValue() and related genes.
 
 float Plant::getFruitProductionRate() const {
     return getGeneValueFromGenome(UniversalGenes::FRUIT_PRODUCTION_RATE, 0.3f);
+}
+
+bool Plant::canSpreadVegetatively() const {
+    if (!alive_ || !mature_) return false;
+    
+    // Check size maturity: at least 50% of max size (same as fruit production)
+    float maxSize = getMaxSize();
+    if (current_size_ < maxSize * 0.5f) return false;
+    
+    // Check age maturity: at least 10% of lifespan (same as fruit production)
+    float maturityAge = getMaxLifespan() * 0.10f;
+    if (age_ < static_cast<unsigned int>(maturityAge)) return false;
+    
+    // Check runner production - this is the key trait for vegetative spread
+    float runnerProd = getRunnerProduction();
+    if (runnerProd < 0.5f) return false;  // Need significant runner production
+    
+    // Vegetative reproduction uses a timer similar to fruit, but based on runner production
+    unsigned int cooldown = static_cast<unsigned int>(150.0f / (runnerProd + 0.1f));
+    return fruitTimer_ >= cooldown;
+}
+
+float Plant::getRunnerProduction() const {
+    return getGeneValueFromGenome(UniversalGenes::RUNNER_PRODUCTION, 0.0f);
 }
 
 float Plant::getFruitAppeal() const {
@@ -710,6 +698,38 @@ Color Plant::getRenderColor() const {
         case 5: return Color(v, p, q);
         default: return Color(0, 255, 0);  // Default green
     }
+}
+
+// ============================================================================
+// Phase 1: Scent System
+// ============================================================================
+
+std::array<float, 8> Plant::getScentSignature() const {
+    std::array<float, 8> signature;
+    
+    // Core plant traits for scent
+    signature[0] = getFruitAppeal();      // How appealing the fruit smells
+    signature[1] = getToxicity();         // Toxin warning scent
+    signature[2] = getThornDamage();      // Physical defense indicator
+    signature[3] = getHardiness();        // Toughness indicator
+    
+    // Plant-ness indicator (inverted: 1.0 = definitely plant, 0.0 = not plant)
+    // This helps creatures distinguish plant scents from creature scents
+    signature[4] = 1.0f;  // Plants always have this at 1.0
+    
+    // Encode plant ID in remaining slots for source identification
+    // Use float representation of ID components
+    signature[5] = static_cast<float>(id_ % 1000) / 1000.0f;
+    signature[6] = static_cast<float>((id_ / 1000) % 1000) / 1000.0f;
+    signature[7] = static_cast<float>((id_ / 1000000) % 1000) / 1000.0f;
+    
+    return signature;
+}
+
+float Plant::getScentProductionRate() const {
+    // Plants require SCENT_PRODUCTION gene to emit scent
+    // Returns 0.0f if the gene is not present
+    return getGeneValueFromGenome(UniversalGenes::SCENT_PRODUCTION, 0.0f);
 }
 
 // ============================================================================

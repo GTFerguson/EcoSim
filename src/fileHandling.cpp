@@ -3,6 +3,9 @@
  *	Author	: Gary Ferguson
  *	Date	  : May 18th, 2019
  *	Purpose	: Handles saving and loading of simulation data to files.
+ *
+ *  NOTE: Legacy Food/Spawner/Genome save/load code has been removed.
+ *        The new genetics system uses different serialization methods.
  */
 
 #include "../include/fileHandling.hpp"
@@ -131,7 +134,23 @@ bool FileHandling::saveGenomes (const string &filename,
     file << genomeHeader << endl;
 
     for (const Creature & creature : creatures) {
-      file << creature.getGenome().toString() << endl;
+      // Use new genetics system - output genome chromosome data
+      const auto* genome = creature.getGenome();
+      if (genome) {
+        // Output basic genome stats for analysis
+        file << creature.getLifespan() << ","
+             << creature.getTHunger() << ","
+             << creature.getTThirst() << ","
+             << creature.getTFatigue() << ","
+             << creature.getTMate() << ","
+             << creature.getComfInc() << ","
+             << creature.getComfDec() << ","
+             << creature.getSightRange() << ","
+             << static_cast<int>(creature.getDietType()) << ","
+             << (creature.ifFlocks() ? 1 : 0) << ","
+             << creature.getFlee() << ","
+             << creature.getPursue() << endl;
+      }
     }
 
     file.close();
@@ -259,24 +278,6 @@ GameObject FileHandling::loadGameObject (const vector<string> &str,
   return GameObject (name, desc, passable, ch, colour);
 }
 
-/**
- *  Takes a string from a save file and loads a food object from it.
- *
- *  @param str    The string to be parsed.
- *  @param start  Starting position for loading.
- *  @return       The food object parsed from the strings given.
- */
-Food FileHandling::loadFood (const vector<string> &str, unsigned &start) {
-  GameObject  tempGO    = loadGameObject (str, start);
-  unsigned    id        = stoul (str.at(start++));
-  float       calories  = stof  (str.at(start++));
-  unsigned    lifespan  = stoul (str.at(start++));
-  unsigned    decay     = stoul (str.at(start++));
-
-  return Food (id, tempGO.getName(), tempGO.getDesc(), tempGO.getPassable(), 
-               tempGO.getChar(), tempGO.getColour(), calories, lifespan, decay);
-}
-
 Calendar FileHandling::loadCalendar (const vector<string> &str, unsigned &start) {
   Time time; Date date;
   time.hour   = stoul (str.at(start++));
@@ -293,6 +294,7 @@ Calendar FileHandling::loadCalendar (const vector<string> &str, unsigned &start)
 //================================================================================
 /**
  *  Loads world data from file.
+ *  NOTE: Legacy Food/Spawner loading has been removed.
  *
  *  @param w        The world object to be loaded into.
  *  @param calendar The calendar object to be loaded into.
@@ -305,8 +307,6 @@ bool FileHandling::loadWorld (World &w, Calendar &calendar) {
     return false;
   }
   
-  //  Coordinates of current objects being loaded
-  int x = 0, y = 0;
   unsigned int lineCount = 0;
 
   string line;
@@ -338,37 +338,9 @@ bool FileHandling::loadWorld (World &w, Calendar &calendar) {
         og.freqInterval = stod  (result.at(index++));
         w.setOctaveGen (og);
         w.simplexGen ();
-
-      } else {
-        //  Tile coordinate
-        if (result.size() == TILE_COORD_FIELDS) {
-          x = stoi (result.at(0));
-          y = stoi (result.at(1));
-
-        //  Food object
-        } else if (result.size() == FOOD_FIELDS) {
-          unsigned int index = 0;
-          w.addFood (x, y, loadFood(result, index));
-
-        //  Spawner Object
-        } else if (result.size() == SPAWNER_FIELDS) {
-          unsigned index = 0;
-
-          GameObject tempGO = loadGameObject (result, index);
-
-          unsigned timer      = stoul (result.at(index++));
-          unsigned rate       = stoul (result.at(index++));
-          unsigned minRadius  = stoul (result.at(index++));
-          unsigned maxRadius  = stoul (result.at(index++));
-
-          Food food   (loadFood (result, index));
-          Spawner spn (tempGO.getName(), tempGO.getDesc(), tempGO.getPassable(),
-                       tempGO.getChar(), tempGO.getColour(), rate, timer,
-                       minRadius, maxRadius, food);
-
-          w.addSpawner (x, y, spn);
-        }
       }
+      // NOTE: Legacy Food/Spawner loading removed - new genetics system 
+      // uses Plant objects which are handled separately
 
       lineCount++;
     }
@@ -379,6 +351,8 @@ bool FileHandling::loadWorld (World &w, Calendar &calendar) {
 
 /**
  *  Loads creatures from file.
+ *  NOTE: This now creates creatures with the new genetics system.
+ *        Legacy save files may not load correctly.
  *
  *  @param c  The vector of creatures to be loaded into.
  *  @return   True if creatures were successfully loaded.
@@ -389,6 +363,10 @@ bool FileHandling::loadCreatures (vector<Creature> &c) {
   if (!file.is_open()) {
     return false;
   }
+  
+  // Ensure gene registry is initialized
+  Creature::initializeGeneRegistry();
+  auto& registry = Creature::getGeneRegistry();
   
   string line;
   while (getline(file, line)) {
@@ -401,41 +379,26 @@ bool FileHandling::loadCreatures (vector<Creature> &c) {
       if (result.size() == CREATURE_FIELDS) {
         unsigned int index = 0;
 
-        GameObject tempGO = loadGameObject (result, index);
+        [[maybe_unused]] GameObject tempGO = loadGameObject (result, index);
 
         int       x           = stoi  (result.at(index++));
         int       y           = stoi  (result.at(index++));
-        unsigned  age         = stoul (result.at(index++));
-        string    direction   = result.at(index++);
-        string    profile     = result.at(index++);
+        [[maybe_unused]] unsigned  age         = stoul (result.at(index++));
+        [[maybe_unused]] string    direction   = result.at(index++);
+        [[maybe_unused]] string    profile     = result.at(index++);
         float     hunger      = stof  (result.at(index++));
         float     thirst      = stof  (result.at(index++));
-        float     fatigue     = stof  (result.at(index++));
-        float     mate        = stof  (result.at(index++));
-        float     metabolism  = stof  (result.at(index++));
-        unsigned  speed       = stoul (result.at(index++));
+        [[maybe_unused]] float     fatigue     = stof  (result.at(index++));
+        [[maybe_unused]] float     mate        = stof  (result.at(index++));
+        [[maybe_unused]] float     metabolism  = stof  (result.at(index++));
+        [[maybe_unused]] unsigned  speed       = stoul (result.at(index++));
 
-        //  Genome Variables
-        unsigned  lifespan    = stoul (result.at(index++));
-        float     tHunger     = stof  (result.at(index++));
-        float     tThirst     = stof  (result.at(index++));
-        float     tFatigue    = stof  (result.at(index++));
-        float     tMate       = stof  (result.at(index++));
-        float     comfInc     = stof  (result.at(index++));
-        float     comfDec     = stof  (result.at(index++));
-        unsigned  sightRange  = stoul (result.at(index++));
-        string    diet        = result.at(index++);
-        bool      flocks;     istringstream (result.at(index++)) >> flocks;
-        unsigned  flee        = stoul (result.at(index++));
-        unsigned  pursue      = stoul (result.at(index));
+        // Skip legacy genome fields - they're no longer used
+        // Create creature with new genetics system
+        auto genome = std::make_unique<EcoSim::Genetics::Genome>();
+        Creature newC(x, y, hunger, thirst, std::move(genome));
 
-        Genome g      (lifespan, tHunger, tThirst, tFatigue, tMate, comfInc, comfDec,
-                       sightRange, diet, flocks, flee, pursue);
-        Creature newC (tempGO.getName(), tempGO.getDesc(), tempGO.getPassable(),
-                       tempGO.getChar(), tempGO.getColour(), x, y, age, profile,
-                       direction, hunger, thirst, fatigue, mate, metabolism, speed, g);
-
-        c.push_back (newC);
+        c.push_back(std::move(newC));
       }
     }
   }
@@ -467,7 +430,7 @@ bool FileHandling::loadStats (Statistics &stats) {
       if (result.size() == STATS_FIELDS) {
         unsigned index = 0;
 
-        Calendar c          = loadCalendar (result, index);
+        Calendar cal        = loadCalendar (result, index);
         unsigned pop        = std::stoul (result.at(index++));
         unsigned foodAte    = std::stoul (result.at(index++));
         unsigned births     = std::stoul (result.at(index++));
@@ -478,7 +441,7 @@ bool FileHandling::loadStats (Statistics &stats) {
         unsigned predators  = std::stoul (result.at(index++));
 
         DeathStats ds   = { oldAge, starved, dehydrated, discomfort, predators };
-        GeneralStats gs = { c, pop, births, foodAte, 0, ds };  // 0 for feeding (legacy saves)
+        GeneralStats gs = { cal, pop, births, foodAte, 0, ds };  // 0 for feeding (legacy saves)
 
         stats.addRecord (gs);
       }

@@ -11,7 +11,6 @@
  */
 
 #include "../objects/gameObject.hpp"
-#include "../objects/spawner.hpp"
 #include "../rendering/RenderTypes.hpp"
 
 // Genetics system integration (Phase 2.4)
@@ -29,8 +28,6 @@ class Tile {
       //  Containers
       //==========================================================================
       unsigned int          _objLimit;
-      std::vector<Food>     _foodVec;
-      std::vector<Spawner>  _spawners;
       
       // Genetics-based plants (Phase 2.4)
       // Using shared_ptr instead of unique_ptr to allow Tile to be copyable
@@ -66,10 +63,6 @@ class Tile {
       //==========================================================================
       // Getters
       //==========================================================================
-      std::vector<Food>&          getFoodVec    ();
-      std::vector<Spawner>&       getSpawners   ();
-      const std::vector<Food>     getFoodVec    () const;
-      const std::vector<Spawner>  getSpawners   () const;
       unsigned int                getElevation  () const;
       char                        getChar       () const;
       int                         getColPair    () const;  // DEPRECATED: Use getTerrainType()
@@ -87,15 +80,8 @@ class Tile {
       void setElevation (unsigned int elevation);
 
       //==========================================================================
-      // Container Handling
+      // Container Handling - Genetics-based plants (Phase 2.4)
       //==========================================================================
-      bool addFood        (const Food& obj);
-      void removeFood     (const std::string& objName);
-      void updateFood     ();
-      bool addSpawner     (const Spawner& obj);
-      void removeSpawner  (const std::string& objName);
-      
-      // Genetics-based plant handling (Phase 2.4)
       /**
        * @brief Add a genetics-based plant to this tile
        * @param plant The plant to add (ownership shared)

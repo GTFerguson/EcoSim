@@ -33,7 +33,8 @@ enum class DietType {
     HERBIVORE,   // High plant digestion, low meat digestion
     FRUGIVORE,   // High color vision, moderate plant, low cellulose
     OMNIVORE,    // Balanced digestion capabilities
-    CARNIVORE    // High meat digestion, low plant digestion
+    CARNIVORE,   // High meat digestion, low plant digestion
+    NECROVORE    // High toxin tolerance, moderate meat digestion (corpse feeders)
 };
 
 /**
@@ -266,6 +267,92 @@ public:
     /// Pain sensitivity/tolerance level [0.0, 1.0], creep 0.05
     static constexpr const char* PAIN_SENSITIVITY = "pain_sensitivity";
     
+    // ========== HEALTH/HEALING GENES (3) - Phase 1b Combat ==========
+    // Health management and wound recovery
+    
+    /// Multiplier on base healing rate [0.0, 2.0], creep 0.1
+    /// Higher values = faster wound recovery, costs more energy
+    static constexpr const char* REGENERATION_RATE = "regeneration_rate";
+    
+    /// Reduces behavioral penalty from wounds [0.0, 1.0], creep 0.05
+    /// High tolerance = less speed/behavior penalty when injured
+    static constexpr const char* WOUND_TOLERANCE = "wound_tolerance";
+    
+    /// Reduces bleed damage over time [0.0, 1.0], creep 0.05
+    /// High resistance = wounds stop bleeding faster
+    static constexpr const char* BLEEDING_RESISTANCE = "bleeding_resistance";
+    
+    // ========== COMBAT GENES - WEAPON SHAPES (13) ==========
+    // Physical weapon morphology affecting combat damage types
+    
+    // Teeth (3 genes)
+    /// Sharp→pierce, dull→blunt [0.0, 1.0], creep 0.05
+    static constexpr const char* TEETH_SHARPNESS = "teeth_sharpness";
+    
+    /// Adds slash damage component [0.0, 1.0], creep 0.05
+    static constexpr const char* TEETH_SERRATION = "teeth_serration";
+    
+    /// Scales base bite damage [0.0, 1.0], creep 0.05
+    static constexpr const char* TEETH_SIZE = "teeth_size";
+    
+    // Claws (3 genes)
+    /// Reach & damage scaling [0.0, 1.0], creep 0.05
+    static constexpr const char* CLAW_LENGTH = "claw_length";
+    
+    /// Curved→pierce, straight→slash [0.0, 1.0], creep 0.05
+    static constexpr const char* CLAW_CURVATURE = "claw_curvature";
+    
+    /// Overall cutting ability [0.0, 1.0], creep 0.05
+    static constexpr const char* CLAW_SHARPNESS = "claw_sharpness";
+    
+    // Horns (3 genes)
+    /// Reach & charge damage [0.0, 1.0], creep 0.05
+    static constexpr const char* HORN_LENGTH = "horn_length";
+    
+    /// Pointed→pierce, broad→blunt [0.0, 1.0], creep 0.05
+    static constexpr const char* HORN_POINTINESS = "horn_pointiness";
+    
+    /// Narrow→gore, wide→sweep [0.0, 1.0], creep 0.05
+    static constexpr const char* HORN_SPREAD = "horn_spread";
+    
+    // Tail (3 genes)
+    /// Reach & whip damage [0.0, 1.0], creep 0.05
+    static constexpr const char* TAIL_LENGTH = "tail_length";
+    
+    /// Heavy→blunt (club), light→slash (whip) [0.0, 1.0], creep 0.05
+    static constexpr const char* TAIL_MASS = "tail_mass";
+    
+    /// Adds pierce component [0.0, 1.0], creep 0.05
+    static constexpr const char* TAIL_SPINES = "tail_spines";
+    
+    // Body (1 gene - body_mass covered by MAX_SIZE)
+    /// Counter-damage pierce (porcupine-like) [0.0, 1.0], creep 0.05
+    static constexpr const char* BODY_SPINES = "body_spines";
+    
+    // ========== COMBAT GENES - DEFENSE (2 new) ==========
+    // Additional defensive traits (HIDE_THICKNESS exists above)
+    
+    /// Reduces slashing damage [0.0, 1.0], creep 0.05
+    static constexpr const char* SCALE_COVERAGE = "scale_coverage";
+    
+    /// Reduces blunt damage [0.0, 1.0], creep 0.05
+    static constexpr const char* FAT_LAYER_THICKNESS = "fat_layer_thickness";
+    
+    // ========== COMBAT GENES - BEHAVIOR (4) ==========
+    // Combat behavioral traits
+    
+    /// Willingness to initiate/continue combat [0.0, 1.0], creep 0.05
+    static constexpr const char* COMBAT_AGGRESSION = "combat_aggression";
+    
+    /// Health % at which creature flees [0.0, 1.0], creep 0.05
+    static constexpr const char* RETREAT_THRESHOLD = "retreat_threshold";
+    
+    /// Aggression toward same-species [0.0, 1.0], creep 0.05
+    static constexpr const char* TERRITORIAL_AGGRESSION = "territorial_aggression";
+    
+    /// Future: pack hunting behavior [0.0, 1.0], creep 0.05
+    static constexpr const char* PACK_COORDINATION = "pack_coordination";
+    
     // ========== SEED INTERACTION GENES (2) ==========
     // How seeds pass through digestive system
     
@@ -354,6 +441,10 @@ private:
     static void registerPlantDefenseGenes(GeneRegistry& registry);
     static void registerSeedPropagationGenes(GeneRegistry& registry);  // Phase 2.3
     static void registerOlfactoryGenes(GeneRegistry& registry);        // Phase 1: Sensory System
+    static void registerHealthHealingGenes(GeneRegistry& registry);    // Phase 1b: Combat
+    static void registerWeaponShapeGenes(GeneRegistry& registry);      // Phase 1c: Combat Weapons
+    static void registerCombatDefenseGenes(GeneRegistry& registry);    // Phase 1c: Combat Defense
+    static void registerCombatBehaviorGenes(GeneRegistry& registry);   // Phase 1c: Combat Behavior
     
     // Category lookup (lazy initialized)
     static std::unordered_map<std::string, GeneCategory> s_geneCategories;

@@ -224,38 +224,8 @@ void World::simplexGen () {
   }
 }
 
-/**
- *  This uses an implementation on Poisson Sampling to place
- *  trees in a set elevation range.
- *
- *  @param lowElev  The lowest elevation that trees can spawn.
- *  @param highElev The highest elevation that trees can spawn.
- *  @param rate     The percentage chance of it being placed on a tile.
- *  @param tree     A Spawner object of the tree to be placed.
- */
-void World::addTrees  (const unsigned int &lowElev, const unsigned int &highElev,
-                       const unsigned int &rate, const Spawner& treeTemplate) {
-  uniform_int_distribution<unsigned short> dis (1, 100);
-//  for (int y = 0; y < _rows; y++) {
-//    for (int x = 0; x < _cols; x++) {
-  for (vector<Tile> & row : _grid) {
-    for (Tile & tile : row) {
-      //  Check elevation is in range
-      if (tile.getElevation() > lowElev &&
-          tile.getElevation() < highElev) {
-        //  The chance of spawning a tree
- 
-
-        if (dis(_rng) < rate) {
-          Spawner tree = treeTemplate;  // Copy only when needed
-          uniform_int_distribution<unsigned> disTree (0, tree.getRate());
-          tree.setTimer (disTree(_rng));
-          tile.addSpawner (tree);
-        }
-      }
-    }
-  }
-}
+// LEGACY REMOVAL: addTrees() function removed - legacy Spawner system no longer exists.
+// Use addGeneticsPlants() instead for plant placement.
 
 /**
  *  This method sets up the 2D grid of the environment and
@@ -270,24 +240,8 @@ void World::set2Dgrid () {
 	}
 }
 
-//================================================================================
-//  Tile Container Handling
-//================================================================================
-void World::addFood (const int &x, const int &y, const Food &obj) {
-  _grid[x][y].addFood (obj);  
-}
-
-void World::removeFood (const int &x, const int &y, const string &objName) {
-  _grid[x][y].removeFood (objName); 
-}
-
-void World::addSpawner (const int &x, const int &y, const Spawner &obj) {
-  _grid[x][y].addSpawner (obj); 
-}
-
-void World::removeSpawner (const int &x, const int &y, const string &objName) {
-  _grid[x][y].removeSpawner (objName);  
-}
+// LEGACY REMOVAL: Legacy Tile Container Handling functions removed.
+// Food and Spawner systems no longer exist. Use genetics-based Plant system instead.
 
 //================================================================================
 //  Update Objects
@@ -301,8 +255,10 @@ void World::updateAllObjects () {
   // Use direct indexing [] instead of .at() since bounds are guaranteed by loop
   for (unsigned x = 0; x < _mapGen.cols; x++) {
     for (unsigned y = 0; y < _mapGen.rows; y++) {
-      updateSpawners (_grid[x][y].getSpawners(), x, y);
-      _grid[x][y].updateFood();
+      // LEGACY REMOVAL: Disabled legacy Food/Spawner update systems
+      // These are replaced by genetics::Plant system
+      // updateSpawners (_grid[x][y].getSpawners(), x, y);
+      // _grid[x][y].updateFood();
     }
   }
   
@@ -312,32 +268,8 @@ void World::updateAllObjects () {
   }
 }
 
-/**
- *  Goes through each Spawner object on a Tile and updates it
- *  as necessary, such as checking if able to spawn and if so
- *  adding the relevant object to the world.
- *
- *  @param objects  A vector of Spawner objects to be checked.
- *  @param curX     The x coordinate of the Spawner objects.
- *  @param curY     The y coordinate of the Spawner objects.
- */
-void World::updateSpawners (vector<Spawner> &spawners, const int &curX, const int &curY) {
-  for (Spawner & spawner : spawners) {
-    if (spawner.canSpawn()) {
-      auto coords = spawner.genCoordinates(curX, curY, _mapGen.cols, _mapGen.rows);
-      
-      // Validate coords before accessing grid
-      if (coords.first < 0 || coords.first >= static_cast<int>(_mapGen.cols) ||
-          coords.second < 0 || coords.second >= static_cast<int>(_mapGen.rows)) {
-        continue;
-      }
-      
-      Tile *tile = &_grid[coords.first][coords.second];
-      if (tile->isPassable())
-        tile->addFood (spawner.getObject());
-    }
-  }
-}
+// LEGACY REMOVAL: updateSpawners() function removed - legacy Spawner system no longer exists.
+// Plants now handle their own reproduction via SeedDispersal in updateGeneticsPlants().
 
 //================================================================================
 //  Genetics-Based Plants (Phase 2.4)
@@ -471,24 +403,68 @@ void World::updateGeneticsPlants() {
       // Remove dead plants
       tile.removeDeadPlants();
       
-      // Handle fruit production and seed dispersal
+      // Handle seed dispersal for mature plants
       for (auto& plant : tile.getPlants()) {
         if (!plant || !plant->isAlive()) continue;
         
-        // Fruit production - plants that can produce fruit create Food objects
-        if (plant->canProduceFruit()) {
-          Food fruit = plant->produceFruit();
-          tile.addFood(fruit);
+        // Phase 2: Emit plant scent if plant has scent production capability
+        float scentRate = plant->getScentProductionRate();
+        if (scentRate > 0.01f) {  // Only emit if meaningful scent production
+          std::array<float, 8> signature = plant->getScentSignature();
+          float intensity = scentRate * plant->getCurrentSize() / plant->getMaxSize();
+          // Scale intensity by maturity - young plants produce less scent
           
-          // Seed dispersal - mature plants attempt passive dispersal when producing fruit
-          // Use a probability check to avoid too many seeds per tick
+          // Create scent deposit for this plant
+          // Plants don't have creature IDs, so use -1
+          // Use a decay rate of 50 ticks for plant scents (they dissipate relatively quickly)
+          EcoSim::ScentDeposit plantScent(
+              EcoSim::ScentType::FOOD_TRAIL,  // Plant scents use FOOD_TRAIL type
+              -1,                              // No creature ID for plants
+              intensity,
+              signature,
+              _currentTick,
+              50                               // Decay rate in ticks
+          );
+          
+          _scentLayer.deposit(
+              static_cast<int>(x),
+              static_cast<int>(y),
+              plantScent
+          );
+        }
+        
+        // LEGACY REMOVAL: No longer create legacy Food objects from plant fruit.
+        // Creatures now feed directly from genetics::Plant via FeedingInteraction.
+        // The plant's canProduceFruit() and energy are used directly by creatures.
+        
+        // Seed dispersal - mature plants attempt passive dispersal
+        // Use a probability check to avoid too many seeds per tick
+        // Support both fruit-based AND vegetative reproduction pathways
+        bool canDisperse = plant->canProduceFruit() || plant->canSpreadVegetatively();
+        
+        if (canDisperse) {
           std::uniform_real_distribution<float> dist(0.0f, 1.0f);
-          float dispersalChance = plant->getFruitProductionRate() * 0.1f;  // Low chance per tick
+          
+          // Calculate dispersal chance based on reproduction method
+          float dispersalChance;
+          if (plant->canSpreadVegetatively()) {
+            // Vegetative spread (runners/stolons) - scaled by plant maturity
+            // Larger, more established plants spread more effectively
+            float sizeRatio = plant->getCurrentSize() / plant->getMaxSize();
+            dispersalChance = plant->getRunnerProduction() * 0.15f * sizeRatio;
+          } else {
+            // Fruit-based dispersal
+            dispersalChance = plant->getFruitProductionRate() * 0.1f;
+          }
           
           if (dist(_rng) < dispersalChance) {
             EcoSim::Genetics::DispersalEvent event = _seedDispersal.disperse(*plant, &_currentEnvironment);
             dispersalEvents.push_back({event, plant});
           }
+          
+          // Reset timer after dispersal attempt (successful or not)
+          // This enforces the cooldown period before the next attempt
+          plant->resetFruitTimer();
         }
       }
     }
@@ -545,12 +521,12 @@ string World::toString () const {
       << _octaveGen.maxWeight     << ","
       << _octaveGen.freqInterval;
 
+  // Output plant data for tiles that have plants
   const Tile *tile;
   for (unsigned x = 0; x < _mapGen.cols; x++) {
     for (unsigned y = 0; y < _mapGen.rows; y++) {
       tile = &_grid.at(x).at(y);
-      if (!tile->getFoodVec().empty() ||
-          !tile->getSpawners().empty()) {
+      if (!tile->getPlants().empty()) {
         ss  << endl << x << "," << y
             << endl << tile->contentToString();
       }
@@ -578,4 +554,69 @@ void World::updateScentLayer() {
 
 unsigned int World::getCurrentTick() const {
   return _currentTick;
+}
+
+//================================================================================
+//  Corpse Management
+//================================================================================
+
+void World::addCorpse(float x, float y, float size, const std::string& speciesName, float bodyCondition) {
+  // Remove oldest/most decayed corpse if at capacity
+  if (_corpses.size() >= MAX_CORPSES) {
+    auto it = std::max_element(_corpses.begin(), _corpses.end(),
+      [](const auto& a, const auto& b) {
+        return a->getDecayProgress() < b->getDecayProgress();
+      });
+    if (it != _corpses.end()) {
+      _corpses.erase(it);
+    }
+  }
+  
+  _corpses.push_back(std::make_unique<world::Corpse>(x, y, size, speciesName, bodyCondition));
+}
+
+void World::tickCorpses() {
+  // Update decay for all corpses
+  for (auto& corpse : _corpses) {
+    corpse->tick();
+  }
+  
+  // Remove fully decayed corpses
+  _corpses.erase(
+    std::remove_if(_corpses.begin(), _corpses.end(),
+      [](const auto& c) { return c->isFullyDecayed(); }),
+    _corpses.end()
+  );
+}
+
+const std::vector<std::unique_ptr<world::Corpse>>& World::getCorpses() const {
+  return _corpses;
+}
+
+world::Corpse* World::findNearestCorpse(float x, float y, float maxRange) {
+  world::Corpse* nearest = nullptr;
+  float nearestDistSq = maxRange * maxRange;
+  
+  for (auto& corpse : _corpses) {
+    if (corpse->isExhausted()) continue;
+    
+    float dx = corpse->getX() - x;
+    float dy = corpse->getY() - y;
+    float distSq = dx * dx + dy * dy;
+    
+    if (distSq < nearestDistSq) {
+      nearestDistSq = distSq;
+      nearest = corpse.get();
+    }
+  }
+  
+  return nearest;
+}
+
+void World::removeCorpse(world::Corpse* corpse) {
+  _corpses.erase(
+    std::remove_if(_corpses.begin(), _corpses.end(),
+      [corpse](const auto& c) { return c.get() == corpse; }),
+    _corpses.end()
+  );
 }

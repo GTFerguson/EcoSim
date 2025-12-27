@@ -11,9 +11,9 @@
 #include "rendering/RenderTypes.hpp"
 #include <memory>
 #include <string>
+#include <array>
 
-// Forward declarations
-class Food;
+// Forward declarations removed - Food class has been replaced by direct plant feeding
 
 namespace EcoSim {
 namespace Genetics {
@@ -362,7 +362,7 @@ public:
     void regenerate();
     
     // ========================================================================
-    // Food Production (Phase 2.3) - Hybrid Model
+    // Fruit Production (Phase 2.3) - Direct Plant Feeding
     // ========================================================================
     
     /**
@@ -373,19 +373,38 @@ public:
      * - Plant maturity (age > 25% of lifespan)
      * - Sufficient energy (from EnergyBudget)
      * - Fruit timer cooldown complete
+     *
+     * Note: Food class has been removed. Creatures now feed directly on plants
+     * via FeedingInteraction, which handles nutrient extraction and defense bypass.
      */
     bool canProduceFruit() const;
     
     /**
-     * @brief Create a Food object from this plant's fruit
-     * @return A new Food object with calories based on plant genes
+     * @brief Check if plant can spread vegetatively (runners/stolons)
+     * @return true if mature and has high runner production
      *
-     * The produced fruit has:
-     * - Calories based on current_size and fruit_production_rate
-     * - EntityType::FOOD_APPLE (or appropriate type)
-     * - Lifespan based on fruit genes
+     * Vegetative reproduction is an alternative to fruit-based seed dispersal.
+     * Grass and similar plants use this strategy instead of fruiting.
+     * Requires:
+     * - Plant maturity (50% size, 10% age)
+     * - High RUNNER_PRODUCTION gene value (> 0.5)
+     * - Cooldown timer ready
      */
-    Food produceFruit();
+    bool canSpreadVegetatively() const;
+    
+    /**
+     * @brief Reset the fruit/dispersal timer after a reproduction attempt
+     *
+     * Called after any dispersal attempt (successful or not) to enforce
+     * the cooldown period before the next attempt.
+     */
+    void resetFruitTimer() { fruitTimer_ = 0; }
+    
+    /**
+     * @brief Get runner production rate from RUNNER_PRODUCTION gene
+     * @return Production rate (0.0 = none, 1.5+ = aggressive spread)
+     */
+    float getRunnerProduction() const;
     
     /**
      * @brief Get fruit production rate from FRUIT_PRODUCTION_RATE gene
@@ -543,6 +562,28 @@ public:
      */
     static std::unique_ptr<Plant> fromString(const std::string& data,
                                               const GeneRegistry& registry);
+    
+    // ========================================================================
+    // Scent System (Phase 1 - Scent Detection)
+    // ========================================================================
+    
+    /**
+     * @brief Generate this plant's scent signature
+     *
+     * Creates an 8-element scent signature encoding plant traits:
+     * [0] FRUIT_APPEAL, [1] TOXIN_PRODUCTION, [2] THORN_DENSITY,
+     * [3] HARDINESS, [4] PLANT_DIGESTION (inverted as "plant-ness"),
+     * [5-7] Reserved for plant ID encoding
+     *
+     * @return ScentSignature representing this plant's scent profile
+     */
+    std::array<float, 8> getScentSignature() const;
+    
+    /**
+     * @brief Get scent production rate from genes
+     * @return Production rate (0.0-1.0, higher = stronger scent)
+     */
+    float getScentProductionRate() const;
 
 protected:
     // Position

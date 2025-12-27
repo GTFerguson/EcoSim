@@ -56,10 +56,6 @@ Tile::Tile (const unsigned &objLimit,
 //================================================================================
 //	Getters
 //================================================================================
-vector<Food>&           Tile::getFoodVec    ()       { return _foodVec;  }
-vector<Spawner>&        Tile::getSpawners	  ()       { return _spawners; }
-const vector<Food>      Tile::getFoodVec    () const { return _foodVec;  }
-const vector<Spawner>   Tile::getSpawners	  () const { return _spawners; }
 unsigned int            Tile::getElevation  () const { return _elevation;	}
 char                    Tile::getChar		    () const { return _character;	}
 int			                Tile::getColPair    () const { return _colPair;   }
@@ -75,68 +71,6 @@ void Tile::setElevation (unsigned int elevation) {
 }
 
 //================================================================================
-//	Object Handling
-//================================================================================
-bool Tile::addFood (const Food& obj) {
-	if (_foodVec.size() >= _objLimit) {
-		std::cerr << "[Tile] Warning: Cannot add food '" << obj.getName()
-		          << "' - tile object limit (" << _objLimit << ") reached" << std::endl;
-		return false;
-	}
-	_foodVec.push_back(obj);
-	return true;
-}
-
-void Tile::removeFood (const string& objName) {
-	for (size_t i = 0; i < _foodVec.size(); i++) {
-		//	If current obj name is equal to name searched for remove
-		if (objName.compare(_foodVec[i].getName()) == 0) {
-			_foodVec.erase (_foodVec.begin() + static_cast<ptrdiff_t>(i));
-			return;
-		}
-	}
-}
-
-/**
- *  Updates all decay values of food on the tile.
- */
-void Tile::updateFood () {
-  vector<Food>::iterator it = _foodVec.begin();
-  while (it != _foodVec.end()) {
-    if (it->getDecay() < it->getLifespan()) {
-      it->incrementDecay ();
-      ++it;
-    } else {
-      it = _foodVec.erase (it);
-    }
-  }
-}
-
-bool Tile::addSpawner (const Spawner& obj) {
-	if (_spawners.size() >= _objLimit) {
-		std::cerr << "[Tile] Warning: Cannot add spawner '" << obj.getName()
-		          << "' - tile object limit (" << _objLimit << ") reached" << std::endl;
-		return false;
-	}
-	_spawners.push_back (obj);
-	return true;
-}
-
-// NOTE: Currently uses string comparison for object identification.
-// Consider refactoring to use numeric IDs for better performance.
-void Tile::removeSpawner (const string& objName) {
-  vector<Spawner>::iterator it = _spawners.begin();
-  while (it != _spawners.end()) {
-    //	If current obj name is equal to name searched for remove
-    if (objName.compare(it->getName()) == 0) {
-      _spawners.erase (it);
-      return;
-    }
-    ++it;
-  }
-}
-
-//================================================================================
 //  Genetics-Based Plant Handling (Phase 2.4)
 //================================================================================
 
@@ -149,8 +83,20 @@ const std::vector<std::shared_ptr<Plant>>& Tile::getPlants() const {
 }
 
 bool Tile::addPlant(std::shared_ptr<Plant> plant) {
+  // Limit 1 plant per tile to prevent population exploits
+  // Multiple plants on the same tile allows infinite resource stacking
+  if (!_plants.empty()) {
+    // Check if there's already a living plant
+    for (const auto& existingPlant : _plants) {
+      if (existingPlant && existingPlant->isAlive()) {
+        // Already has a living plant - reject new plant
+        return false;
+      }
+    }
+  }
+  
   // Count total objects including plants
-  size_t totalObjects = _foodVec.size() + _spawners.size() + _plants.size();
+  size_t totalObjects = _plants.size();
   if (totalObjects >= _objLimit) {
     std::cerr << "[Tile] Warning: Cannot add plant - tile object limit ("
               << _objLimit << ") reached" << std::endl;
@@ -194,16 +140,14 @@ size_t Tile::removeDeadPlants() {
 string Tile::contentToString () const {
   ostringstream ss;
 
-  vector<Food>::const_iterator food = _foodVec.begin();
-  while (food != _foodVec.end()) {
-    ss << food->toString();
-    if (++food != _foodVec.end()) ss << endl;
-  }
-
-  vector<Spawner>::const_iterator spawner = _spawners.begin();
-  while (spawner != _spawners.end()) {
-    ss << spawner->toString();
-    if (++spawner != _spawners.end()) ss << endl;
+  // Display plants
+  for (const auto& plant : _plants) {
+    if (plant) {
+      ss << "Plant #" << plant->getId() << " (";
+      ss << (plant->isAlive() ? "alive" : "dead") << ", size: ";
+      ss << plant->getCurrentSize() << ")";
+      ss << endl;
+    }
   }
 
   return ss.str ();

@@ -10,6 +10,13 @@
 #include <chrono>
 #include <mutex>
 
+// Forward declarations for combat types
+namespace EcoSim { namespace Genetics {
+    enum class WeaponType;
+    enum class DamageType;
+    enum class DefenseType;
+}}
+
 namespace logging {
 
 /**
@@ -34,6 +41,18 @@ enum class FlushMode {
 };
 
 /**
+ * @brief Combat log verbosity levels
+ *
+ * Controls how much detail is included in combat event logs.
+ */
+enum class CombatLogDetail {
+    MINIMAL,    ///< Just damage amount: "#1→#2: 15.8 damage"
+    STANDARD,   ///< + weapon, type, health: "Teeth 15.8 Pierce | HP:50→34"
+    DETAILED,   ///< + raw damage, effectiveness, defense
+    DEBUG       ///< Full multi-line output with all data
+};
+
+/**
  * @brief Configuration for the Logger
  */
 struct LoggerConfig {
@@ -44,6 +63,7 @@ struct LoggerConfig {
     bool fileOutput = true;
     std::string logFilePath = "simulation_log.csv";
     bool csvFormat = true;
+    CombatLogDetail combatDetail = CombatLogDetail::STANDARD;  ///< Combat log verbosity
 };
 
 /**
@@ -109,6 +129,52 @@ struct BreedingSnapshot {
 };
 
 /**
+ * @brief Structured combat event for detailed logging
+ *
+ * Contains all relevant data about a combat action including
+ * attacker/defender info, weapon used, damage calculation details,
+ * and health state before/after.
+ */
+struct CombatLogEvent {
+    // === Combatant Identification ===
+    int attackerId = -1;                    ///< Attacker creature ID
+    int defenderId = -1;                    ///< Defender creature ID
+    std::string attackerName;               ///< e.g., "ApexPredator_Alpha"
+    std::string defenderName;               ///< e.g., "FleetRunner_Beta"
+    
+    // === Weapon & Attack Info ===
+    EcoSim::Genetics::WeaponType weapon;    ///< Type of weapon used
+    EcoSim::Genetics::DamageType primaryDamageType;  ///< Main damage type dealt
+    
+    // === Damage Calculation ===
+    float rawDamage = 0.0f;                 ///< Damage before defense
+    float finalDamage = 0.0f;               ///< Damage after defense
+    float effectivenessMultiplier = 1.0f;   ///< Type effectiveness (0.5-2.0)
+    
+    // === Defense Info ===
+    EcoSim::Genetics::DefenseType defenseUsed;  ///< Defender's primary defense
+    float defenseValue = 0.0f;              ///< Defense strength applied
+    
+    // === Health Readouts ===
+    float attackerHealthBefore = 0.0f;
+    float attackerHealthAfter = 0.0f;
+    float attackerMaxHealth = 0.0f;
+    float defenderHealthBefore = 0.0f;
+    float defenderHealthAfter = 0.0f;
+    float defenderMaxHealth = 0.0f;
+    
+    // === Effects & Outcomes ===
+    bool hit = true;                        ///< Did the attack connect?
+    bool causedBleeding = false;            ///< Did attack cause bleeding?
+    bool defenderDied = false;              ///< Was this a killing blow?
+    bool critical = false;                  ///< Critical hit (future use)
+    
+    // === Stamina/Energy (Optional) ===
+    float attackerStaminaBefore = 0.0f;
+    float attackerStaminaAfter = 0.0f;
+};
+
+/**
  * @brief Singleton Logger for simulation events
  * 
  * Provides comprehensive logging for creature lifecycle, plant lifecycle,
@@ -143,6 +209,18 @@ public:
     // === Creature Lifecycle ===
     void creatureBorn(int id, const std::string& type, int parentId1, int parentId2);
     void creatureDied(int id, const std::string& type, const std::string& cause, float energy, int age);
+
+    // === Combat Events ===
+    void combatEngaged(int attackerId, const std::string& attackerName, int defenderId, const std::string& defenderName);
+    void combatAttack(int attackerId, int defenderId, float damage);
+    void combatEvent(const CombatLogEvent& event);  ///< Detailed combat event logging
+    void combatKill(int killerId, const std::string& killerName, int victimId, const std::string& victimName);
+    void combatFlee(int fleeingId, const std::string& fleeingName, int threatId, const std::string& threatName);
+    void scavenging(int creatureId, const std::string& creatureName, float nutritionGained);
+    
+    // === Combat Configuration ===
+    void setCombatLogDetail(CombatLogDetail level);
+    CombatLogDetail getCombatLogDetail() const;
 
     // === Plant Lifecycle ===
     void plantSpawned(int id, const std::string& species, int x, int y);

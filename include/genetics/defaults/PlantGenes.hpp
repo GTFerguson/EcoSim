@@ -79,10 +79,16 @@ public:
     static constexpr const char* SPREAD_DISTANCE = "plant_spread_distance";
     
     // Environmental Chromosome - Climate tolerance
+    /// @deprecated Use UniversalGenes::TEMP_TOLERANCE_LOW instead
     /// Minimum temperature the plant can survive (Celsius)
+    /// Note: PlantFactory now uses UniversalGenes versions for consistency
+    [[deprecated("Use UniversalGenes::TEMP_TOLERANCE_LOW instead")]]
     static constexpr const char* TEMP_TOLERANCE_LOW = "plant_temp_tolerance_low";
     
+    /// @deprecated Use UniversalGenes::TEMP_TOLERANCE_HIGH instead
     /// Maximum temperature the plant can survive (Celsius)
+    /// Note: PlantFactory now uses UniversalGenes versions for consistency
+    [[deprecated("Use UniversalGenes::TEMP_TOLERANCE_HIGH instead")]]
     static constexpr const char* TEMP_TOLERANCE_HIGH = "plant_temp_tolerance_high";
     
     // Lifespan Chromosome - Longevity

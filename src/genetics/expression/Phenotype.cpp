@@ -174,6 +174,81 @@ float Phenotype::computeTrait(const std::string& trait_id) const {
     return 0.0f;
 }
 
+float Phenotype::computeTraitRaw(const std::string& trait_id) const {
+    if (!isValid()) {
+        return 0.0f;
+    }
+    
+    // Check if this is a direct gene lookup
+    if (genome_->hasGene(trait_id) && registry_->hasGene(trait_id)) {
+        const GeneDefinition& definition = registry_->getDefinition(trait_id);
+        
+        // Express the gene - NO modulations applied
+        return expressGene(trait_id, definition);
+    }
+    
+    // Trait not found - check if it's derived from effect bindings
+    // Search all genes for effects that target this trait
+    float accumulated_value = 0.0f;
+    bool found_contribution = false;
+    
+    for (const auto& [gene_id, definition] : registry_->getAllDefinitions()) {
+        for (const auto& effect : definition.getEffects()) {
+            if (effect.target_trait == trait_id) {
+                if (!genome_->hasGene(gene_id)) {
+                    continue;
+                }
+                
+                float gene_value = expressGene(gene_id, definition);
+                
+                switch (effect.effect_type) {
+                    case EffectType::Direct:
+                        // Direct: gene value becomes trait value
+                        accumulated_value = gene_value * effect.scale_factor;
+                        found_contribution = true;
+                        break;
+                        
+                    case EffectType::Additive:
+                        // Additive: contribute to sum
+                        accumulated_value += gene_value * effect.scale_factor;
+                        found_contribution = true;
+                        break;
+                        
+                    case EffectType::Multiplicative:
+                        // Multiplicative: multiply existing value
+                        if (!found_contribution) {
+                            accumulated_value = 1.0f;
+                        }
+                        accumulated_value *= (gene_value * effect.scale_factor);
+                        found_contribution = true;
+                        break;
+                        
+                    case EffectType::Threshold:
+                        // Threshold: only contributes if above/below threshold
+                        if (gene_value >= effect.scale_factor) {
+                            accumulated_value += gene_value;
+                            found_contribution = true;
+                        }
+                        break;
+                        
+                    case EffectType::Conditional:
+                        // Conditional: context-dependent (simplified implementation)
+                        accumulated_value += gene_value * effect.scale_factor;
+                        found_contribution = true;
+                        break;
+                }
+            }
+        }
+    }
+    
+    // Return raw accumulated value - NO modulations applied
+    if (found_contribution) {
+        return accumulated_value;
+    }
+    
+    return 0.0f;
+}
+
 bool Phenotype::hasTrait(const std::string& trait_id) const {
     if (!isValid()) {
         return false;
@@ -240,10 +315,22 @@ float Phenotype::applyAgeModulation(float value, float age_normalized) const {
     
     float modulation_factor;
     
-    if (age < 0.1f) {
-        // Juvenile phase: 60% expression, linearly increasing to 100% at age 0.1
-        // Linear interpolation from 0.6 at age=0 to 1.0 at age=0.1
-        modulation_factor = 0.6f + (age / 0.1f) * 0.4f;
+    // Four life stages for realistic development and anti-exploit balance:
+    // - Infant (0-0.05): 40% → 60% expression - newborns are underdeveloped
+    // - Juvenile (0.05-0.15): 60% → 100% expression - rapid growth phase
+    // - Adult (0.15-0.8): 100% expression - prime of life
+    // - Elderly (0.8-1.0): 100% → 80% expression - gradual decline
+    //
+    // The infant stage at 40% expression helps prevent baby cannibalism exploit
+    // by ensuring newborn corpses yield significantly less nutrition.
+    
+    if (age < 0.05f) {
+        // Infant phase: 40% expression at birth, linearly increasing to 60% at age 0.05
+        modulation_factor = 0.4f + (age / 0.05f) * 0.2f;
+    }
+    else if (age < 0.15f) {
+        // Juvenile phase: 60% expression, linearly increasing to 100% at age 0.15
+        modulation_factor = 0.6f + ((age - 0.05f) / 0.1f) * 0.4f;
     }
     else if (age < 0.8f) {
         // Adult phase: 100% expression
@@ -251,7 +338,6 @@ float Phenotype::applyAgeModulation(float value, float age_normalized) const {
     }
     else {
         // Elderly phase: Linear decline from 100% at age=0.8 to 80% at age=1.0
-        // Linear interpolation from 1.0 at age=0.8 to 0.8 at age=1.0
         float elderly_progress = (age - 0.8f) / 0.2f;
         modulation_factor = 1.0f - (elderly_progress * 0.2f);
     }
@@ -381,33 +467,65 @@ DietType Phenotype::calculateDietType() const {
         return DietType::OMNIVORE;  // Default fallback
     }
     
-    // Get the key digestion-related traits
-    float plantEfficiency = getTrait(UniversalGenes::PLANT_DIGESTION_EFFICIENCY);
-    float meatEfficiency = getTrait(UniversalGenes::MEAT_DIGESTION_EFFICIENCY);
-    float celluloseBreakdown = getTrait(UniversalGenes::CELLULOSE_BREAKDOWN);
-    float colorVision = getTrait(UniversalGenes::COLOR_VISION);
+    // Use RAW trait values (no age/health/energy modulation) for stable classification
+    // This ensures diet type doesn't change when creature is young, injured, or tired
     
-    // Classification logic based on dominant capabilities
-    // Priority order: Carnivore > Frugivore > Herbivore > Omnivore
+    // Get effective digestion efficiencies (include morphology contributions via effect bindings)
+    // These automatically include contributions from:
+    // - PLANT_DIGESTION_EFFICIENCY gene (base)
+    // - GUT_LENGTH → plant_digestion_efficiency (+0.35)
+    // - TOOTH_GRINDING → plant_digestion_efficiency (+0.15)
+    // - MEAT_DIGESTION_EFFICIENCY gene (base)
+    // - STOMACH_ACIDITY → meat_digestion_efficiency (+0.35)
+    // - TOOTH_SHARPNESS → meat_digestion_efficiency (+0.15)
+    float plantEfficiency = computeTraitRaw("plant_digestion_efficiency");
+    float meatEfficiency = computeTraitRaw("meat_digestion_efficiency");
     
-    // CARNIVORE: High meat digestion, low plant digestion
-    if (meatEfficiency > 0.7f && plantEfficiency < 0.3f) {
+    // Other traits for specialization checks
+    float celluloseBreakdown = computeTraitRaw(UniversalGenes::CELLULOSE_BREAKDOWN);
+    float colorVision = computeTraitRaw(UniversalGenes::COLOR_VISION);
+    float toxinTolerance = computeTraitRaw(UniversalGenes::TOXIN_TOLERANCE);
+    float combatAggression = computeTraitRaw(UniversalGenes::COMBAT_AGGRESSION);
+    
+    // Calculate total digestive capacity and ratios
+    float totalDigestion = plantEfficiency + meatEfficiency;
+    
+    // Avoid division by zero - if no digestion capability, default to omnivore
+    if (totalDigestion < 0.01f) {
+        return DietType::OMNIVORE;
+    }
+    
+    float meatRatio = meatEfficiency / totalDigestion;
+    float plantRatio = plantEfficiency / totalDigestion;
+    
+    // Classification logic using 70% ratio threshold
+    // Priority order: Necrovore > Carnivore > Frugivore > Herbivore > Omnivore
+    
+    // NECROVORE: High toxin tolerance (for eating rotting corpses), moderate meat digestion,
+    // typically lower aggression (scavengers avoid confrontation)
+    // Check this first as it's a specialized carnivore variant
+    if (toxinTolerance > 0.7f && meatEfficiency > 0.4f && combatAggression < 0.4f) {
+        return DietType::NECROVORE;
+    }
+    
+    // CARNIVORE: Meat-dominant digestion (>70% of total capacity is meat)
+    if (meatRatio >= 0.7f) {
         return DietType::CARNIVORE;
     }
     
-    // FRUGIVORE: Moderate plant digestion, high color vision (for fruit detection),
-    // but low cellulose breakdown (can't digest tough plant matter)
-    if (plantEfficiency > 0.5f && colorVision > 0.6f && celluloseBreakdown < 0.3f) {
-        return DietType::FRUGIVORE;
-    }
-    
-    // HERBIVORE: High plant digestion AND high cellulose breakdown
-    // (true grazers that can process tough plant material)
-    if (plantEfficiency > 0.7f && celluloseBreakdown > 0.5f) {
+    // HERBIVORE: Plant-dominant digestion (>70% of total capacity is plant)
+    // Also requires some cellulose breakdown capability for true herbivore status
+    if (plantRatio >= 0.7f && celluloseBreakdown > 0.3f) {
         return DietType::HERBIVORE;
     }
     
-    // OMNIVORE: Default - balanced or no clear specialization
+    // FRUGIVORE: Plant-dominant but low cellulose (fruit specialist)
+    // High color vision for fruit detection, but can't process tough plant matter
+    if (plantRatio >= 0.6f && colorVision > 0.5f && celluloseBreakdown < 0.3f) {
+        return DietType::FRUGIVORE;
+    }
+    
+    // OMNIVORE: Default - balanced capabilities (neither ratio exceeds 70%)
     return DietType::OMNIVORE;
 }
 
@@ -417,6 +535,7 @@ const char* Phenotype::dietTypeToString(DietType type) {
         case DietType::FRUGIVORE: return "Frugivore";
         case DietType::OMNIVORE:  return "Omnivore";
         case DietType::CARNIVORE: return "Carnivore";
+        case DietType::NECROVORE: return "Necrovore";
         default: return "Unknown";
     }
 }

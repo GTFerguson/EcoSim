@@ -102,6 +102,17 @@ public:
     float computeTrait(const std::string& trait_id) const;
     
     /**
+     * @brief Compute trait value WITHOUT age/health/energy modulation
+     * @param trait_id The ID of the trait to compute
+     * @return The raw genetic expression value (unaffected by organism state)
+     *
+     * Use this for identity-based classification (diet type, scientific name)
+     * where the trait should remain stable regardless of the organism's
+     * current condition. This gives the "true genetic potential" value.
+     */
+    float computeTraitRaw(const std::string& trait_id) const;
+    
+    /**
      * @brief Check if a trait can be computed
      * @param trait_id The trait ID to check
      * @return true if the trait exists and can be computed
