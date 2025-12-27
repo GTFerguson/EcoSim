@@ -1,0 +1,351 @@
+# Creature Behavior
+
+Creatures make decisions every moment based on their current needs and environment. Understanding these behavior patterns helps you predict what they'll do next.
+
+---
+
+## Motivations and Actions
+
+Creatures have a two-level behavior system:
+
+1. **Motivation** - What the creature *wants* (their goal)
+2. **Action** - What the creature is *doing* (their current activity)
+
+### Motivations
+
+At any moment, a creature has one of these **motivations**:
+
+| Motivation | Icon | What They Want |
+|------------|------|----------------|
+| **Hungry** | 🍖 | Need food |
+| **Thirsty** | 💧 | Need water |
+| **Amorous** | 💕 | Looking for a mate |
+| **Tired** | 💤 | Need rest |
+| **Content** | 🧭 | No urgent needs |
+
+### Actions
+
+While pursuing their motivation, creatures perform various **actions**:
+
+| Action | What You'll See |
+|--------|-----------------|
+| **Searching** | Looking around for something |
+| **Navigating** | Moving toward a target |
+| **Eating** | Consuming meat or corpse |
+| **Grazing** | Eating plants |
+| **Drinking** | At water, replenishing |
+| **Hunting** | Predator seeking prey |
+| **Chasing** | Active pursuit |
+| **Attacking** | Combat in progress |
+| **Fleeing** | Running from danger |
+| **Courting** | Seeking mate via scent |
+| **Mating** | Breeding in progress |
+| **Resting** | Recovering energy |
+| **Wandering** | Exploring with no goal |
+
+> 💡 **Tip:** Press **F5** to open the Inspector and see a creature's current motivation AND action!
+
+---
+
+## How Creatures Choose Their Motivation
+
+Every tick, creatures evaluate their needs and pick the most urgent one:
+
+```
+┌─────────────────────────────────────────────────────┐
+│                   DECISION CYCLE                     │
+│                                                      │
+│   Check Hunger ──► Above threshold? ──► HUNGRY      │
+│        │                                             │
+│        ▼                                             │
+│   Check Thirst ──► Above threshold? ──► THIRSTY     │
+│        │                                             │
+│        ▼                                             │
+│   Check Fatigue ─► Above threshold? ──► TIRED       │
+│        │                                             │
+│        ▼                                             │
+│   Check Mate ────► Above threshold? ──► AMOROUS     │
+│        │                                             │
+│        ▼                                             │
+│   Default ───────────────────────────► CONTENT      │
+│                                                      │
+└─────────────────────────────────────────────────────┘
+```
+
+The **thresholds** are determined by genes! This means:
+- Some creatures get "hungry" earlier than others
+- Some can ignore thirst longer
+- Some breed more frequently
+
+---
+
+## Hungry Motivation 🍖
+
+When hungry, creatures search for food based on their diet:
+
+### Herbivores
+- **Action: Searching** → Looking for plants within sight range
+- **Action: Navigating** → Moving toward nearest edible plant
+- **Action: Grazing** → Consuming plants to gain energy
+
+### Carnivores
+- **Action: Searching** → Looking for prey within sight range
+- **Action: Hunting** → Spotted prey, moving to engage
+- **Action: Chasing** → Pursuing fleeing prey
+- **Action: Attacking** → Combat with prey
+- **Action: Eating** → Consuming killed prey or corpse
+
+### Omnivores
+- Can eat both plants and prey
+- Opportunistic - takes whatever is closest
+- Flexible survival strategy
+
+### What You'll See
+
+| Behavior | Meaning |
+|----------|---------|
+| Direct movement | Found food, heading toward it (Navigating) |
+| Spiral pattern | Searching for food |
+| Sudden acceleration | Prey fleeing OR predator pursuing (Chasing) |
+| Stopping near plant | Grazing |
+
+### The Hunt
+
+When a carnivore spots prey:
+
+```
+PREDATOR                           PREY
+    │                               │
+    │ ──── Spots prey ────────────► │
+    │      (Hunting)                │
+    │                               │
+    │ ◄──────────────── Detects danger
+    │                    (Fleeing)  │
+    │                               │
+    │ ◄═══ CHASE BEGINS ══════════► │
+    │      (Chasing vs Fleeing)     │
+    │      (speed vs speed)         │
+    │                               │
+    ▼                               ▼
+ Success: Eating            Escape: Survives
+ Failure: Hungry still      Caught: Death
+```
+
+**Who wins the chase?** It depends on:
+- **Speed** (locomotion gene)
+- **Flee distance** (how early prey detects danger)
+- **Pursue distance** (how far predator will chase)
+- **Navigation** (pathfinding ability)
+
+---
+
+## Thirsty Motivation 💧
+
+When thirsty, creatures search for water:
+
+1. **Action: Searching** → Scan for water tiles within sight range
+2. **Action: Navigating** → Move toward nearest water
+3. **Action: Drinking** → At water, replenishing hydration
+
+> 🌊 **Water tiles** are blue tiles in the world, usually near low elevations.
+
+### What You'll See
+- Creatures heading toward blue areas (Navigating)
+- Brief pause at water's edge (Drinking)
+- Return to other activities afterward
+
+---
+
+## Amorous Motivation 💕
+
+The breeding system is one of EcoSim's most complex behaviors!
+
+### Finding a Mate
+
+Amorous creatures use **scent trails**:
+
+```
+                    SCENT TRAIL
+     💕 ─────────────────────────────────
+         │ │ │ │ │ │ │ │ │ │ │ │
+         stronger ─────────► weaker
+
+Other creature detects scent and follows gradient toward source
+```
+
+**Action sequence:**
+1. **Courting** → Depositing scent, searching for scent trails
+2. **Navigating** → Following scent toward potential mate
+3. **Mating** → Both creatures together, reproduction occurring
+
+See **[[scent-communication.md|Scent and Communication]]** for the full scent system!
+
+### Mating Requirements
+
+Both creatures must:
+- ✅ Be amorous (looking for mate)
+- ✅ Have enough energy
+- ✅ Be genetically compatible (but not too similar)
+- ✅ Meet in the same location
+
+### Genetic Compatibility
+
+Creatures prefer mates that are:
+- **Similar enough** to be compatible
+- **Different enough** for healthy offspring
+
+This creates a "Goldilocks zone" of mate preference!
+
+### What You'll See
+
+| Behavior | What's Happening |
+|----------|------------------|
+| Wandering while amorous | Depositing scent, looking for scent (Courting) |
+| Sudden direction change | Detected a scent trail |
+| Following another creature | Found a potential mate (Navigating) |
+| Brief pause with another | Mating occurring |
+| New small creature appears | Offspring born! |
+
+---
+
+## Tired Motivation 💤
+
+When fatigue gets too high, creatures must rest:
+
+### What Happens During Rest
+
+- **Action: Resting** → Creature stops moving
+- Energy slowly recovers
+- Fatigue decreases
+- Vulnerable to predators!
+
+### The Risk of Resting
+
+Resting creatures can't flee quickly. Predators may:
+- Spot resting prey more easily
+- Catch them before they can escape
+
+This creates selection pressure for:
+- High fatigue tolerance (rest less often)
+- Quick recovery (short rest periods)
+- Safe resting spots (near allies, away from predators)
+
+### What You'll See
+- Creature stops moving (Resting action)
+- No motivation changes for several ticks
+- Gradual energy bar recovery
+
+---
+
+## Content Motivation 🧭
+
+When no urgent needs exist, creatures explore:
+
+### Content Behavior
+- **Action: Wandering** → Move in generally consistent direction
+- Occasional random direction changes
+- Explores new territory
+- May find new food sources or mates
+
+### Why Wandering Matters
+
+Content creatures help:
+- Escape overpopulated areas
+- Find unexploited resources
+- Spread genes across the world
+- Avoid local predators
+
+---
+
+## Watching Behavior Evolution
+
+Over generations, you may notice behavior changes:
+
+### Herbivore Adaptations
+- **Sight range** increases (spot plants earlier)
+- **Flee distance** increases (escape predators sooner)
+- **Navigation** improves (efficient food-finding)
+
+### Carnivore Adaptations
+- **Pursue distance** increases (longer chases)
+- **Speed** increases (catch prey)
+- **Hunger threshold** optimizes (hunt at right times)
+
+### General Adaptations
+- **Mate threshold** shifts based on food availability
+- **Fatigue tolerance** increases (less vulnerable resting)
+- **Metabolism** optimizes for environment
+
+---
+
+## Try This! 🔬
+
+### Experiment: Motivation Frequency
+
+1. Select a creature with Inspector (F5)
+2. Note its starting motivation
+3. Count how many times each motivation appears over 5 minutes
+4. Compare with another creature of different generation
+
+You might see evolved creatures spending more time in productive motivations!
+
+### Experiment: Predator Stalking
+
+1. Find a carnivore
+2. Watch its hunting attempts (look for Hunting → Chasing → Attacking actions)
+3. Track: Attempts vs. Successes
+4. Compare with the genes of prey it catches vs. prey that escapes
+
+This reveals the selection pressure driving evolution!
+
+### Experiment: Breeding Patterns
+
+1. Watch a high-population area
+2. Note breeding pairs that form (both showing Amorous motivation)
+3. Use Inspector to compare their colors
+4. Are similar colors breeding together?
+
+This shows **assortative mating** in action!
+
+---
+
+## Common Questions
+
+### Why does this creature keep changing direction?
+
+Possible reasons:
+- **Low navigation gene** - poor pathfinding
+- **Multiple targets** - switching between detected food/mates
+- **Conflicting needs** - thirst and hunger both high
+- **Fleeing** - detecting threats from multiple directions
+
+### Why won't two amorous creatures mate?
+
+Check:
+- Are they close enough? (must be on same/adjacent tile)
+- Do they have enough energy?
+- Is genetic compatibility in the "good" range?
+- Is one fleeing from the other? (predator/prey)
+
+### Why do some creatures never seem to rest?
+
+They might have:
+- **High fatigue threshold** - can go longer without rest
+- **Low metabolism** - doesn't tire quickly
+- **Constantly finding food** - replenishing energy
+
+### What's the difference between Motivation and Action?
+
+- **Motivation** = *Why* - what the creature wants (Hungry, Thirsty, etc.)
+- **Action** = *What* - what the creature is doing right now (Searching, Eating, etc.)
+
+A hungry creature might be Searching for food, then Navigating to it, then Eating it - the motivation stays Hungry, but the action changes!
+
+---
+
+## See Also
+
+- 📖 **[Creature Needs](needs.md)** - What drives each motivation
+- 📖 **[Creature Lifecycle](lifecycle.md)** - How behavior changes with age
+- 📖 **[Scent and Communication](../world/scent-communication.md)** - How creatures find each other
+- 📖 **[Watching Evolution](../genetics/evolution.md)** - How behavior evolves over time
