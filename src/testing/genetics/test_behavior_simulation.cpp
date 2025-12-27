@@ -26,7 +26,6 @@
 #include "genetics/expression/EnvironmentState.hpp"
 #include "genetics/expression/EnergyBudget.hpp"
 #include "genetics/interactions/FeedingInteraction.hpp"
-#include "objects/food.hpp"
 #include "rendering/RenderTypes.hpp"
 
 namespace G = EcoSim::Genetics;
@@ -120,26 +119,13 @@ public:
             }
         }
         
-        // Collect produced fruit
+        // Track fruit production (plants no longer produce Food objects directly)
         for (auto& plant : plants_) {
             if (plant.isAlive() && plant.canProduceFruit()) {
-                Food fruit = plant.produceFruit();
-                foodItems_.push_back(std::move(fruit));
+                // Creatures now feed directly on plants via FeedingInteraction
                 fruitProduced_++;
             }
         }
-        
-        // Decay food
-        for (auto& food : foodItems_) {
-            food.incrementDecay();
-        }
-        
-        // Remove decayed food
-        foodItems_.erase(
-            std::remove_if(foodItems_.begin(), foodItems_.end(),
-                [](const Food& f) { return f.isDecayed(); }),
-            foodItems_.end()
-        );
         
         // Update creatures (simple behavior)
         updateCreatures();
@@ -163,7 +149,7 @@ public:
         return count;
     }
     int getTotalPlantCount() const { return static_cast<int>(plants_.size()); }
-    int getFoodItemCount() const { return static_cast<int>(foodItems_.size()); }
+    int getFoodItemCount() const { return 0; } // Food class removed - creatures feed directly on plants
     int getFruitProducedCount() const { return fruitProduced_; }
     int getCreatureCount() const { return static_cast<int>(creatureGenomes_.size()); }
     int getFeedingEventsCount() const { return feedingEvents_; }
@@ -255,7 +241,6 @@ private:
     G::EnvironmentState environment_;
     
     std::vector<G::Plant> plants_;
-    std::vector<Food> foodItems_;
     
     // Simplified creature representation
     std::vector<G::Genome> creatureGenomes_;

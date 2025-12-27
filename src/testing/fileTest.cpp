@@ -110,7 +110,7 @@ int main () {
   
   int origX = c.getX();
   int origY = c.getY();
-  string origGenome = c.getGenome().toString();
+  string origGenome = c.getLegacyGenome().toString();
   
   cout << "  Original creature position: (" << origX << ", " << origY << ")" << endl;
   cout << "  Original genome: " << origGenome.substr(0, 50) << "..." << endl;
@@ -133,7 +133,7 @@ int main () {
   Creature& loaded = creatures.at(0);
   int loadedX = loaded.getX();
   int loadedY = loaded.getY();
-  string loadedGenome = loaded.getGenome().toString();
+  string loadedGenome = loaded.getLegacyGenome().toString();
   
   cout << "  Loaded creature position: (" << loadedX << ", " << loadedY << ")" << endl;
   cout << "  Loaded genome: " << loadedGenome.substr(0, 50) << "..." << endl;

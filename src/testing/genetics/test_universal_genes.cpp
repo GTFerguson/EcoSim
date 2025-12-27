@@ -1,6 +1,6 @@
 /**
  * @file test_universal_genes.cpp
- * @brief Tests for UniversalGenes and Phase 2.1 features
+ * @brief Tests for UniversalGenes 
  * 
  * Tests pleiotropy effects and emergent diet type calculation.
  */
@@ -28,8 +28,9 @@ void testUniversalGenesRegistration() {
     G::UniversalGenes::registerDefaults(registry);
     
     size_t geneCount = registry.size();
-    TEST_ASSERT_GE(geneCount, 55u);
-    TEST_ASSERT_LE(geneCount, 70u);
+    // Updated: 70 base genes + 19 combat genes (Phase 1c) = 89
+    TEST_ASSERT_GE(geneCount, 85u);
+    TEST_ASSERT_LE(geneCount, 100u);
 }
 
 void testUniversalGenesPresent() {
@@ -137,7 +138,7 @@ void testCreaturePlantCrossover() {
 }
 
 // ============================================================================
-// Phase 2.1 Pleiotropy Tests
+// Pleiotropy Tests
 // ============================================================================
 
 void testPleiotropyPlantMeatInhibition() {

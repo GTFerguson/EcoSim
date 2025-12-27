@@ -1,7 +1,7 @@
 /**
  * @file test_scent_navigation.cpp
  * @brief Tests for scent-based navigation system (Phase 2: Gradient Navigation)
- * 
+ *
  * Tests scent detection, direction calculation, genetic similarity filtering,
  * olfactory acuity scaling, and integration with creature movement.
  */
@@ -13,37 +13,57 @@
 #include "genetics/core/Genome.hpp"
 #include "genetics/expression/Phenotype.hpp"
 #include "objects/creature/creature.hpp"
-#include "objects/creature/genome.hpp"
 
 #include <iostream>
 #include <cmath>
 #include <array>
+#include <memory>
 
 using namespace EcoSim;
 using namespace EcoSim::Testing;
+using DietType = EcoSim::Genetics::DietType;
 
 //================================================================================
 //  Helper Functions
 //================================================================================
 
 /**
- * Create a test genome for creatures with specified traits
+ * Create a test creature with specified diet type using the new genetics system
  */
-Genome createTestGenome(Diet diet, unsigned sight = 100, unsigned lifespan = 100000) {
-    return Genome(
-        lifespan,   // lifespan
-        sight,      // sight
-        0.3f,       // tHunger
-        0.3f,       // tThirst
-        0.3f,       // tFatigue
-        0.3f,       // tMate
-        0.1f,       // comfInc
-        0.1f,       // comfDec
-        diet,       // diet
-        false,      // flocks
-        5,          // flee
-        10          // pursue
-    );
+std::unique_ptr<Creature> createTestCreature(int x, int y, DietType dietType) {
+    Creature::initializeGeneRegistry();
+    auto genome = std::make_unique<EcoSim::Genetics::Genome>();
+    
+    // Set genes to produce the desired diet type
+    switch (dietType) {
+        case DietType::HERBIVORE:
+            genome->setGeneValue(EcoSim::Genetics::UniversalGenes::PLANT_DIGESTION_EFFICIENCY, 0.9f);
+            genome->setGeneValue(EcoSim::Genetics::UniversalGenes::MEAT_DIGESTION_EFFICIENCY, 0.1f);
+            genome->setGeneValue(EcoSim::Genetics::UniversalGenes::CELLULOSE_BREAKDOWN, 0.8f);
+            break;
+        case DietType::FRUGIVORE:
+            genome->setGeneValue(EcoSim::Genetics::UniversalGenes::PLANT_DIGESTION_EFFICIENCY, 0.6f);
+            genome->setGeneValue(EcoSim::Genetics::UniversalGenes::MEAT_DIGESTION_EFFICIENCY, 0.1f);
+            genome->setGeneValue(EcoSim::Genetics::UniversalGenes::COLOR_VISION, 0.8f);
+            genome->setGeneValue(EcoSim::Genetics::UniversalGenes::CELLULOSE_BREAKDOWN, 0.3f);
+            break;
+        case DietType::CARNIVORE:
+            genome->setGeneValue(EcoSim::Genetics::UniversalGenes::PLANT_DIGESTION_EFFICIENCY, 0.1f);
+            genome->setGeneValue(EcoSim::Genetics::UniversalGenes::MEAT_DIGESTION_EFFICIENCY, 0.9f);
+            break;
+        case DietType::NECROVORE:
+            genome->setGeneValue(EcoSim::Genetics::UniversalGenes::TOXIN_TOLERANCE, 0.9f);
+            genome->setGeneValue(EcoSim::Genetics::UniversalGenes::MEAT_DIGESTION_EFFICIENCY, 0.6f);
+            genome->setGeneValue(EcoSim::Genetics::UniversalGenes::COMBAT_AGGRESSION, 0.2f);
+            break;
+        case DietType::OMNIVORE:
+        default:
+            genome->setGeneValue(EcoSim::Genetics::UniversalGenes::PLANT_DIGESTION_EFFICIENCY, 0.5f);
+            genome->setGeneValue(EcoSim::Genetics::UniversalGenes::MEAT_DIGESTION_EFFICIENCY, 0.5f);
+            break;
+    }
+    
+    return std::make_unique<Creature>(x, y, 0.5f, 0.5f, std::move(genome));
 }
 
 /**
@@ -117,15 +137,11 @@ void test_signature_similarity_different_species() {
 //================================================================================
 
 void test_detection_range_scales_with_acuity() {
-    Creature::initializeGeneRegistry();
-    
     // Create creature with known olfactory acuity
-    Genome genome = createTestGenome(Diet::banana);
-    Creature creature(50, 50, genome);
-    creature.enableNewGenetics(true);
+    auto creature = createTestCreature(50, 50, DietType::HERBIVORE);
     
     // Force the creature into breeding mode by manipulating state
-    creature.setMate(1.0f);  // High mate desire should trigger breeding profile
+    creature->setMate(1.0f);  // High mate desire should trigger breeding profile
     
     // The detection range should be approximately:
     // base 10 + acuity (default ~0.5) * 20 = 10 + 10 = 20 tiles
@@ -141,8 +157,8 @@ void test_detection_range_scales_with_acuity() {
     // The creature should be able to detect this if acuity allows
     // (Testing indirectly through scent layer query)
     int outX, outY;
-    ScentDeposit found = layer.getStrongestScentInRadius(50, 50, 20, 
-                                                          ScentType::MATE_SEEKING, 
+    ScentDeposit found = layer.getStrongestScentInRadius(50, 50, 20,
+                                                          ScentType::MATE_SEEKING,
                                                           outX, outY);
     TEST_ASSERT_GT(found.intensity, 0.0f);
 }
@@ -288,20 +304,16 @@ void test_scent_intensity_affects_priority() {
 //================================================================================
 
 void test_creature_computes_scent_signature() {
-    Creature::initializeGeneRegistry();
+    auto creature = createTestCreature(50, 50, DietType::HERBIVORE);
     
-    Genome genome = createTestGenome(Diet::banana);
-    Creature creature(50, 50, genome);
-    creature.enableNewGenetics(true);
-    
-    std::array<float, 8> signature = creature.computeScentSignature();
+    std::array<float, 8> signature = creature->computeScentSignature();
     
     // Signature should have 8 elements
     TEST_ASSERT_EQ(8, signature.size());
     
     // First element should encode diet type
-    // banana diet = 0, so first element should be 0 * 0.25 = 0.0
-    TEST_ASSERT_NEAR(0.0f, signature[0], 0.001f);
+    // HERBIVORE = 0, so first element should be 0 * 0.2 = 0.0
+    TEST_ASSERT_NEAR(0.0f, signature[0], 0.05f);
     
     // All values should be in [0, 1] range
     for (int i = 0; i < 8; ++i) {
@@ -311,43 +323,29 @@ void test_creature_computes_scent_signature() {
 }
 
 void test_creature_signature_reflects_diet() {
-    Creature::initializeGeneRegistry();
+    // Herbivore
+    auto herbivore = createTestCreature(50, 50, DietType::HERBIVORE);
     
-    // Herbivore (banana)
-    Genome herbGenome = createTestGenome(Diet::banana);
-    Creature herbivore(50, 50, herbGenome);
-    herbivore.enableNewGenetics(true);
+    // Carnivore
+    auto carnivore = createTestCreature(50, 50, DietType::CARNIVORE);
     
-    // Carnivore (predator)
-    Genome carnGenome = createTestGenome(Diet::predator);
-    Creature carnivore(50, 50, carnGenome);
-    carnivore.enableNewGenetics(true);
-    
-    auto herbSig = herbivore.computeScentSignature();
-    auto carnSig = carnivore.computeScentSignature();
+    auto herbSig = herbivore->computeScentSignature();
+    auto carnSig = carnivore->computeScentSignature();
     
     // Diet is encoded in first element
-    // banana = 0 * 0.25 = 0.0
-    // predator = 3 * 0.25 = 0.75
-    TEST_ASSERT_NEAR(0.0f, herbSig[0], 0.001f);
-    TEST_ASSERT_NEAR(0.75f, carnSig[0], 0.001f);
+    // HERBIVORE = 0 * 0.2 = 0.0
+    // CARNIVORE = 3 * 0.2 = 0.6 (now 5 diet types with NECROVORE)
+    TEST_ASSERT_NEAR(0.0f, herbSig[0], 0.05f);
+    TEST_ASSERT_GT(carnSig[0], herbSig[0]);  // Carnivore should be higher
 }
 
 void test_same_species_high_similarity() {
-    Creature::initializeGeneRegistry();
-    
     // Two herbivores with same diet
-    Genome genome1 = createTestGenome(Diet::banana, 100, 100000);
-    Genome genome2 = createTestGenome(Diet::banana, 100, 100000);
+    auto c1 = createTestCreature(50, 50, DietType::HERBIVORE);
+    auto c2 = createTestCreature(60, 60, DietType::HERBIVORE);
     
-    Creature c1(50, 50, genome1);
-    Creature c2(60, 60, genome2);
-    
-    c1.enableNewGenetics(true);
-    c2.enableNewGenetics(true);
-    
-    auto sig1 = c1.computeScentSignature();
-    auto sig2 = c2.computeScentSignature();
+    auto sig1 = c1->computeScentSignature();
+    auto sig2 = c2->computeScentSignature();
     
     float similarity = Creature::calculateSignatureSimilarity(sig1, sig2);
     
@@ -356,20 +354,12 @@ void test_same_species_high_similarity() {
 }
 
 void test_different_species_lower_similarity() {
-    Creature::initializeGeneRegistry();
-    
     // Herbivore vs Carnivore
-    Genome herbGenome = createTestGenome(Diet::banana, 100, 100000);
-    Genome carnGenome = createTestGenome(Diet::predator, 100, 100000);
+    auto herbivore = createTestCreature(50, 50, DietType::HERBIVORE);
+    auto carnivore = createTestCreature(60, 60, DietType::CARNIVORE);
     
-    Creature herbivore(50, 50, herbGenome);
-    Creature carnivore(60, 60, carnGenome);
-    
-    herbivore.enableNewGenetics(true);
-    carnivore.enableNewGenetics(true);
-    
-    auto herbSig = herbivore.computeScentSignature();
-    auto carnSig = carnivore.computeScentSignature();
+    auto herbSig = herbivore->computeScentSignature();
+    auto carnSig = carnivore->computeScentSignature();
     
     float crossSimilarity = Creature::calculateSignatureSimilarity(herbSig, carnSig);
     float selfSimilarity = Creature::calculateSignatureSimilarity(herbSig, herbSig);

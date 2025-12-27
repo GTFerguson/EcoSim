@@ -24,16 +24,28 @@ clang++ -g -std=c++17 -Iinclude \
     src/testing/genetics/test_behavior_feeding.cpp \
     src/testing/genetics/test_behavior_simulation.cpp \
     src/testing/genetics/test_creature_gene_api.cpp \
+    src/testing/genetics/test_naming_system.cpp \
+    src/testing/genetics/test_berry_bush_diagnostic.cpp \
     src/genetics/core/*.cpp \
     src/genetics/defaults/*.cpp \
     src/genetics/expression/*.cpp \
     src/genetics/organisms/Plant.cpp \
     src/genetics/organisms/PlantFactory.cpp \
+    src/genetics/organisms/CreatureFactory.cpp \
+    src/genetics/classification/ArchetypeIdentity.cpp \
+    src/genetics/classification/CreatureTaxonomy.cpp \
     src/genetics/interactions/FeedingInteraction.cpp \
     src/genetics/interactions/SeedDispersal.cpp \
     src/logging/Logger.cpp \
-    src/objects/food.cpp \
     src/objects/gameObject.cpp \
+    src/objects/creature/creature.cpp \
+    src/objects/creature/navigator.cpp \
+    src/world/tile.cpp \
+    src/world/world.cpp \
+    src/world/SimplexNoise.cpp \
+    src/world/ScentLayer.cpp \
+    src/world/Corpse.cpp \
+    src/genetics/interactions/CombatInteraction.cpp \
     -o GeneticsTest
 
 echo "Compilation successful!"
@@ -57,7 +69,6 @@ if [ "$1" == "--behavior" ]; then
         src/genetics/interactions/FeedingInteraction.cpp \
         src/genetics/interactions/SeedDispersal.cpp \
         src/logging/Logger.cpp \
-        src/objects/food.cpp \
         src/objects/gameObject.cpp \
         -o BehaviorPlantsTest
     
@@ -73,7 +84,6 @@ if [ "$1" == "--behavior" ]; then
         src/genetics/interactions/FeedingInteraction.cpp \
         src/genetics/interactions/SeedDispersal.cpp \
         src/logging/Logger.cpp \
-        src/objects/food.cpp \
         src/objects/gameObject.cpp \
         -o BehaviorFeedingTest
     
@@ -89,7 +99,6 @@ if [ "$1" == "--behavior" ]; then
         src/genetics/interactions/FeedingInteraction.cpp \
         src/genetics/interactions/SeedDispersal.cpp \
         src/logging/Logger.cpp \
-        src/objects/food.cpp \
         src/objects/gameObject.cpp \
         -o BehaviorSimulationTest
     
@@ -99,4 +108,28 @@ if [ "$1" == "--behavior" ]; then
     echo "  ./BehaviorPlantsTest"
     echo "  ./BehaviorFeedingTest"
     echo "  ./BehaviorSimulationTest"
+fi
+
+# Compile standalone berry bush diagnostic
+if [ "$1" == "--diagnostic" ]; then
+    echo ""
+    echo "Compiling standalone Berry Bush Diagnostic..."
+    
+    clang++ -g -std=c++17 -Iinclude \
+        -DTEST_BERRY_BUSH_DIAGNOSTIC_STANDALONE \
+        src/testing/genetics/test_berry_bush_diagnostic.cpp \
+        src/genetics/core/*.cpp \
+        src/genetics/defaults/*.cpp \
+        src/genetics/expression/*.cpp \
+        src/genetics/organisms/Plant.cpp \
+        src/genetics/organisms/PlantFactory.cpp \
+        src/genetics/interactions/FeedingInteraction.cpp \
+        src/genetics/interactions/SeedDispersal.cpp \
+        src/logging/Logger.cpp \
+        src/objects/gameObject.cpp \
+        -o BerryBushDiagnostic
+    
+    echo ""
+    echo "Berry Bush Diagnostic compiled!"
+    echo "Run with: ./BerryBushDiagnostic"
 fi

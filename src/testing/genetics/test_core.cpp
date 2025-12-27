@@ -14,7 +14,7 @@
 #include "genetics/core/Chromosome.hpp"
 #include "genetics/core/Genome.hpp"
 #include "genetics/core/GeneRegistry.hpp"
-#include "genetics/defaults/DefaultGenes.hpp"
+#include "genetics/defaults/UniversalGenes.hpp"
 
 // Namespace alias
 namespace G = EcoSim::Genetics;
@@ -119,23 +119,23 @@ void testGenomeAddGenes() {
 
 void testGenomeCrossover() {
     G::GeneRegistry registry;
-    G::DefaultGenes::registerDefaults(registry);
+    G::UniversalGenes::registerDefaults(registry);
     
-    G::Genome parent1 = G::DefaultGenes::createRandomGenome(registry);
-    G::Genome parent2 = G::DefaultGenes::createRandomGenome(registry);
+    G::Genome parent1 = G::UniversalGenes::createRandomGenome(registry);
+    G::Genome parent2 = G::UniversalGenes::createRandomGenome(registry);
     
     G::Genome offspring = G::Genome::crossover(parent1, parent2);
     
     // Offspring should have genes from both parents
-    TEST_ASSERT(offspring.hasGene(G::DefaultGenes::LIFESPAN));
-    TEST_ASSERT(offspring.hasGene(G::DefaultGenes::SIGHT));
+    TEST_ASSERT(offspring.hasGene(G::UniversalGenes::LIFESPAN));
+    TEST_ASSERT(offspring.hasGene(G::UniversalGenes::SIGHT_RANGE));
 }
 
 void testGenomeMutation() {
     G::GeneRegistry registry;
-    G::DefaultGenes::registerDefaults(registry);
+    G::UniversalGenes::registerDefaults(registry);
     
-    G::Genome original = G::DefaultGenes::createDefaultGenome(registry);
+    G::Genome original = G::UniversalGenes::createRandomGenome(registry);
     G::Genome mutated = original;
     
     // Apply high mutation rate - need to pass the definitions map from registry
@@ -156,29 +156,29 @@ void testGeneRegistryCreation() {
 
 void testGeneRegistryRegistration() {
     G::GeneRegistry registry;
-    G::DefaultGenes::registerDefaults(registry);
+    G::UniversalGenes::registerDefaults(registry);
     
     TEST_ASSERT_EQ(12u, registry.size()); // 12 legacy genes
-    TEST_ASSERT(registry.hasGene(G::DefaultGenes::LIFESPAN));
-    TEST_ASSERT(registry.hasGene(G::DefaultGenes::SIGHT));
-    TEST_ASSERT(registry.hasGene(G::DefaultGenes::DIET));
+    TEST_ASSERT(registry.hasGene(G::UniversalGenes::LIFESPAN));
+    TEST_ASSERT(registry.hasGene(G::UniversalGenes::SIGHT_RANGE));
+    TEST_ASSERT(registry.hasGene(G::UniversalGenes::DIET_TYPE));
 }
 
 void testDefaultGenomeCreation() {
     G::GeneRegistry registry;
-    G::DefaultGenes::registerDefaults(registry);
+    G::UniversalGenes::registerDefaults(registry);
     
-    G::Genome defaultGenome = G::DefaultGenes::createDefaultGenome(registry);
-    TEST_ASSERT(defaultGenome.hasGene(G::DefaultGenes::LIFESPAN));
+    G::Genome defaultGenome = G::UniversalGenes::createRandomGenome(registry);
+    TEST_ASSERT(defaultGenome.hasGene(G::UniversalGenes::LIFESPAN));
     TEST_ASSERT_EQ(registry.size(), defaultGenome.getTotalGeneCount());
 }
 
 void testRandomGenomeCreation() {
     G::GeneRegistry registry;
-    G::DefaultGenes::registerDefaults(registry);
+    G::UniversalGenes::registerDefaults(registry);
     
-    G::Genome randomGenome = G::DefaultGenes::createRandomGenome(registry);
-    TEST_ASSERT(randomGenome.hasGene(G::DefaultGenes::LIFESPAN));
+    G::Genome randomGenome = G::UniversalGenes::createRandomGenome(registry);
+    TEST_ASSERT(randomGenome.hasGene(G::UniversalGenes::LIFESPAN));
 }
 
 // ============================================================================

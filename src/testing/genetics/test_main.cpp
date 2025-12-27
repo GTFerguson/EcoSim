@@ -24,6 +24,10 @@ extern void runBehaviorSimulationTests();
 
 // Diagnostic test runners
 extern void runCreatureGeneAPITests();
+extern void runBerryBushDiagnosticTests();
+
+// Naming system test runners
+extern void runNamingSystemTests();
 
 int main() {
     auto start = std::chrono::high_resolution_clock::now();
@@ -81,6 +85,16 @@ int main() {
     // Diagnostic Tests: Creature Gene API
     std::cout << "=== Diagnostic: Creature Gene API ===" << std::endl;
     runCreatureGeneAPITests();
+    std::cout << std::endl;
+    
+    // Naming System Tests: Dynamic Classification & Scientific Names
+    std::cout << "=== Naming System: Dynamic Classification ===" << std::endl;
+    runNamingSystemTests();
+    std::cout << std::endl;
+    
+    // Berry Bush Diagnostic Tests
+    std::cout << "=== Diagnostic: Berry Bush Lifecycle ===" << std::endl;
+    runBerryBushDiagnosticTests();
     std::cout << std::endl;
     
     auto end = std::chrono::high_resolution_clock::now();

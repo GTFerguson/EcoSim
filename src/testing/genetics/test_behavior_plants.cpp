@@ -22,7 +22,6 @@
 #include "genetics/organisms/PlantFactory.hpp"
 #include "genetics/expression/EnvironmentState.hpp"
 #include "genetics/interactions/SeedDispersal.hpp"
-#include "objects/food.hpp"
 #include "rendering/RenderTypes.hpp"
 
 namespace G = EcoSim::Genetics;
@@ -146,11 +145,11 @@ void testPlantFruitProductionWhenMature() {
     
     // Verify plant can produce fruit after maturation
     if (plant.canProduceFruit()) {
-        Food fruit = plant.produceFruit();
-        TEST_ASSERT_GT(fruit.getCalories(), 0.0f);
-        TEST_ASSERT_GT(fruit.getLifespan(), 0u);
-        std::cout << "      Fruit produced after " << tickCount << " ticks, calories: " 
-                  << fruit.getCalories() << std::endl;
+        // Creatures now feed directly on plants - check plant provides nutrition
+        float nutritionValue = plant.getNutrientValue();
+        TEST_ASSERT_GT(nutritionValue, 0.0f);
+        std::cout << "      Plant ready for feeding after " << tickCount << " ticks, nutrition value: "
+                  << nutritionValue << std::endl;
     } else {
         // Berry bush should be able to produce fruit eventually
         std::cout << "      Plant status - Alive: " << plant.isAlive() 

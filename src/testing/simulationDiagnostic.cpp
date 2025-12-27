@@ -130,12 +130,12 @@ void takeTurnWithLogging(World& w, GeneralStats& gs, vector<Creature>& c,
     } else {
         activeC->update();
         
-        switch(activeC->getProfile()) {
-            case Profile::migrate:  activeC->migrateProfile(w, c, cIndex); break;
-            case Profile::hungry:   activeC->hungryProfile(w, c, cIndex, gs); break;
-            case Profile::thirsty:  activeC->thirstyProfile(w, c, cIndex); break;
-            case Profile::breed:    activeC->breedProfile(w, c, cIndex, gs); break;
-            case Profile::sleep:    break;
+        switch(activeC->getMotivation()) {
+            case Motivation::Content:   activeC->contentBehavior(w, c, cIndex); break;
+            case Motivation::Hungry:    activeC->hungryBehavior(w, c, cIndex, gs); break;
+            case Motivation::Thirsty:   activeC->thirstyBehavior(w, c, cIndex); break;
+            case Motivation::Amorous:   activeC->amorousBehavior(w, c, cIndex, gs); break;
+            case Motivation::Tired:     break;
         }
     }
 }

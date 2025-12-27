@@ -15,7 +15,6 @@
 #include "genetics/expression/Phenotype.hpp"
 #include "genetics/expression/EnvironmentState.hpp"
 #include "genetics/expression/OrganismState.hpp"
-#include "genetics/defaults/DefaultGenes.hpp"
 #include "genetics/defaults/UniversalGenes.hpp"
 
 namespace G = EcoSim::Genetics;
@@ -68,9 +67,9 @@ void testOrganismStateCustom() {
 
 void testPhenotypeCreation() {
     G::GeneRegistry registry;
-    G::DefaultGenes::registerDefaults(registry);
+    G::UniversalGenes::registerDefaults(registry);
     
-    G::Genome genome = G::DefaultGenes::createDefaultGenome(registry);
+    G::Genome genome = G::UniversalGenes::createRandomGenome(registry);
     G::Phenotype phenotype(&genome, &registry);
     
     // Should not throw during creation
@@ -79,9 +78,9 @@ void testPhenotypeCreation() {
 
 void testPhenotypeContextUpdate() {
     G::GeneRegistry registry;
-    G::DefaultGenes::registerDefaults(registry);
+    G::UniversalGenes::registerDefaults(registry);
     
-    G::Genome genome = G::DefaultGenes::createDefaultGenome(registry);
+    G::Genome genome = G::UniversalGenes::createRandomGenome(registry);
     G::Phenotype phenotype(&genome, &registry);
     
     G::EnvironmentState env;
@@ -99,9 +98,9 @@ void testPhenotypeContextUpdate() {
 
 void testPhenotypeGetTrait() {
     G::GeneRegistry registry;
-    G::DefaultGenes::registerDefaults(registry);
+    G::UniversalGenes::registerDefaults(registry);
     
-    G::Genome genome = G::DefaultGenes::createDefaultGenome(registry);
+    G::Genome genome = G::UniversalGenes::createRandomGenome(registry);
     G::Phenotype phenotype(&genome, &registry);
     
     G::EnvironmentState env;
@@ -113,7 +112,7 @@ void testPhenotypeGetTrait() {
     
     phenotype.updateContext(env, org);
     
-    float lifespan = phenotype.getTrait(G::DefaultGenes::LIFESPAN);
+    float lifespan = phenotype.getTrait(G::UniversalGenes::LIFESPAN);
     TEST_ASSERT_GT(lifespan, 0.0f);
 }
 
@@ -146,12 +145,12 @@ void testPhenotypeTraitWithUniversalGenes() {
 
 void testPhenotypeHasTrait() {
     G::GeneRegistry registry;
-    G::DefaultGenes::registerDefaults(registry);
+    G::UniversalGenes::registerDefaults(registry);
     
-    G::Genome genome = G::DefaultGenes::createDefaultGenome(registry);
+    G::Genome genome = G::UniversalGenes::createRandomGenome(registry);
     G::Phenotype phenotype(&genome, &registry);
     
-    TEST_ASSERT(phenotype.hasTrait(G::DefaultGenes::LIFESPAN));
+    TEST_ASSERT(phenotype.hasTrait(G::UniversalGenes::LIFESPAN));
     TEST_ASSERT(!phenotype.hasTrait("nonexistent_trait"));
 }
 

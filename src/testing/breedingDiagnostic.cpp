@@ -212,20 +212,20 @@ public:
             totalHunger += creature.getHunger();
             totalThirst += creature.getThirst();
             
-            Profile profile = creature.getProfile();
+            Motivation motivation = creature.getMotivation();
             
-            switch (profile) {
-                case Profile::breed:
+            switch (motivation) {
+                case Motivation::Amorous:
                     data.creaturesInBreedState++;
                     breedingCreatures.push_back(&creature);
                     totalMateValue += creature.getMate();
                     totalThreshold += creature.getTMate();
                     breedingCreatureCount++;
                     break;
-                case Profile::hungry:
+                case Motivation::Hungry:
                     data.creaturesHungry++;
                     break;
-                case Profile::thirsty:
+                case Motivation::Thirsty:
                     data.creaturesThirsty++;
                     break;
                 default:
@@ -475,19 +475,19 @@ void takeTurnWithBreedingDiagnostics(World& w, GeneralStats& gs, vector<Creature
         
         unsigned birthsBefore = gs.births;
         
-        switch(activeC->getProfile()) {
-            case Profile::migrate:  activeC->migrateProfile(w, c, cIndex); break;
-            case Profile::hungry:   activeC->hungryProfile(w, c, cIndex, gs); break;
-            case Profile::thirsty:  activeC->thirstyProfile(w, c, cIndex); break;
-            case Profile::breed:
+        switch(activeC->getMotivation()) {
+            case Motivation::Content:   activeC->contentBehavior(w, c, cIndex); break;
+            case Motivation::Hungry:    activeC->hungryBehavior(w, c, cIndex, gs); break;
+            case Motivation::Thirsty:   activeC->thirstyBehavior(w, c, cIndex); break;
+            case Motivation::Amorous:
                 {
-                    // Use breedProfile which includes scent-following (Phase 2: Gradient Navigation)
+                    // Use amorousBehavior which includes scent-following (Phase 2: Gradient Navigation)
                     // This will:
                     // 1. Deposit breeding scent
                     // 2. Try visual mate finding via findMate()
                     // 3. If visual fails, try scent-based navigation via detectMateDirection()
                     // 4. Fall back to wandering if no scent found
-                    activeC->breedProfile(w, c, cIndex, gs);
+                    activeC->amorousBehavior(w, c, cIndex, gs);
                     
                     // Check if birth occurred (by comparing birth count)
                     bool hadBirth = (gs.births > birthsBefore);
@@ -506,7 +506,7 @@ void takeTurnWithBreedingDiagnostics(World& w, GeneralStats& gs, vector<Creature
                             if (&other == activeC) continue;
                             
                             // Count ALL breeding creatures, not just same diet
-                            if (other.getProfile() == Profile::breed) {
+                            if (other.getMotivation() == Motivation::Amorous) {
                                 inBreedStateCount++;
                                 
                                 unsigned diffX = abs(activeC->getX() - other.getX());
@@ -542,7 +542,7 @@ void takeTurnWithBreedingDiagnostics(World& w, GeneralStats& gs, vector<Creature
                     }
                 }
                 break;
-            case Profile::sleep:    break;
+            case Motivation::Tired:     break;
         }
     }
 }
@@ -560,7 +560,7 @@ void advanceSimulationWithBreedingDiagnostics(World& w, vector<Creature>& c, Gen
     // This ensures scents from all potential mates are available during detection
     unsigned int currentTick = w.getCurrentTick();
     for (auto& creature : c) {
-        if (creature.getProfile() == Profile::breed) {
+        if (creature.getMotivation() == Motivation::Amorous) {
             creature.depositBreedingScent(w.getScentLayer(), currentTick);
         }
     }

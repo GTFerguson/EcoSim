@@ -13,6 +13,7 @@
 #include <iostream>
 #include <memory>
 #include <vector>
+#include <cmath>
 #include "test_framework.hpp"
 
 #include "genetics/core/GeneticTypes.hpp"
@@ -614,6 +615,318 @@ void testDetectionRangeScalesWithSenses() {
 }
 
 // ============================================================================
+// Test 7: Detection Range Formula Verification (Phase 3 specific tests)
+// ============================================================================
+
+/**
+ * @brief Verify the detection formula components:
+ *   visualBonus = colorVision × fruitAppeal × 100
+ *   scentBonus = scentDetection × 100
+ *   effectiveRange = sightRange + max(visualBonus, scentBonus)
+ */
+void testDetectionFormulaComponents() {
+    auto registry = std::make_shared<G::GeneRegistry>();
+    G::UniversalGenes::registerDefaults(*registry);
+    G::PlantFactory factory(registry);
+    factory.registerDefaultTemplates();
+    
+    // Create creature with known values for formula verification
+    // SIGHT=85, COLOR_VISION=0.90, SCENT_DETECTION=0.82
+    TestCreaturePhenotype creature(*registry, 0.7f, 0.5f, 0.5f);
+    setGeneValue(creature.getGenome(), G::UniversalGenes::SIGHT_RANGE, 85.0f);
+    setGeneValue(creature.getGenome(), G::UniversalGenes::COLOR_VISION, 0.90f);
+    setGeneValue(creature.getGenome(), G::UniversalGenes::SCENT_DETECTION, 0.82f);
+    
+    // Create berry bush with high fruit appeal (~0.8)
+    G::Plant berryBush = factory.createFromTemplate("berry_bush", 0, 0);
+    float fruitAppeal = berryBush.getFruitAppeal();
+    
+    G::FeedingInteraction interaction;
+    float detectionRange = interaction.getDetectionRange(creature.getPhenotype(), berryBush);
+    
+    // Calculate expected values
+    // visualBonus = 0.9 × fruitAppeal × 100
+    // scentBonus = 0.82 × 100 = 82
+    // expectedRange = 85 + max(visualBonus, 82)
+    float expectedVisualBonus = 0.90f * fruitAppeal * 100.0f;
+    float expectedScentBonus = 0.82f * 100.0f;
+    float expectedRange = 85.0f + std::max(expectedVisualBonus, expectedScentBonus);
+    
+    std::cout << "      Fruit appeal: " << fruitAppeal << std::endl;
+    std::cout << "      Expected visual bonus: " << expectedVisualBonus << std::endl;
+    std::cout << "      Expected scent bonus: " << expectedScentBonus << std::endl;
+    std::cout << "      Expected detection range: " << expectedRange << std::endl;
+    std::cout << "      Actual detection range: " << detectionRange << std::endl;
+    
+    // Allow small tolerance for floating point
+    float tolerance = 5.0f;
+    TEST_ASSERT_GT(detectionRange, expectedRange - tolerance);
+    TEST_ASSERT_LT(detectionRange, expectedRange + tolerance);
+}
+
+/**
+ * @brief Test: Color vision helps spot COLORFUL plants specifically
+ * High CV + high fruit appeal = big visual bonus
+ * High CV + low fruit appeal = small visual bonus
+ */
+void testColorVisionHelpsWithColorfulPlants() {
+    auto registry = std::make_shared<G::GeneRegistry>();
+    G::UniversalGenes::registerDefaults(*registry);
+    G::PlantFactory factory(registry);
+    factory.registerDefaultTemplates();
+    
+    // Create creature with HIGH color vision but LOW scent detection
+    // This isolates the visual component
+    TestCreaturePhenotype visualCreature(*registry, 0.7f, 0.5f, 0.5f);
+    setGeneValue(visualCreature.getGenome(), G::UniversalGenes::SIGHT_RANGE, 85.0f);
+    setGeneValue(visualCreature.getGenome(), G::UniversalGenes::COLOR_VISION, 0.90f);
+    setGeneValue(visualCreature.getGenome(), G::UniversalGenes::SCENT_DETECTION, 0.01f);  // Very low scent
+    
+    // Berry bush: high fruit appeal (~0.7-0.9)
+    G::Plant berryBush = factory.createFromTemplate("berry_bush", 0, 0);
+    
+    // Grass: low fruit appeal (~0.0-0.1)
+    G::Plant grass = factory.createFromTemplate("grass", 0, 0);
+    
+    G::FeedingInteraction interaction;
+    
+    float berryRange = interaction.getDetectionRange(visualCreature.getPhenotype(), berryBush);
+    float grassRange = interaction.getDetectionRange(visualCreature.getPhenotype(), grass);
+    
+    std::cout << "      Berry bush fruit appeal: " << berryBush.getFruitAppeal() << std::endl;
+    std::cout << "      Grass fruit appeal: " << grass.getFruitAppeal() << std::endl;
+    std::cout << "      Berry detection range: " << berryRange << std::endl;
+    std::cout << "      Grass detection range: " << grassRange << std::endl;
+    
+    // Berry (colorful) should have much higher detection range than grass (not colorful)
+    // For CV=0.9, berryAppeal=0.8: visualBonus = 72 tiles
+    // For CV=0.9, grassAppeal=0.05: visualBonus = 4.5 tiles
+    // Difference should be significant (at least 30 tiles)
+    TEST_ASSERT_GT(berryRange - grassRange, 30.0f);
+}
+
+/**
+ * @brief Test: Scent detection works independently of what plant looks like
+ * High scent creature can find low-appeal plants just as well via smell
+ */
+void testScentWorksIndependentlyOfFruitAppeal() {
+    auto registry = std::make_shared<G::GeneRegistry>();
+    G::UniversalGenes::registerDefaults(*registry);
+    G::PlantFactory factory(registry);
+    factory.registerDefaultTemplates();
+    
+    // Create creature with LOW color vision but HIGH scent detection
+    // This isolates the scent component
+    TestCreaturePhenotype scentCreature(*registry, 0.7f, 0.5f, 0.5f);
+    setGeneValue(scentCreature.getGenome(), G::UniversalGenes::SIGHT_RANGE, 50.0f);
+    setGeneValue(scentCreature.getGenome(), G::UniversalGenes::COLOR_VISION, 0.01f);  // Very low vision
+    setGeneValue(scentCreature.getGenome(), G::UniversalGenes::SCENT_DETECTION, 0.90f);
+    
+    // Berry bush: high fruit appeal
+    G::Plant berryBush = factory.createFromTemplate("berry_bush", 0, 0);
+    
+    // Grass: low fruit appeal
+    G::Plant grass = factory.createFromTemplate("grass", 0, 0);
+    
+    G::FeedingInteraction interaction;
+    
+    float berryRange = interaction.getDetectionRange(scentCreature.getPhenotype(), berryBush);
+    float grassRange = interaction.getDetectionRange(scentCreature.getPhenotype(), grass);
+    
+    // Expected for scent creature:
+    // scentBonus = 0.9 × 100 = 90 tiles (same for both plants)
+    // visualBonus for berry ≈ 0.01 × 0.8 × 100 = 0.8 tiles
+    // visualBonus for grass ≈ 0.01 × 0.05 × 100 = 0.05 tiles
+    // Both should be dominated by scent bonus, so ranges should be similar
+    
+    std::cout << "      Berry detection range (scent creature): " << berryRange << std::endl;
+    std::cout << "      Grass detection range (scent creature): " << grassRange << std::endl;
+    
+    // Scent-dominant creature should detect both plants at similar range
+    // (difference should be minimal, less than 10 tiles)
+    float rangeDifference = std::abs(berryRange - grassRange);
+    TEST_ASSERT_LT(rangeDifference, 10.0f);
+    
+    // Both ranges should be around 50 + 90 = 140 tiles
+    TEST_ASSERT_GT(berryRange, 130.0f);
+    TEST_ASSERT_GT(grassRange, 130.0f);
+}
+
+/**
+ * @brief Test the four archetype scenarios from the plan
+ */
+void testArchetypeDetectionScenarios() {
+    auto registry = std::make_shared<G::GeneRegistry>();
+    G::UniversalGenes::registerDefaults(*registry);
+    G::PlantFactory factory(registry);
+    factory.registerDefaultTemplates();
+    
+    G::FeedingInteraction interaction;
+    
+    // Create plants
+    G::Plant berryBush = factory.createFromTemplate("berry_bush", 0, 0);
+    G::Plant grass = factory.createFromTemplate("grass", 0, 0);
+    
+    float berryAppeal = berryBush.getFruitAppeal();
+    float grassAppeal = grass.getFruitAppeal();
+    
+    std::cout << "      Berry fruit appeal: " << berryAppeal << std::endl;
+    std::cout << "      Grass fruit appeal: " << grassAppeal << std::endl;
+    
+    // === Scenario 1: Canopy Forager → Berry ===
+    // SIGHT=85, COLOR=0.90, SCENT=0.82, Appeal=0.8
+    // Expected: 85 + max(72, 82) = 167 tiles
+    {
+        TestCreaturePhenotype canopyForager(*registry, 0.7f, 0.5f, 0.5f);
+        setGeneValue(canopyForager.getGenome(), G::UniversalGenes::SIGHT_RANGE, 85.0f);
+        setGeneValue(canopyForager.getGenome(), G::UniversalGenes::COLOR_VISION, 0.90f);
+        setGeneValue(canopyForager.getGenome(), G::UniversalGenes::SCENT_DETECTION, 0.82f);
+        
+        float range = interaction.getDetectionRange(canopyForager.getPhenotype(), berryBush);
+        float expectedVisual = 0.90f * berryAppeal * 100.0f;
+        float expectedScent = 0.82f * 100.0f;
+        float expected = 85.0f + std::max(expectedVisual, expectedScent);
+        
+        std::cout << "      Canopy Forager → Berry: " << range << " (expected ~" << expected << ")" << std::endl;
+        TEST_ASSERT_GT(range, 140.0f);  // Should be well over 140 tiles
+    }
+    
+    // === Scenario 2: Canopy Forager → Grass ===
+    // SIGHT=85, COLOR=0.90, SCENT=0.82, Appeal=0.05
+    // Expected: 85 + max(4.5, 82) = 167 tiles (via scent)
+    {
+        TestCreaturePhenotype canopyForager(*registry, 0.7f, 0.5f, 0.5f);
+        setGeneValue(canopyForager.getGenome(), G::UniversalGenes::SIGHT_RANGE, 85.0f);
+        setGeneValue(canopyForager.getGenome(), G::UniversalGenes::COLOR_VISION, 0.90f);
+        setGeneValue(canopyForager.getGenome(), G::UniversalGenes::SCENT_DETECTION, 0.82f);
+        
+        float range = interaction.getDetectionRange(canopyForager.getPhenotype(), grass);
+        float expectedVisual = 0.90f * grassAppeal * 100.0f;
+        float expectedScent = 0.82f * 100.0f;
+        float expected = 85.0f + std::max(expectedVisual, expectedScent);
+        
+        std::cout << "      Canopy Forager → Grass: " << range << " (expected ~" << expected << ")" << std::endl;
+        // Visual bonus is tiny (grassAppeal very low), scent dominates
+        TEST_ASSERT_GT(range, 160.0f);  // Should be ~167 tiles
+    }
+    
+    // === Scenario 3: Scent Tracker → Berry ===
+    // SIGHT=85, COLOR=0.30, SCENT=0.94, Appeal=0.8
+    // Expected: 85 + max(24, 94) = 179 tiles
+    {
+        TestCreaturePhenotype scentTracker(*registry, 0.7f, 0.5f, 0.5f);
+        setGeneValue(scentTracker.getGenome(), G::UniversalGenes::SIGHT_RANGE, 85.0f);
+        setGeneValue(scentTracker.getGenome(), G::UniversalGenes::COLOR_VISION, 0.30f);
+        setGeneValue(scentTracker.getGenome(), G::UniversalGenes::SCENT_DETECTION, 0.94f);
+        
+        float range = interaction.getDetectionRange(scentTracker.getPhenotype(), berryBush);
+        float expectedVisual = 0.30f * berryAppeal * 100.0f;
+        float expectedScent = 0.94f * 100.0f;
+        float expected = 85.0f + std::max(expectedVisual, expectedScent);
+        
+        std::cout << "      Scent Tracker → Berry: " << range << " (expected ~" << expected << ")" << std::endl;
+        TEST_ASSERT_GT(range, 170.0f);  // Should be ~179 tiles
+    }
+    
+    // === Scenario 4: Tank Herbivore → Grass ===
+    // SIGHT=65, COLOR=0.30, SCENT=0.60, Appeal=0.05
+    // Expected: 65 + max(1.5, 60) = 125 tiles
+    {
+        TestCreaturePhenotype tankHerbivore(*registry, 0.7f, 0.5f, 0.5f);
+        setGeneValue(tankHerbivore.getGenome(), G::UniversalGenes::SIGHT_RANGE, 65.0f);
+        setGeneValue(tankHerbivore.getGenome(), G::UniversalGenes::COLOR_VISION, 0.30f);
+        setGeneValue(tankHerbivore.getGenome(), G::UniversalGenes::SCENT_DETECTION, 0.60f);
+        
+        float range = interaction.getDetectionRange(tankHerbivore.getPhenotype(), grass);
+        float expectedVisual = 0.30f * grassAppeal * 100.0f;
+        float expectedScent = 0.60f * 100.0f;
+        float expected = 65.0f + std::max(expectedVisual, expectedScent);
+        
+        std::cout << "      Tank Herbivore → Grass: " << range << " (expected ~" << expected << ")" << std::endl;
+        TEST_ASSERT_GT(range, 115.0f);  // Should be ~125 tiles
+    }
+}
+
+/**
+ * @brief Test that detection uses additive formula (not multiplicative)
+ * Verify: effectiveRange = sightRange + max(bonus) not sightRange × multiplier
+ */
+void testDetectionUsesAdditiveFormula() {
+    auto registry = std::make_shared<G::GeneRegistry>();
+    G::UniversalGenes::registerDefaults(*registry);
+    G::PlantFactory factory(registry);
+    factory.registerDefaultTemplates();
+    
+    // Create two creatures with different sight ranges
+    TestCreaturePhenotype nearSight(*registry, 0.7f, 0.5f, 0.5f);
+    setGeneValue(nearSight.getGenome(), G::UniversalGenes::SIGHT_RANGE, 20.0f);
+    setGeneValue(nearSight.getGenome(), G::UniversalGenes::COLOR_VISION, 0.50f);
+    setGeneValue(nearSight.getGenome(), G::UniversalGenes::SCENT_DETECTION, 0.50f);
+    
+    TestCreaturePhenotype farSight(*registry, 0.7f, 0.5f, 0.5f);
+    setGeneValue(farSight.getGenome(), G::UniversalGenes::SIGHT_RANGE, 100.0f);
+    setGeneValue(farSight.getGenome(), G::UniversalGenes::COLOR_VISION, 0.50f);
+    setGeneValue(farSight.getGenome(), G::UniversalGenes::SCENT_DETECTION, 0.50f);
+    
+    G::Plant berryBush = factory.createFromTemplate("berry_bush", 0, 0);
+    float fruitAppeal = berryBush.getFruitAppeal();
+    
+    G::FeedingInteraction interaction;
+    
+    float nearRange = interaction.getDetectionRange(nearSight.getPhenotype(), berryBush);
+    float farRange = interaction.getDetectionRange(farSight.getPhenotype(), berryBush);
+    
+    // Both have same CV/scent, so bonus is the same
+    // scentBonus = 0.5 × 100 = 50
+    // visualBonus = 0.5 × appeal × 100
+    // Difference should be exactly 80 (100 - 20) if additive
+    float difference = farRange - nearRange;
+    
+    std::cout << "      Near-sight range: " << nearRange << std::endl;
+    std::cout << "      Far-sight range: " << farRange << std::endl;
+    std::cout << "      Difference: " << difference << " (expected 80)" << std::endl;
+    
+    // Additive formula means difference = sight range difference
+    TEST_ASSERT_GT(difference, 75.0f);
+    TEST_ASSERT_LT(difference, 85.0f);
+}
+
+/**
+ * @brief Verify canDetectPlant uses detection range correctly
+ */
+void testCanDetectPlantUsesRange() {
+    auto registry = std::make_shared<G::GeneRegistry>();
+    G::UniversalGenes::registerDefaults(*registry);
+    G::PlantFactory factory(registry);
+    factory.registerDefaultTemplates();
+    
+    TestCreaturePhenotype creature(*registry, 0.7f, 0.5f, 0.5f);
+    setGeneValue(creature.getGenome(), G::UniversalGenes::SIGHT_RANGE, 50.0f);
+    setGeneValue(creature.getGenome(), G::UniversalGenes::COLOR_VISION, 0.50f);
+    setGeneValue(creature.getGenome(), G::UniversalGenes::SCENT_DETECTION, 0.50f);
+    
+    G::Plant berryBush = factory.createFromTemplate("berry_bush", 0, 0);
+    
+    G::FeedingInteraction interaction;
+    
+    float range = interaction.getDetectionRange(creature.getPhenotype(), berryBush);
+    
+    // Test detection at various distances
+    bool canDetectClose = interaction.canDetectPlant(creature.getPhenotype(), berryBush, 10.0f);
+    bool canDetectMid = interaction.canDetectPlant(creature.getPhenotype(), berryBush, range - 5.0f);
+    bool canDetectFar = interaction.canDetectPlant(creature.getPhenotype(), berryBush, range + 50.0f);
+    
+    std::cout << "      Detection range: " << range << std::endl;
+    std::cout << "      Can detect at 10: " << (canDetectClose ? "yes" : "no") << std::endl;
+    std::cout << "      Can detect at range-5: " << (canDetectMid ? "yes" : "no") << std::endl;
+    std::cout << "      Can detect at range+50: " << (canDetectFar ? "yes" : "no") << std::endl;
+    
+    TEST_ASSERT(canDetectClose);   // Should detect close
+    TEST_ASSERT(canDetectMid);     // Should detect within range
+    TEST_ASSERT(!canDetectFar);    // Should NOT detect beyond range
+}
+
+// ============================================================================
 // Test Runner
 // ============================================================================
 
@@ -648,6 +961,15 @@ void runBehaviorFeedingTests() {
     
     BEGIN_TEST_GROUP("Detection Tests");
     RUN_TEST(testDetectionRangeScalesWithSenses);
+    END_TEST_GROUP();
+    
+    BEGIN_TEST_GROUP("Detection Range Formula Tests (Phase 3)");
+    RUN_TEST(testDetectionFormulaComponents);
+    RUN_TEST(testColorVisionHelpsWithColorfulPlants);
+    RUN_TEST(testScentWorksIndependentlyOfFruitAppeal);
+    RUN_TEST(testArchetypeDetectionScenarios);
+    RUN_TEST(testDetectionUsesAdditiveFormula);
+    RUN_TEST(testCanDetectPlantUsesRange);
     END_TEST_GROUP();
 }
 
