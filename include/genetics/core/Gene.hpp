@@ -185,7 +185,7 @@ public:
     float applyCreep(float value) const;
     
     // ========================================================================
-    // Energy Budget System (Phase 2.2)
+    // Energy Budget System
     // ========================================================================
     
     /**
@@ -220,6 +220,22 @@ public:
      * Formula: maintenanceCost * pow(expressionLevel, costScaling)
      */
     float calculateMaintenanceCost(float expressionLevel) const;
+    
+    // ========================================================================
+    // Trait Modulation Policy
+    // ========================================================================
+    
+    /**
+     * @brief Get the modulation policy for this gene
+     * @return How organism state affects trait expression
+     */
+    TraitModulationPolicy getModulationPolicy() const { return modulationPolicy_; }
+    
+    /**
+     * @brief Set the modulation policy for this gene
+     * @param policy How organism state should affect trait expression
+     */
+    void setModulationPolicy(TraitModulationPolicy policy) { modulationPolicy_ = policy; }
 
 private:
     std::string id_;
@@ -228,9 +244,12 @@ private:
     DominanceType dominance_;
     std::vector<EffectBinding> effects_;
     
-    // Energy budget fields (Phase 2.2)
+    // Energy budget fields
     float maintenanceCost_ = 0.0f;  // Energy cost per tick at expression 1.0
     float costScaling_ = 1.5f;       // How cost scales with expression (1.0=linear, >1=exponential)
+    
+    // Trait modulation policy (default: immutable physical structure)
+    TraitModulationPolicy modulationPolicy_ = TraitModulationPolicy::NEVER;
     
     // Get thread-local random engine
     static std::mt19937& getRandomEngine();

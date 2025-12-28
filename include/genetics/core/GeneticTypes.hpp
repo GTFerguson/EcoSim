@@ -40,6 +40,14 @@ enum class EffectType {
     Conditional     // Context-dependent
 };
 
+// Modulation policy for how organism state affects trait expression
+enum class TraitModulationPolicy {
+    NEVER,           // Immutable physical structure (e.g., hide_thickness, teeth)
+    HEALTH_ONLY,     // Metabolic efficiency traits (reduced when injured)
+    ENERGY_GATED,    // Production traits (capacity vs actual output)
+    CONSUMER_APPLIED // Performance traits (modulate at use-time, not phenotype)
+};
+
 // Allele representation
 struct Allele {
     GeneValue value;
