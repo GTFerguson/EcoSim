@@ -203,6 +203,7 @@ void UniversalGenes::registerUniversalGenes(GeneRegistry& registry) {
     lifespan.addEffect(EffectBinding("lifespan", "max_age", EffectType::Direct, 1.0f));
     lifespan.setMaintenanceCost(0.02f);
     lifespan.setCostScaling(1.0f);
+    lifespan.setModulationPolicy(TraitModulationPolicy::NEVER);
     registry.tryRegisterGene(std::move(lifespan));
     
     // Max Size - maximum organism size
@@ -213,6 +214,7 @@ void UniversalGenes::registerUniversalGenes(GeneRegistry& registry) {
     maxSize.addEffect(EffectBinding("morphology", "max_size", EffectType::Direct, 1.0f));
     maxSize.setMaintenanceCost(0.05f);
     maxSize.setCostScaling(1.5f);  // Superlinear - size is expensive
+    maxSize.setModulationPolicy(TraitModulationPolicy::NEVER);
     registry.tryRegisterGene(std::move(maxSize));
     
     // Metabolism Rate - base metabolic rate
@@ -223,6 +225,7 @@ void UniversalGenes::registerUniversalGenes(GeneRegistry& registry) {
     metabolismRate.addEffect(EffectBinding("metabolism", "base_rate", EffectType::Direct, 1.0f));
     metabolismRate.setMaintenanceCost(0.03f);
     metabolismRate.setCostScaling(1.0f);
+    metabolismRate.setModulationPolicy(TraitModulationPolicy::HEALTH_ONLY);
     registry.tryRegisterGene(std::move(metabolismRate));
     
     // Color Hue - HSV hue for visual appearance
@@ -233,6 +236,7 @@ void UniversalGenes::registerUniversalGenes(GeneRegistry& registry) {
     colorHue.addEffect(EffectBinding("morphology", "color_hue", EffectType::Direct, 1.0f));
     colorHue.setMaintenanceCost(0.01f);
     colorHue.setCostScaling(1.0f);
+    colorHue.setModulationPolicy(TraitModulationPolicy::NEVER);
     registry.tryRegisterGene(std::move(colorHue));
     
     // Hardiness - resistance to damage and environmental stress
@@ -243,6 +247,7 @@ void UniversalGenes::registerUniversalGenes(GeneRegistry& registry) {
     hardiness.addEffect(EffectBinding("morphology", "damage_resistance", EffectType::Direct, 1.0f));
     hardiness.setMaintenanceCost(0.04f);
     hardiness.setCostScaling(1.2f);
+    hardiness.setModulationPolicy(TraitModulationPolicy::NEVER);
     registry.tryRegisterGene(std::move(hardiness));
     
     // Temperature Tolerance Low - minimum survival temperature
@@ -253,6 +258,7 @@ void UniversalGenes::registerUniversalGenes(GeneRegistry& registry) {
     tempLow.addEffect(EffectBinding("environmental", "temp_tolerance_low", EffectType::Direct, 1.0f));
     tempLow.setMaintenanceCost(0.03f);
     tempLow.setCostScaling(1.0f);
+    tempLow.setModulationPolicy(TraitModulationPolicy::NEVER);
     registry.tryRegisterGene(std::move(tempLow));
     
     // Temperature Tolerance High - maximum survival temperature
@@ -263,6 +269,7 @@ void UniversalGenes::registerUniversalGenes(GeneRegistry& registry) {
     tempHigh.addEffect(EffectBinding("environmental", "temp_tolerance_high", EffectType::Direct, 1.0f));
     tempHigh.setMaintenanceCost(0.03f);
     tempHigh.setCostScaling(1.0f);
+    tempHigh.setModulationPolicy(TraitModulationPolicy::NEVER);
     registry.tryRegisterGene(std::move(tempHigh));
 }
 
@@ -280,6 +287,7 @@ void UniversalGenes::registerMobilityGenes(GeneRegistry& registry) {
     locomotion.addEffect(EffectBinding("locomotion", "speed_multiplier", EffectType::Direct, 1.0f));
     locomotion.setMaintenanceCost(0.20f);
     locomotion.setCostScaling(1.3f);  // Superlinear - speed is expensive
+    locomotion.setModulationPolicy(TraitModulationPolicy::CONSUMER_APPLIED);
     registry.tryRegisterGene(std::move(locomotion));
     
     // Sight Range - vision distance
@@ -290,6 +298,7 @@ void UniversalGenes::registerMobilityGenes(GeneRegistry& registry) {
     sightRange.addEffect(EffectBinding("sensory", "vision_range", EffectType::Direct, 1.0f));
     sightRange.setMaintenanceCost(0.10f);
     sightRange.setCostScaling(1.0f);
+    sightRange.setModulationPolicy(TraitModulationPolicy::CONSUMER_APPLIED);
     registry.tryRegisterGene(std::move(sightRange));
     
     // Navigation Ability - pathfinding capability
@@ -300,6 +309,7 @@ void UniversalGenes::registerMobilityGenes(GeneRegistry& registry) {
     navAbility.addEffect(EffectBinding("sensory", "navigation_skill", EffectType::Direct, 1.0f));
     navAbility.setMaintenanceCost(0.08f);
     navAbility.setCostScaling(1.0f);
+    navAbility.setModulationPolicy(TraitModulationPolicy::CONSUMER_APPLIED);
     registry.tryRegisterGene(std::move(navAbility));
     
     // Flee Threshold - distance at which fleeing is triggered
@@ -310,6 +320,7 @@ void UniversalGenes::registerMobilityGenes(GeneRegistry& registry) {
     fleeThreshold.addEffect(EffectBinding("behavior", "flee_trigger_distance", EffectType::Direct, 1.0f));
     fleeThreshold.setMaintenanceCost(0.03f);
     fleeThreshold.setCostScaling(1.0f);
+    fleeThreshold.setModulationPolicy(TraitModulationPolicy::NEVER);
     registry.tryRegisterGene(std::move(fleeThreshold));
     
     // Pursue Threshold - distance at which pursuing is triggered
@@ -320,6 +331,7 @@ void UniversalGenes::registerMobilityGenes(GeneRegistry& registry) {
     pursueThreshold.addEffect(EffectBinding("behavior", "pursue_trigger_distance", EffectType::Direct, 1.0f));
     pursueThreshold.setMaintenanceCost(0.03f);
     pursueThreshold.setCostScaling(1.0f);
+    pursueThreshold.setModulationPolicy(TraitModulationPolicy::NEVER);
     registry.tryRegisterGene(std::move(pursueThreshold));
 }
 
@@ -337,6 +349,7 @@ void UniversalGenes::registerAutotrophyGenes(GeneRegistry& registry) {
     photosynthesis.addEffect(EffectBinding("metabolism", "photosynthesis_efficiency", EffectType::Direct, 1.0f));
     photosynthesis.setMaintenanceCost(0.04f);
     photosynthesis.setCostScaling(1.0f);
+    photosynthesis.setModulationPolicy(TraitModulationPolicy::HEALTH_ONLY);
     registry.tryRegisterGene(std::move(photosynthesis));
     
     // Root Depth - underground resource access
@@ -347,6 +360,7 @@ void UniversalGenes::registerAutotrophyGenes(GeneRegistry& registry) {
     rootDepth.addEffect(EffectBinding("morphology", "root_depth", EffectType::Direct, 1.0f));
     rootDepth.setMaintenanceCost(0.05f);
     rootDepth.setCostScaling(1.3f);  // Deep roots are expensive
+    rootDepth.setModulationPolicy(TraitModulationPolicy::HEALTH_ONLY);
     registry.tryRegisterGene(std::move(rootDepth));
     
     // Water Storage - internal water capacity
@@ -357,6 +371,7 @@ void UniversalGenes::registerAutotrophyGenes(GeneRegistry& registry) {
     waterStorage.addEffect(EffectBinding("metabolism", "water_storage_capacity", EffectType::Direct, 1.0f));
     waterStorage.setMaintenanceCost(0.03f);
     waterStorage.setCostScaling(1.2f);
+    waterStorage.setModulationPolicy(TraitModulationPolicy::HEALTH_ONLY);
     registry.tryRegisterGene(std::move(waterStorage));
     
     // Light Requirement - how much light is needed
@@ -367,6 +382,7 @@ void UniversalGenes::registerAutotrophyGenes(GeneRegistry& registry) {
     lightReq.addEffect(EffectBinding("metabolism", "light_requirement", EffectType::Direct, 1.0f));
     lightReq.setMaintenanceCost(0.02f);
     lightReq.setCostScaling(1.0f);
+    lightReq.setModulationPolicy(TraitModulationPolicy::HEALTH_ONLY);
     registry.tryRegisterGene(std::move(lightReq));
     
     // Water Requirement - how much water is needed
@@ -394,6 +410,7 @@ void UniversalGenes::registerHeterotrophyGenes(GeneRegistry& registry) {
     huntInstinct.addEffect(EffectBinding("behavior", "hunting_drive", EffectType::Direct, 1.0f));
     huntInstinct.setMaintenanceCost(0.05f);
     huntInstinct.setCostScaling(1.0f);
+    huntInstinct.setModulationPolicy(TraitModulationPolicy::CONSUMER_APPLIED);
     registry.tryRegisterGene(std::move(huntInstinct));
     
     // Hunger Threshold - when organism seeks food
@@ -404,6 +421,7 @@ void UniversalGenes::registerHeterotrophyGenes(GeneRegistry& registry) {
     hungerThreshold.addEffect(EffectBinding("metabolism", "hunger_threshold", EffectType::Direct, 1.0f));
     hungerThreshold.setMaintenanceCost(0.02f);
     hungerThreshold.setCostScaling(1.0f);
+    hungerThreshold.setModulationPolicy(TraitModulationPolicy::NEVER);
     registry.tryRegisterGene(std::move(hungerThreshold));
     
     // Thirst Threshold - when organism seeks water
@@ -414,6 +432,7 @@ void UniversalGenes::registerHeterotrophyGenes(GeneRegistry& registry) {
     thirstThreshold.addEffect(EffectBinding("metabolism", "thirst_threshold", EffectType::Direct, 1.0f));
     thirstThreshold.setMaintenanceCost(0.02f);
     thirstThreshold.setCostScaling(1.0f);
+    thirstThreshold.setModulationPolicy(TraitModulationPolicy::NEVER);
     registry.tryRegisterGene(std::move(thirstThreshold));
     
     // Diet Type - DEPRECATED: what the organism eats (discrete enum)
@@ -425,6 +444,7 @@ void UniversalGenes::registerHeterotrophyGenes(GeneRegistry& registry) {
     dietType.addEffect(EffectBinding("metabolism", "diet_type", EffectType::Direct, 1.0f));
     dietType.setMaintenanceCost(0.01f);
     dietType.setCostScaling(1.0f);
+    dietType.setModulationPolicy(TraitModulationPolicy::NEVER);
     registry.tryRegisterGene(std::move(dietType));
     
     // Digestive Efficiency - how well food is converted to energy
@@ -466,6 +486,7 @@ void UniversalGenes::registerCoevolutionHeterotrophyGenes(GeneRegistry& registry
     plantDigest.addEffect(EffectBinding("metabolism", "meat_digestion_efficiency", EffectType::Additive, -0.5f));
     plantDigest.setMaintenanceCost(0.10f);
     plantDigest.setCostScaling(1.2f);
+    plantDigest.setModulationPolicy(TraitModulationPolicy::HEALTH_ONLY);
     registry.tryRegisterGene(std::move(plantDigest));
     
     // Meat Digestion Efficiency - extract calories from meat
@@ -479,6 +500,7 @@ void UniversalGenes::registerCoevolutionHeterotrophyGenes(GeneRegistry& registry
     meatDigest.addEffect(EffectBinding("metabolism", "plant_digestion_efficiency", EffectType::Additive, -0.5f));
     meatDigest.setMaintenanceCost(0.10f);
     meatDigest.setCostScaling(1.2f);
+    meatDigest.setModulationPolicy(TraitModulationPolicy::HEALTH_ONLY);
     registry.tryRegisterGene(std::move(meatDigest));
     
     // Cellulose Breakdown - digest tough plant fibers
@@ -492,6 +514,7 @@ void UniversalGenes::registerCoevolutionHeterotrophyGenes(GeneRegistry& registry
     cellulose.addEffect(EffectBinding("morphology", "stomach_acidity", EffectType::Additive, -0.5f));
     cellulose.setMaintenanceCost(0.15f);
     cellulose.setCostScaling(1.5f);  // Very expensive to maintain gut flora
+    cellulose.setModulationPolicy(TraitModulationPolicy::HEALTH_ONLY);
     registry.tryRegisterGene(std::move(cellulose));
     
     // Toxin Tolerance - resist plant toxins
@@ -554,6 +577,7 @@ void UniversalGenes::registerMorphologyGenes(GeneRegistry& registry) {
     gutLen.addEffect(EffectBinding("metabolism", "plant_digestion_efficiency", EffectType::Additive, 0.35f));
     gutLen.setMaintenanceCost(0.04f);
     gutLen.setCostScaling(1.0f);
+    gutLen.setModulationPolicy(TraitModulationPolicy::NEVER);
     registry.tryRegisterGene(std::move(gutLen));
     
     // Tooth Sharpness - sharp teeth for meat
@@ -569,6 +593,7 @@ void UniversalGenes::registerMorphologyGenes(GeneRegistry& registry) {
     toothSharp.addEffect(EffectBinding("metabolism", "meat_digestion_efficiency", EffectType::Additive, 0.15f));
     toothSharp.setMaintenanceCost(0.02f);
     toothSharp.setCostScaling(1.0f);
+    toothSharp.setModulationPolicy(TraitModulationPolicy::NEVER);
     registry.tryRegisterGene(std::move(toothSharp));
     
     // Tooth Grinding - flat teeth for plants
@@ -666,6 +691,7 @@ void UniversalGenes::registerBehaviorGenes(GeneRegistry& registry) {
     sweetness.addEffect(EffectBinding("behavior", "sweetness_preference", EffectType::Direct, 1.0f));
     sweetness.setMaintenanceCost(0.02f);
     sweetness.setCostScaling(1.0f);
+    sweetness.setModulationPolicy(TraitModulationPolicy::NEVER);
     registry.tryRegisterGene(std::move(sweetness));
     
     // Caching Instinct - squirrel-like hoarding
@@ -676,6 +702,7 @@ void UniversalGenes::registerBehaviorGenes(GeneRegistry& registry) {
     caching.addEffect(EffectBinding("behavior", "caching_instinct", EffectType::Direct, 1.0f));
     caching.setMaintenanceCost(0.03f);
     caching.setCostScaling(1.0f);
+    caching.setModulationPolicy(TraitModulationPolicy::NEVER);
     registry.tryRegisterGene(std::move(caching));
     
     // Spatial Memory - remember locations
@@ -686,6 +713,7 @@ void UniversalGenes::registerBehaviorGenes(GeneRegistry& registry) {
     spatial.addEffect(EffectBinding("sensory", "spatial_memory", EffectType::Direct, 1.0f));
     spatial.setMaintenanceCost(0.05f);
     spatial.setCostScaling(1.0f);
+    spatial.setModulationPolicy(TraitModulationPolicy::NEVER);
     registry.tryRegisterGene(std::move(spatial));
     
     // Grooming Frequency - remove burrs
@@ -723,6 +751,7 @@ void UniversalGenes::registerSeedInteractionGenes(GeneRegistry& registry) {
     transit.addEffect(EffectBinding("metabolism", "gut_transit_time", EffectType::Direct, 1.0f));
     transit.setMaintenanceCost(0.03f);
     transit.setCostScaling(1.0f);
+    transit.setModulationPolicy(TraitModulationPolicy::CONSUMER_APPLIED);
     registry.tryRegisterGene(std::move(transit));
     
     // Seed Destruction Rate - grind vs pass seeds
@@ -733,6 +762,7 @@ void UniversalGenes::registerSeedInteractionGenes(GeneRegistry& registry) {
     seedDestroy.addEffect(EffectBinding("metabolism", "seed_destruction_rate", EffectType::Direct, 1.0f));
     seedDestroy.setMaintenanceCost(0.02f);
     seedDestroy.setCostScaling(1.0f);
+    seedDestroy.setModulationPolicy(TraitModulationPolicy::CONSUMER_APPLIED);
     registry.tryRegisterGene(std::move(seedDestroy));
 }
 
@@ -750,6 +780,7 @@ void UniversalGenes::registerPlantDefenseGenes(GeneRegistry& registry) {
     toxinProd.addEffect(EffectBinding("metabolism", "toxin_production", EffectType::Direct, 1.0f));
     toxinProd.setMaintenanceCost(0.18f);
     toxinProd.setCostScaling(1.4f);  // High toxin levels very expensive
+    toxinProd.setModulationPolicy(TraitModulationPolicy::ENERGY_GATED);
     registry.tryRegisterGene(std::move(toxinProd));
     
     // Thorn Density - physical defenses
@@ -760,6 +791,7 @@ void UniversalGenes::registerPlantDefenseGenes(GeneRegistry& registry) {
     thorns.addEffect(EffectBinding("morphology", "thorn_density", EffectType::Direct, 1.0f));
     thorns.setMaintenanceCost(0.12f);
     thorns.setCostScaling(1.2f);
+    thorns.setModulationPolicy(TraitModulationPolicy::NEVER);
     registry.tryRegisterGene(std::move(thorns));
     
     // Regrowth Rate - recovery after grazing
@@ -817,6 +849,7 @@ void UniversalGenes::registerReproductionGenes(GeneRegistry& registry) {
     offspringCount.addEffect(EffectBinding("reproduction", "offspring_count", EffectType::Direct, 1.0f));
     offspringCount.setMaintenanceCost(0.05f);
     offspringCount.setCostScaling(1.2f);  // High offspring count is expensive
+    offspringCount.setModulationPolicy(TraitModulationPolicy::NEVER);
     registry.tryRegisterGene(std::move(offspringCount));
     
     // Mate Threshold - when organism seeks mate
@@ -827,6 +860,7 @@ void UniversalGenes::registerReproductionGenes(GeneRegistry& registry) {
     mateThreshold.addEffect(EffectBinding("reproduction", "mate_threshold", EffectType::Direct, 1.0f));
     mateThreshold.setMaintenanceCost(0.02f);
     mateThreshold.setCostScaling(1.0f);
+    mateThreshold.setModulationPolicy(TraitModulationPolicy::NEVER);
     registry.tryRegisterGene(std::move(mateThreshold));
     
     // Spread Distance - how far offspring/seeds spread
@@ -889,6 +923,7 @@ void UniversalGenes::registerSeedPropagationGenes(GeneRegistry& registry) {
     seedMass.addEffect(EffectBinding("reproduction", "germination_success", EffectType::Additive, 0.3f));
     seedMass.setMaintenanceCost(0.04f);
     seedMass.setCostScaling(1.2f);
+    seedMass.setModulationPolicy(TraitModulationPolicy::NEVER);
     registry.tryRegisterGene(std::move(seedMass));
     
     // Seed Aerodynamics - surface area to mass ratio
@@ -900,6 +935,7 @@ void UniversalGenes::registerSeedPropagationGenes(GeneRegistry& registry) {
     seedAero.addEffect(EffectBinding("reproduction", "seed_aerodynamics", EffectType::Direct, 1.0f));
     seedAero.setMaintenanceCost(0.03f);
     seedAero.setCostScaling(1.0f);
+    seedAero.setModulationPolicy(TraitModulationPolicy::NEVER);
     registry.tryRegisterGene(std::move(seedAero));
     
     // Seed Hook Strength - mechanical hook/barb development
@@ -955,6 +991,7 @@ void UniversalGenes::registerOlfactoryGenes(GeneRegistry& registry) {
     scentProd.addEffect(EffectBinding("sensory", "scent_production", EffectType::Direct, 1.0f));
     scentProd.setMaintenanceCost(0.05f);
     scentProd.setCostScaling(1.2f);  // Higher scent = more energy for glands
+    scentProd.setModulationPolicy(TraitModulationPolicy::ENERGY_GATED);
     registry.tryRegisterGene(std::move(scentProd));
     
     // Scent Signature Variance - how unique the genetic fingerprint is
@@ -966,6 +1003,7 @@ void UniversalGenes::registerOlfactoryGenes(GeneRegistry& registry) {
     scentSigVar.addEffect(EffectBinding("reproduction", "scent_signature_variance", EffectType::Direct, 1.0f));
     scentSigVar.setMaintenanceCost(0.02f);
     scentSigVar.setCostScaling(1.0f);
+    scentSigVar.setModulationPolicy(TraitModulationPolicy::NEVER);
     registry.tryRegisterGene(std::move(scentSigVar));
     
     // Olfactory Acuity - ability to detect and distinguish scents
@@ -1007,6 +1045,7 @@ void UniversalGenes::registerHealthHealingGenes(GeneRegistry& registry) {
     regenRate.addEffect(EffectBinding("morphology", "regeneration_rate", EffectType::Direct, 1.0f));
     regenRate.setMaintenanceCost(0.10f);
     regenRate.setCostScaling(1.3f);  // Fast healing is expensive
+    regenRate.setModulationPolicy(TraitModulationPolicy::ENERGY_GATED);
     registry.tryRegisterGene(std::move(regenRate));
     
     // Wound Tolerance - reduces behavioral penalty from wounds
@@ -1049,6 +1088,7 @@ void UniversalGenes::registerWeaponShapeGenes(GeneRegistry& registry) {
     teethSharp.addEffect(EffectBinding("morphology", "teeth_sharpness", EffectType::Direct, 1.0f));
     teethSharp.setMaintenanceCost(0.05f);
     teethSharp.setCostScaling(1.0f);
+    teethSharp.setModulationPolicy(TraitModulationPolicy::NEVER);
     registry.tryRegisterGene(std::move(teethSharp));
     
     // Teeth Serration - adds slash damage component
@@ -1195,6 +1235,7 @@ void UniversalGenes::registerCombatDefenseGenes(GeneRegistry& registry) {
     scaleCov.addEffect(EffectBinding("morphology", "scale_coverage", EffectType::Direct, 1.0f));
     scaleCov.setMaintenanceCost(0.06f);
     scaleCov.setCostScaling(1.0f);
+    scaleCov.setModulationPolicy(TraitModulationPolicy::NEVER);
     registry.tryRegisterGene(std::move(scaleCov));
     
     // Fat Layer Thickness - reduces blunt damage

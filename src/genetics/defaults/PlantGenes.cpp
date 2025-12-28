@@ -23,6 +23,7 @@ void PlantGenes::registerDefaults(GeneRegistry& registry) {
     GeneDefinition growthRate(GROWTH_RATE, ChromosomeType::Metabolism,
         GeneLimits(0.1f, 2.0f, 0.1f), DominanceType::Incomplete);
     growthRate.addEffect(EffectBinding("metabolism", "growth_rate", EffectType::Direct, 1.0f));
+    growthRate.setModulationPolicy(TraitModulationPolicy::HEALTH_ONLY);
     registry.registerGene(std::move(growthRate));
     
     // Water need - how much water the plant requires
@@ -30,6 +31,7 @@ void PlantGenes::registerDefaults(GeneRegistry& registry) {
     GeneDefinition waterNeed(WATER_NEED, ChromosomeType::Metabolism,
         GeneLimits(0.0f, 1.0f, 0.05f), DominanceType::Incomplete);
     waterNeed.addEffect(EffectBinding("metabolism", "water_requirement", EffectType::Direct, 1.0f));
+    waterNeed.setModulationPolicy(TraitModulationPolicy::HEALTH_ONLY);
     registry.registerGene(std::move(waterNeed));
     
     // Light need - how much light the plant requires
@@ -37,6 +39,7 @@ void PlantGenes::registerDefaults(GeneRegistry& registry) {
     GeneDefinition lightNeed(LIGHT_NEED, ChromosomeType::Metabolism,
         GeneLimits(0.0f, 1.0f, 0.05f), DominanceType::Incomplete);
     lightNeed.addEffect(EffectBinding("metabolism", "light_requirement", EffectType::Direct, 1.0f));
+    lightNeed.setModulationPolicy(TraitModulationPolicy::HEALTH_ONLY);
     registry.registerGene(std::move(lightNeed));
     
     // Nutrient value - how nutritious the plant is when eaten
@@ -44,6 +47,7 @@ void PlantGenes::registerDefaults(GeneRegistry& registry) {
     GeneDefinition nutrientValue(NUTRIENT_VALUE, ChromosomeType::Metabolism,
         GeneLimits(1.0f, 100.0f, 5.0f), DominanceType::Incomplete);
     nutrientValue.addEffect(EffectBinding("metabolism", "nutrient_value", EffectType::Direct, 1.0f));
+    nutrientValue.setModulationPolicy(TraitModulationPolicy::ENERGY_GATED);
     registry.registerGene(std::move(nutrientValue));
     
     // ============================================================================
@@ -55,6 +59,7 @@ void PlantGenes::registerDefaults(GeneRegistry& registry) {
     GeneDefinition maxSize(MAX_SIZE, ChromosomeType::Morphology,
         GeneLimits(1.0f, 10.0f, 0.5f), DominanceType::Incomplete);
     maxSize.addEffect(EffectBinding("morphology", "max_size", EffectType::Direct, 1.0f));
+    maxSize.setModulationPolicy(TraitModulationPolicy::NEVER);
     registry.registerGene(std::move(maxSize));
     
     // Hardiness - resistance to damage from herbivores and environment
@@ -62,6 +67,7 @@ void PlantGenes::registerDefaults(GeneRegistry& registry) {
     GeneDefinition hardiness(HARDINESS, ChromosomeType::Morphology,
         GeneLimits(0.0f, 1.0f, 0.05f), DominanceType::Incomplete);
     hardiness.addEffect(EffectBinding("morphology", "damage_resistance", EffectType::Direct, 1.0f));
+    hardiness.setModulationPolicy(TraitModulationPolicy::NEVER);
     registry.registerGene(std::move(hardiness));
     
     // Color hue - HSV hue for visual appearance
