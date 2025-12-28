@@ -521,5 +521,5 @@ if (tracker.isArmsRaceActive("TOXIN_TOLERANCE", "TOXIN_PRODUCTION")) {
 - [[interfaces]] - Interface definitions
 
 **Design:**
-- [[../../design/coevolution-design]] - Coevolution design rationale
-- [[../../design/propagation-design]] - Seed dispersal design
+- [[../../design/coevolution]] - Coevolution design rationale
+- [[../../design/propagation]] - Seed dispersal design

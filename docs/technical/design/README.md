@@ -11,10 +11,13 @@ Design rationale and philosophy documents explaining the "why" behind implementa
 
 | Document | Description |
 |----------|-------------|
-| [[coevolution-design]] | Creature-plant interactions and emergent diet types |
-| [[propagation-design]] | Seed dispersal strategies and mechanisms |
-| [[prefab-design]] | Plant factory architecture and species templates |
-| [[resource-allocation-design]] | Energy budget framework theory |
+| [[coevolution]] | Creature-plant interactions and emergent diet types |
+| [[corpse-value-calculations]] | Corpse nutrient value formulas |
+| [[creature-prefabs]] | Creature archetype templates |
+| [[organism]] | Organism interface architecture and behavior integration |
+| [[prefab]] | Plant factory architecture and species templates |
+| [[propagation]] | Seed dispersal strategies and mechanisms |
+| [[resource-allocation]] | Energy budget framework theory |
 
 ## Purpose
 

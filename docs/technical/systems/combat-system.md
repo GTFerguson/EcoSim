@@ -387,7 +387,7 @@ logging::Logger::getInstance().combatEvent(event);
 
 - [[genes]] - Combat gene reference
 - [[classification]] - Archetype classification (affects combat behavior)
-- [[../design/coevolution-design]] - Creature-plant coevolution
+- [[../design/coevolution]] - Creature-plant coevolution
 
 ---
 

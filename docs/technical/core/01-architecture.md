@@ -377,6 +377,6 @@ For multi-threaded simulations, each organism should own its complete genetic st
 - [[../systems/scent-system]] - Olfactory communication system
 
 **Design:**
-- [[../design/coevolution-design]] - Creature-plant coevolution design
-- [[../design/propagation-design]] - Seed dispersal strategies
-- [[../design/resource-allocation-design]] - Energy budget design
+- [[../design/coevolution]] - Creature-plant coevolution design
+- [[../design/propagation]] - Seed dispersal strategies
+- [[../design/resource-allocation]] - Energy budget design

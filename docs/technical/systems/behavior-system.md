@@ -1,6 +1,7 @@
 ---
 title: Behavior System Architecture
 created: 2025-12-27
+updated: 2025-12-27
 status: implemented
 tags: [architecture, behaviors, organisms]
 ---
@@ -16,21 +17,18 @@ The behavior system provides a modular, composable framework for organism behavi
 3. **Extensibility** - New behaviors added without modifying existing code
 4. **Bug fixes** - Hunting extinction fix integrated during extraction
 
-> [!NOTE]
-> The behavior system is behind a feature flag (`USE_NEW_BEHAVIOR_SYSTEM`) for gradual rollout.
-
 ## Core Components
 
 ### IBehavior Interface
 
-Base interface for all behaviors in `include/genetics/behaviors/IBehavior.hpp`:
+Base interface for all behaviors in [`include/genetics/behaviors/IBehavior.hpp`](../../../include/genetics/behaviors/IBehavior.hpp):
 
 ```cpp
 class IBehavior {
 public:
     virtual ~IBehavior() = default;
     
-    // Unique behavior identifier
+    // Unique behavior identifier (e.g., "hunting", "feeding", "mating")
     virtual std::string getId() const = 0;
     
     // Check if behavior can execute for organism
@@ -65,34 +63,55 @@ enum class BehaviorPriority : int {
 
 ### BehaviorController
 
-Orchestrates behavior execution using priority-based selection in `include/genetics/behaviors/BehaviorController.hpp`:
+Orchestrates behavior execution using priority-based selection in [`include/genetics/behaviors/BehaviorController.hpp`](../../../include/genetics/behaviors/BehaviorController.hpp):
 
 ```cpp
 class BehaviorController {
 public:
+    BehaviorController() = default;
+    ~BehaviorController() = default;
+    
+    // Non-copyable, movable
+    BehaviorController(const BehaviorController&) = delete;
+    BehaviorController& operator=(const BehaviorController&) = delete;
+    BehaviorController(BehaviorController&&) = default;
+    BehaviorController& operator=(BehaviorController&&) = default;
+    
     void addBehavior(std::unique_ptr<IBehavior> behavior);
     void removeBehavior(const std::string& behaviorId);
     bool hasBehavior(const std::string& behaviorId) const;
+    void clearBehaviors();
     
     // Execute highest-priority applicable behavior
     BehaviorResult update(IGeneticOrganism& organism, BehaviorContext& ctx);
     
-    const std::string& getCurrentBehavior() const;
+    const std::string& getCurrentBehaviorId() const;
+    std::size_t getBehaviorCount() const;
+    std::vector<std::string> getBehaviorIds() const;
+    std::string getStatusString() const;
 };
 ```
+
+The controller evaluates all behaviors for applicability, sorts by priority (highest first with stable sort for equal priorities), and executes the top one.
 
 ### BehaviorContext
 
-Execution context providing world/scent layer access:
+Execution context providing world/scent layer access in [`include/genetics/behaviors/BehaviorContext.hpp`](../../../include/genetics/behaviors/BehaviorContext.hpp):
 
 ```cpp
 struct BehaviorContext {
-    const IWorldQuery& world;      // Read-only world access
-    const ScentLayer& scentLayer;  // Scent information
-    float deltaTime;               // Time since last tick
-    unsigned int currentTick;      // Current simulation tick
+    const ScentLayer* scentLayer = nullptr;       // Scent layer for olfactory perception
+    World* world = nullptr;                        // World access for entity queries
+    const OrganismState* organismState = nullptr;  // Current organism state (energy, health, etc.)
+    float deltaTime = 1.0f;                        // Time since last tick (normalized)
+    unsigned int currentTick = 0;                  // Current simulation tick
+    int worldRows = 0;                             // World height in tiles
+    int worldCols = 0;                             // World width in tiles
 };
 ```
+
+> [!NOTE]
+> Context uses raw pointers for optional dependencies. Behaviors should null-check before use.
 
 ### BehaviorResult
 
@@ -109,148 +128,312 @@ struct BehaviorResult {
 
 ## Implemented Behaviors
 
-| Behavior | Purpose | Priority Range | File |
-|----------|---------|----------------|------|
-| RestBehavior | Fatigue management, sleep recovery | CRITICAL (100) | `RestBehavior.cpp` |
-| HuntingBehavior | Predator hunting with bug fixes | HIGH (75) | `HuntingBehavior.cpp` |
-| FeedingBehavior | Herbivore plant feeding | NORMAL (50) | `FeedingBehavior.cpp` |
-| MatingBehavior | Sexual reproduction | NORMAL (50) | `MatingBehavior.cpp` |
-| ZoochoryBehavior | Seed dispersal (burrs, gut passage) | LOW (25) | `ZoochoryBehavior.cpp` |
-| MovementBehavior | Default wandering/navigation | IDLE (0) | `MovementBehavior.cpp` |
-
-### RestBehavior
-
-Handles fatigue and sleep:
-- Triggers when fatigue exceeds threshold
-- Reduces fatigue over time while resting
-- Highest priority to prevent exhaustion death
-
-### HuntingBehavior
-
-Predator hunting with extinction bug fixes:
-- **Satiation check**: No hunting when 80% full
-- **Cooldown**: 30 ticks minimum between hunts
-- **Energy cost**: 1.5 energy per hunt attempt
-- **Escape mechanics**: Prey can escape using flee/pursue gene comparison
+| Behavior | ID | Purpose | Base Priority | Priority Range |
+|----------|-----|---------|---------------|----------------|
+| RestBehavior | `"rest"` | Fatigue management, sleep recovery | NORMAL (50) | 50-75 |
+| HuntingBehavior | `"hunting"` | Predator hunting with extinction fixes | NORMAL (50) | 50-75 |
+| FeedingBehavior | `"feeding"` | Herbivore plant feeding | NORMAL (50) | 50-75 |
+| MatingBehavior | `"mating"` | Sexual reproduction | NORMAL (50) | 50-75 |
+| ZoochoryBehavior | `"zoochory"` | Seed dispersal (burrs, gut passage) | IDLE (0) | 0 |
+| MovementBehavior | `"movement"` | Target-based navigation | IDLE (0) | 0 |
 
 ### FeedingBehavior
 
-Herbivore plant consumption:
-- Finds nearby edible plants
-- Considers plant defenses (thorns, toxins)
-- Uses digestion efficiency genes
+Herbivore plant consumption in [`include/genetics/behaviors/FeedingBehavior.hpp`](../../../include/genetics/behaviors/FeedingBehavior.hpp):
+
+**Applicability:**
+- Organism has `plant_digestion` trait > 0.1
+- Organism's hunger is below threshold (hungry)
+
+**Priority:**
+- Base: NORMAL (50)
+- Scales with hunger: adds `(1 - hungerRatio) * 25` when hungry
+- Maximum: 75
+
+**Execution:**
+- Finds nearest edible plant within detection range
+- If adjacent (distance ≤ 1.5), eats using FeedingInteraction
+- If not adjacent, signals movement is needed
+
+**Constants:**
+
+| Constant | Value | Purpose |
+|----------|-------|---------|
+| `PLANT_DIGESTION_THRESHOLD` | 0.1 | Minimum trait to eat plants |
+| `DEFAULT_HUNGER_THRESHOLD` | 0.5 | Seek food below this |
+| `BASE_ENERGY_COST` | 0.01 | Energy per feeding tick |
+| `ADJACENT_DISTANCE` | 1.5 | Distance threshold for eating |
+
+### HuntingBehavior
+
+Predator hunting with extinction bug fixes in [`include/genetics/behaviors/HuntingBehavior.hpp`](../../../include/genetics/behaviors/HuntingBehavior.hpp):
+
+**Applicability:**
+- Organism has `hunt_instinct` trait > 0.4
+- Organism has `locomotion_speed` > 0.3 (can chase)
+- Organism is NOT satiated (energy < 80%)
+- Organism is NOT on cooldown
+
+**Priority:**
+- Base: NORMAL (50)
+- Scales with hunger level
+- Maximum: 75
+
+**Critical Bug Fixes:**
+- **Satiation check**: No hunting when 80% full
+- **Cooldown**: 30 ticks minimum between hunts
+- **Energy cost**: 1.5 energy per hunt attempt
+- **Escape mechanics**: Uses `flee_threshold` vs `pursue_threshold` genes
+
+**Escape Formula:**
+```cpp
+escapeChance = prey_flee / (prey_flee + predator_pursue + 0.1)
+```
+
+**Constants:**
+
+| Constant | Value | Purpose |
+|----------|-------|---------|
+| `HUNT_INSTINCT_THRESHOLD` | 0.4 | Minimum trait to hunt |
+| `LOCOMOTION_THRESHOLD` | 0.3 | Minimum speed to chase |
+| `SATIATION_THRESHOLD` | 0.8 | Too full to hunt |
+| `HUNT_COST` | 1.5 | Energy per hunt attempt |
+| `HUNT_COOLDOWN` | 30 | Ticks between hunts |
 
 ### MatingBehavior
 
-Sexual reproduction:
-- Mate detection via scent/vision
-- Fitness evaluation between potential mates
-- Offspring creation with genetic crossover
+Sexual reproduction in [`include/genetics/behaviors/MatingBehavior.hpp`](../../../include/genetics/behaviors/MatingBehavior.hpp):
 
-### ZoochoryBehavior
+**Applicability:**
+- Organism has `mate_value` above threshold (0.7)
+- Organism has sufficient resources (hunger > 5.0)
+- Organism is mature (age meets maturity ratio)
 
-Seed dispersal mechanics:
-- Burr attachment/detachment
-- Gut seed passage
-- Dispersal event generation
+**Priority:**
+- Base: NORMAL (50)
+- Scales with mate value
+- Maximum: 75
+
+**Execution:**
+- Finds potential mate via perception
+- Evaluates fitness/compatibility (prefer similar but not identical)
+- Creates offspring with genetic crossover
+- Deducts BREED_COST (3.0) from both parents
+
+**Offspring Callback:**
+```cpp
+using OffspringCallback = std::function<void(std::unique_ptr<IGeneticOrganism>)>;
+void setOffspringCallback(OffspringCallback callback);
+```
+
+**Constants:**
+
+| Constant | Value | Purpose |
+|----------|-------|---------|
+| `MATE_THRESHOLD` | 0.7 | Minimum desire to mate |
+| `BREED_COST` | 3.0 | Energy cost for breeding |
+| `MIN_HUNGER_TO_BREED` | 5.0 | Resource requirement |
+| `MATURITY_AGE_RATIO` | 0.1 | Age fraction for maturity |
+| `IDEAL_SIMILARITY` | 0.8 | Preferred genetic similarity |
+
+### RestBehavior
+
+Fatigue management in [`include/genetics/behaviors/RestBehavior.hpp`](../../../include/genetics/behaviors/RestBehavior.hpp):
+
+**Applicability:**
+- Organism's fatigue exceeds threshold
+- Organism has fatigue tracking (phenotype traits present)
+
+**Priority:**
+- Base: NORMAL (50)
+- Adds `fatigueRatio * 25` when tired
+- Maximum: 75
+
+**Execution:**
+- Reduces fatigue by recovery rate per tick
+- Minimal energy cost (resting conserves energy)
+- Completes when fatigue drops below threshold
+
+**Constants:**
+
+| Constant | Value | Purpose |
+|----------|-------|---------|
+| `DEFAULT_FATIGUE_THRESHOLD` | 3.0 | Need rest above this |
+| `DEFAULT_RECOVERY_RATE` | 0.01 | Fatigue reduction per tick |
+| `REST_ENERGY_COST` | 0.005 | Very low energy cost |
 
 ### MovementBehavior
 
-Default navigation:
-- Integrates with Navigator pathfinding
-- Flocking behavior support
-- Terrain-aware movement costs
+Target-based navigation in [`include/genetics/behaviors/MovementBehavior.hpp`](../../../include/genetics/behaviors/MovementBehavior.hpp):
+
+**Applicability:**
+- Organism has `locomotion_speed` > 0.3
+- Has a valid target set
+
+**Priority:**
+- IDLE (0) - fallback behavior
+
+**Target Management:**
+```cpp
+void setTarget(int targetX, int targetY);
+void clearTarget();
+bool hasTarget() const;
+std::pair<int, int> getTarget() const;
+```
+
+**Constants:**
+
+| Constant | Value | Purpose |
+|----------|-------|---------|
+| `LOCOMOTION_THRESHOLD` | 0.3 | Minimum speed to move |
+| `BASE_MOVEMENT_COST` | 0.01 | Energy per tile |
+| `DIAGONAL_COST_MULTIPLIER` | 1.414 | Extra cost for diagonal |
+
+### ZoochoryBehavior
+
+Seed dispersal in [`include/genetics/behaviors/ZoochoryBehavior.hpp`](../../../include/genetics/behaviors/ZoochoryBehavior.hpp):
+
+Handles animal-mediated seed dispersal:
+- **Endozoochory**: Seeds consumed with fruit, pass through gut
+- **Epizoochory**: Burrs/hooks that attach to animal fur
+
+**Applicability:**
+- Always applicable (passive processing)
+
+**Priority:**
+- IDLE (0) - runs when no higher priority behaviors active
+
+**Public API:**
+```cpp
+// Epizoochory - burr attachment
+void attachBurr(unsigned int organismId, int plantX, int plantY, int strategy);
+bool hasBurrs(unsigned int organismId) const;
+
+// Endozoochory - gut seed passage
+void consumeSeeds(unsigned int organismId, int plantX, int plantY,
+                  int count, float viability);
+
+// Tick processing
+std::vector<DispersalEvent> processOrganismSeeds(unsigned int organismId,
+                                                  int currentX, int currentY,
+                                                  int ticksElapsed);
+
+// Cleanup (on organism death)
+void clearOrganismData(unsigned int organismId);
+```
+
+**Constants:**
+
+| Constant | Value | Purpose |
+|----------|-------|---------|
+| `BURR_DETACH_CHANCE` | 0.05 | Probability per tick |
+| `GUT_TRANSIT_TICKS` | 500 | Default gut passage time |
 
 ## Shared Systems
+
+### OrganismServices
+
+Dependency injection container in [`include/genetics/behaviors/OrganismServices.hpp`](../../../include/genetics/behaviors/OrganismServices.hpp):
+
+```cpp
+class OrganismServices {
+public:
+    OrganismServices(GeneRegistry& registry, 
+                     Navigator& navigator,
+                     World& world);
+    ~OrganismServices();
+    
+    // Move-only (owns systems)
+    OrganismServices(OrganismServices&&) noexcept;
+    OrganismServices& operator=(OrganismServices&&) noexcept;
+    
+    // External dependencies (referenced, not owned)
+    GeneRegistry& getGeneRegistry();
+    Navigator& getNavigator();
+    World& getWorld();
+    
+    // Owned systems (created lazily on first access)
+    PerceptionSystem& getPerceptionSystem();
+    HealthSystem& getHealthSystem();
+    FeedingInteraction& getFeedingInteraction();
+    CombatInteraction& getCombatInteraction();
+    SeedDispersal& getSeedDispersal();
+};
+```
+
+Services are created lazily on first access and cached for the container's lifetime.
 
 ### HealthSystem
 
 Organism-agnostic health management shared by Creature and Plant:
 
-```cpp
-class HealthSystem {
-public:
-    float applyDamage(IGeneticOrganism& organism, float amount, DamageType type);
-    float heal(IGeneticOrganism& organism, float amount);
-    void processNaturalHealing(IGeneticOrganism& organism);
-    bool checkDeathCondition(const IGeneticOrganism& organism) const;
-    WoundState getWoundState(const IGeneticOrganism& organism) const;
-};
-```
-
 Located in:
 - Header: `include/genetics/systems/HealthSystem.hpp`
 - Source: `src/genetics/systems/HealthSystem.cpp`
-- Tests: `src/testing/genetics/test_health_system.cpp` (29 tests)
 
-### OrganismServices
+### IWorldQuery
 
-Dependency injection container for shared services:
+Read-only world query interface in [`include/genetics/behaviors/IWorldQuery.hpp`](../../../include/genetics/behaviors/IWorldQuery.hpp):
 
 ```cpp
-class OrganismServices {
+class IWorldQuery {
 public:
-    OrganismServices(std::shared_ptr<GeneRegistry> registry);
+    virtual ~IWorldQuery() = default;
     
-    IFeedingInteraction& getFeedingInteraction();
-    ICombatInteraction& getCombatInteraction();
-    ISeedDispersal& getSeedDispersal();
-    Navigator& getNavigator();
-    PerceptionSystem& getPerceptionSystem();
-    HealthSystem& getHealthSystem();
+    virtual const Tile& getTile(int x, int y) const = 0;
+    virtual float getTemperature(int x, int y) const = 0;
+    virtual bool isWater(int x, int y) const = 0;
     
-    std::unique_ptr<BehaviorController> createBehaviorController();
+    virtual std::vector<const Creature*> getCreaturesInRadius(
+        int x, int y, float radius) const = 0;
+    virtual std::vector<const Plant*> getPlantsInRadius(
+        int x, int y, float radius) const = 0;
+    
+    virtual const ScentLayer& getScentLayer() const = 0;
+    virtual unsigned int getCurrentTick() const = 0;
+    virtual int getRows() const = 0;
+    virtual int getCols() const = 0;
 };
 ```
 
 ## Usage
 
-### Feature Flag
-
-The new behavior system is behind a feature flag in `creature.hpp`:
-
-```cpp
-#define USE_NEW_BEHAVIOR_SYSTEM 0  // Set to 1 to enable
-```
-
-### Integration Points
+### Integration in Creature
 
 In `Creature` class:
 
 ```cpp
-// Initialize behavior controller with DI
-void Creature::initializeBehaviorController() {
-    behaviorController_ = services_.createBehaviorController();
+// Initialize behavior controller
+void Creature::initializeBehaviors(OrganismServices& services) {
+    behaviorController_ = std::make_unique<BehaviorController>();
     
-    // Add behaviors in priority order
+    // Add behaviors - controller selects highest priority applicable
     behaviorController_->addBehavior(std::make_unique<RestBehavior>());
     behaviorController_->addBehavior(std::make_unique<HuntingBehavior>(
-        services_.getCombatInteraction()));
+        services.getCombatInteraction(), services.getPerceptionSystem()));
     behaviorController_->addBehavior(std::make_unique<FeedingBehavior>(
-        services_.getFeedingInteraction()));
+        services.getFeedingInteraction(), services.getPerceptionSystem()));
     behaviorController_->addBehavior(std::make_unique<MatingBehavior>(
-        services_.getPerceptionSystem()));
+        services.getPerceptionSystem(), services.getGeneRegistry()));
     behaviorController_->addBehavior(std::make_unique<ZoochoryBehavior>(
-        services_.getSeedDispersal()));
-    behaviorController_->addBehavior(std::make_unique<MovementBehavior>(
-        services_.getNavigator()));
+        services.getSeedDispersal()));
+    behaviorController_->addBehavior(std::make_unique<MovementBehavior>());
 }
 
-// Execute behavior system each tick
-void Creature::updateWithBehaviors() {
-    BehaviorContext ctx = buildBehaviorContext();
+// Execute each tick
+void Creature::update() {
+    BehaviorContext ctx{
+        .scentLayer = &scentLayer_,
+        .world = &world_,
+        .organismState = &state_,
+        .deltaTime = 1.0f,
+        .currentTick = currentTick_,
+        .worldRows = world_.getRows(),
+        .worldCols = world_.getCols()
+    };
+    
     BehaviorResult result = behaviorController_->update(*this, ctx);
     // Handle result...
-}
-
-// Create execution context
-BehaviorContext Creature::buildBehaviorContext() {
-    return BehaviorContext{
-        .world = worldQuery_,
-        .scentLayer = scentLayer_,
-        .deltaTime = 1.0f,
-        .currentTick = currentTick_
-    };
 }
 ```
 
@@ -263,13 +446,20 @@ To add a new behavior:
 ```cpp
 class SwimmingBehavior : public IBehavior {
 public:
+    SwimmingBehavior() = default;
+    ~SwimmingBehavior() override = default;
+    
     std::string getId() const override { return "swimming"; }
     
     bool isApplicable(const IGeneticOrganism& organism,
                       const BehaviorContext& ctx) const override {
         // Check if organism has swimming capability
-        float swimmingAbility = organism.getPhenotype().getTrait("swimming_ability");
-        return swimmingAbility > 0.3f && ctx.world.isWater(organism.getX(), organism.getY());
+        const Phenotype& phenotype = organism.getPhenotype();
+        float swimmingAbility = phenotype.getTrait("swimming_ability");
+        
+        if (ctx.world == nullptr) return false;
+        return swimmingAbility > 0.3f && 
+               ctx.world->isWater(organism.getX(), organism.getY());
     }
     
     float getPriority(const IGeneticOrganism& organism) const override {
@@ -294,7 +484,8 @@ All behaviors use `IGeneticOrganism&` interface, not concrete types:
 ```cpp
 // CORRECT - uses interface
 bool isApplicable(const IGeneticOrganism& organism, ...) const {
-    float trait = organism.getPhenotype().getTrait("hunt_instinct");
+    const Phenotype& phenotype = organism.getPhenotype();
+    float trait = phenotype.getTrait("hunt_instinct");
     return trait > 0.4f;
 }
 
@@ -311,8 +502,9 @@ Capability checks use phenotype traits, enabling evolutionary emergence:
 
 ```cpp
 // Gene expression determines behavior availability
-float huntInstinct = organism.getPhenotype().getTrait("hunt_instinct");
-float locomotion = organism.getPhenotype().getTrait("locomotion_speed");
+const Phenotype& phenotype = organism.getPhenotype();
+float huntInstinct = phenotype.getTrait("hunt_instinct");
+float locomotion = phenotype.getTrait("locomotion_speed");
 
 // Thresholds for behavior activation
 if (huntInstinct > 0.4f && locomotion > 0.3f) {
@@ -325,8 +517,13 @@ if (huntInstinct > 0.4f && locomotion > 0.3f) {
 No static singletons - all dependencies injected via constructor:
 
 ```cpp
-HuntingBehavior::HuntingBehavior(ICombatInteraction& combat)
-    : combat_(combat) {}
+HuntingBehavior::HuntingBehavior(CombatInteraction& combat, 
+                                  PerceptionSystem& perception)
+    : combat_(combat), perception_(perception) {}
+
+FeedingBehavior::FeedingBehavior(FeedingInteraction& feeding,
+                                  PerceptionSystem& perception)
+    : feeding_(feeding), perception_(perception) {}
 ```
 
 ## Testing
@@ -335,16 +532,16 @@ HuntingBehavior::HuntingBehavior(ICombatInteraction& combat)
 
 Each behavior has isolated unit tests:
 
-| Test File | Test Count |
-|-----------|------------|
-| test_behavior_controller.cpp | 13 |
-| test_feeding_behavior.cpp | 10 |
-| test_hunting_behavior.cpp | 14 |
-| test_mating_behavior.cpp | 15 |
-| test_movement_behavior.cpp | 12 |
-| test_rest_behavior.cpp | 8 |
-| test_zoochory_behavior.cpp | 10 |
-| test_health_system.cpp | 29 |
+| Test File | Tests |
+|-----------|-------|
+| `test_behavior_controller.cpp` | Controller selection logic |
+| `test_feeding_behavior.cpp` | Herbivore feeding |
+| `test_hunting_behavior.cpp` | Predator hunting + extinction fixes |
+| `test_mating_behavior.cpp` | Reproduction |
+| `test_movement_behavior.cpp` | Navigation |
+| `test_rest_behavior.cpp` | Fatigue recovery |
+| `test_zoochory_behavior.cpp` | Seed dispersal |
+| `test_health_system.cpp` | Health management |
 
 ### Integration Tests
 
@@ -352,11 +549,10 @@ Each behavior has isolated unit tests:
 - Behavior controller with all behaviors
 - Priority-based selection
 - Energy budget constraints
-- Old vs new system equivalence
+- Behavior state transitions
 
 ## See Also
 
-- [[../../../plans/creature-decomposition-progress|Decomposition Progress]] - Implementation progress
-- [[../../code-review/recommendations/creature-decomposition-plan|Decomposition Plan]] - Original plan
+- [[../../future/behavior/extensions|Behavior Extensions]] - Future AI extensions (behavior trees, GOAP)
 - [[../../future/genetics/unified-organism-genome|Unified Organism Vision]] - Future unified organism design
 - [[../core/01-architecture|Core Architecture]] - Overall system architecture

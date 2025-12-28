@@ -51,7 +51,7 @@ Detailed documentation for individual subsystems.
 | Document | Description | Status |
 |----------|-------------|--------|
 | [[systems/scent-system]] | Olfactory communication | ✅ Available |
-| [[design/resource-allocation-design]] | Energy budget framework | ✅ Available |
+| [[design/resource-allocation]] | Energy budget framework | ✅ Available |
 | [[systems/energy-budget]] | Energy system details | 🚧 Coming |
 | [[systems/dispersal]] | Seed dispersal mechanics | 🚧 Coming |
 
@@ -61,10 +61,11 @@ Design rationale explaining the philosophy behind implementation decisions.
 
 | Document | Description | Status |
 |----------|-------------|--------|
-| [[design/coevolution-design]] | Creature-plant interactions | ✅ Available |
-| [[design/propagation-design]] | Seed dispersal philosophy | ✅ Available |
-| [[design/prefab-design]] | Plant factory architecture | ✅ Available |
-| [[design/resource-allocation-design]] | Energy budget design | ✅ Available |
+| [[design/coevolution]] | Creature-plant interactions | ✅ Available |
+| [[design/organism]] | Organism interface architecture | ✅ Available |
+| [[design/prefab]] | Plant factory architecture | ✅ Available |
+| [[design/propagation]] | Seed dispersal philosophy | ✅ Available |
+| [[design/resource-allocation]] | Energy budget design | ✅ Available |
 | [[design/emergent-traits]] | Emergent vs categorical design | 🚧 Coming |
 
 ## 🎯 Find What You Need
@@ -77,9 +78,9 @@ Design rationale explaining the philosophy behind implementation decisions.
 | Create a new organism type | [[core/03-extending#creating-a-new-organism-type]] |
 | Look up a class API | [[reference/api/core-classes]] |
 | Find gene properties | [[reference/genes]] |
-| Understand energy costs | [[design/resource-allocation-design]] |
+| Understand energy costs | [[design/resource-allocation]] |
 | See future roadmap | [[../future/genetics-phase3-roadmap]] |
-| Understand design choices | [[design/coevolution-design]] |
+| Understand design choices | [[design/coevolution]] |
 
 ## 📖 Learning Paths
 
@@ -94,8 +95,8 @@ For developers who want to use the system ASAP:
 
 For developers who want to understand the architecture:
 1. [[core/01-architecture]] (30 min) - System design
-2. [[design/resource-allocation-design]] (20 min) - Energy framework
-3. [[design/coevolution-design]] (40 min) - Design philosophy
+2. [[design/resource-allocation]] (20 min) - Energy framework
+3. [[design/coevolution]] (40 min) - Design philosophy
 4. [[core/03-extending]] (30 min) - Extension guide
 
 ### Path 3: System Integration

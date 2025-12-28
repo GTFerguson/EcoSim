@@ -1,11 +1,11 @@
 ---
 title: Organisms API Reference
 created: 2025-12-24
-updated: 2025-12-24
+updated: 2025-12-27
 status: complete
 audience: developer
 type: reference
-tags: [genetics, api, reference, organisms, plant]
+tags: [genetics, api, reference, organisms, plant, creature]
 ---
 
 # Organisms API Reference
@@ -20,11 +20,15 @@ tags: [genetics, api, reference, organisms, plant]
 This document covers the organism implementation classes. These classes represent living entities in the simulation that use the genetics system:
 
 - **Plant** - Base class for plants using the genetics system
+- **Creature** - Animal class using the genetics and behavior systems
 - **PlantFactory** - Factory for creating plants from templates
 - **SpeciesTemplate** - Template defining species-specific gene ranges
 - **DispersalStrategy** - Seed dispersal method enumeration
 
-All classes are in the `EcoSim::Genetics` namespace.
+All classes are in the `EcoSim::Genetics` namespace (Plant, PlantFactory) or global scope (Creature).
+
+> [!NOTE]
+> For behavior system integration, see [[../../systems/behavior-system|Behavior System Architecture]].
 
 ---
 
@@ -43,10 +47,18 @@ public:
     Plant(int x, int y, const GeneRegistry& registry);
     Plant(int x, int y, const Genome& genome, const GeneRegistry& registry);
     
+    // Copy/Move semantics (rebinds phenotype pointers)
+    Plant(const Plant& other);
+    Plant(Plant&& other) noexcept;
+    Plant& operator=(const Plant& other);
+    Plant& operator=(Plant&& other) noexcept;
+    
     // IPositionable
     int getX() const override;
     int getY() const override;
-    void setPosition(int x, int y) override;
+    float getWorldX() const override;
+    float getWorldY() const override;
+    void setWorldPosition(float x, float y) override;
     
     // ILifecycle
     unsigned int getAge() const override;
@@ -60,6 +72,7 @@ public:
     Genome& getGenomeMutable() override;
     const Phenotype& getPhenotype() const override;
     void updatePhenotype() override;
+    int getId() const override;  // Returns int for IGeneticOrganism
     
     // Plant-specific
     float getGrowthRate() const;
@@ -78,8 +91,11 @@ public:
     bool canRegenerate() const;
     void regenerate();
     
-    // Fruit Production (for seed dispersal attraction)
+    // Fruit/Vegetative Reproduction Readiness
     bool canProduceFruit() const;
+    bool canSpreadVegetatively() const;
+    void resetFruitTimer();
+    float getRunnerProduction() const;
     float getFruitProductionRate() const;
     float getFruitAppeal() const;
     
@@ -88,6 +104,7 @@ public:
     float getSeedAerodynamics() const;
     float getSeedHookStrength() const;
     float getSeedCoatDurability() const;
+    float getExplosivePodForce() const;
     DispersalStrategy getPrimaryDispersalStrategy() const;
     
     // Energy Budget Integration
@@ -101,8 +118,12 @@ public:
     char getRenderCharacter() const;
     Color getRenderColor() const;
     
+    // Scent System
+    std::array<float, 8> getScentSignature() const;
+    float getScentProductionRate() const;
+    
     // Serialization
-    unsigned int getId() const;
+    unsigned int getUnsignedId() const;
     void setId(unsigned int id);
     std::string toString() const;
     static std::unique_ptr<Plant> fromString(const std::string& data, const GeneRegistry& registry);
@@ -126,9 +147,11 @@ public:
 
 | Method | Returns | Description |
 |--------|---------|-------------|
-| `getX()` | `int` | X coordinate |
-| `getY()` | `int` | Y coordinate |
-| `setPosition(x, y)` | `void` | Update position |
+| [`getX()`](include/genetics/organisms/Plant.hpp:223) | `int` | Tile X coordinate |
+| [`getY()`](include/genetics/organisms/Plant.hpp:229) | `int` | Tile Y coordinate |
+| [`getWorldX()`](include/genetics/organisms/Plant.hpp:137) | `float` | World X (tile center: x + 0.5) |
+| [`getWorldY()`](include/genetics/organisms/Plant.hpp:146) | `float` | World Y (tile center: y + 0.5) |
+| [`setWorldPosition(x, y)`](include/genetics/organisms/Plant.hpp:155) | `void` | Set position (truncates to int) |
 
 #### ILifecycle
 
@@ -148,6 +171,7 @@ public:
 | `getGenomeMutable()` | `Genome&` | Mutable genome reference |
 | `getPhenotype()` | `const Phenotype&` | Current phenotype |
 | `updatePhenotype()` | `void` | Recalculate phenotype |
+| [`getId()`](include/genetics/organisms/Plant.hpp:235) | `int` | Unique ID as int (for IGeneticOrganism) |
 
 ### Plant-Specific Methods
 
@@ -172,13 +196,18 @@ public:
 | `canRegenerate()` | `bool` | True if can regrow |
 | `regenerate()` | `void` | Perform regeneration |
 
-### Food Production Methods
+### Reproduction Methods
+
+> [!NOTE]
+> The `Food` class has been removed. Creatures now feed directly on plants via `FeedingInteraction`, which handles nutrient extraction and defense bypass.
 
 | Method | Returns | Description |
 |--------|---------|-------------|
-| `canProduceFruit()` | `bool` | True if mature and has energy |
-| `produceFruit()` | `Food` | Create fruit food object |
-| `getFruitProductionRate()` | `float` | Fruits per time unit |
+| [`canProduceFruit()`](include/genetics/organisms/Plant.hpp:412) | `bool` | True if mature, has energy, and timer ready |
+| [`canSpreadVegetatively()`](include/genetics/organisms/Plant.hpp:425) | `bool` | True if can spread via runners/stolons |
+| [`resetFruitTimer()`](include/genetics/organisms/Plant.hpp:433) | `void` | Reset cooldown after dispersal attempt |
+| `getRunnerProduction()` | `float` | Runner production rate (vegetative) |
+| `getFruitProductionRate()` | `float` | Fruit production frequency |
 | `getFruitAppeal()` | `float` | Attractiveness to creatures |
 
 ### Seed Property Methods
@@ -189,35 +218,59 @@ public:
 | `getSeedAerodynamics()` | `float` | Wind dispersal efficiency |
 | `getSeedHookStrength()` | `float` | Burr attachment strength |
 | `getSeedCoatDurability()` | `float` | Digestive survival rate |
-| `getPrimaryDispersalStrategy()` | `DispersalStrategy` | Primary dispersal method |
+| `getExplosivePodForce()` | `float` | Ballistic launch force |
+| [`getPrimaryDispersalStrategy()`](include/genetics/organisms/Plant.hpp:519) | `DispersalStrategy` | Emergent strategy from traits |
+
+### Scent System Methods
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| [`getScentSignature()`](include/genetics/organisms/Plant.hpp:621) | `std::array<float, 8>` | Plant's unique scent profile |
+| `getScentProductionRate()` | `float` | How strongly plant emits scent |
 
 ---
 
 ## DispersalStrategy
 
-**Header:** [`include/genetics/organisms/Plant.hpp`](include/genetics/organisms/Plant.hpp:25)
+**Header:** [`include/genetics/organisms/Plant.hpp`](include/genetics/organisms/Plant.hpp:31)
 
-Enumeration of seed dispersal methods.
+Emergent seed dispersal strategy determined by physical properties.
+
+> [!NOTE]
+> Rather than being a categorical gene, the dispersal strategy **emerges** from continuous physical properties of the seeds (mass, aerodynamics, hooks, fruit appeal, etc.). This creates realistic trade-offs and evolutionary pathways.
 
 ```cpp
 enum class DispersalStrategy {
-    GRAVITY,        // Heavy seeds fall near parent
-    WIND,           // Light seeds travel on wind
-    ANIMAL_FRUIT,   // Seeds pass through digestive system
-    ANIMAL_BURR,    // Hooks attach to animal fur
-    EXPLOSIVE,      // Pod tension launches seeds
-    VEGETATIVE      // Runners/stolons create clonal spread
+    GRAVITY,        ///< Heavy seeds fall near parent (default)
+    WIND,           ///< Light seeds with wings/parachutes travel far on wind
+    ANIMAL_FRUIT,   ///< Attractive fruit eaten, seeds pass through digestive system
+    ANIMAL_BURR,    ///< Hooks attach to animal fur for transport
+    EXPLOSIVE,      ///< Pod tension launches seeds ballistically
+    VEGETATIVE      ///< Runners/stolons create clonal spread
 };
 ```
 
+### Strategy Determination
+
+`getPrimaryDispersalStrategy()` uses thresholds on physical properties:
+
+1. High `runner_production` → **VEGETATIVE**
+2. High `explosive_pod_force` → **EXPLOSIVE**
+3. Low `seed_mass` + high `aerodynamics` → **WIND**
+4. High `seed_hook_strength` → **ANIMAL_BURR**
+5. High `fruit_appeal` + durable seeds → **ANIMAL_FRUIT**
+6. Default → **GRAVITY**
+
+### Strategy Requirements
+
 | Strategy | Mechanism | Distance | Requirements |
 |----------|-----------|----------|--------------|
-| `GRAVITY` | Heavy seeds fall | Short | High seed mass |
+| `GRAVITY` | Heavy seeds fall | Short | High seed mass (default) |
 | `WIND` | Wind carries seeds | Variable | High aerodynamics, low mass |
 | `ANIMAL_FRUIT` | Digestive passage | Medium-Long | High fruit appeal, durable coat |
 | `ANIMAL_BURR` | Fur attachment | Medium-Long | High hook strength |
-| `EXPLOSIVE` | Pod ejection | Medium | Specialized pod structure |
-| `VEGETATIVE` | Clonal spread | Short | Regrowth ability |
+| `EXPLOSIVE` | Pod ejection | Medium | High explosive_pod_force |
+| `VEGETATIVE` | Clonal spread | Short | High runner_production |
 
 ---
 
@@ -424,5 +477,5 @@ Plant desertPlant = factory.createFromTemplate("cactus", 50, 50);
 - [[interfaces]] - Interface definitions
 
 **Design:**
-- [[../../design/prefab-design]] - Species template design
-- [[../../design/propagation-design]] - Seed dispersal design
+- [[../../design/prefab]] - Species template design
+- [[../../design/propagation]] - Seed dispersal design

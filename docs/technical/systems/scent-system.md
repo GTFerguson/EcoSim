@@ -409,7 +409,7 @@ See `docs/future/sensory-system-phases.md` for planned expansions including:
 - [[../reference/api/perception-system]] - PerceptionSystem API reference
 
 **Design:**
-- [[../design/coevolution-design]] - Coevolution design (scent-related interactions)
+- [[../design/coevolution]] - Coevolution design (scent-related interactions)
 
 ---
 

@@ -1010,9 +1010,9 @@ Estimated daily maintenance costs at full expression (1.0):
 - [[../systems/scent-system]] - Olfactory communication system
 
 **Design:**
-- [[../design/coevolution-design]] - Coevolution design rationale
-- [[../design/propagation-design]] - Seed dispersal design
-- [[../design/resource-allocation-design]] - Energy budget design
+- [[../design/coevolution]] - Coevolution design rationale
+- [[../design/propagation]] - Seed dispersal design
+- [[../design/resource-allocation]] - Energy budget design
 
 ---
 

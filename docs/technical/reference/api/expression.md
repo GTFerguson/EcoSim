@@ -366,4 +366,4 @@ if (budget.isStarving(newState)) {
 - [[interfaces]] - Interface definitions
 
 **Design:**
-- [[../../design/resource-allocation-design]] - Energy budget design rationale
+- [[../../design/resource-allocation]] - Energy budget design rationale

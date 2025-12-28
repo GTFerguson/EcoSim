@@ -1,7 +1,7 @@
 ---
 title: Interfaces API Reference
 created: 2025-12-24
-updated: 2025-12-24
+updated: 2025-12-27
 status: complete
 audience: developer
 type: reference
@@ -19,9 +19,9 @@ tags: [genetics, api, reference, interfaces]
 
 This document covers the interface definitions used by the genetics system. These interfaces define contracts that organism classes implement, enabling polymorphic behavior and modular design:
 
-- **IPositionable** - Entities with world position
+- **IPositionable** - Entities with world position (tile and float coordinates)
 - **ILifecycle** - Entities with age and lifespan
-- **IGeneticOrganism** - Entities with genetics
+- **IGeneticOrganism** - Entities with genetics (includes position and ID for behavior system)
 - **IReproducible** - Entities that can reproduce
 
 All interfaces are in the `EcoSim::Genetics` namespace.
@@ -30,9 +30,9 @@ All interfaces are in the `EcoSim::Genetics` namespace.
 
 ## IPositionable
 
-**Header:** [`include/genetics/interfaces/IPositionable.hpp`](include/genetics/interfaces/IPositionable.hpp:7)
+**Header:** [`include/genetics/interfaces/IPositionable.hpp`](include/genetics/interfaces/IPositionable.hpp:13)
 
-Interface for entities with world position.
+Interface for entities with position in the world. Provides both tile-based (integer) and world (float) coordinate access.
 
 ```cpp
 namespace EcoSim::Genetics {
@@ -41,9 +41,16 @@ class IPositionable {
 public:
     virtual ~IPositionable() = default;
     
+    // Tile coordinates (integer - for collision, rendering)
     virtual int getX() const = 0;
     virtual int getY() const = 0;
-    virtual void setPosition(int x, int y) = 0;
+    
+    // World coordinates (float - for smooth movement)
+    virtual float getWorldX() const = 0;
+    virtual float getWorldY() const = 0;
+    
+    // Set position using float coordinates
+    virtual void setWorldPosition(float x, float y) = 0;
 };
 
 }
@@ -53,9 +60,20 @@ public:
 
 | Method | Returns | Description |
 |--------|---------|-------------|
-| `getX()` | `int` | Get X coordinate in world |
-| `getY()` | `int` | Get Y coordinate in world |
-| `setPosition(x, y)` | `void` | Set new position |
+| [`getX()`](include/genetics/interfaces/IPositionable.hpp:21) | `int` | Tile X coordinate (floor of world X) |
+| [`getY()`](include/genetics/interfaces/IPositionable.hpp:27) | `int` | Tile Y coordinate (floor of world Y) |
+| [`getWorldX()`](include/genetics/interfaces/IPositionable.hpp:33) | `float` | Precise world X coordinate |
+| [`getWorldY()`](include/genetics/interfaces/IPositionable.hpp:39) | `float` | Precise world Y coordinate |
+| [`setWorldPosition(x, y)`](include/genetics/interfaces/IPositionable.hpp:46) | `void` | Set position using float coordinates |
+
+### Design Notes
+
+The float position system enables:
+- **Smooth movement**: Creatures can move fractional tiles per tick
+- **Visible speed differences**: Fast creatures move more per tick than slow ones
+- **Accurate distance calculations**: Uses actual positions, not tile centers
+
+Tile coordinates are derived from world coordinates via truncation (`floor`).
 
 ### Usage
 
@@ -64,22 +82,24 @@ Any entity that exists in the simulation world should implement this interface:
 ```cpp
 class MyEntity : public IPositionable {
 private:
-    int m_x, m_y;
+    float worldX_, worldY_;
     
 public:
-    int getX() const override { return m_x; }
-    int getY() const override { return m_y; }
-    void setPosition(int x, int y) override {
-        m_x = x;
-        m_y = y;
+    int getX() const override { return static_cast<int>(worldX_); }
+    int getY() const override { return static_cast<int>(worldY_); }
+    float getWorldX() const override { return worldX_; }
+    float getWorldY() const override { return worldY_; }
+    void setWorldPosition(float x, float y) override {
+        worldX_ = x;
+        worldY_ = y;
     }
 };
 ```
 
 ### Implementors
 
-- [`Plant`](include/genetics/organisms/Plant.hpp) - Plants in the world
-- `Creature` (future) - Animals in the world
+- [`Plant`](include/genetics/organisms/Plant.hpp:67) - Plants in the world
+- [`Creature`](include/objects/creature/creature.hpp:97) - Animals in the world
 
 ---
 
@@ -146,15 +166,19 @@ public:
 
 ### Implementors
 
-- [`Plant`](include/genetics/organisms/Plant.hpp) - Plant lifecycle
+- [`Plant`](include/genetics/organisms/Plant.hpp:67) - Plant lifecycle
+- [`Creature`](include/objects/creature/creature.hpp:97) - Creature lifecycle
 
 ---
 
 ## IGeneticOrganism
 
-**Header:** [`include/genetics/interfaces/IGeneticOrganism.hpp`](include/genetics/interfaces/IGeneticOrganism.hpp:11)
+**Header:** [`include/genetics/interfaces/IGeneticOrganism.hpp`](include/genetics/interfaces/IGeneticOrganism.hpp:18)
 
-Interface for entities with genetics.
+Interface for entities with genetics. This interface is the primary abstraction used by the behavior system, enabling organism-agnostic behavior implementations.
+
+> [!NOTE]
+> IGeneticOrganism includes position and ID methods to support the behavior system. This reduces the need for multiple interface parameters in behavior methods.
 
 ```cpp
 namespace EcoSim::Genetics {
@@ -163,10 +187,18 @@ class IGeneticOrganism {
 public:
     virtual ~IGeneticOrganism() = default;
     
+    // Genetics
     virtual const Genome& getGenome() const = 0;
     virtual Genome& getGenomeMutable() = 0;
     virtual const Phenotype& getPhenotype() const = 0;
     virtual void updatePhenotype() = 0;
+    
+    // Position (for behavior system)
+    virtual int getX() const = 0;
+    virtual int getY() const = 0;
+    
+    // Identification (for tracking)
+    virtual int getId() const = 0;
 };
 
 }
@@ -176,23 +208,29 @@ public:
 
 | Method | Returns | Description |
 |--------|---------|-------------|
-| `getGenome()` | `const Genome&` | Const reference to genome |
-| `getGenomeMutable()` | `Genome&` | Mutable reference to genome |
-| `getPhenotype()` | `const Phenotype&` | Current expressed phenotype |
-| `updatePhenotype()` | `void` | Recalculate phenotype from genome |
+| [`getGenome()`](include/genetics/interfaces/IGeneticOrganism.hpp:23) | `const Genome&` | Const reference to genome |
+| [`getGenomeMutable()`](include/genetics/interfaces/IGeneticOrganism.hpp:26) | `Genome&` | Mutable reference to genome |
+| [`getPhenotype()`](include/genetics/interfaces/IGeneticOrganism.hpp:29) | `const Phenotype&` | Current expressed phenotype |
+| [`updatePhenotype()`](include/genetics/interfaces/IGeneticOrganism.hpp:32) | `void` | Recalculate phenotype from genome |
+| [`getX()`](include/genetics/interfaces/IGeneticOrganism.hpp:35) | `int` | Tile X coordinate |
+| [`getY()`](include/genetics/interfaces/IGeneticOrganism.hpp:36) | `int` | Tile Y coordinate |
+| [`getId()`](include/genetics/interfaces/IGeneticOrganism.hpp:39) | `int` | Unique identifier for tracking |
 
 ### Usage
 
 ```cpp
 class MyOrganism : public IGeneticOrganism {
 private:
+    int id_;
+    int x_, y_;
     Genome m_genome;
     Phenotype m_phenotype;
     const GeneRegistry& m_registry;
     
 public:
-    MyOrganism(const GeneRegistry& registry) 
-        : m_registry(registry), m_phenotype(&m_genome, &registry) {}
+    MyOrganism(int id, int x, int y, const GeneRegistry& registry)
+        : id_(id), x_(x), y_(y), m_registry(registry),
+          m_phenotype(&m_genome, &registry) {}
     
     const Genome& getGenome() const override { return m_genome; }
     Genome& getGenomeMutable() override { return m_genome; }
@@ -201,6 +239,10 @@ public:
     void updatePhenotype() override {
         m_phenotype.invalidateCache();
     }
+    
+    int getX() const override { return x_; }
+    int getY() const override { return y_; }
+    int getId() const override { return id_; }
 };
 ```
 
@@ -210,10 +252,13 @@ public:
 - The phenotype maintains pointers to the genome (not ownership)
 - Call `updatePhenotype()` after environmental changes
 - The registry reference should remain valid for the organism's lifetime
+- Position methods (`getX()`, `getY()`) allow behaviors to access organism location
+- The `getId()` method enables tracking organisms across behavior ticks
 
 ### Implementors
 
-- [`Plant`](include/genetics/organisms/Plant.hpp) - Plant genetics
+- [`Plant`](include/genetics/organisms/Plant.hpp:67) - Plant genetics
+- [`Creature`](include/objects/creature/creature.hpp:97) - Creature genetics
 
 ---
 
@@ -310,9 +355,11 @@ class Plant : public IPositionable,
 
 ```
 IPositionable
-├── getX()
-├── getY()
-└── setPosition()
+├── getX()              // Tile X (integer)
+├── getY()              // Tile Y (integer)
+├── getWorldX()         // World X (float)
+├── getWorldY()         // World Y (float)
+└── setWorldPosition()  // Set float position
 
 ILifecycle
 ├── getAge()
@@ -321,11 +368,14 @@ ILifecycle
 ├── isAlive()
 └── age()
 
-IGeneticOrganism
+IGeneticOrganism        // Primary behavior system interface
 ├── getGenome()
 ├── getGenomeMutable()
 ├── getPhenotype()
-└── updatePhenotype()
+├── updatePhenotype()
+├── getX()              // Position for behaviors
+├── getY()
+└── getId()             // Tracking identifier
 
 IReproducible<T>
 ├── canReproduce()

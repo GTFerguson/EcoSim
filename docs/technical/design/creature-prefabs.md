@@ -356,4 +356,4 @@ These are registered via [`registerDefaultTemplates()`](../../src/genetics/organ
 - [[classification]] - Creature taxonomy and classification system
 - [[gene-reference]] - Complete gene documentation
 - [[plant-prefabs]] - Plant archetype system
-- [[coevolution-design]] - Creature-plant interactions
+- [[coevolution]] - Creature-plant interactions

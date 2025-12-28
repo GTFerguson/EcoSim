@@ -12,7 +12,7 @@ tags: [genetics, design, coevolution, diet, herbivory]
 
 **Related Documents:**
 
-- [[propagation-design]] - Plant dispersal genes
+- [[propagation]] - Plant dispersal genes
 - [`UniversalGenes.hpp`](../../../include/genetics/defaults/UniversalGenes.hpp) - Unified gene system
 - [[../core/01-architecture]] - Core genetics architecture
 
@@ -1191,7 +1191,7 @@ static constexpr const char* FRUITING_SEASON = "plant_fruiting_season";
 
 ## 13. Specialization Trade-offs: Preventing Omnivore Dominance
 
-**Related:** [[resource-allocation-design]] - Detailed design document
+**Related:** [[resource-allocation]] - Detailed design document
 
 ### 13.1 The Problem
 
@@ -1426,12 +1426,12 @@ If balance needs adjustment:
 
 ## References
 
-- [[propagation-design]] - Emergent trait design for plants
+- [[propagation]] - Emergent trait design for plants
 - [`UniversalGenes.hpp`](../../../include/genetics/defaults/UniversalGenes.hpp) - Unified gene system
 - [[../core/01-architecture]] - Core genetics architecture
 - [`Phenotype.hpp`](../../../include/genetics/expression/Phenotype.hpp) - Expression system
 - [`Gene.hpp`](../../../include/genetics/core/Gene.hpp) - Pleiotropy and dominance
-- [[resource-allocation-design]] - Detailed trade-off calculations
+- [[resource-allocation]] - Detailed trade-off calculations
 
 ---
 
@@ -1458,6 +1458,6 @@ If balance needs adjustment:
 - [[../reference/api/interactions]] - Interaction system API
 
 **Design:**
-- [[propagation-design]] - Plant seed dispersal strategies and mechanisms
-- [[prefab-design]] - Plant factory architecture and species templates
-- [[resource-allocation-design]] - Energy budget framework theory
+- [[propagation]] - Plant seed dispersal strategies and mechanisms
+- [[prefab]] - Plant factory architecture and species templates
+- [[resource-allocation]] - Energy budget framework theory

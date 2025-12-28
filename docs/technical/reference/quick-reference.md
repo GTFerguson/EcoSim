@@ -301,5 +301,5 @@ return HYBRID;
 - [[api/organisms]] - Organism API
 
 **Design:**
-- [[../design/resource-allocation-design]] - Energy budget details
-- [[../design/coevolution-design]] - Coevolution mechanics
+- [[../design/resource-allocation]] - Energy budget details
+- [[../design/coevolution]] - Coevolution mechanics

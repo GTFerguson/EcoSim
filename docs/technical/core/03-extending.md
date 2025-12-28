@@ -806,6 +806,6 @@ Before extending the genetics system, ensure you understand:
 - [[../reference/api/interfaces]] - Interface definitions
 
 **Design:**
-- [[../design/coevolution-design]] - Coevolution system design
-- [[../design/propagation-design]] - Seed dispersal design
-- [[../design/prefab-design]] - Species template design
+- [[../design/coevolution]] - Coevolution system design
+- [[../design/propagation]] - Seed dispersal design
+- [[../design/prefab]] - Species template design

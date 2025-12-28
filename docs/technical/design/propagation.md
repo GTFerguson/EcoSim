@@ -12,7 +12,7 @@ tags: [genetics, design, propagation, seeds, dispersal]
 
 **Related Documents:**
 
-- [[prefab-design]] - Plant factory architecture
+- [[prefab]] - Plant factory architecture
 - [`UniversalGenes.hpp`](../../../include/genetics/defaults/UniversalGenes.hpp) - Unified gene system
 - [[../core/01-architecture]] - Core genetics architecture
 
@@ -1066,6 +1066,6 @@ Apply this pattern to other design decisions:
 - [[../reference/api/organisms]] - Organism API reference
 
 **Design:**
-- [[coevolution-design]] - Creature-plant coevolutionary dynamics
-- [[prefab-design]] - Plant factory architecture and species templates
-- [[resource-allocation-design]] - Energy budget framework theory
+- [[coevolution]] - Creature-plant coevolutionary dynamics
+- [[prefab]] - Plant factory architecture and species templates
+- [[resource-allocation]] - Energy budget framework theory

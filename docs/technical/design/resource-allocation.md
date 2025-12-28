@@ -13,7 +13,7 @@ tags: [genetics, design, energy, metabolism, evolution]
 **Related Documents:**
 
 - [[../core/01-architecture]] - System architecture
-- [[coevolution-design]] - Creature-plant coevolutionary dynamics
+- [[coevolution]] - Creature-plant coevolutionary dynamics
 - [[../../future/omnivore-trade-offs-design]] - Omnivore trade-offs design
 
 ---
@@ -1040,6 +1040,6 @@ The biological world runs on energy economics. This framework brings that fundam
 - [[../reference/api/expression]] - Expression system API reference
 
 **Design:**
-- [[coevolution-design]] - Creature-plant coevolutionary dynamics
-- [[propagation-design]] - Seed dispersal strategies and mechanisms
-- [[prefab-design]] - Plant factory architecture and species templates
+- [[coevolution]] - Creature-plant coevolutionary dynamics
+- [[propagation]] - Seed dispersal strategies and mechanisms
+- [[prefab]] - Plant factory architecture and species templates

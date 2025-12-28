@@ -12,7 +12,7 @@ tags: [genetics, design, prefabs, plants, factory]
 
 **Related Documents:**
 
-- [[propagation-design]] - Plant dispersal strategies
+- [[propagation]] - Plant dispersal strategies
 - [`PlantFactory.hpp`](../../../include/genetics/organisms/PlantFactory.hpp) - Factory implementation
 - [[../core/01-architecture]] - Core genetics architecture
 
@@ -1163,6 +1163,6 @@ These trade-offs create evolutionary pressure and prevent any single "optimal" p
 - [[../reference/api/organisms]] - Organism API reference
 
 **Design:**
-- [[coevolution-design]] - Creature-plant coevolutionary dynamics
-- [[propagation-design]] - Seed dispersal strategies and mechanisms
-- [[resource-allocation-design]] - Energy budget framework theory
+- [[coevolution]] - Creature-plant coevolutionary dynamics
+- [[propagation]] - Seed dispersal strategies and mechanisms
+- [[resource-allocation]] - Energy budget framework theory
