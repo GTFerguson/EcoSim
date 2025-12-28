@@ -94,10 +94,10 @@ float Phenotype::computeTrait(const std::string& trait_id) const {
         // Express the gene
         float raw_value = expressGene(trait_id, definition);
         
-        // Apply modulations
+        // Apply modulations (organism state uses policy)
         float modulated = applyAgeModulation(raw_value, organism_state_.age_normalized);
         modulated = applyEnvironmentModulation(modulated, trait_id, environment_);
-        modulated = applyOrganismStateModulation(modulated, organism_state_);
+        modulated = applyOrganismStateModulation(modulated, trait_id, organism_state_);
         
         // Store in computed traits map
         computed_traits_[trait_id] = modulated;
@@ -162,10 +162,10 @@ float Phenotype::computeTrait(const std::string& trait_id) const {
     }
     
     if (found_contribution) {
-        // Apply modulations to accumulated value
+        // Apply modulations to accumulated value (organism state uses policy)
         float modulated = applyAgeModulation(accumulated_value, organism_state_.age_normalized);
         modulated = applyEnvironmentModulation(modulated, trait_id, environment_);
-        modulated = applyOrganismStateModulation(modulated, organism_state_);
+        modulated = applyOrganismStateModulation(modulated, trait_id, organism_state_);
         
         computed_traits_[trait_id] = modulated;
         return modulated;
@@ -400,34 +400,44 @@ float Phenotype::applyEnvironmentModulation(float value, const std::string& trai
     return modulated_value;
 }
 
-float Phenotype::applyOrganismStateModulation(float value, const OrganismState& org) const {
-    float modulated_value = value;
+float Phenotype::applyOrganismStateModulation(float value, const std::string& trait_id,
+                                               const OrganismState& org) const {
+    // Look up the gene's modulation policy
+    TraitModulationPolicy policy = TraitModulationPolicy::NEVER;
     
-    // Energy level affects physical traits
-    // Low energy reduces expression of active traits
-    if (org.energy_level < 0.3f) {
-        // Below 30% energy: reduced expression proportional to energy
-        float energy_factor = 0.5f + (org.energy_level / 0.3f) * 0.5f;
-        modulated_value *= energy_factor;
+    if (registry_ && registry_->hasGene(trait_id)) {
+        const GeneDefinition& def = registry_->getDefinition(trait_id);
+        policy = def.getModulationPolicy();
     }
     
-    // Health affects overall expression
-    // Poor health reduces all trait expression
-    if (org.health < 0.5f) {
-        float health_factor = 0.7f + (org.health / 0.5f) * 0.3f;
-        modulated_value *= health_factor;
+    // Apply modulation based on policy
+    switch (policy) {
+        case TraitModulationPolicy::NEVER:
+            // Physical structure traits - never modulate
+            // Hide thickness, teeth, claws don't change with fatigue
+            return value;
+            
+        case TraitModulationPolicy::HEALTH_ONLY:
+            // Metabolic efficiency traits - only affected by health
+            // Poor health reduces digestive/metabolic efficiency
+            if (org.health < 0.5f) {
+                float health_factor = 0.7f + (org.health / 0.5f) * 0.3f;
+                return value * health_factor;
+            }
+            return value;
+            
+        case TraitModulationPolicy::ENERGY_GATED:
+            // Production traits - phenotype returns raw capacity
+            // Consumer checks energy surplus before using
+            return value;
+            
+        case TraitModulationPolicy::CONSUMER_APPLIED:
+            // Performance traits - phenotype returns raw value
+            // Consumer applies context-specific modulation at use-time
+            return value;
     }
     
-    // Sleeping reduces active trait expression
-    if (org.is_sleeping) {
-        modulated_value *= 0.5f;
-    }
-    
-    // Pregnancy might boost certain traits (simplified)
-    // Note: In a full implementation, this could be trait-specific
-    // For now, we don't apply any pregnancy modulation
-    
-    return modulated_value;
+    return value;
 }
 
 void Phenotype::computeAllTraits() const {

@@ -57,6 +57,9 @@ extern void runZoochoryBehaviorTests();
 // RestBehavior test runner (IBehavior implementation)
 extern void runRestBehaviorTests();
 
+// Modulation Policy test runner (TraitModulationPolicy system)
+extern void runModulationPolicyTests();
+
 int main() {
     auto start = std::chrono::high_resolution_clock::now();
     
@@ -180,6 +183,11 @@ int main() {
     // RestBehavior Tests (IBehavior implementation)
     std::cout << "=== RestBehavior Tests (IBehavior) ===" << std::endl;
     runRestBehaviorTests();
+    std::cout << std::endl;
+    
+    // Modulation Policy Tests (TraitModulationPolicy system)
+    std::cout << "=== TraitModulationPolicy Tests ===" << std::endl;
+    runModulationPolicyTests();
     std::cout << std::endl;
     
     auto end = std::chrono::high_resolution_clock::now();

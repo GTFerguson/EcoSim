@@ -252,12 +252,18 @@ private:
                                      const EnvironmentState& env) const;
     
     /**
-     * @brief Apply health and energy modulation
+     * @brief Apply health and energy modulation based on trait's policy
      * @param value The base trait value
+     * @param trait_id The trait being modulated (to look up policy)
      * @param org Current organism state
-     * @return Modulated value
+     * @return Modulated value based on the gene's TraitModulationPolicy:
+     *         - NEVER: Returns unmodified value (physical structure)
+     *         - HEALTH_ONLY: Applies only health-based modulation (metabolic efficiency)
+     *         - ENERGY_GATED: Returns unmodified (consumer checks energy)
+     *         - CONSUMER_APPLIED: Returns unmodified (consumer applies context-specific modulation)
      */
-    float applyOrganismStateModulation(float value, const OrganismState& org) const;
+    float applyOrganismStateModulation(float value, const std::string& trait_id,
+                                       const OrganismState& org) const;
     
     /**
      * @brief Compute all traits from the genome
