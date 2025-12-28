@@ -1,11 +1,11 @@
 ---
 title: Expression API Reference
 created: 2025-12-24
-updated: 2025-12-24
+updated: 2025-12-28
 status: complete
 audience: developer
 type: reference
-tags: [genetics, api, reference, expression, phenotype]
+tags: [genetics, api, reference, expression, phenotype, modulation]
 ---
 
 # Expression API Reference
@@ -54,6 +54,7 @@ public:
     // Trait access
     float getTrait(const std::string& trait_id) const;
     float computeTrait(const std::string& trait_id) const;
+    float computeTraitRaw(const std::string& trait_id) const;  // No modulations
     bool hasTrait(const std::string& trait_id) const;
     const std::unordered_map<std::string, float>& getAllTraits() const;
     
@@ -82,13 +83,61 @@ public:
 | `setGenome(genome)` | `void` | Set genome pointer |
 | `setRegistry(registry)` | `void` | Set registry pointer |
 | `updateContext(env, org)` | `void` | Update environmental context |
-| `getTrait(trait_id)` | `float` | Get cached trait (or compute) |
-| `computeTrait(trait_id)` | `float` | Force recomputation |
+| `getTrait(trait_id)` | `float` | Get cached trait (or compute) with policy-based modulation |
+| `computeTrait(trait_id)` | `float` | Force recomputation with modulations |
+| `computeTraitRaw(trait_id)` | `float` | Get raw genetic value (no age/env/state modulation) |
 | `hasTrait(trait_id)` | `bool` | Check if trait can be computed |
 | `getAllTraits()` | `const std::unordered_map<...>&` | All computed traits |
 | `invalidateCache()` | `void` | Force cache clear |
 | `getCacheHitRate()` | `float` | Cache hit ratio (0.0-1.0) |
 | `isValid()` | `bool` | True if genome and registry set |
+
+---
+
+## TraitModulationPolicy
+
+**Header:** [`include/genetics/core/GeneticTypes.hpp`](include/genetics/core/GeneticTypes.hpp:44)
+
+Enum controlling how organism state affects trait expression. Each gene definition stores a modulation policy.
+
+```cpp
+namespace EcoSim::Genetics {
+
+enum class TraitModulationPolicy {
+    NEVER,           // Immutable physical structure (e.g., hide_thickness, teeth)
+    HEALTH_ONLY,     // Metabolic efficiency traits (reduced when injured)
+    ENERGY_GATED,    // Production traits (capacity vs actual output)
+    CONSUMER_APPLIED // Performance traits (modulate at use-time, not phenotype)
+};
+
+}
+```
+
+### Policy Behaviors
+
+| Policy | Phenotype Returns | Organism State Effect |
+|--------|-------------------|----------------------|
+| `NEVER` | Raw genetic value | No modulation ever applied |
+| `HEALTH_ONLY` | Health-modulated value | Reduced 70-100% when health < 50% |
+| `ENERGY_GATED` | Raw capacity | Consumer checks energy before production |
+| `CONSUMER_APPLIED` | Raw genetic value | Consumer applies context-specific modulation |
+
+### Policy Distribution
+
+| Policy | Gene Count | Examples |
+|--------|:----------:|----------|
+| `NEVER` | 72 | hide_thickness, teeth_sharpness, max_size |
+| `HEALTH_ONLY` | 8 | digestive_efficiency, photosynthesis |
+| `ENERGY_GATED` | 3 | toxin_production, regeneration_rate |
+| `CONSUMER_APPLIED` | 6 | locomotion, sight_range, scent_detection |
+
+### GeneDefinition Policy Access
+
+```cpp
+// In GeneDefinition class
+TraitModulationPolicy getModulationPolicy() const;
+void setModulationPolicy(TraitModulationPolicy policy);
+```
 
 ---
 
@@ -323,12 +372,21 @@ env.season = 1; // Summer
 OrganismState org;
 org.age_normalized = 0.3f;
 org.energy_level = 0.8f;
+org.health = 0.4f;  // Injured creature
 
 phenotype.updateContext(env, org);
 
-// Access expressed traits
-float speed = phenotype.getTrait("movement_speed");
-float metabolism = phenotype.getTrait("metabolism_rate");
+// Access expressed traits (policy-based modulation)
+float metabolism = phenotype.getTrait("metabolism_rate");  // HEALTH_ONLY: reduced
+float hideThickness = phenotype.getTrait("hide_thickness"); // NEVER: unchanged
+float locomotion = phenotype.getTrait("locomotion");        // CONSUMER_APPLIED: raw value
+
+// Get raw genetic value (no modulation at all)
+float rawMetabolism = phenotype.computeTraitRaw("metabolism_rate");
+
+// Consumer-applied modulation example (in MovementBehavior)
+float baseSpeed = phenotype.getTrait("locomotion");  // Returns raw (CONSUMER_APPLIED)
+float effectiveSpeed = baseSpeed * org.energy_level * org.health;  // Consumer applies
 
 // Energy budget calculations
 EnergyBudget budget;

@@ -71,6 +71,53 @@ Low Value ◄══════════════════════�
 
 🆕 **Seed Dispersal** — Six different ways plants can spread their seeds, from wind to animal transport!
 
+🆕 **Smart Trait Modulation** — Physical traits like teeth and hide now stay constant regardless of fatigue, while performance traits naturally vary with the organism's condition!
+
+---
+
+## 🌡️ How Traits Are Affected
+
+An organism's expressed traits aren't just determined by genetics—they're influenced by the environment and the organism's current state!
+
+### Environmental Factors
+
+The world around your organism affects how some traits are expressed:
+
+| Factor | Effects |
+|--------|---------|
+| 🌡️ **Temperature** | Metabolism-related traits work differently in cold vs hot conditions |
+| 🌙 **Time of Day** | Vision is reduced at night (50% at midnight, 100% at noon) |
+| 💧 **Humidity** | Movement speed slightly reduced in very dry or very humid conditions |
+
+### Organism State Effects
+
+Your creature's current condition affects certain traits:
+
+| State | What Changes | What Stays Constant |
+|-------|--------------|---------------------|
+| 😴 **Tired** | Movement speed, perception range | Hide thickness, teeth, claws |
+| 🩸 **Injured** | Digestion efficiency, metabolism | Body size, armor, weapons |
+| 🍽️ **Hungry** | Energy available for production | Physical structure |
+
+### Physical vs Performance Traits
+
+Not all traits respond to your organism's condition the same way:
+
+**🦴 Physical Structure (Never Changes)**
+Your creature's teeth don't get dull when tired! These traits represent fixed anatomy:
+- Teeth, claws, horns, spines
+- Hide thickness, scales, fur
+- Body size and structure
+- Digestive anatomy (gut length, jaw strength)
+
+**⚡ Performance Traits (Change with Condition)**
+These traits are affected by how your creature is doing:
+- Movement speed and navigation (reduced when tired/hungry)
+- Perception range (reduced when fatigued)
+- Digestion efficiency (reduced when sick/injured)
+
+> 💡 **Why This Matters:** A tired wolf still has sharp teeth—it just can't run as fast to use them! This creates realistic behavior where weakened creatures may still be dangerous in close combat, but have trouble catching prey.
+
 ---
 
 ## Gene Categories

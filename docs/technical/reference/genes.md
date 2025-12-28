@@ -1,17 +1,17 @@
 ---
 title: Gene Reference - Complete Gene Catalog
 created: 2025-12-24
-updated: 2025-12-25
+updated: 2025-12-28
 status: complete
 audience: developer
 type: reference
-tags: [genetics, genes, reference, catalog]
+tags: [genetics, genes, reference, catalog, modulation]
 ---
 
 # Gene Reference - Complete Gene Catalog
 
-**Version:** 3.0 (Combat & Classification Complete)
-**Date:** 2025-12-25
+**Version:** 3.1 (Trait Modulation Policies)
+**Date:** 2025-12-28
 **Total Genes:** 88 active (89 total, 1 deprecated)
 **Test Coverage:** 97 tests passing
 
@@ -887,11 +887,136 @@ Combat behavioral traits.
 
 ---
 
-## 15. Emergent Properties Reference
+## 15. Trait Modulation Policies
+
+**Added:** v3.1 (2025-12-28)
+
+Each gene has a **modulation policy** that determines how organism state (health, energy, fatigue) affects trait expression. This prevents biologically incorrect behavior like hide thickness reducing when a creature is tired.
+
+### 15.1 Policy Types
+
+| Policy | Description | Modulation Behavior |
+|--------|-------------|---------------------|
+| `NEVER` | Immutable physical structure | Never modulated - returns raw genetic value |
+| `HEALTH_ONLY` | Metabolic efficiency traits | Reduced when health < 50% (70-100% scaling) |
+| `ENERGY_GATED` | Production traits | Phenotype returns capacity; consumer checks energy |
+| `CONSUMER_APPLIED` | Performance traits | Phenotype returns raw; consumer applies context-specific modulation |
+
+### 15.2 Policy Distribution
+
+| Policy | Gene Count | Percentage |
+|--------|:----------:|:----------:|
+| `NEVER` | 72 | 82% |
+| `HEALTH_ONLY` | 8 | 9% |
+| `ENERGY_GATED` | 3 | 3% |
+| `CONSUMER_APPLIED` | 6 | 7% |
+
+### 15.3 Genes by Policy
+
+#### NEVER (72 genes) - Immutable Physical Structure
+
+Physical anatomy that doesn't change with organism state:
+
+**Defensive Morphology:**
+`hide_thickness`, `fur_density`, `scale_coverage`, `fat_layer_thickness`, `body_spines`
+
+**Dental/Jaw:**
+`teeth_sharpness`, `teeth_serration`, `teeth_size`, `tooth_grinding`, `jaw_strength`, `jaw_speed`
+
+**Claws:**
+`claw_length`, `claw_curvature`, `claw_sharpness`
+
+**Horns:**
+`horn_length`, `horn_pointiness`, `horn_spread`
+
+**Tail:**
+`tail_length`, `tail_mass`, `tail_spines`
+
+**Digestive Anatomy:**
+`gut_length`, `stomach_acidity`, `mucus_protection`
+
+**Size/Structure:**
+`max_size`, `hardiness`, `color_hue`, `lifespan`
+
+**Seed Properties:**
+`seed_mass`, `seed_aerodynamics`, `seed_hook_strength`, `seed_coat_durability`, `explosive_pod_force`
+
+**Threshold Genes (behavioral set-points):**
+`hunger_threshold`, `thirst_threshold`, `fatigue_threshold`, `mate_threshold`, `flee_threshold`, `pursue_threshold`, `retreat_threshold`
+
+**Environmental Tolerances:**
+`temp_tolerance_low`, `temp_tolerance_high`
+
+**Behavioral Traits:**
+`offspring_count`, `spread_distance`, `comfort_increase`, `comfort_decrease`, `wound_tolerance`, `bleeding_resistance`, `sweetness_preference`, `caching_instinct`, `spatial_memory`, `grooming_frequency`, `pain_sensitivity`, `scent_signature_variance`, `scent_masking`, `thorn_density`
+
+#### HEALTH_ONLY (8 genes) - Metabolic Efficiency
+
+Traits logically reduced when injured or sick:
+
+`digestive_efficiency`, `plant_digestion_efficiency`, `meat_digestion_efficiency`, `cellulose_breakdown`, `toxin_tolerance`, `toxin_metabolism`, `photosynthesis`, `metabolism_rate`
+
+**Modulation Rule:** When health < 0.5, trait is scaled by `0.7 + (health / 0.5) * 0.3`:
+- Health 0.5+: 100% expression
+- Health 0.25: 85% expression
+- Health 0.0: 70% expression
+
+#### ENERGY_GATED (3 genes) - Production Capacity
+
+Traits that represent capacity but require energy to produce:
+
+`toxin_production`, `scent_production`, `regeneration_rate`
+
+**Usage:** Phenotype returns genetic capacity. Consumer systems check energy surplus before actual production occurs.
+
+#### CONSUMER_APPLIED (6 genes) - Performance Traits
+
+Traits modulated at use-time by the consuming system:
+
+`locomotion`, `sight_range`, `hearing_range`, `navigation_ability`, `scent_detection`, `olfactory_acuity`
+
+**Usage:** Phenotype returns raw genetic value. Consumer systems (e.g., `MovementBehavior`, `PerceptionSystem`) apply energy/health/fatigue modulation when the trait is actually used.
+
+### 15.4 Why This Matters
+
+**Before (incorrect):**
+```
+Tired creature → ALL traits reduced by 50%
+→ hide_thickness drops from 5.0mm to 2.5mm (wrong!)
+→ teeth_sharpness drops (wrong!)
+```
+
+**After (correct):**
+```
+Tired creature:
+→ hide_thickness stays at 5.0mm (NEVER policy)
+→ locomotion used at 50% speed (CONSUMER_APPLIED, applied by MovementBehavior)
+→ digestive_efficiency normal (HEALTH_ONLY, not affected by fatigue)
+```
+
+### 15.5 API Usage
+
+```cpp
+// Get raw genetic value (no modulation)
+float rawSpeed = phenotype.computeTraitRaw("locomotion");
+
+// Get modulated value (policy-based organism state modulation)
+float modSpeed = phenotype.getTrait("locomotion");
+// Note: For CONSUMER_APPLIED traits, these return the same value
+// Consumer applies its own modulation at use-time:
+
+// In MovementBehavior::execute():
+float baseSpeed = organism.getPhenotype().getTrait("locomotion");
+float effectiveSpeed = baseSpeed * energyFactor * healthFactor;
+```
+
+---
+
+## 16. Emergent Properties Reference
 
 These are NOT genes but computed properties from gene combinations.
 
-### 15.1 Dispersal Strategy (Plants)
+### 16.1 Dispersal Strategy (Plants)
 
 **Calculated from:** seed_mass, seed_aerodynamics, seed_hook_strength, fruit_appeal, seed_coat_durability, explosive_pod_force, runner_production
 
@@ -904,7 +1029,7 @@ These are NOT genes but computed properties from gene combinations.
 - `VEGETATIVE`: High runner production
 - `MIXED`: Multiple strategies active
 
-### 15.2 Diet Type (Creatures)
+### 16.2 Diet Type (Creatures)
 
 **Calculated from:** plant_digestion_efficiency, meat_digestion_efficiency, cellulose_breakdown, sweetness_preference
 
@@ -926,7 +1051,7 @@ return SCAVENGER;
 
 ---
 
-## 16. Quick Lookup by Function
+## 17. Quick Lookup by Function
 
 ### To Create Herbivore:
 High: `plant_digestion_efficiency`, `cellulose_breakdown`, `tooth_grinding`, `gut_length`  
@@ -958,7 +1083,7 @@ Low: `defense_level`, `toxicity`, `lifespan`
 
 ---
 
-## 17. Maintenance Cost Reference
+## 18. Maintenance Cost Reference
 
 Estimated daily maintenance costs at full expression (1.0):
 

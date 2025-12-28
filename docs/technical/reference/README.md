@@ -12,7 +12,7 @@ API documentation and gene catalogs for quick lookup.
 | Document | Description |
 |----------|-------------|
 | [[quick-reference]] | Cheat sheet for common patterns |
-| [[genes]] | Complete gene catalog |
+| [[genes]] | Complete gene catalog (92 genes with modulation policies) |
 | [[api/]] | Detailed API documentation by category |
 
 ## API Reference by Category
@@ -20,10 +20,25 @@ API documentation and gene catalogs for quick lookup.
 | Category | Description |
 |----------|-------------|
 | [[api/core-classes]] | Gene, Chromosome, Genome, Registry |
-| [[api/expression]] | Phenotype, caching, state classes |
+| [[api/expression]] | Phenotype, caching, state classes, **trait modulation** |
 | [[api/organisms]] | Plant, PlantFactory |
 | [[api/interactions]] | Feeding, dispersal, coevolution |
 | [[api/interfaces]] | Interface definitions |
+
+## Key Concepts
+
+### Trait Modulation Policies
+
+The system uses policy-based trait modulation to ensure biological correctness. Each gene is assigned a modulation policy that determines how organism state affects trait expression:
+
+| Policy | Description |
+|--------|-------------|
+| `NEVER` | Physical structure traits - never modulated by state |
+| `HEALTH_ONLY` | Metabolic efficiency - affected only by health |
+| `ENERGY_GATED` | Production traits - require energy threshold |
+| `CONSUMER_APPLIED` | Performance traits - modulated at use-time |
+
+See [[genes#15-trait-modulation-policies]] for complete gene categorization.
 
 ## See Also
 
