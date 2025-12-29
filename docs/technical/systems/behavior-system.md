@@ -103,6 +103,7 @@ struct BehaviorContext {
     const ScentLayer* scentLayer = nullptr;       // Scent layer for olfactory perception
     World* world = nullptr;                        // World access for entity queries
     const OrganismState* organismState = nullptr;  // Current organism state (energy, health, etc.)
+    SpatialIndex* creatureIndex = nullptr;         // Spatial index for O(1) creature neighbor queries
     float deltaTime = 1.0f;                        // Time since last tick (normalized)
     unsigned int currentTick = 0;                  // Current simulation tick
     int worldRows = 0;                             // World height in tiles
@@ -112,6 +113,8 @@ struct BehaviorContext {
 
 > [!NOTE]
 > Context uses raw pointers for optional dependencies. Behaviors should null-check before use.
+
+The `creatureIndex` field provides access to the [[spatial-index|Spatial Index System]] for efficient O(1) neighbor queries instead of O(n) iteration over all creatures.
 
 ### BehaviorResult
 
@@ -553,6 +556,8 @@ Each behavior has isolated unit tests:
 
 ## See Also
 
+- [[spatial-index]] - Spatial indexing for O(1) creature neighbor queries
+- [[perception-system]] - Sensory detection system using spatial queries
 - [[../../future/behavior/extensions|Behavior Extensions]] - Future AI extensions (behavior trees, GOAP)
 - [[../../future/genetics/unified-organism-genome|Unified Organism Vision]] - Future unified organism design
 - [[../core/01-architecture|Core Architecture]] - Overall system architecture
