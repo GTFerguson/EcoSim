@@ -177,12 +177,18 @@ struct CombatLogEvent {
 
 /**
  * @brief Singleton Logger for simulation events
- * 
+ *
  * Provides comprehensive logging for creature lifecycle, plant lifecycle,
  * feeding, reproduction, population tracking, and energy changes.
  */
 class Logger {
 public:
+    /// Maximum entries in population history before oldest entries are trimmed
+    static constexpr size_t MAX_POPULATION_HISTORY_SIZE = 10000;
+    
+    /// Maximum entries in breeding history before oldest entries are trimmed
+    static constexpr size_t MAX_BREEDING_HISTORY_SIZE = 10000;
+    
     /**
      * @brief Get the singleton instance
      */

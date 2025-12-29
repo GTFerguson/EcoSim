@@ -119,6 +119,7 @@ void Genome::addGene(const Gene& gene, ChromosomeType chromosome) {
 
 std::vector<std::reference_wrapper<const Gene>> Genome::getAllGenes() const {
     std::vector<std::reference_wrapper<const Gene>> all_genes;
+    all_genes.reserve(getTotalGeneCount());
     
     for (const auto& chromosome : chromosomes_) {
         for (const auto& gene : chromosome.getGenes()) {

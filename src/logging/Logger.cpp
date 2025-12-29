@@ -453,6 +453,9 @@ void Logger::breedingStateCount(int tick, int inBreedState, int seekingMate, flo
 
 void Logger::recordBreedingSnapshot(const BreedingSnapshot& snapshot) {
     std::lock_guard<std::mutex> lock(m_mutex);
+    if (m_breedingHistory.size() >= MAX_BREEDING_HISTORY_SIZE) {
+        m_breedingHistory.erase(m_breedingHistory.begin());
+    }
     m_breedingHistory.push_back(snapshot);
 }
 
@@ -513,8 +516,11 @@ void Logger::populationSnapshot(int tick, int creatures, int plants, int food) {
     details << "creatures:" << creatures << ",plants:" << plants << ",food:" << food;
     log(LogLevel::INFO, "POPULATION_SNAPSHOT", -1, "", details.str());
     
-    // Store in history
+    // Store in history with size limit to prevent memory exhaustion
     std::lock_guard<std::mutex> lock(m_mutex);
+    if (m_populationHistory.size() >= MAX_POPULATION_HISTORY_SIZE) {
+        m_populationHistory.erase(m_populationHistory.begin());
+    }
     m_populationHistory.push_back({tick, creatures, plants, food});
 }
 

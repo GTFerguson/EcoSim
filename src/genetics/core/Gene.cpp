@@ -51,14 +51,13 @@ GeneValue Gene::getExpressedValue(DominanceType dominance) const {
         }
         
         case DominanceType::Overdominant: {
-            // If heterozygous, boost by 10%
             float val1 = toNumeric(allele1_.value);
             float val2 = toNumeric(allele2_.value);
             float avg = (val1 + val2) / 2.0f;
             
             if (isHeterozygous()) {
-                // Heterozygote advantage - boost by 10%
-                avg *= 1.1f;
+                static constexpr float HETEROZYGOTE_ADVANTAGE = 1.1f;
+                avg *= HETEROZYGOTE_ADVANTAGE;
             }
             return GeneValue(avg);
         }

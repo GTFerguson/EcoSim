@@ -761,6 +761,8 @@ bool FileHandling::loadGameJson(
     calendar = Calendar(time, date);
     
     // Load and apply world generation parameters to regenerate identical terrain
+    // Use current world dimensions for terrain generation to handle dimension mismatches
+    // (seed and other parameters are preserved to generate identical terrain patterns)
     if (worldData.contains("mapGen")) {
       const auto& mapGenData = worldData["mapGen"];
       MapGen mg;
@@ -769,8 +771,9 @@ bool FileHandling::loadGameJson(
       mg.freq = mapGenData.value("freq", 1.0);
       mg.exponent = mapGenData.value("exponent", 1.0);
       mg.terraces = mapGenData.value("terraces", 20u);
-      mg.rows = mapGenData.value("rows", static_cast<unsigned>(mapHeight));
-      mg.cols = mapGenData.value("cols", static_cast<unsigned>(mapWidth));
+      // Use current world dimensions, not saved ones (handles dimension mismatch safely)
+      mg.rows = static_cast<unsigned>(mapHeight);
+      mg.cols = static_cast<unsigned>(mapWidth);
       mg.isIsland = mapGenData.value("isIsland", false);
       world.setMapGen(mg);
     }
