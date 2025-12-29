@@ -18,6 +18,7 @@ Deep-dive documentation for individual subsystems.
 | [[combat-system]] | Combat damage types, weapons, and defenses |
 | [[save-load-system]] | JSON-based save/load and pause menu |
 | [[scent-system]] | Olfactory communication and scent layer |
+| [[spatial-index]] | O(1) neighbor queries for spatial entities |
 
 ## See Also
 

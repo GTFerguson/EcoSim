@@ -63,6 +63,9 @@ extern void runModulationPolicyTests();
 // Serialization test runner (JSON save/load system)
 extern void runSerializationTests();
 
+// SpatialIndex test runner (world spatial queries)
+extern void runSpatialIndexTests();
+
 int main() {
     auto start = std::chrono::high_resolution_clock::now();
     
@@ -196,6 +199,11 @@ int main() {
     // Serialization Tests (JSON save/load system)
     std::cout << "=== Serialization System Tests ===" << std::endl;
     runSerializationTests();
+    std::cout << std::endl;
+    
+    // SpatialIndex Tests (world spatial queries)
+    std::cout << "=== SpatialIndex Tests (World) ===" << std::endl;
+    runSpatialIndexTests();
     std::cout << std::endl;
     
     auto end = std::chrono::high_resolution_clock::now();
