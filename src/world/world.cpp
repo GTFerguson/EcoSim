@@ -557,6 +557,32 @@ unsigned int World::getCurrentTick() const {
 }
 
 //================================================================================
+//  Spatial Indexing (Phase 3: O(1) Neighbor Queries)
+//================================================================================
+
+void World::initializeCreatureIndex() {
+  _creatureIndex = std::make_unique<EcoSim::SpatialIndex>(
+    static_cast<int>(_mapGen.cols),
+    static_cast<int>(_mapGen.rows)
+  );
+}
+
+EcoSim::SpatialIndex* World::getCreatureIndex() {
+  return _creatureIndex.get();
+}
+
+const EcoSim::SpatialIndex* World::getCreatureIndex() const {
+  return _creatureIndex.get();
+}
+
+void World::rebuildCreatureIndex(std::vector<Creature>& creatures) {
+  if (!_creatureIndex) {
+    initializeCreatureIndex();
+  }
+  _creatureIndex->rebuild(creatures);
+}
+
+//================================================================================
 //  Corpse Management
 //================================================================================
 

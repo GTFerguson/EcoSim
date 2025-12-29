@@ -16,6 +16,7 @@
 #include "SimplexNoise.hpp"
 #include "ScentLayer.hpp"
 #include "Corpse.hpp"
+#include "SpatialIndex.hpp"
 
 // Genetics system integration (Phase 2.4)
 #include "../genetics/core/GeneRegistry.hpp"
@@ -81,6 +82,9 @@ class World {
     // Scent-based sensory system (Phase 1: Sensory System)
     EcoSim::ScentLayer _scentLayer;
     unsigned int _currentTick;
+    
+    // Spatial indexing for O(1) creature neighbor queries (Phase 3)
+    std::unique_ptr<EcoSim::SpatialIndex> _creatureIndex;
     
     // Corpse management
     std::vector<std::unique_ptr<world::Corpse>> _corpses;
@@ -227,6 +231,35 @@ class World {
      * @return Current tick count
      */
     unsigned int getCurrentTick() const;
+    
+    //============================================================================
+    //  Spatial Indexing (Phase 3: O(1) Neighbor Queries)
+    //============================================================================
+    
+    /**
+     * @brief Initialize the creature spatial index
+     * Call this after world dimensions are set, before adding creatures.
+     */
+    void initializeCreatureIndex();
+    
+    /**
+     * @brief Get the creature spatial index
+     * @return Pointer to spatial index, or nullptr if not initialized
+     */
+    EcoSim::SpatialIndex* getCreatureIndex();
+    
+    /**
+     * @brief Get the creature spatial index (const version)
+     * @return Const pointer to spatial index, or nullptr if not initialized
+     */
+    const EcoSim::SpatialIndex* getCreatureIndex() const;
+    
+    /**
+     * @brief Rebuild the spatial index from a creature vector
+     * Call this after loading saves or major population changes.
+     * @param creatures Vector of all creatures
+     */
+    void rebuildCreatureIndex(std::vector<Creature>& creatures);
     
     //============================================================================
     //  Corpse Management

@@ -7,6 +7,7 @@ namespace EcoSim {
 
 // Forward declarations for external types
 class ScentLayer;
+class SpatialIndex;
 
 namespace Genetics {
 
@@ -26,6 +27,7 @@ struct BehaviorContext {
     const ScentLayer* scentLayer = nullptr;  ///< Scent layer for olfactory perception
     World* world = nullptr;                   ///< World access for entity queries
     const OrganismState* organismState = nullptr;  ///< Current organism state (energy, health, etc.)
+    SpatialIndex* creatureIndex = nullptr;    ///< Spatial index for O(1) creature neighbor queries
     float deltaTime = 1.0f;                   ///< Time since last tick (normalized)
     unsigned int currentTick = 0;             ///< Current simulation tick
     int worldRows = 0;                        ///< World height in tiles

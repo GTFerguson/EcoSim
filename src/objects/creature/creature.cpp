@@ -9,6 +9,7 @@
 #include "../../../include/objects/creature/creature.hpp"
 #include "genetics/organisms/Plant.hpp"
 #include "genetics/defaults/UniversalGenes.hpp"
+#include "world/SpatialIndex.hpp"
 #include "genetics/classification/ArchetypeIdentity.hpp"
 #include "genetics/classification/CreatureTaxonomy.hpp"
 #include "genetics/interactions/CombatInteraction.hpp"
@@ -680,18 +681,36 @@ bool Creature::flock (World &world, vector<Creature> &creatures) {
 	Creature *closestC = NULL;
   float closestDistance = getSightRange();
 
-	//	Find closest creature
-  for (Creature & creature : creatures) {
-    //  Exclude itself from the check
-		if (&creature != this) {
-      float distance = calculateDistance(creature.getX(), creature.getY());
-
-			if (distance < closestDistance) {
-				closestC = &creature;
-				closestDistance = distance;
-			}
-		}
-	}
+	//	Find closest creature using spatial index if available (O(1) vs O(n))
+  EcoSim::SpatialIndex* spatialIndex = world.getCreatureIndex();
+  
+  if (spatialIndex) {
+    // Use O(1) spatial query instead of O(n) iteration
+    std::vector<Creature*> nearby = spatialIndex->queryRadius(
+      tileX(), tileY(), static_cast<int>(getSightRange())
+    );
+    
+    for (Creature* creature : nearby) {
+      if (creature != this) {
+        float distance = calculateDistance(creature->getX(), creature->getY());
+        if (distance < closestDistance) {
+          closestC = creature;
+          closestDistance = distance;
+        }
+      }
+    }
+  } else {
+    // Fallback to O(n) iteration when spatial index not available
+    for (Creature & creature : creatures) {
+      if (&creature != this) {
+        float distance = calculateDistance(creature.getX(), creature.getY());
+        if (distance < closestDistance) {
+          closestC = &creature;
+          closestDistance = distance;
+        }
+      }
+    }
+  }
 
 	if (closestC != NULL) {
     int cX = closestC->getX();

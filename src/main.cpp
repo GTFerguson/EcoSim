@@ -331,6 +331,10 @@ void takeTurn (World &w, GeneralStats &gs, vector<Creature> &c,
  *  @param c A vector of creature objects.
  */
 void advanceSimulation (World &w, vector<Creature> &c, GeneralStats &gs) {
+  //  Rebuild spatial index for O(1) neighbor queries (Phase 3 optimization)
+  //  This is called once per tick - O(n) rebuild cost enables O(1) queries
+  w.rebuildCreatureIndex(c);
+  
   //  Push simulation forward
   w.updateAllObjects ();
   
