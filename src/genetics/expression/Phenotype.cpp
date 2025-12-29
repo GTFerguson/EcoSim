@@ -1,4 +1,5 @@
 #include "genetics/expression/Phenotype.hpp"
+#include "genetics/expression/PhenotypeUtils.hpp"
 #include "genetics/core/Genome.hpp"
 #include "genetics/core/Gene.hpp"
 #include <cmath>
@@ -107,8 +108,7 @@ float Phenotype::computeTrait(const std::string& trait_id) const {
     
     // Trait not found - check if it's derived from effect bindings
     // Search all genes for effects that target this trait
-    float accumulated_value = 0.0f;
-    bool found_contribution = false;
+    PhenotypeUtils::AccumulatedEffect accumulated;
     
     for (const auto& [gene_id, definition] : registry_->getAllDefinitions()) {
         for (const auto& effect : definition.getEffects()) {
@@ -118,52 +118,15 @@ float Phenotype::computeTrait(const std::string& trait_id) const {
                 }
                 
                 float gene_value = expressGene(gene_id, definition);
-                
-                switch (effect.effect_type) {
-                    case EffectType::Direct:
-                        // Direct: gene value becomes trait value
-                        accumulated_value = gene_value * effect.scale_factor;
-                        found_contribution = true;
-                        break;
-                        
-                    case EffectType::Additive:
-                        // Additive: contribute to sum
-                        accumulated_value += gene_value * effect.scale_factor;
-                        found_contribution = true;
-                        break;
-                        
-                    case EffectType::Multiplicative:
-                        // Multiplicative: multiply existing value
-                        if (!found_contribution) {
-                            accumulated_value = 1.0f;
-                        }
-                        accumulated_value *= (gene_value * effect.scale_factor);
-                        found_contribution = true;
-                        break;
-                        
-                    case EffectType::Threshold:
-                        // Threshold: only contributes if above/below threshold
-                        // For simplicity, treat scale_factor as threshold
-                        if (gene_value >= effect.scale_factor) {
-                            accumulated_value += gene_value;
-                            found_contribution = true;
-                        }
-                        break;
-                        
-                    case EffectType::Conditional:
-                        // Conditional: context-dependent (simplified implementation)
-                        // Could be extended to check specific conditions
-                        accumulated_value += gene_value * effect.scale_factor;
-                        found_contribution = true;
-                        break;
-                }
+                accumulated = PhenotypeUtils::applyEffect(
+                    accumulated, effect.effect_type, gene_value, effect.scale_factor);
             }
         }
     }
     
-    if (found_contribution) {
+    if (accumulated.found_contribution) {
         // Apply modulations to accumulated value (organism state uses policy)
-        float modulated = applyAgeModulation(accumulated_value, organism_state_.age_normalized);
+        float modulated = applyAgeModulation(accumulated.value, organism_state_.age_normalized);
         modulated = applyEnvironmentModulation(modulated, trait_id, environment_);
         modulated = applyOrganismStateModulation(modulated, trait_id, organism_state_);
         
@@ -189,8 +152,7 @@ float Phenotype::computeTraitRaw(const std::string& trait_id) const {
     
     // Trait not found - check if it's derived from effect bindings
     // Search all genes for effects that target this trait
-    float accumulated_value = 0.0f;
-    bool found_contribution = false;
+    PhenotypeUtils::AccumulatedEffect accumulated;
     
     for (const auto& [gene_id, definition] : registry_->getAllDefinitions()) {
         for (const auto& effect : definition.getEffects()) {
@@ -200,50 +162,15 @@ float Phenotype::computeTraitRaw(const std::string& trait_id) const {
                 }
                 
                 float gene_value = expressGene(gene_id, definition);
-                
-                switch (effect.effect_type) {
-                    case EffectType::Direct:
-                        // Direct: gene value becomes trait value
-                        accumulated_value = gene_value * effect.scale_factor;
-                        found_contribution = true;
-                        break;
-                        
-                    case EffectType::Additive:
-                        // Additive: contribute to sum
-                        accumulated_value += gene_value * effect.scale_factor;
-                        found_contribution = true;
-                        break;
-                        
-                    case EffectType::Multiplicative:
-                        // Multiplicative: multiply existing value
-                        if (!found_contribution) {
-                            accumulated_value = 1.0f;
-                        }
-                        accumulated_value *= (gene_value * effect.scale_factor);
-                        found_contribution = true;
-                        break;
-                        
-                    case EffectType::Threshold:
-                        // Threshold: only contributes if above/below threshold
-                        if (gene_value >= effect.scale_factor) {
-                            accumulated_value += gene_value;
-                            found_contribution = true;
-                        }
-                        break;
-                        
-                    case EffectType::Conditional:
-                        // Conditional: context-dependent (simplified implementation)
-                        accumulated_value += gene_value * effect.scale_factor;
-                        found_contribution = true;
-                        break;
-                }
+                accumulated = PhenotypeUtils::applyEffect(
+                    accumulated, effect.effect_type, gene_value, effect.scale_factor);
             }
         }
     }
     
     // Return raw accumulated value - NO modulations applied
-    if (found_contribution) {
-        return accumulated_value;
+    if (accumulated.found_contribution) {
+        return accumulated.value;
     }
     
     return 0.0f;

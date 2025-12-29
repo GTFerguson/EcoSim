@@ -1,7 +1,7 @@
 ---
 title: Expression API Reference
 created: 2025-12-24
-updated: 2025-12-28
+updated: 2025-12-29
 status: complete
 audience: developer
 type: reference
@@ -21,6 +21,7 @@ This document covers the gene expression and state management classes. These cla
 
 - **Phenotype** - Bridges genotype to expressed traits
 - **PhenotypeCache** - Performance optimization for trait computation
+- **PhenotypeUtils** - Utility functions for effect calculations
 - **EnvironmentState** - Environmental conditions for expression
 - **OrganismState** - Organism internal state for expression
 - **EnergyBudget** - Universal resource allocation framework
@@ -175,6 +176,59 @@ public:
 | `invalidateAll()` | `void` | Invalidate entire cache |
 | `checkInvalidation(env, org)` | `void` | Auto-invalidate on state change |
 | `getCacheHitRate()` | `float` | Hit ratio for diagnostics |
+
+---
+
+## PhenotypeUtils
+
+**Header:** [`include/genetics/expression/PhenotypeUtils.hpp`](include/genetics/expression/PhenotypeUtils.hpp:16)
+
+Utility functions for phenotype effect calculations. Extracted to reduce code duplication.
+
+```cpp
+namespace EcoSim::Genetics::PhenotypeUtils {
+
+struct AccumulatedEffect {
+    float value = 0.0f;
+    bool found_contribution = false;
+};
+
+AccumulatedEffect applyEffect(const AccumulatedEffect& accumulated,
+                               EffectType effect_type,
+                               float gene_value,
+                               float scale_factor);
+
+}
+```
+
+### AccumulatedEffect Structure
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `value` | `float` | 0.0f | Current accumulated value |
+| `found_contribution` | `bool` | false | Whether any gene contributed |
+
+### Functions
+
+| Function | Returns | Description |
+|----------|---------|-------------|
+| `applyEffect(accumulated, type, value, scale)` | `AccumulatedEffect` | Apply single effect to accumulator |
+
+### Effect Type Behaviors
+
+| EffectType | Behavior |
+|------------|----------|
+| `Direct` | Gene value becomes trait value (overwrites) |
+| `Additive` | Adds `gene_value * scale_factor` to sum |
+| `Multiplicative` | Multiplies existing value (starts at 1.0 if first) |
+| `Threshold` | Only contributes if `gene_value >= scale_factor` |
+| `Conditional` | Context-dependent (simplified as additive) |
+
+### Design Notes
+
+- Extracted from `Phenotype::computeTrait()` and `Phenotype::computeTraitRaw()`
+- Eliminates duplicate switch statements for effect processing
+- Used internally by Phenotype - not typically called directly
 
 ---
 
