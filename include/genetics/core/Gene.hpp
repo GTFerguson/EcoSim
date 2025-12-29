@@ -1,6 +1,7 @@
 #pragma once
 
 #include "GeneticTypes.hpp"
+#include <nlohmann/json.hpp>
 #include <string>
 #include <vector>
 #include <random>
@@ -99,6 +100,24 @@ public:
      * @param value2 Value for allele 2
      */
     void setAlleleValues(float value1, float value2);
+    
+    // ========================================================================
+    // Serialization
+    // ========================================================================
+    
+    /**
+     * @brief Serialize gene to JSON
+     * @return JSON object with gene data
+     */
+    nlohmann::json toJson() const;
+    
+    /**
+     * @brief Create gene from JSON data
+     * @param j JSON object with gene data
+     * @return Constructed Gene object
+     * @throws std::runtime_error if JSON is invalid or missing required fields
+     */
+    static Gene fromJson(const nlohmann::json& j);
 
 private:
     std::string id_;

@@ -301,6 +301,106 @@ public:
      */
     void clearViewportCenterRequest() override;
     
+    //==========================================================================
+    // Pause Menu Methods
+    //==========================================================================
+    
+    /**
+     * @brief Toggle the pause menu visibility
+     */
+    void togglePauseMenu() override;
+    
+    /**
+     * @brief Check if pause menu is currently open
+     *
+     * @return true if pause menu is visible
+     */
+    bool isPauseMenuOpen() const override;
+    
+    /**
+     * @brief Check if quit was requested from pause menu
+     *
+     * @return true if quit was requested
+     */
+    bool shouldQuit() const override;
+    
+    /**
+     * @brief Check if save was requested from pause menu
+     *
+     * @return true if save was requested
+     */
+    bool shouldSave() const override;
+    
+    /**
+     * @brief Check if load was requested from pause menu
+     *
+     * @return true if load was requested
+     */
+    bool shouldLoad() const override;
+    
+    /**
+     * @brief Reset the save flag after handling
+     */
+    void resetSaveFlag() override;
+    
+    /**
+     * @brief Reset the load flag after handling
+     */
+    void resetLoadFlag() override;
+    
+    /**
+     * @brief Check if save dialog is open
+     */
+    bool isSaveDialogOpen() const override;
+    
+    /**
+     * @brief Check if load dialog is open
+     */
+    bool isLoadDialogOpen() const override;
+    
+    /**
+     * @brief Set the list of save files for display in dialogs
+     */
+    void setSaveFiles(const std::vector<SaveFileInfo>& files) override;
+    
+    /**
+     * @brief Set callback for checking if a file exists
+     */
+    void setFileExistsChecker(std::function<bool(const std::string&)> checker) override;
+    
+    /**
+     * @brief Get the filename entered in save dialog
+     */
+    std::string getSaveFilename() const override;
+    
+    /**
+     * @brief Get the filename selected in load dialog
+     */
+    std::string getLoadFilename() const override;
+    
+    /**
+     * @brief Clear the save filename after handling
+     */
+    void clearSaveFilename() override;
+    
+    /**
+     * @brief Clear the load filename after handling
+     */
+    void clearLoadFilename() override;
+    
+    /**
+     * @brief Open the load dialog directly (for start screen use)
+     */
+    void openLoadDialog() override;
+    
+    /**
+     * @brief Render only dialogs (save/load) without the full HUD
+     *
+     * Used during start screen when we want to show just the load dialog
+     * without statistics panels and other HUD elements.
+     */
+    void renderDialogsOnly() override;
+    
     /**
      * @brief Get the ImGui overlay pointer
      *

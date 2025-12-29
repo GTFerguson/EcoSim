@@ -10,6 +10,7 @@
 #include "backends/imgui_impl_sdlrenderer2.h"
 
 #include "rendering/backends/sdl2/ImGuiOverlay.hpp"
+#include "rendering/IRenderer.hpp"  // For SaveFileInfo struct
 #include "world/world.hpp"
 #include "world/Corpse.hpp"
 #include "objects/creature/creature.hpp"
@@ -253,6 +254,19 @@ void ImGuiOverlay::render(const HUDData& hudData, const World* world,
     if (_showDemo) {
         ImGui::ShowDemoWindow(&_showDemo);
     }
+    
+    // Pause menu is rendered last so it appears on top
+    renderPauseMenu();
+    
+    // Save/Load dialogs render on top of everything
+    renderSaveDialog();
+    renderLoadDialog();
+    
+    // Confirmation dialogs render on top of their parent dialogs
+    renderOverwriteConfirmDialog();
+    
+    // Post-save dialog renders last (on top of everything)
+    renderPostSaveDialog();
 }
 
 void ImGuiOverlay::endFrame() {
@@ -1643,6 +1657,441 @@ void ImGuiOverlay::renderControlsWindow() {
 }
 
 //==============================================================================
+// Pause Menu Methods
+//==============================================================================
+
+void ImGuiOverlay::renderModalDarkOverlay() {
+    // NOTE: This function is no longer needed when using modal popups,
+    // as ImGui's modal system handles the dim background via ImGuiCol_ModalWindowDimBg.
+    // Kept for potential future use with non-modal dialogs.
+    ImGuiIO& io = ImGui::GetIO();
+    ImGui::SetNextWindowPos(ImVec2(0, 0));
+    ImGui::SetNextWindowSize(io.DisplaySize);
+    ImGui::Begin("##dark_overlay", nullptr,
+        ImGuiWindowFlags_NoDecoration |
+        ImGuiWindowFlags_NoMove |
+        ImGuiWindowFlags_NoInputs |
+        ImGuiWindowFlags_NoBackground);
+    ImDrawList* drawList = ImGui::GetWindowDrawList();
+    drawList->AddRectFilled(ImVec2(0, 0), io.DisplaySize,
+        IM_COL32(0, 0, 0, 150));  // Dark semi-transparent overlay
+    ImGui::End();
+}
+
+void ImGuiOverlay::togglePauseMenu() {
+    _showPauseMenu = !_showPauseMenu;
+}
+
+void ImGuiOverlay::renderPauseMenu() {
+    // Open the modal popup when flag is set
+    if (_showPauseMenu) {
+        ImGui::OpenPopup("Game Paused");
+    }
+    
+    // Center the modal
+    ImGuiIO& io = ImGui::GetIO();
+    ImVec2 center = ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f);
+    ImVec2 menuSize = ImVec2(300, 280);
+    ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+    ImGui::SetNextWindowSize(menuSize, ImGuiCond_Appearing);
+    
+    // Modal popup blocks input to all other windows and renders with dark overlay
+    if (ImGui::BeginPopupModal("Game Paused", nullptr,
+            ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
+        // Center buttons
+        float buttonWidth = 200;
+        float xOffset = (menuSize.x - buttonWidth) * 0.5f;
+        
+        ImGui::Spacing();
+        ImGui::Spacing();
+        
+        ImGui::SetCursorPosX(xOffset);
+        if (ImGui::Button("Resume", ImVec2(buttonWidth, 40))) {
+            _showPauseMenu = false;
+            ImGui::CloseCurrentPopup();
+        }
+        
+        ImGui::Spacing();
+        ImGui::SetCursorPosX(xOffset);
+        if (ImGui::Button("Save Game", ImVec2(buttonWidth, 40))) {
+            _showSaveDialog = true;
+            _selectedSaveIndex = -1;
+            // Default save name is "quick_save"
+            strncpy(_saveNameInput, "quick_save", sizeof(_saveNameInput) - 1);
+            _saveNameInput[sizeof(_saveNameInput) - 1] = '\0';
+            // Close pause menu modal so save dialog can be shown
+            _showPauseMenu = false;
+            ImGui::CloseCurrentPopup();
+        }
+        
+        ImGui::Spacing();
+        ImGui::SetCursorPosX(xOffset);
+        if (ImGui::Button("Load Game", ImVec2(buttonWidth, 40))) {
+            _showLoadDialog = true;
+            _selectedSaveIndex = -1;
+            // Close pause menu modal so load dialog can be shown
+            _showPauseMenu = false;
+            ImGui::CloseCurrentPopup();
+        }
+        
+        ImGui::Spacing();
+        ImGui::Spacing();
+        ImGui::SetCursorPosX(xOffset);
+        if (ImGui::Button("Quit", ImVec2(buttonWidth, 40))) {
+            _shouldQuit = true;
+            ImGui::CloseCurrentPopup();
+        }
+        
+        ImGui::EndPopup();
+    }
+}
+
+//==============================================================================
+// Save/Load Dialog Methods
+//==============================================================================
+
+void ImGuiOverlay::renderSaveDialog() {
+    // Open the modal popup when flag is set
+    if (_showSaveDialog) {
+        ImGui::OpenPopup("Save Game");
+    }
+    
+    // Center the modal
+    ImGuiIO& io = ImGui::GetIO();
+    ImVec2 center = ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f);
+    ImVec2 dialogSize = ImVec2(400, 350);
+    ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+    ImGui::SetNextWindowSize(dialogSize, ImGuiCond_Appearing);
+    
+    // Modal popup blocks input to all other windows
+    if (ImGui::BeginPopupModal("Save Game", nullptr,
+            ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
+        ImGui::Spacing();
+        
+        // Save name input
+        ImGui::Text("Save Name:");
+        ImGui::SetNextItemWidth(280);
+        ImGui::InputText("##savename", _saveNameInput, sizeof(_saveNameInput));
+        
+        ImGui::SameLine();
+        bool hasValidName = std::strlen(_saveNameInput) > 0;
+        if (!hasValidName) {
+            ImGui::BeginDisabled();
+        }
+        if (ImGui::Button("Save", ImVec2(80, 0))) {
+            std::string filename(_saveNameInput);
+            // Check if file exists
+            if (_fileExistsChecker && _fileExistsChecker(filename)) {
+                _pendingOverwriteFilename = filename;
+                _showOverwriteConfirm = true;
+                ImGui::OpenPopup("Confirm Overwrite##save");
+            } else {
+                _pendingSaveFilename = filename;
+                _shouldSave = true;
+                _showSaveDialog = false;
+                _showPostSaveDialog = true;  // Show Continue/Quit dialog after save
+                ImGui::CloseCurrentPopup();
+            }
+        }
+        if (!hasValidName) {
+            ImGui::EndDisabled();
+        }
+        
+        ImGui::Separator();
+        
+        // Existing saves list
+        ImGui::Text("Existing Saves (click to select):");
+        
+        if (ImGui::BeginChild("SavesList", ImVec2(0, 180), true)) {
+            renderSaveFileList(0);  // 0 = save mode
+        }
+        ImGui::EndChild();
+        
+        ImGui::Spacing();
+        
+        // Cancel button - right aligned
+        float cancelWidth = 80.0f;
+        ImGui::SetCursorPosX(dialogSize.x - cancelWidth - 20);
+        if (ImGui::Button("Cancel", ImVec2(cancelWidth, 0))) {
+            _showSaveDialog = false;
+            ImGui::CloseCurrentPopup();
+        }
+        
+        // Nested overwrite confirm modal (within save dialog modal)
+        ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+        ImGui::SetNextWindowSize(ImVec2(350, 120), ImGuiCond_Appearing);
+        
+        if (ImGui::BeginPopupModal("Confirm Overwrite##save", nullptr,
+                ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
+            ImGui::Spacing();
+            ImGui::TextWrapped("A save named '%s' already exists. Overwrite?",
+                              _pendingOverwriteFilename.c_str());
+            ImGui::Spacing();
+            
+            // Buttons row - centered
+            float buttonWidth = 80.0f;
+            float spacing = 20.0f;
+            float totalWidth = buttonWidth * 2 + spacing;
+            float confirmDialogWidth = 350.0f;
+            float startX = (confirmDialogWidth - totalWidth) * 0.5f;
+            
+            ImGui::SetCursorPosX(startX);
+            if (ImGui::Button("Yes", ImVec2(buttonWidth, 0))) {
+                _pendingSaveFilename = _pendingOverwriteFilename;
+                _shouldSave = true;
+                _showOverwriteConfirm = false;
+                _showSaveDialog = false;
+                _showPostSaveDialog = true;  // Show Continue/Quit dialog after save
+                ImGui::CloseCurrentPopup();  // Close overwrite popup
+                ImGui::CloseCurrentPopup();  // Close save dialog popup
+            }
+            
+            ImGui::SameLine(0, spacing);
+            if (ImGui::Button("No", ImVec2(buttonWidth, 0))) {
+                _showOverwriteConfirm = false;
+                ImGui::CloseCurrentPopup();
+            }
+            
+            ImGui::EndPopup();
+        }
+        
+        ImGui::EndPopup();
+    }
+}
+
+void ImGuiOverlay::renderLoadDialog() {
+    // Open the modal popup when flag is set
+    if (_showLoadDialog) {
+        ImGui::OpenPopup("Load Game");
+    }
+    
+    // Center the modal
+    ImGuiIO& io = ImGui::GetIO();
+    ImVec2 center = ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f);
+    ImVec2 dialogSize = ImVec2(400, 380);
+    ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+    ImGui::SetNextWindowSize(dialogSize, ImGuiCond_Appearing);
+    
+    // Modal popup blocks input to all other windows
+    if (ImGui::BeginPopupModal("Load Game", nullptr,
+            ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
+        ImGui::Spacing();
+        ImGui::Text("Select a save to load:");
+        ImGui::Separator();
+        
+        // Save files list with metadata
+        if (ImGui::BeginChild("LoadList", ImVec2(0, 260), true)) {
+            renderSaveFileList(1);  // 1 = load mode
+        }
+        ImGui::EndChild();
+        
+        ImGui::Spacing();
+        
+        // Buttons row
+        float buttonWidth = 80.0f;
+        float spacing = 10.0f;
+        float totalWidth = buttonWidth * 2 + spacing;
+        float startX = (dialogSize.x - totalWidth) * 0.5f;
+        
+        ImGui::SetCursorPosX(startX);
+        bool hasSelection = _selectedSaveIndex >= 0 && _selectedSaveIndex < static_cast<int>(_saveFiles.size());
+        if (!hasSelection) {
+            ImGui::BeginDisabled();
+        }
+        if (ImGui::Button("Load", ImVec2(buttonWidth, 0))) {
+            _pendingLoadFilename = _saveFiles[_selectedSaveIndex].filename;
+            _shouldLoad = true;
+            _showLoadDialog = false;
+            _showPauseMenu = false;
+            ImGui::CloseCurrentPopup();
+        }
+        if (!hasSelection) {
+            ImGui::EndDisabled();
+        }
+        
+        ImGui::SameLine(0, spacing);
+        if (ImGui::Button("Cancel", ImVec2(buttonWidth, 0))) {
+            _showLoadDialog = false;
+            ImGui::CloseCurrentPopup();
+        }
+        
+        ImGui::EndPopup();
+    }
+}
+
+void ImGuiOverlay::renderOverwriteConfirmDialog() {
+    // Open the modal popup when flag is set
+    if (_showOverwriteConfirm) {
+        ImGui::OpenPopup("Confirm Overwrite");
+    }
+    
+    // Center the modal (dark overlay is handled by ImGuiCol_ModalWindowDimBg)
+    ImGuiIO& io = ImGui::GetIO();
+    ImVec2 center = ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f);
+    ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+    ImGui::SetNextWindowSize(ImVec2(350, 120), ImGuiCond_Appearing);
+    
+    // Modal popup blocks input to parent windows
+    if (ImGui::BeginPopupModal("Confirm Overwrite", nullptr,
+            ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
+        ImGui::Spacing();
+        ImGui::TextWrapped("A save named '%s' already exists. Overwrite?",
+                          _pendingOverwriteFilename.c_str());
+        ImGui::Spacing();
+        
+        // Buttons row - centered
+        float buttonWidth = 80.0f;
+        float spacing = 20.0f;
+        float totalWidth = buttonWidth * 2 + spacing;
+        float dialogWidth = 350.0f;
+        float startX = (dialogWidth - totalWidth) * 0.5f;
+        
+        ImGui::SetCursorPosX(startX);
+        if (ImGui::Button("Yes", ImVec2(buttonWidth, 0))) {
+            _pendingSaveFilename = _pendingOverwriteFilename;
+            _shouldSave = true;
+            _showOverwriteConfirm = false;
+            _showSaveDialog = false;
+            _showPostSaveDialog = true;  // Show Continue/Quit dialog after save
+            ImGui::CloseCurrentPopup();
+        }
+        
+        ImGui::SameLine(0, spacing);
+        if (ImGui::Button("No", ImVec2(buttonWidth, 0))) {
+            _showOverwriteConfirm = false;
+            ImGui::CloseCurrentPopup();
+        }
+        
+        ImGui::EndPopup();
+    }
+}
+
+void ImGuiOverlay::renderPostSaveDialog() {
+    // Open the modal popup when flag is set
+    if (_showPostSaveDialog) {
+        ImGui::OpenPopup("Save Complete!");
+    }
+    
+    // Center the modal (dark overlay is handled by ImGuiCol_ModalWindowDimBg)
+    ImGuiIO& io = ImGui::GetIO();
+    ImVec2 center = ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f);
+    ImVec2 dialogSize = ImVec2(320, 150);
+    ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+    ImGui::SetNextWindowSize(dialogSize, ImGuiCond_Appearing);
+    
+    // Modal popup blocks input to parent windows
+    if (ImGui::BeginPopupModal("Save Complete!", nullptr,
+            ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
+        ImGui::Spacing();
+        ImGui::Spacing();
+        
+        // Center the text
+        const char* line1 = "Would you like to continue";
+        const char* line2 = "or quit to desktop?";
+        float textWidth1 = ImGui::CalcTextSize(line1).x;
+        float textWidth2 = ImGui::CalcTextSize(line2).x;
+        
+        ImGui::SetCursorPosX((dialogSize.x - textWidth1) * 0.5f);
+        ImGui::Text("%s", line1);
+        ImGui::SetCursorPosX((dialogSize.x - textWidth2) * 0.5f);
+        ImGui::Text("%s", line2);
+        
+        ImGui::Spacing();
+        ImGui::Spacing();
+        ImGui::Spacing();
+        
+        // Buttons row - centered
+        float buttonWidth = 100.0f;
+        float spacing = 30.0f;
+        float totalWidth = buttonWidth * 2 + spacing;
+        float startX = (dialogSize.x - totalWidth) * 0.5f;
+        
+        ImGui::SetCursorPosX(startX);
+        if (ImGui::Button("Continue", ImVec2(buttonWidth, 30))) {
+            _showPostSaveDialog = false;
+            _showPauseMenu = false;  // Close everything and return to game
+            ImGui::CloseCurrentPopup();
+        }
+        
+        ImGui::SameLine(0, spacing);
+        if (ImGui::Button("Quit", ImVec2(buttonWidth, 30))) {
+            _showPostSaveDialog = false;
+            _shouldQuit = true;  // Signal to quit the game
+            ImGui::CloseCurrentPopup();
+        }
+        
+        ImGui::EndPopup();
+    }
+}
+
+void ImGuiOverlay::renderSaveFileList(int clickAction) {
+    for (size_t i = 0; i < _saveFiles.size(); i++) {
+        const SaveFileInfo& info = _saveFiles[i];
+        ImGui::PushID(static_cast<int>(i));
+        
+        bool isSelected = (_selectedSaveIndex == static_cast<int>(i));
+        
+        // Format: "filename    (timestamp)" - same for both dialogs
+        char label[256];
+        snprintf(label, sizeof(label), "%-20s (%s)",
+                 info.filename.c_str(), info.timestamp.c_str());
+        
+        if (ImGui::Selectable(label, isSelected, ImGuiSelectableFlags_AllowDoubleClick)) {
+            _selectedSaveIndex = static_cast<int>(i);
+            
+            if (clickAction == 0) {
+                // Save mode: fill input and show overwrite confirm
+                strncpy(_saveNameInput, info.filename.c_str(), sizeof(_saveNameInput) - 1);
+                _saveNameInput[sizeof(_saveNameInput) - 1] = '\0';
+                _pendingOverwriteFilename = info.filename;
+                _showOverwriteConfirm = true;
+                // Open the nested modal popup within save dialog
+                ImGui::OpenPopup("Confirm Overwrite##save");
+            } else {
+                // Load mode: on double-click, load immediately
+                if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+                    _pendingLoadFilename = info.filename;
+                    _shouldLoad = true;
+                    _showLoadDialog = false;
+                    _showPauseMenu = false;
+                }
+            }
+        }
+        
+        // Tooltip with more details
+        if (ImGui::IsItemHovered()) {
+            ImGui::BeginTooltip();
+            ImGui::Text("Creatures: %d", info.creatureCount);
+            ImGui::Text("Plants: %d", info.plantCount);
+            ImGui::Text("Tick: %u", info.tick);
+            ImGui::EndTooltip();
+        }
+        
+        ImGui::PopID();
+    }
+    
+    if (_saveFiles.empty()) {
+        ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "No save files found");
+    }
+}
+
+void ImGuiOverlay::openLoadDialog() {
+    _showLoadDialog = true;
+    _selectedSaveIndex = -1;
+}
+
+void ImGuiOverlay::renderDialogsOnly() {
+    if (!_initialized) {
+        return;
+    }
+    
+    // Only render the save/load dialogs, not the full HUD
+    renderSaveDialog();
+    renderLoadDialog();
+    renderOverwriteConfirmDialog();
+}
+
+//==============================================================================
 // Helper Methods
 //==============================================================================
 
@@ -1724,6 +2173,9 @@ void ImGuiOverlay::setupStyle() {
     colors[ImGuiCol_PlotLinesHovered] = ImVec4(0.70f, 1.00f, 0.70f, 1.00f);
     colors[ImGuiCol_PlotHistogram] = ImVec4(0.40f, 0.70f, 0.40f, 1.00f);
     colors[ImGuiCol_PlotHistogramHovered] = ImVec4(0.55f, 0.85f, 0.55f, 1.00f);
+    
+    // Modal window dimming background (dark overlay for pause menu, save dialogs, etc.)
+    colors[ImGuiCol_ModalWindowDimBg] = ImVec4(0.0f, 0.0f, 0.0f, 0.59f);
 }
 
 const char* ImGuiOverlay::getProfileName(int profile) const {

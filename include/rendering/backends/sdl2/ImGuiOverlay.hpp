@@ -14,12 +14,15 @@
 
 #include <SDL.h>
 #include <vector>
+#include <string>
+#include <functional>
 #include "../../RenderTypes.hpp"
 
 // Forward declarations
 struct ImGuiContext;
 class World;
 class Creature;
+struct SaveFileInfo; // Defined in IRenderer.hpp
 
 namespace EcoSim {
 namespace Genetics {
@@ -228,6 +231,122 @@ public:
      * @brief Clear the pending center request
      */
     void clearCenterRequest() { _pendingCenterX = -1; _pendingCenterY = -1; }
+    
+    //==========================================================================
+    // Pause Menu Methods
+    //==========================================================================
+    
+    /**
+     * @brief Toggle the pause menu visibility
+     */
+    void togglePauseMenu();
+    
+    /**
+     * @brief Check if pause menu is currently open
+     * @return true if pause menu is visible
+     */
+    bool isPauseMenuOpen() const { return _showPauseMenu; }
+    
+    /**
+     * @brief Check if quit was requested from pause menu
+     * @return true if quit was requested
+     */
+    bool shouldQuit() const { return _shouldQuit; }
+    
+    /**
+     * @brief Check if save was requested from pause menu
+     * @return true if save was requested
+     */
+    bool shouldSave() const { return _shouldSave; }
+    
+    /**
+     * @brief Check if load was requested from pause menu
+     * @return true if load was requested
+     */
+    bool shouldLoad() const { return _shouldLoad; }
+    
+    /**
+     * @brief Reset the save flag after handling
+     */
+    void resetSaveFlag() { _shouldSave = false; }
+    
+    /**
+     * @brief Reset the load flag after handling
+     */
+    void resetLoadFlag() { _shouldLoad = false; }
+    
+    //==========================================================================
+    // Save/Load Dialog Methods
+    //==========================================================================
+    
+    /**
+     * @brief Check if save dialog is open
+     */
+    bool isSaveDialogOpen() const { return _showSaveDialog; }
+    
+    /**
+     * @brief Check if load dialog is open
+     */
+    bool isLoadDialogOpen() const { return _showLoadDialog; }
+    
+    /**
+     * @brief Set the list of available save files for display in dialogs
+     * @param files Vector of SaveFileInfo with metadata
+     */
+    void setSaveFiles(const std::vector<SaveFileInfo>& files) { _saveFiles = files; }
+    
+    /**
+     * @brief Get the filename to save to (set when user confirms save)
+     * @return Filename without .json extension, empty if no save pending
+     */
+    std::string getSaveFilename() const { return _pendingSaveFilename; }
+    
+    /**
+     * @brief Get the filename to load from (set when user confirms load)
+     * @return Filename without .json extension, empty if no load pending
+     */
+    std::string getLoadFilename() const { return _pendingLoadFilename; }
+    
+    /**
+     * @brief Clear the pending save filename after handling
+     */
+    void clearSaveFilename() { _pendingSaveFilename.clear(); }
+    
+    /**
+     * @brief Clear the pending load filename after handling
+     */
+    void clearLoadFilename() { _pendingLoadFilename.clear(); }
+    
+    /**
+     * @brief Check if there's a save filename ready for processing
+     */
+    bool hasPendingSave() const { return !_pendingSaveFilename.empty(); }
+    
+    /**
+     * @brief Check if there's a load filename ready for processing
+     */
+    bool hasPendingLoad() const { return !_pendingLoadFilename.empty(); }
+    
+    /**
+     * @brief Set overwrite check callback - returns true if file exists
+     * @param checker Function that checks if a save file exists
+     */
+    void setFileExistsChecker(std::function<bool(const std::string&)> checker) {
+        _fileExistsChecker = checker;
+    }
+    
+    /**
+     * @brief Open the load dialog directly (for start screen use)
+     */
+    void openLoadDialog();
+    
+    /**
+     * @brief Render only dialogs (save/load) without the full HUD
+     *
+     * Used during start screen when we want to show just the load dialog
+     * without statistics panels and other HUD elements.
+     */
+    void renderDialogsOnly();
 
 private:
     // SDL2 references (not owned)
@@ -283,6 +402,25 @@ private:
     int _pendingCenterX;
     int _pendingCenterY;
     
+    // Pause menu state
+    bool _showPauseMenu = false;
+    bool _shouldQuit = false;
+    bool _shouldSave = false;
+    bool _shouldLoad = false;
+    
+    // Save/Load dialog state
+    bool _showSaveDialog = false;
+    bool _showLoadDialog = false;
+    bool _showOverwriteConfirm = false;
+    char _saveNameInput[128] = {0};                   ///< Input buffer for save name
+    int _selectedSaveIndex = -1;                      ///< Selected save file in list
+    std::string _pendingSaveFilename;                 ///< Filename to save to once confirmed
+    std::string _pendingLoadFilename;                 ///< Filename to load from once confirmed
+    std::string _pendingOverwriteFilename;            ///< Filename pending overwrite confirmation
+    std::vector<SaveFileInfo> _saveFiles;             ///< Available save files
+    std::function<bool(const std::string&)> _fileExistsChecker; ///< Callback to check file existence
+    bool _showPostSaveDialog = false;                 ///< Show post-save Continue/Quit dialog
+    
     //==========================================================================
     // Private Rendering Methods
     //==========================================================================
@@ -326,6 +464,45 @@ private:
      * @brief Render the controls panel
      */
     void renderControlsWindow();
+    
+    /**
+     * @brief Render the pause menu
+     */
+    void renderPauseMenu();
+    
+    /**
+     * @brief Render the save dialog
+     */
+    void renderSaveDialog();
+    
+    /**
+     * @brief Render the load dialog
+     */
+    void renderLoadDialog();
+    
+    /**
+     * @brief Render the overwrite confirmation dialog
+     */
+    void renderOverwriteConfirmDialog();
+    
+    /**
+     * @brief Render the post-save Continue/Quit dialog
+     */
+    void renderPostSaveDialog();
+    
+    /**
+     * @brief Render a semi-transparent dark overlay behind modal dialogs
+     *
+     * DRY helper used by pause menu and modal popups to create a consistent
+     * dark overlay effect that dims the background content.
+     */
+    void renderModalDarkOverlay();
+    
+    /**
+     * @brief Render the save file list (shared by save and load dialogs)
+     * @param clickAction 0 = save mode (triggers overwrite), 1 = load mode (double-click loads)
+     */
+    void renderSaveFileList(int clickAction);
     
     /**
      * @brief Render the plant inspector window

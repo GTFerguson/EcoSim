@@ -800,5 +800,155 @@ std::unique_ptr<Plant> Plant::fromString(const std::string& data,
     return plant;
 }
 
+// ============================================================================
+// JSON Serialization
+// ============================================================================
+
+std::string Plant::dispersalStrategyToString(DispersalStrategy strategy) {
+    switch (strategy) {
+        case DispersalStrategy::GRAVITY:      return "GRAVITY";
+        case DispersalStrategy::WIND:         return "WIND";
+        case DispersalStrategy::ANIMAL_FRUIT: return "ANIMAL_FRUIT";
+        case DispersalStrategy::ANIMAL_BURR:  return "ANIMAL_BURR";
+        case DispersalStrategy::EXPLOSIVE:    return "EXPLOSIVE";
+        case DispersalStrategy::VEGETATIVE:   return "VEGETATIVE";
+        default:                              return "GRAVITY";
+    }
+}
+
+DispersalStrategy Plant::stringToDispersalStrategy(const std::string& str) {
+    if (str == "GRAVITY")      return DispersalStrategy::GRAVITY;
+    if (str == "WIND")         return DispersalStrategy::WIND;
+    if (str == "ANIMAL_FRUIT") return DispersalStrategy::ANIMAL_FRUIT;
+    if (str == "ANIMAL_BURR")  return DispersalStrategy::ANIMAL_BURR;
+    if (str == "EXPLOSIVE")    return DispersalStrategy::EXPLOSIVE;
+    if (str == "VEGETATIVE")   return DispersalStrategy::VEGETATIVE;
+    return DispersalStrategy::GRAVITY;  // Default fallback
+}
+
+nlohmann::json Plant::toJson() const {
+    nlohmann::json j;
+    
+    // Identity
+    j["id"] = static_cast<int>(id_);
+    
+    // Species name derived from entity type
+    std::string speciesName;
+    switch (entityType_) {
+        case EntityType::PLANT_BERRY_BUSH: speciesName = "Berry Bush"; break;
+        case EntityType::PLANT_OAK_TREE:   speciesName = "Oak Tree"; break;
+        case EntityType::PLANT_GRASS:      speciesName = "Grass"; break;
+        case EntityType::PLANT_THORN_BUSH: speciesName = "Thorn Bush"; break;
+        case EntityType::PLANT_GENERIC:
+        default:                           speciesName = "Generic Plant"; break;
+    }
+    j["speciesName"] = speciesName;
+    
+    // Position
+    j["position"] = {
+        {"tileX", x_},
+        {"tileY", y_},
+        {"worldX", getWorldX()},
+        {"worldY", getWorldY()}
+    };
+    
+    // Lifecycle - derive stage from maturity and health
+    std::string stage;
+    if (!alive_) {
+        stage = "DEAD";
+    } else if (mature_) {
+        stage = "MATURE";
+    } else if (current_size_ >= getMaxSize() * 0.25f) {
+        stage = "GROWING";
+    } else {
+        stage = "SEEDLING";
+    }
+    
+    j["lifecycle"] = {
+        {"stage", stage},
+        {"currentAge", age_},
+        {"stageAge", age_},  // Simplified - no separate stage tracking
+        {"isAlive", alive_}
+    };
+    
+    // Resources
+    j["resources"] = {
+        {"storedEnergy", energyState_.currentEnergy},
+        {"currentBiomass", current_size_},
+        {"currentHeight", current_size_},  // Height approximated from size
+        {"health", health_}
+    };
+    
+    // Reproduction
+    j["reproduction"] = {
+        {"hasSeeds", canSpreadSeeds()},
+        {"seedCount", getSeedCount()},
+        {"seedsProduced", 0},  // Not tracked - placeholder
+        {"ticksSinceLastSeed", fruitTimer_},
+        {"dispersalStrategy", dispersalStrategyToString(getPrimaryDispersalStrategy())},
+        {"mature", mature_}
+    };
+    
+    // Entity type for rendering restoration
+    j["entityType"] = static_cast<int>(entityType_);
+    
+    // Genome
+    j["genome"] = genome_.toJson();
+    
+    return j;
+}
+
+Plant Plant::fromJson(const nlohmann::json& j, const GeneRegistry& registry) {
+    // Extract position
+    int tileX = j.at("position").at("tileX").get<int>();
+    int tileY = j.at("position").at("tileY").get<int>();
+    
+    // Extract and reconstruct genome
+    Genome genome = Genome::fromJson(j.at("genome"));
+    
+    // Create plant with the loaded genome
+    Plant plant(tileX, tileY, genome, registry);
+    
+    // Override the auto-generated ID with the saved one
+    if (j.contains("id")) {
+        plant.id_ = static_cast<unsigned int>(j.at("id").get<int>());
+    }
+    
+    // Restore lifecycle state
+    if (j.contains("lifecycle")) {
+        const auto& lifecycle = j.at("lifecycle");
+        plant.age_ = lifecycle.value("currentAge", 0u);
+        plant.alive_ = lifecycle.value("isAlive", true);
+    }
+    
+    // Restore resources
+    if (j.contains("resources")) {
+        const auto& resources = j.at("resources");
+        plant.health_ = resources.value("health", 1.0f);
+        plant.current_size_ = resources.value("currentBiomass", 0.1f);
+        
+        // Restore energy state
+        plant.energyState_.currentEnergy = resources.value("storedEnergy", 0.0f);
+    }
+    
+    // Restore reproduction state
+    if (j.contains("reproduction")) {
+        const auto& repro = j.at("reproduction");
+        plant.fruitTimer_ = repro.value("ticksSinceLastSeed", 0u);
+        plant.mature_ = repro.value("mature", false);
+    }
+    
+    // Restore entity type
+    if (j.contains("entityType")) {
+        plant.entityType_ = static_cast<EntityType>(j.at("entityType").get<int>());
+    }
+    
+    // Regenerate phenotype from the loaded genome
+    plant.phenotype_ = Phenotype(&plant.genome_, &registry);
+    plant.updatePhenotype();
+    
+    return plant;
+}
+
 } // namespace Genetics
 } // namespace EcoSim

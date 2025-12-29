@@ -59,8 +59,8 @@ cd EcoSim
 |-----|--------|-------------|
 | `Space` | Pause/Resume | Toggle simulation pause state |
 | `A` | Add Creatures | Spawn 100 new creatures into the world |
-| `S` | Save State | Save current simulation state |
-| `Escape` | Quit | Exit the simulation |
+| `S` | Quick Save | Quick save to legacy format |
+| `Escape` | Pause Menu | Opens the pause menu with Save, Load, Resume, and Quit options |
 
 ### UI Controls
 
@@ -235,6 +235,55 @@ Each gene shows its current value (0.00-1.00 normalized scale).
 
 On-screen reference of all keyboard shortcuts.
 
+### Pause Menu (ESC)
+
+The pause menu provides access to save/load functionality and game control:
+
+- **Resume**: Close the menu and continue the simulation
+- **Save Game**: Save current game state to `saves/SAVE_02/quicksave.json`
+- **Load Game**: Load a previously saved game state
+- **Quit**: Exit the simulation
+
+The menu appears centered on screen with a semi-transparent overlay that darkens the simulation view. The simulation is automatically paused while the menu is open.
+
+> **Note:** Save files use JSON format and include complete creature and plant state, including all genetic information.
+
+---
+
+## Saving and Loading
+
+### Save File Location
+
+Save files are stored in:
+```
+saves/<slot_name>/quicksave.json
+```
+
+The default save slot is `SAVE_02`.
+
+### What Gets Saved
+
+A complete save file includes:
+- **Creatures**: Position, health, needs, genetics, behavior state
+- **Plants**: Position, growth stage, energy, seed count, genetics
+- **Calendar**: Current in-game time and date
+- **World**: Current simulation tick
+
+### Save File Format
+
+Save files use human-readable JSON format, making them easy to inspect and modify:
+
+```json
+{
+  "version": 1,
+  "savedAt": "2025-12-28T12:00:00Z",
+  "world": { "tick": 5000, "mapWidth": 500, "mapHeight": 500 },
+  "calendar": { "minute": 30, "hour": 14, "day": 5, "month": 3, "year": 1 },
+  "creatures": [ ... ],
+  "plants": [ ... ]
+}
+```
+
 ---
 
 ## Simulation Speed
@@ -340,7 +389,7 @@ When enabled, scent trails are displayed as:
 
 5. **Try Different World Seeds**: Press N to generate new worlds with different terrain
 
-6. **Save Interesting States**: Press S when you find interesting evolutionary developments
+6. **Save Interesting States**: Press ESC and use "Save Game" to preserve interesting evolutionary developments
 
 ---
 

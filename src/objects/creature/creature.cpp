@@ -2808,3 +2808,239 @@ EcoSim::Genetics::BehaviorResult Creature::updateWithBehaviors(EcoSim::Genetics:
     
     return result;
 }
+
+//================================================================================
+//  Enum Conversion Helpers (for serialization)
+//================================================================================
+
+std::string Creature::woundStateToString(WoundState state) {
+    switch (state) {
+        case WoundState::Healthy:  return "HEALTHY";
+        case WoundState::Injured:  return "INJURED";
+        case WoundState::Wounded:  return "WOUNDED";
+        case WoundState::Critical: return "CRITICAL";
+        case WoundState::Dead:     return "DEAD";
+        default:                   return "HEALTHY";
+    }
+}
+
+WoundState Creature::stringToWoundState(const std::string& str) {
+    static const std::unordered_map<std::string, WoundState> map = {
+        {"HEALTHY",  WoundState::Healthy},
+        {"INJURED",  WoundState::Injured},
+        {"WOUNDED",  WoundState::Wounded},
+        {"CRITICAL", WoundState::Critical},
+        {"DEAD",     WoundState::Dead}
+    };
+    auto it = map.find(str);
+    return (it != map.end()) ? it->second : WoundState::Healthy;
+}
+
+std::string Creature::motivationToString(Motivation m) {
+    switch (m) {
+        case Motivation::Hungry:   return "HUNGRY";
+        case Motivation::Thirsty:  return "THIRSTY";
+        case Motivation::Amorous:  return "AMOROUS";
+        case Motivation::Tired:    return "TIRED";
+        case Motivation::Content:  return "CONTENT";
+        default:                   return "CONTENT";
+    }
+}
+
+Motivation Creature::stringToMotivation(const std::string& str) {
+    static const std::unordered_map<std::string, Motivation> map = {
+        {"HUNGRY",   Motivation::Hungry},
+        {"THIRSTY",  Motivation::Thirsty},
+        {"AMOROUS",  Motivation::Amorous},
+        {"TIRED",    Motivation::Tired},
+        {"CONTENT",  Motivation::Content}
+    };
+    auto it = map.find(str);
+    return (it != map.end()) ? it->second : Motivation::Content;
+}
+
+std::string Creature::actionToString(Action a) {
+    switch (a) {
+        case Action::Idle:       return "IDLE";
+        case Action::Wandering:  return "WANDERING";
+        case Action::Searching:  return "SEARCHING";
+        case Action::Navigating: return "NAVIGATING";
+        case Action::Eating:     return "EATING";
+        case Action::Grazing:    return "GRAZING";
+        case Action::Hunting:    return "HUNTING";
+        case Action::Chasing:    return "CHASING";
+        case Action::Attacking:  return "ATTACKING";
+        case Action::Fleeing:    return "FLEEING";
+        case Action::Drinking:   return "DRINKING";
+        case Action::Courting:   return "COURTING";
+        case Action::Mating:     return "MATING";
+        case Action::Resting:    return "RESTING";
+        default:                 return "IDLE";
+    }
+}
+
+Action Creature::stringToAction(const std::string& str) {
+    static const std::unordered_map<std::string, Action> map = {
+        {"IDLE",       Action::Idle},
+        {"WANDERING",  Action::Wandering},
+        {"SEARCHING",  Action::Searching},
+        {"NAVIGATING", Action::Navigating},
+        {"EATING",     Action::Eating},
+        {"GRAZING",    Action::Grazing},
+        {"HUNTING",    Action::Hunting},
+        {"CHASING",    Action::Chasing},
+        {"ATTACKING",  Action::Attacking},
+        {"FLEEING",    Action::Fleeing},
+        {"DRINKING",   Action::Drinking},
+        {"COURTING",   Action::Courting},
+        {"MATING",     Action::Mating},
+        {"RESTING",    Action::Resting}
+    };
+    auto it = map.find(str);
+    return (it != map.end()) ? it->second : Action::Idle;
+}
+
+//================================================================================
+//  JSON Serialization
+//================================================================================
+
+nlohmann::json Creature::toJson() const {
+    nlohmann::json j;
+    
+    // Identity
+    j["id"] = _id;
+    j["archetypeLabel"] = getArchetypeLabel();
+    j["scientificName"] = getScientificName();
+    
+    // State (0-10 scales)
+    j["state"] = {
+        {"hunger", _hunger},
+        {"thirst", _thirst},
+        {"fatigue", _fatigue},
+        {"mate", _mate},
+        {"age", _age},
+        {"lifespan", getLifespan()}
+    };
+    
+    // Position
+    j["position"] = {
+        {"worldX", _worldX},
+        {"worldY", _worldY},
+        {"tileX", tileX()},
+        {"tileY", tileY()}
+    };
+    
+    // Health system
+    j["health"] = {
+        {"current", _health},
+        {"max", getMaxHealth()},
+        {"woundSeverity", getWoundSeverity()},
+        {"woundState", woundStateToString(getWoundState())}
+    };
+    
+    // Combat state
+    j["combat"] = {
+        {"targetId", _targetId},
+        {"inCombat", _inCombat},
+        {"isFleeing", _isFleeing},
+        {"cooldown", _combatCooldown}
+    };
+    
+    // Behavior
+    j["behavior"] = {
+        {"motivation", motivationToString(_motivation)},
+        {"action", actionToString(_action)}
+    };
+    
+    // Genome (uses Genome::toJson())
+    if (_genome) {
+        j["genome"] = _genome->toJson();
+    }
+    
+    return j;
+}
+
+Creature Creature::fromJson(const nlohmann::json& j, int mapWidth, int mapHeight) {
+    // Validate required fields
+    if (!j.contains("genome")) {
+        throw std::runtime_error("Creature::fromJson: missing required field 'genome'");
+    }
+    
+    // Load genome first
+    auto genome = std::make_unique<EcoSim::Genetics::Genome>(
+        EcoSim::Genetics::Genome::fromJson(j.at("genome"))
+    );
+    
+    // Get position with bounds checking
+    float worldX = 0.0f, worldY = 0.0f;
+    if (j.contains("position")) {
+        const auto& pos = j.at("position");
+        worldX = pos.value("worldX", 0.0f);
+        worldY = pos.value("worldY", 0.0f);
+        
+        // Clamp to world bounds
+        worldX = std::max(0.0f, std::min(worldX, static_cast<float>(mapWidth - 1)));
+        worldY = std::max(0.0f, std::min(worldY, static_cast<float>(mapHeight - 1)));
+    }
+    
+    // Get initial state values
+    float hunger = RESOURCE_LIMIT / 2.0f;  // Default to half
+    float thirst = RESOURCE_LIMIT / 2.0f;
+    if (j.contains("state")) {
+        const auto& state = j.at("state");
+        hunger = state.value("hunger", hunger);
+        thirst = state.value("thirst", thirst);
+    }
+    
+    // Create creature with genome and position
+    Creature creature(
+        static_cast<int>(worldX),
+        static_cast<int>(worldY),
+        hunger,
+        thirst,
+        std::move(genome)
+    );
+    
+    // Restore precise world position
+    creature.setWorldPosition(worldX, worldY);
+    
+    // Restore state
+    if (j.contains("state")) {
+        const auto& state = j.at("state");
+        creature._fatigue = state.value("fatigue", 0.0f);
+        creature._mate = state.value("mate", 0.0f);
+        creature._age = state.value("age", 0u);
+    }
+    
+    // Restore health
+    if (j.contains("health")) {
+        const auto& health = j.at("health");
+        creature._health = health.value("current", creature.getMaxHealth());
+    }
+    
+    // Restore combat state
+    if (j.contains("combat")) {
+        const auto& combat = j.at("combat");
+        creature._targetId = combat.value("targetId", -1);
+        creature._inCombat = combat.value("inCombat", false);
+        creature._isFleeing = combat.value("isFleeing", false);
+        creature._combatCooldown = combat.value("cooldown", 0);
+    }
+    
+    // Restore behavior state
+    if (j.contains("behavior")) {
+        const auto& behavior = j.at("behavior");
+        if (behavior.contains("motivation")) {
+            creature._motivation = stringToMotivation(behavior.at("motivation").get<std::string>());
+        }
+        if (behavior.contains("action")) {
+            creature._action = stringToAction(behavior.at("action").get<std::string>());
+        }
+    }
+    
+    // Note: ID is regenerated by constructor to ensure uniqueness
+    // Archetype is reclassified from genome in constructor
+    // Phenotype is regenerated from genome in constructor
+    
+    return creature;
+}

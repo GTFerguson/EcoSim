@@ -120,6 +120,7 @@ enum class InputAction {
     // Simulation control
     PAUSE,              ///< Pause/unpause simulation
     QUIT,               ///< Exit simulation
+    TOGGLE_PAUSE_MENU,  ///< Toggle pause/ESC menu
     
     // UI actions
     TOGGLE_HUD,         ///< Toggle HUD visibility

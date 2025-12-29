@@ -865,6 +865,154 @@ void SDL2Renderer::clearViewportCenterRequest() {
 }
 
 //==============================================================================
+// Pause Menu Methods
+//==============================================================================
+
+void SDL2Renderer::togglePauseMenu() {
+#ifdef ECOSIM_HAS_IMGUI
+    if (_imguiOverlay != nullptr) {
+        _imguiOverlay->togglePauseMenu();
+    }
+#endif
+}
+
+bool SDL2Renderer::isPauseMenuOpen() const {
+#ifdef ECOSIM_HAS_IMGUI
+    if (_imguiOverlay != nullptr) {
+        return _imguiOverlay->isPauseMenuOpen();
+    }
+#endif
+    return false;
+}
+
+bool SDL2Renderer::shouldQuit() const {
+#ifdef ECOSIM_HAS_IMGUI
+    if (_imguiOverlay != nullptr) {
+        return _imguiOverlay->shouldQuit();
+    }
+#endif
+    return false;
+}
+
+bool SDL2Renderer::shouldSave() const {
+#ifdef ECOSIM_HAS_IMGUI
+    if (_imguiOverlay != nullptr) {
+        return _imguiOverlay->shouldSave();
+    }
+#endif
+    return false;
+}
+
+bool SDL2Renderer::shouldLoad() const {
+#ifdef ECOSIM_HAS_IMGUI
+    if (_imguiOverlay != nullptr) {
+        return _imguiOverlay->shouldLoad();
+    }
+#endif
+    return false;
+}
+
+void SDL2Renderer::resetSaveFlag() {
+#ifdef ECOSIM_HAS_IMGUI
+    if (_imguiOverlay != nullptr) {
+        _imguiOverlay->resetSaveFlag();
+    }
+#endif
+}
+
+void SDL2Renderer::resetLoadFlag() {
+#ifdef ECOSIM_HAS_IMGUI
+    if (_imguiOverlay != nullptr) {
+        _imguiOverlay->resetLoadFlag();
+    }
+#endif
+}
+
+bool SDL2Renderer::isSaveDialogOpen() const {
+#ifdef ECOSIM_HAS_IMGUI
+    if (_imguiOverlay != nullptr) {
+        return _imguiOverlay->isSaveDialogOpen();
+    }
+#endif
+    return false;
+}
+
+bool SDL2Renderer::isLoadDialogOpen() const {
+#ifdef ECOSIM_HAS_IMGUI
+    if (_imguiOverlay != nullptr) {
+        return _imguiOverlay->isLoadDialogOpen();
+    }
+#endif
+    return false;
+}
+
+void SDL2Renderer::setSaveFiles(const std::vector<SaveFileInfo>& files) {
+#ifdef ECOSIM_HAS_IMGUI
+    if (_imguiOverlay != nullptr) {
+        _imguiOverlay->setSaveFiles(files);
+    }
+#endif
+}
+
+void SDL2Renderer::setFileExistsChecker(std::function<bool(const std::string&)> checker) {
+#ifdef ECOSIM_HAS_IMGUI
+    if (_imguiOverlay != nullptr) {
+        _imguiOverlay->setFileExistsChecker(checker);
+    }
+#endif
+}
+
+std::string SDL2Renderer::getSaveFilename() const {
+#ifdef ECOSIM_HAS_IMGUI
+    if (_imguiOverlay != nullptr) {
+        return _imguiOverlay->getSaveFilename();
+    }
+#endif
+    return "";
+}
+
+std::string SDL2Renderer::getLoadFilename() const {
+#ifdef ECOSIM_HAS_IMGUI
+    if (_imguiOverlay != nullptr) {
+        return _imguiOverlay->getLoadFilename();
+    }
+#endif
+    return "";
+}
+
+void SDL2Renderer::clearSaveFilename() {
+#ifdef ECOSIM_HAS_IMGUI
+    if (_imguiOverlay != nullptr) {
+        _imguiOverlay->clearSaveFilename();
+    }
+#endif
+}
+
+void SDL2Renderer::clearLoadFilename() {
+#ifdef ECOSIM_HAS_IMGUI
+    if (_imguiOverlay != nullptr) {
+        _imguiOverlay->clearLoadFilename();
+    }
+#endif
+}
+
+void SDL2Renderer::openLoadDialog() {
+#ifdef ECOSIM_HAS_IMGUI
+    if (_imguiOverlay != nullptr) {
+        _imguiOverlay->openLoadDialog();
+    }
+#endif
+}
+
+void SDL2Renderer::renderDialogsOnly() {
+#ifdef ECOSIM_HAS_IMGUI
+    if (_imguiOverlay != nullptr) {
+        _imguiOverlay->renderDialogsOnly();
+    }
+#endif
+}
+
+//==============================================================================
 // Helper Methods
 //==============================================================================
 

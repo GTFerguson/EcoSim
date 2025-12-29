@@ -42,6 +42,7 @@ set(GENETICS_TEST_SOURCES
     genetics/test_zoochory_behavior.cpp
     genetics/test_rest_behavior.cpp
     genetics/test_modulation_policy.cpp
+    genetics/test_serialization.cpp
 )
 
 add_executable(GeneticsTest

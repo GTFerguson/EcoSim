@@ -2,6 +2,7 @@
 
 #include "genetics/core/GeneticTypes.hpp"
 #include "genetics/core/Chromosome.hpp"
+#include <nlohmann/json.hpp>
 #include <array>
 #include <unordered_map>
 #include <optional>
@@ -50,6 +51,34 @@ public:
     
     // Calculate genetic similarity (0.0 = completely different, 1.0 = identical)
     float compare(const Genome& other) const;
+    
+    // ========================================================================
+    // Serialization
+    // ========================================================================
+    
+    /**
+     * @brief Serialize entire genome to JSON
+     * @return JSON object containing all chromosomes and genes
+     */
+    nlohmann::json toJson() const;
+    
+    /**
+     * @brief Create genome from JSON data
+     * @param j JSON object with genome data
+     * @return Constructed Genome object
+     * @throws std::runtime_error if JSON is invalid or missing required fields
+     */
+    static Genome fromJson(const nlohmann::json& j);
+    
+    /**
+     * @brief Populate this genome from JSON, replacing existing data
+     * @param j JSON object with genome data
+     *
+     * Unlike fromJson() which creates a new genome, this updates an
+     * existing genome, useful when the genome has already been initialized
+     * with gene definitions.
+     */
+    void loadFromJson(const nlohmann::json& j);
     
     // Iteration support
     using iterator = std::array<Chromosome, NUM_CHROMOSOMES>::iterator;

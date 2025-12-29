@@ -45,6 +45,9 @@
 #include "genetics/systems/PerceptionSystem.hpp"
 #include "genetics/interactions/CombatInteraction.hpp"
 
+// JSON serialization
+#include <nlohmann/json.hpp>
+
 #include <stdlib.h>   //  abs
 #include <algorithm>  //  max
 #include <iostream>   //  cerr
@@ -801,13 +804,47 @@ public:
     [[deprecated("Use CreatureTaxonomy::generateScientificName() instead")]]
     std::string generateName ();
     //============================================================================
-    //  To String 
+    //  To String
     //============================================================================
     Profile     stringToProfile   (const std::string &str);
     Direction   stringToDirection (const std::string &str);
     std::string profileToString   () const;
     std::string directionToString () const;
     std::string toString          () const;
+    
+    //============================================================================
+    //  JSON Serialization
+    //============================================================================
+    /**
+     * @brief Serialize creature state to JSON.
+     * @return JSON object containing all serializable creature state
+     *
+     * Includes identity, state, position, health, combat, behavior, and genome.
+     * Phenotype is regenerated from genome on load, not serialized.
+     */
+    nlohmann::json toJson() const;
+    
+    /**
+     * @brief Deserialize creature from JSON.
+     * @param j JSON object containing creature state
+     * @param mapWidth World width for position validation
+     * @param mapHeight World height for position validation
+     * @return Reconstructed Creature
+     *
+     * Genome is loaded from JSON and phenotype is regenerated.
+     * Invalid positions are clamped to world bounds.
+     */
+    static Creature fromJson(const nlohmann::json& j, int mapWidth, int mapHeight);
+    
+    //============================================================================
+    //  Enum Conversion Helpers (for serialization)
+    //============================================================================
+    static std::string woundStateToString(WoundState state);
+    static WoundState stringToWoundState(const std::string& str);
+    static std::string motivationToString(Motivation m);
+    static Motivation stringToMotivation(const std::string& str);
+    static std::string actionToString(Action a);
+    static Action stringToAction(const std::string& str);
 };
 
 #endif

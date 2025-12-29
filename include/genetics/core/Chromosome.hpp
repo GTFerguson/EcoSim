@@ -2,6 +2,7 @@
 
 #include "Gene.hpp"
 #include "GeneticTypes.hpp"
+#include <nlohmann/json.hpp>
 #include <vector>
 #include <unordered_map>
 #include <string>
@@ -88,9 +89,27 @@ public:
      * @param recombination_rate Probability of crossover between adjacent genes
      * @return New chromosome with genes from both parents
      */
-    static Chromosome crossover(const Chromosome& parent1, 
+    static Chromosome crossover(const Chromosome& parent1,
                                 const Chromosome& parent2,
                                 float recombination_rate);
+    
+    // ========================================================================
+    // Serialization
+    // ========================================================================
+    
+    /**
+     * @brief Serialize chromosome to JSON
+     * @return JSON object with chromosome data
+     */
+    nlohmann::json toJson() const;
+    
+    /**
+     * @brief Create chromosome from JSON data
+     * @param j JSON object with chromosome data
+     * @return Constructed Chromosome object
+     * @throws std::runtime_error if JSON is invalid or missing required fields
+     */
+    static Chromosome fromJson(const nlohmann::json& j);
 
 private:
     ChromosomeType type_;
@@ -99,6 +118,16 @@ private:
     
     // Get thread-local random engine
     static std::mt19937& getRandomEngine();
+    
+    /**
+     * @brief Convert ChromosomeType to string for serialization
+     */
+    static std::string typeToString(ChromosomeType type);
+    
+    /**
+     * @brief Convert string to ChromosomeType for deserialization
+     */
+    static ChromosomeType stringToType(const std::string& str);
 };
 
 } // namespace Genetics

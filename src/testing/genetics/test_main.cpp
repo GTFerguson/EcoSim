@@ -60,6 +60,9 @@ extern void runRestBehaviorTests();
 // Modulation Policy test runner (TraitModulationPolicy system)
 extern void runModulationPolicyTests();
 
+// Serialization test runner (JSON save/load system)
+extern void runSerializationTests();
+
 int main() {
     auto start = std::chrono::high_resolution_clock::now();
     
@@ -188,6 +191,11 @@ int main() {
     // Modulation Policy Tests (TraitModulationPolicy system)
     std::cout << "=== TraitModulationPolicy Tests ===" << std::endl;
     runModulationPolicyTests();
+    std::cout << std::endl;
+    
+    // Serialization Tests (JSON save/load system)
+    std::cout << "=== Serialization System Tests ===" << std::endl;
+    runSerializationTests();
     std::cout << std::endl;
     
     auto end = std::chrono::high_resolution_clock::now();

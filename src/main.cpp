@@ -24,6 +24,7 @@
 // RenderSystem includes - abstract rendering interface
 #include "../include/rendering/RenderSystem.hpp"
 #include "../include/rendering/RenderTypes.hpp"
+#include "../include/rendering/IRenderer.hpp"
 
 // Genetics system integration (Phase 2.4)
 #include "../include/genetics/defaults/UniversalGenes.hpp"
@@ -510,6 +511,13 @@ void takeInput(World& w,
       
     case InputAction::QUIT:
       settings.alive = false;
+      return;
+      
+    case InputAction::TOGGLE_PAUSE_MENU:
+      {
+        IRenderer& renderer = RenderSystem::getInstance().getRenderer();
+        renderer.togglePauseMenu();
+      }
       return;
       
     case InputAction::ZOOM_IN:
@@ -1004,6 +1012,10 @@ void runGameLoop(World& w, vector<Creature>& creatures,
   GeneralStats gs = { calendar, 0, 0, 0, 0 };
   
   while (settings.alive) {
+    // Track tick count for saving/loading and logging
+    // Declared at loop scope so it's accessible throughout all sections
+    static int tickCount = 0;
+    
     // Update timing at the start of each frame
     gameClock.tick();
     
@@ -1029,6 +1041,120 @@ void runGameLoop(World& w, vector<Creature>& creatures,
     takeInput(w, creatures, calendar, stats, file,
               xOrigin, yOrigin, settings, mapHeight, mapWidth);
     
+    // =========================================================================
+    // 1.5 HANDLE PAUSE MENU ACTIONS
+    // =========================================================================
+    // Check for quit request from pause menu
+    if (renderer.shouldQuit()) {
+      settings.alive = false;
+      continue;  // Exit loop immediately
+    }
+    
+    // Track dialog state to only populate save list once when dialog opens
+    static bool wasSaveDialogOpen = false;
+    static bool wasLoadDialogOpen = false;
+    
+    bool isSaveOpen = renderer.isSaveDialogOpen();
+    bool isLoadOpen = renderer.isLoadDialogOpen();
+    
+    // Populate save files list only when dialog FIRST opens (transition from closed to open)
+    if ((isSaveOpen && !wasSaveDialogOpen) || (isLoadOpen && !wasLoadDialogOpen)) {
+      // Get list of save files and their metadata
+      std::vector<std::string> saveFileNames = file.listSaveFiles();
+      std::vector<SaveFileInfo> saveInfoList;
+      
+      for (const auto& filename : saveFileNames) {
+        SaveFileInfo info;
+        // Remove .json extension for display
+        if (filename.size() > 5) {
+          info.filename = filename.substr(0, filename.size() - 5);
+        } else {
+          info.filename = filename;
+        }
+        
+        // Get metadata from file
+        auto metadata = file.getSaveMetadata(filename);
+        if (metadata) {
+          info.timestamp = metadata->savedAt;
+          info.creatureCount = metadata->creatureCount;
+          info.plantCount = metadata->plantCount;
+          info.tick = metadata->tick;
+        } else {
+          info.timestamp = "Unknown";
+          info.creatureCount = 0;
+          info.plantCount = 0;
+          info.tick = 0;
+        }
+        
+        saveInfoList.push_back(info);
+      }
+      
+      renderer.setSaveFiles(saveInfoList);
+      renderer.setFileExistsChecker([&file](const std::string& name) {
+        return file.saveFileExists(name);
+      });
+    }
+    
+    // Update state tracking for next frame
+    wasSaveDialogOpen = isSaveOpen;
+    wasLoadDialogOpen = isLoadOpen;
+    
+    // Handle save request from pause menu (uses JSON format with user-specified filename)
+    if (renderer.shouldSave()) {
+      std::string filename = renderer.getSaveFilename();
+      if (filename.empty()) {
+        filename = "quicksave";  // Fallback
+      }
+      
+      bool success = file.saveGameJson(
+        filename + ".json",
+        creatures,
+        w,
+        calendar,
+        static_cast<unsigned>(tickCount),
+        MAP_COLS,
+        MAP_ROWS
+      );
+      
+      if (success) {
+        std::cout << "[Save] Game saved to '" << filename << ".json'" << std::endl;
+      } else {
+        std::cerr << "[Save] Failed to save game" << std::endl;
+      }
+      
+      renderer.resetSaveFlag();
+      renderer.clearSaveFilename();
+    }
+    
+    // Handle load request from pause menu (uses JSON format with user-specified filename)
+    if (renderer.shouldLoad()) {
+      std::string filename = renderer.getLoadFilename();
+      if (filename.empty()) {
+        filename = "quicksave";  // Fallback
+      }
+      
+      unsigned loadedTick = 0;
+      bool success = file.loadGameJson(
+        filename + ".json",
+        creatures,
+        w,
+        calendar,
+        loadedTick,
+        MAP_COLS,
+        MAP_ROWS
+      );
+      
+      if (success) {
+        tickCount = static_cast<int>(loadedTick);
+        std::cout << "[Load] Loaded game from '" << filename << ".json'" << std::endl;
+      } else {
+        std::cerr << "[Load] Failed to load game" << std::endl;
+      }
+      
+      renderer.resetLoadFlag();
+      renderer.clearLoadFilename();
+    }
+    
     // Check for UI-driven viewport centering requests (e.g., double-click creature list)
     if (renderer.hasViewportCenterRequest()) {
       auto [targetX, targetY] = renderer.getViewportCenterRequest();
@@ -1051,13 +1177,16 @@ void runGameLoop(World& w, vector<Creature>& creatures,
     // =========================================================================
     // 2. UPDATE SIMULATION (fixed timestep - consistent simulation)
     // =========================================================================
-    // Simulation only advances when not paused.
+    // Simulation only advances when not paused AND pause menu is not open.
     // Uses accumulator pattern to run multiple ticks if frame was slow,
     // or skip ticks if frame was fast, maintaining consistent simulation speed.
-    // Track tick count for logging
-    static int tickCount = 0;
     
-    if (!settings.isPaused) {
+    // Pause simulation when either:
+    // 1. User has manually paused via SPACE/P key (settings.isPaused)
+    // 2. Pause menu is open (ESC menu)
+    bool effectivelyPaused = settings.isPaused || renderer.isPauseMenuOpen();
+    
+    if (!effectivelyPaused) {
       while (gameClock.shouldUpdate()) {
         // Set current tick for the logger
         logging::Logger::getInstance().setCurrentTick(tickCount);
@@ -1183,8 +1312,123 @@ int main() {
   int xOrigin = 0, yOrigin = 0;
 
   switch (menuOption) {
-    case 0: // Load World
-      handleLoadWorld(w, creatures, calendar, stats, file, xOrigin, yOrigin);
+    case 0: // Load World - use new popup dialog
+      {
+        // Open the load dialog
+        renderer.openLoadDialog();
+        
+        // Populate save files list
+        std::vector<std::string> saveFileNames = file.listSaveFiles();
+        std::vector<SaveFileInfo> saveInfoList;
+        
+        for (const auto& filename : saveFileNames) {
+          SaveFileInfo info;
+          // Remove .json extension for display
+          if (filename.size() > 5) {
+            info.filename = filename.substr(0, filename.size() - 5);
+          } else {
+            info.filename = filename;
+          }
+          
+          // Get metadata from file
+          auto metadata = file.getSaveMetadata(filename);
+          if (metadata) {
+            info.timestamp = metadata->savedAt;
+            info.creatureCount = metadata->creatureCount;
+            info.plantCount = metadata->plantCount;
+            info.tick = metadata->tick;
+          } else {
+            info.timestamp = "Unknown";
+            info.creatureCount = 0;
+            info.plantCount = 0;
+            info.tick = 0;
+          }
+          
+          saveInfoList.push_back(info);
+        }
+        
+        renderer.setSaveFiles(saveInfoList);
+        
+        // Render loop waiting for user to select file or cancel
+        bool loadDialogActive = true;
+        bool loadSuccessful = false;
+        
+        // Create minimal HUD data for rendering ImGui overlay
+        HUDData hudData;
+        hudData.population = 0;
+        hudData.births = 0;
+        hudData.foodEaten = 0;
+        hudData.deaths.oldAge = 0;
+        hudData.deaths.starved = 0;
+        hudData.deaths.dehydrated = 0;
+        hudData.deaths.discomfort = 0;
+        hudData.deaths.predator = 0;
+        hudData.timeString = "00:00";
+        hudData.dateString = "Loading...";
+        hudData.worldWidth = MAP_COLS;
+        hudData.worldHeight = MAP_ROWS;
+        hudData.viewportX = 0;
+        hudData.viewportY = 0;
+        hudData.tickRate = 0;
+        hudData.paused = true;
+        
+        while (loadDialogActive) {
+          // Process events
+          input.pollInput();
+          
+          // Check if load was requested
+          if (renderer.shouldLoad()) {
+            std::string filename = renderer.getLoadFilename();
+            if (filename.empty()) {
+              filename = "quicksave";  // Fallback
+            }
+            
+            unsigned loadedTick = 0;
+            bool success = file.loadGameJson(
+              filename + ".json",
+              creatures,
+              w,
+              calendar,
+              loadedTick,
+              MAP_COLS,
+              MAP_ROWS
+            );
+            
+            if (success) {
+              std::cout << "[Load] Loaded game from '" << filename << ".json'" << std::endl;
+              loadSuccessful = true;
+            } else {
+              std::cerr << "[Load] Failed to load game" << std::endl;
+            }
+            
+            renderer.resetLoadFlag();
+            renderer.clearLoadFilename();
+            loadDialogActive = false;
+          }
+          
+          // Check if dialog was closed/cancelled
+          if (!renderer.isLoadDialogOpen()) {
+            loadDialogActive = false;
+          }
+          
+          // Render frame with just the load dialog (not full HUD with stats pane)
+          renderer.beginFrame();
+          renderer.renderDialogsOnly();  // Only render dialogs, not statistics panels
+          renderer.endFrame();
+          
+          // Small delay to prevent high CPU usage
+          std::this_thread::sleep_for(std::chrono::milliseconds(16));
+        }
+        
+        // If load failed or was cancelled, create a new world instead
+        if (!loadSuccessful) {
+          renderer.beginFrame();
+          renderer.renderMessage("No save loaded - creating new world...", -1);
+          renderer.endFrame();
+          std::this_thread::sleep_for(std::chrono::seconds(1));
+          handleNewWorld(w, creatures, file, xOrigin, yOrigin);
+        }
+      }
       break;
   
     case 1: // New World

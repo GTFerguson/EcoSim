@@ -1,4 +1,5 @@
 #include "genetics/core/Gene.hpp"
+#include <nlohmann/json.hpp>
 #include <algorithm>
 #include <variant>
 #include <stdexcept>
@@ -117,6 +118,40 @@ void Gene::setAlleleValues(float value) {
 void Gene::setAlleleValues(float value1, float value2) {
     allele1_.value = GeneValue(value1);
     allele2_.value = GeneValue(value2);
+}
+
+// ============================================================================
+// Gene Serialization
+// ============================================================================
+
+nlohmann::json Gene::toJson() const {
+    return {
+        {"id", id_},
+        {"allele1", {{"value", toNumeric(allele1_.value)}}},
+        {"allele2", {{"value", toNumeric(allele2_.value)}}}
+    };
+}
+
+Gene Gene::fromJson(const nlohmann::json& j) {
+    // Validate required fields
+    if (!j.contains("id")) {
+        throw std::runtime_error("Gene::fromJson: missing required field 'id'");
+    }
+    if (!j.contains("allele1") || !j["allele1"].contains("value")) {
+        throw std::runtime_error("Gene::fromJson: missing required field 'allele1.value'");
+    }
+    if (!j.contains("allele2") || !j["allele2"].contains("value")) {
+        throw std::runtime_error("Gene::fromJson: missing required field 'allele2.value'");
+    }
+    
+    std::string id = j.at("id").get<std::string>();
+    float val1 = j.at("allele1").at("value").get<float>();
+    float val2 = j.at("allele2").at("value").get<float>();
+    
+    Allele a1{GeneValue{val1}};
+    Allele a2{GeneValue{val2}};
+    
+    return Gene(id, a1, a2);
 }
 
 float Gene::toNumeric(const GeneValue& value) {

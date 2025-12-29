@@ -1,18 +1,24 @@
 /**
- *	Title	  : Ecosim - File Handling
- *	Author	: Gary Ferguson
- *	Date	  : May 18th, 2019
- *	Purpose	: Handles saving and loading of simulation data to files.
+ *  Title     : Ecosim - File Handling
+ *  Author    : Gary Ferguson
+ *  Date      : May 18th, 2019
+ *  Updated   : December 2024
+ *  Purpose   : Handles saving and loading of simulation data to files.
  *
- *  NOTE: Legacy Food/Spawner/Genome save/load code has been removed.
- *        The new genetics system uses different serialization methods.
+ *  NOTE: Legacy CSV-based save/load code is kept for backward compatibility
+ *        but is deprecated. New code should use the JSON-based methods.
  */
 
 #include "../include/fileHandling.hpp"
+#include "../include/genetics/defaults/PlantGenes.hpp"
 #include <stdexcept>
 #include <algorithm>
+#include <iomanip>
+#include <ctime>
+#include <optional>
 
 using namespace std;
+using json = nlohmann::json;
 
 namespace fs = std::filesystem;
 
@@ -70,17 +76,80 @@ FileHandling::FileHandling (const string &directory) {
 //================================================================================
 void FileHandling::changeDirectory (const string &directory) {
   saveDir   = SAVE_DIR  + directory;
-  genomeDir = saveDir   + GENOME_FILEPATH; 
+  genomeDir = saveDir   + GENOME_FILEPATH;
   statDir   = saveDir   + STAT_DIR;
 
-  // Create directories if they don't already exist
-  fs::create_directory (saveDir);
-  fs::create_directory (statDir);
-  fs::create_directory (genomeDir);
+  // Create directories if they don't already exist (creates parent directories too)
+  fs::create_directories (saveDir);
+  fs::create_directories (statDir);
+  fs::create_directories (genomeDir);
 }
 
 //================================================================================
-//  Saving
+//  Utility Methods
+//================================================================================
+void FileHandling::ensureSaveDirectory() const {
+  // Create saves/ directory if it doesn't exist
+  fs::create_directories(SAVE_DIR);
+}
+
+string FileHandling::getFullSavePath(const string& filename) const {
+  ensureSaveDirectory();
+  // Simple path: saves/<filename>.json
+  // If filename already has .json extension, use as-is
+  if (filename.size() >= 5 && filename.substr(filename.size() - 5) == ".json") {
+    return SAVE_DIR + filename;
+  }
+  return SAVE_DIR + filename + ".json";
+}
+
+std::vector<std::string> FileHandling::listSaveFiles() const {
+  ensureSaveDirectory();
+  std::vector<std::string> saveFiles;
+  
+  try {
+    for (const auto& entry : fs::directory_iterator(SAVE_DIR)) {
+      if (entry.is_regular_file()) {
+        std::string filename = entry.path().filename().string();
+        // Only include .json files
+        if (filename.size() >= 5 && filename.substr(filename.size() - 5) == ".json") {
+          saveFiles.push_back(filename);
+        }
+      }
+    }
+    
+    // Sort alphabetically
+    std::sort(saveFiles.begin(), saveFiles.end());
+  } catch (const fs::filesystem_error& e) {
+    std::cerr << "Error listing save files: " << e.what() << std::endl;
+  }
+  
+  return saveFiles;
+}
+
+bool FileHandling::saveFileExists(const string& filename) const {
+  string fullPath = getFullSavePath(filename);
+  return fs::exists(fullPath);
+}
+
+string FileHandling::generateTimestamp() {
+  auto now = std::chrono::system_clock::now();
+  auto time_t_now = std::chrono::system_clock::to_time_t(now);
+  
+  std::tm tm_utc;
+#ifdef _WIN32
+  gmtime_s(&tm_utc, &time_t_now);
+#else
+  gmtime_r(&time_t_now, &tm_utc);
+#endif
+  
+  std::ostringstream oss;
+  oss << std::put_time(&tm_utc, "%Y-%m-%dT%H:%M:%SZ");
+  return oss.str();
+}
+
+//================================================================================
+//  Saving - Statistics (kept from legacy system)
 //================================================================================
 /**
  *  Used when creating a new statistics spreadsheet to insert the header row.
@@ -157,6 +226,9 @@ bool FileHandling::saveGenomes (const string &filename,
   return false;
 }
 
+//================================================================================
+//  Saving - Legacy CSV Format (deprecated)
+//================================================================================
 /**
  *  Saves the current state of the simulation to files.
  *  Uses atomic save pattern: writes to temporary files first, then renames
@@ -166,6 +238,8 @@ bool FileHandling::saveGenomes (const string &filename,
  *  @param c        A vector of Creature objects.
  *  @param calendar An object that tracks the in-game date and time.
  *  @return         If the state was successfully saved.
+ *
+ *  @deprecated Use saveGameJson() instead for new save/load functionality.
  */
 bool FileHandling::saveState (const World &w,
                               const vector<Creature> &creatures,
@@ -231,7 +305,129 @@ bool FileHandling::saveState (const World &w,
 }
 
 //================================================================================
-//  Loading
+//  Saving - New JSON Format
+//================================================================================
+bool FileHandling::saveGameJson(
+    const std::string& filepath,
+    const std::vector<Creature>& creatures,
+    const World& world,
+    const Calendar& calendar,
+    unsigned currentTick,
+    int mapWidth,
+    int mapHeight
+) {
+  try {
+    // Build the root JSON object
+    json saveData;
+    
+    // Version and metadata
+    saveData["version"] = SAVE_VERSION;
+    saveData["savedAt"] = generateTimestamp();
+    
+    // World state with generation parameters for terrain regeneration
+    MapGen mg = world.getMapGen();
+    OctaveGen og = world.getOctaveGen();
+    
+    saveData["world"] = {
+      {"tick", currentTick},
+      {"mapWidth", mapWidth},
+      {"mapHeight", mapHeight},
+      {"mapGen", {
+        {"seed", mg.seed},
+        {"scale", mg.scale},
+        {"freq", mg.freq},
+        {"exponent", mg.exponent},
+        {"terraces", mg.terraces},
+        {"rows", mg.rows},
+        {"cols", mg.cols},
+        {"isIsland", mg.isIsland}
+      }},
+      {"octaveGen", {
+        {"quantity", og.quantity},
+        {"minWeight", og.minWeight},
+        {"maxWeight", og.maxWeight},
+        {"freqInterval", og.freqInterval}
+      }}
+    };
+    
+    // Calendar state
+    saveData["calendar"] = {
+      {"minute", calendar.getMinute()},
+      {"hour", calendar.getHour()},
+      {"day", calendar.getDay()},
+      {"month", calendar.getMonth()},
+      {"year", calendar.getYear()}
+    };
+    
+    // Serialize all creatures
+    json creaturesArray = json::array();
+    for (const auto& creature : creatures) {
+      creaturesArray.push_back(creature.toJson());
+    }
+    saveData["creatures"] = creaturesArray;
+    
+    // Serialize all plants from all tiles
+    json plantsArray = json::array();
+    const auto& grid = const_cast<World&>(world).getGrid();
+    for (unsigned x = 0; x < grid.size(); ++x) {
+      for (unsigned y = 0; y < grid[x].size(); ++y) {
+        const auto& plants = grid[x][y].getPlants();
+        for (const auto& plantPtr : plants) {
+          if (plantPtr && plantPtr->isAlive()) {
+            plantsArray.push_back(plantPtr->toJson());
+          }
+        }
+      }
+    }
+    saveData["plants"] = plantsArray;
+    
+    // Write to temporary file first (atomic save pattern)
+    const string fullPath = getFullSavePath(filepath);
+    const string tempPath = fullPath + ".tmp";
+    
+    ofstream file(tempPath);
+    if (!file.is_open()) {
+      std::cerr << "Error: Failed to open temp save file: " << tempPath << std::endl;
+      return false;
+    }
+    
+    // Write with pretty formatting for readability
+    file << saveData.dump(2);
+    file.close();
+    
+    if (file.fail()) {
+      std::cerr << "Error: Failed to write save data to: " << tempPath << std::endl;
+      fs::remove(tempPath);
+      return false;
+    }
+    
+    // Atomically rename temp file to final destination
+    try {
+      fs::rename(tempPath, fullPath);
+    } catch (const fs::filesystem_error& e) {
+      std::cerr << "Error: Failed to rename save file: " << e.what() << std::endl;
+      fs::remove(tempPath);
+      return false;
+    }
+    
+    std::cout << "[Save] Game saved successfully to: " << fullPath << std::endl;
+    std::cout << "       Creatures: " << creatures.size() 
+              << ", Plants: " << plantsArray.size() 
+              << ", Tick: " << currentTick << std::endl;
+    
+    return true;
+    
+  } catch (const json::exception& e) {
+    std::cerr << "Error: JSON serialization failed: " << e.what() << std::endl;
+    return false;
+  } catch (const std::exception& e) {
+    std::cerr << "Error: Save failed: " << e.what() << std::endl;
+    return false;
+  }
+}
+
+//================================================================================
+//  Loading - Legacy CSV Format (deprecated)
 //================================================================================
 /**
  *  Loads the member variables of a general object into the parameters given.
@@ -239,6 +435,8 @@ bool FileHandling::saveState (const World &w,
  *  @param str    The string to be parsed.
  *  @param start  Starting position for loading.
  *  @return       The game object parsed from the strings given.
+ *
+ *  @deprecated Use loadGameJson() instead.
  */
 GameObject FileHandling::loadGameObject (const vector<string> &str,
                                          unsigned &start) {
@@ -275,6 +473,9 @@ GameObject FileHandling::loadGameObject (const vector<string> &str,
   return GameObject (name, desc, passable, ch, colour);
 }
 
+/**
+ *  @deprecated Use loadGameJson() instead.
+ */
 Calendar FileHandling::loadCalendar (const vector<string> &str, unsigned &start) {
   Time time; Date date;
   time.hour   = stoul (str.at(start++));
@@ -287,7 +488,7 @@ Calendar FileHandling::loadCalendar (const vector<string> &str, unsigned &start)
 }
 
 //================================================================================
-//  Load Helper Methods
+//  Load Helper Methods - Legacy (deprecated)
 //================================================================================
 /**
  *  Loads world data from file.
@@ -296,6 +497,8 @@ Calendar FileHandling::loadCalendar (const vector<string> &str, unsigned &start)
  *  @param w        The world object to be loaded into.
  *  @param calendar The calendar object to be loaded into.
  *  @return         True if world was successfully loaded.
+ *
+ *  @deprecated Use loadGameJson() instead.
  */
 bool FileHandling::loadWorld (World &w, Calendar &calendar) {
   ifstream file (saveDir + WORLD_FILEPATH);
@@ -353,6 +556,8 @@ bool FileHandling::loadWorld (World &w, Calendar &calendar) {
  *
  *  @param c  The vector of creatures to be loaded into.
  *  @return   True if creatures were successfully loaded.
+ *
+ *  @deprecated Use loadGameJson() instead.
  */
 bool FileHandling::loadCreatures (vector<Creature> &c) {
   ifstream file (saveDir + CREATURES_FILEPATH);
@@ -408,6 +613,8 @@ bool FileHandling::loadCreatures (vector<Creature> &c) {
  *
  *  @param stats  The statistics object to be loaded into.
  *  @return       True if statistics were successfully loaded.
+ *
+ *  @deprecated Use loadGameJson() instead.
  */
 bool FileHandling::loadStats (Statistics &stats) {
   std::ifstream file (statDir + TEMP_STATS_FILEPATH);
@@ -456,6 +663,8 @@ bool FileHandling::loadStats (Statistics &stats) {
  *  @param calendar How many ticks the simulation has been running.
  *  @param stats    The statistics object to be loaded into.
  *  @return         True if state was successfully loaded.
+ *
+ *  @deprecated Use loadGameJson() instead.
  */
 bool FileHandling::loadState (World &w,
                               std::vector<Creature> &c,
@@ -477,4 +686,244 @@ bool FileHandling::loadState (World &w,
   }
 
   return true;
+}
+
+//================================================================================
+//  Loading - New JSON Format
+//================================================================================
+bool FileHandling::loadGameJson(
+    const std::string& filepath,
+    std::vector<Creature>& creatures,
+    World& world,
+    Calendar& calendar,
+    unsigned& currentTick,
+    int mapWidth,
+    int mapHeight
+) {
+  try {
+    const string fullPath = getFullSavePath(filepath);
+    
+    // Check if file exists
+    if (!fs::exists(fullPath)) {
+      std::cerr << "Error: Save file not found: " << fullPath << std::endl;
+      return false;
+    }
+    
+    // Read the file
+    ifstream file(fullPath);
+    if (!file.is_open()) {
+      std::cerr << "Error: Failed to open save file: " << fullPath << std::endl;
+      return false;
+    }
+    
+    // Parse JSON
+    json saveData;
+    try {
+      file >> saveData;
+    } catch (const json::parse_error& e) {
+      std::cerr << "Error: Failed to parse save file JSON: " << e.what() << std::endl;
+      return false;
+    }
+    file.close();
+    
+    // Version check
+    int version = saveData.value("version", 0);
+    if (version != SAVE_VERSION) {
+      std::cerr << "Error: Incompatible save file version. Expected " 
+                << SAVE_VERSION << ", got " << version << std::endl;
+      return false;
+    }
+    
+    // Validate world dimensions
+    const auto& worldData = saveData["world"];
+    int savedMapWidth = worldData.value("mapWidth", 0);
+    int savedMapHeight = worldData.value("mapHeight", 0);
+    
+    if (savedMapWidth != mapWidth || savedMapHeight != mapHeight) {
+      std::cerr << "Warning: Map dimensions mismatch. Save: " 
+                << savedMapWidth << "x" << savedMapHeight
+                << ", Current: " << mapWidth << "x" << mapHeight << std::endl;
+      // Continue loading - positions will be clamped
+    }
+    
+    // Load tick
+    currentTick = worldData.value("tick", 0u);
+    
+    // Load calendar
+    const auto& calData = saveData["calendar"];
+    Time time;
+    time.minute = calData.value("minute", static_cast<unsigned short>(0));
+    time.hour = calData.value("hour", static_cast<unsigned short>(0));
+    Date date;
+    date.day = calData.value("day", static_cast<unsigned short>(1));
+    date.month = calData.value("month", static_cast<unsigned short>(1));
+    date.year = calData.value("year", 1u);
+    calendar = Calendar(time, date);
+    
+    // Load and apply world generation parameters to regenerate identical terrain
+    if (worldData.contains("mapGen")) {
+      const auto& mapGenData = worldData["mapGen"];
+      MapGen mg;
+      mg.seed = mapGenData.value("seed", 0.0);
+      mg.scale = mapGenData.value("scale", 0.01);
+      mg.freq = mapGenData.value("freq", 1.0);
+      mg.exponent = mapGenData.value("exponent", 1.0);
+      mg.terraces = mapGenData.value("terraces", 20u);
+      mg.rows = mapGenData.value("rows", static_cast<unsigned>(mapHeight));
+      mg.cols = mapGenData.value("cols", static_cast<unsigned>(mapWidth));
+      mg.isIsland = mapGenData.value("isIsland", false);
+      world.setMapGen(mg);
+    }
+    
+    if (worldData.contains("octaveGen")) {
+      const auto& octaveGenData = worldData["octaveGen"];
+      OctaveGen og;
+      og.quantity = octaveGenData.value("quantity", 4u);
+      og.minWeight = octaveGenData.value("minWeight", 0.1);
+      og.maxWeight = octaveGenData.value("maxWeight", 0.5);
+      og.freqInterval = octaveGenData.value("freqInterval", 1.0);
+      world.setOctaveGen(og);
+    }
+    
+    // Regenerate terrain with the saved parameters
+    world.simplexGen();
+    std::cout << "       Terrain regenerated with seed: " << world.getSeed() << std::endl;
+    
+    // Clear existing creatures
+    creatures.clear();
+    
+    // Ensure gene registry is initialized
+    Creature::initializeGeneRegistry();
+    
+    // Load creatures
+    const auto& creaturesArray = saveData["creatures"];
+    for (const auto& creatureJson : creaturesArray) {
+      try {
+        Creature creature = Creature::fromJson(creatureJson, mapWidth, mapHeight);
+        creatures.push_back(std::move(creature));
+      } catch (const std::exception& e) {
+        std::cerr << "Warning: Failed to load creature: " << e.what() << std::endl;
+        // Continue loading other creatures
+      }
+    }
+    
+    // Initialize plant system if needed
+    if (!world.hasGeneticsPlants()) {
+      world.initializeGeneticsPlants();
+    }
+    
+    // Get plant registry for loading
+    auto plantRegistry = world.getPlantRegistry();
+    if (!plantRegistry) {
+      std::cerr << "Error: Plant registry not available" << std::endl;
+      return false;
+    }
+    
+    // Clear existing plants from all tiles
+    auto& grid = world.getGrid();
+    for (auto& column : grid) {
+      for (auto& tile : column) {
+        tile.getPlants().clear();
+      }
+    }
+    
+    // Load plants
+    const auto& plantsArray = saveData["plants"];
+    int plantsLoaded = 0;
+    for (const auto& plantJson : plantsArray) {
+      try {
+        EcoSim::Genetics::Plant plant = EcoSim::Genetics::Plant::fromJson(plantJson, *plantRegistry);
+        
+        // Get plant position
+        int x = plant.getX();
+        int y = plant.getY();
+        
+        // Clamp to world bounds
+        x = std::max(0, std::min(x, mapWidth - 1));
+        y = std::max(0, std::min(y, mapHeight - 1));
+        
+        // Add to appropriate tile
+        auto plantPtr = std::make_shared<EcoSim::Genetics::Plant>(std::move(plant));
+        if (grid[x][y].addPlant(plantPtr)) {
+          plantsLoaded++;
+        }
+      } catch (const std::exception& e) {
+        std::cerr << "Warning: Failed to load plant: " << e.what() << std::endl;
+        // Continue loading other plants
+      }
+    }
+    
+    std::cout << "[Load] Game loaded successfully from: " << fullPath << std::endl;
+    std::cout << "       Creatures: " << creatures.size() 
+              << ", Plants: " << plantsLoaded 
+              << ", Tick: " << currentTick << std::endl;
+    
+    return true;
+    
+  } catch (const json::exception& e) {
+    std::cerr << "Error: JSON parsing failed: " << e.what() << std::endl;
+    return false;
+  } catch (const std::exception& e) {
+    std::cerr << "Error: Load failed: " << e.what() << std::endl;
+    return false;
+  }
+}
+
+//================================================================================
+//  Metadata Query
+//================================================================================
+std::optional<FileHandling::SaveMetadata> FileHandling::getSaveMetadata(
+    const std::string& filepath
+) const {
+  try {
+    const string fullPath = getFullSavePath(filepath);
+    
+    // Check if file exists
+    if (!fs::exists(fullPath)) {
+      return std::nullopt;
+    }
+    
+    // Read the file
+    ifstream file(fullPath);
+    if (!file.is_open()) {
+      return std::nullopt;
+    }
+    
+    // Parse JSON
+    json saveData;
+    try {
+      file >> saveData;
+    } catch (const json::parse_error&) {
+      return std::nullopt;
+    }
+    file.close();
+    
+    // Extract metadata
+    SaveMetadata metadata;
+    metadata.version = saveData.value("version", 0);
+    metadata.savedAt = saveData.value("savedAt", "unknown");
+    
+    if (saveData.contains("world")) {
+      metadata.tick = saveData["world"].value("tick", 0u);
+    } else {
+      metadata.tick = 0;
+    }
+    
+    if (saveData.contains("creatures") && saveData["creatures"].is_array()) {
+      metadata.creatureCount = static_cast<int>(saveData["creatures"].size());
+    } else {
+      metadata.creatureCount = 0;
+    }
+    
+    if (saveData.contains("plants") && saveData["plants"].is_array()) {
+      metadata.plantCount = static_cast<int>(saveData["plants"].size());
+    } else {
+      metadata.plantCount = 0;
+    }
+    
+    return metadata;
+    
+  } catch (const std::exception&) {
+    return std::nullopt;
+  }
 }

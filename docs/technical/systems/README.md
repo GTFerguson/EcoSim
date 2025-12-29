@@ -12,10 +12,12 @@ Deep-dive documentation for individual subsystems.
 | Document | Description |
 |----------|-------------|
 | [[balance-system]] | Balance analysis and LP optimization |
-| [[scent-system]] | Olfactory communication and scent layer |
 | [[behavior-state]] | Creature behavior state machine |
+| [[behavior-system]] | Behavior controller and state machine |
 | [[classification]] | Archetype classification and scientific naming |
 | [[combat-system]] | Combat damage types, weapons, and defenses |
+| [[save-load-system]] | JSON-based save/load and pause menu |
+| [[scent-system]] | Olfactory communication and scent layer |
 
 ## See Also
 

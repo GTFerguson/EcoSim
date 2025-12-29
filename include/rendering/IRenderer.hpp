@@ -16,13 +16,27 @@
 #include "RenderTypes.hpp"
 #include <string>
 #include <vector>
-#include <utility>  // for std::pair
+#include <utility>    // for std::pair
+#include <functional> // for std::function
 
 // Forward declarations to minimize include dependencies
 class World;
 class Creature;
 class Tile;
 class Calendar;
+
+/**
+ * @brief Information about a save file for display in dialogs
+ */
+struct SaveFileInfo {
+    std::string filename;        ///< Filename without extension
+    std::string timestamp;       ///< Human-readable timestamp
+    int creatureCount;           ///< Number of creatures
+    int plantCount;              ///< Number of plants
+    unsigned tick;               ///< Simulation tick
+    
+    SaveFileInfo() : creatureCount(0), plantCount(0), tick(0) {}
+};
 
 /**
  * @brief Abstract interface for rendering backends
@@ -283,6 +297,118 @@ public:
      * @brief Clear the pending viewport center request
      */
     virtual void clearViewportCenterRequest() {}
+
+    //==========================================================================
+    // Pause Menu Methods (for backends with UI support)
+    //==========================================================================
+    
+    /**
+     * @brief Toggle the pause menu visibility
+     *
+     * Default implementation does nothing (for backends without pause menu).
+     */
+    virtual void togglePauseMenu() {}
+    
+    /**
+     * @brief Check if pause menu is currently open
+     *
+     * @return true if pause menu is visible
+     */
+    virtual bool isPauseMenuOpen() const { return false; }
+    
+    /**
+     * @brief Check if quit was requested from pause menu
+     *
+     * @return true if quit was requested
+     */
+    virtual bool shouldQuit() const { return false; }
+    
+    /**
+     * @brief Check if save was requested from pause menu
+     *
+     * @return true if save was requested
+     */
+    virtual bool shouldSave() const { return false; }
+    
+    /**
+     * @brief Check if load was requested from pause menu
+     *
+     * @return true if load was requested
+     */
+    virtual bool shouldLoad() const { return false; }
+    
+    /**
+     * @brief Reset the save flag after handling
+     */
+    virtual void resetSaveFlag() {}
+    
+    /**
+     * @brief Reset the load flag after handling
+     */
+    virtual void resetLoadFlag() {}
+    
+    /**
+     * @brief Check if save dialog is currently open
+     * @return true if save dialog is open
+     */
+    virtual bool isSaveDialogOpen() const { return false; }
+    
+    /**
+     * @brief Check if load dialog is currently open
+     * @return true if load dialog is open
+     */
+    virtual bool isLoadDialogOpen() const { return false; }
+    
+    /**
+     * @brief Set the list of save files for display in dialogs
+     * @param files Vector of save file info structures
+     */
+    virtual void setSaveFiles(const std::vector<SaveFileInfo>& /*files*/) {}
+    
+    /**
+     * @brief Set callback for checking if a file exists
+     * @param checker Function that returns true if filename exists
+     */
+    virtual void setFileExistsChecker(std::function<bool(const std::string&)> /*checker*/) {}
+    
+    /**
+     * @brief Get the filename entered in save dialog
+     * @return Filename without .json extension
+     */
+    virtual std::string getSaveFilename() const { return ""; }
+    
+    /**
+     * @brief Get the filename selected in load dialog
+     * @return Filename without .json extension
+     */
+    virtual std::string getLoadFilename() const { return ""; }
+    
+    /**
+     * @brief Clear the save filename after handling
+     */
+    virtual void clearSaveFilename() {}
+    
+    /**
+     * @brief Clear the load filename after handling
+     */
+    virtual void clearLoadFilename() {}
+    
+    /**
+     * @brief Open the load dialog directly (for start screen use)
+     *
+     * Opens the load dialog without going through the pause menu.
+     * Useful for start screen where load is a direct option.
+     */
+    virtual void openLoadDialog() {}
+    
+    /**
+     * @brief Render only dialogs (save/load) without the full HUD
+     *
+     * Used during start screen when we want to show just the load dialog
+     * without statistics panels and other HUD elements.
+     * Default implementation does nothing.
+     */
+    virtual void renderDialogsOnly() {}
 
     //==========================================================================
     // Capability Query Methods

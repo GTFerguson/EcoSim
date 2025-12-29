@@ -1,4 +1,5 @@
 #include "genetics/core/Chromosome.hpp"
+#include <nlohmann/json.hpp>
 #include <stdexcept>
 #include <algorithm>
 
@@ -120,6 +121,73 @@ Chromosome Chromosome::crossover(const Chromosome& parent1,
 std::mt19937& Chromosome::getRandomEngine() {
     thread_local static std::mt19937 engine(std::random_device{}());
     return engine;
+}
+
+// ============================================================================
+// Chromosome Serialization
+// ============================================================================
+
+nlohmann::json Chromosome::toJson() const {
+    nlohmann::json j;
+    j["type"] = typeToString(type_);
+    
+    nlohmann::json genes_array = nlohmann::json::array();
+    for (const auto& gene : genes_) {
+        genes_array.push_back(gene.toJson());
+    }
+    j["genes"] = genes_array;
+    
+    return j;
+}
+
+Chromosome Chromosome::fromJson(const nlohmann::json& j) {
+    // Validate required fields
+    if (!j.contains("type")) {
+        throw std::runtime_error("Chromosome::fromJson: missing required field 'type'");
+    }
+    if (!j.contains("genes")) {
+        throw std::runtime_error("Chromosome::fromJson: missing required field 'genes'");
+    }
+    
+    std::string type_str = j.at("type").get<std::string>();
+    ChromosomeType type = stringToType(type_str);
+    
+    Chromosome chromosome(type);
+    
+    for (const auto& gene_json : j.at("genes")) {
+        Gene gene = Gene::fromJson(gene_json);
+        chromosome.addGene(gene);
+    }
+    
+    return chromosome;
+}
+
+std::string Chromosome::typeToString(ChromosomeType type) {
+    switch (type) {
+        case ChromosomeType::Morphology:    return "Morphology";
+        case ChromosomeType::Sensory:       return "Sensory";
+        case ChromosomeType::Metabolism:    return "Metabolism";
+        case ChromosomeType::Locomotion:    return "Locomotion";
+        case ChromosomeType::Behavior:      return "Behavior";
+        case ChromosomeType::Reproduction:  return "Reproduction";
+        case ChromosomeType::Environmental: return "Environmental";
+        case ChromosomeType::Lifespan:      return "Lifespan";
+        default:
+            throw std::runtime_error("Chromosome::typeToString: unknown chromosome type");
+    }
+}
+
+ChromosomeType Chromosome::stringToType(const std::string& str) {
+    if (str == "Morphology")    return ChromosomeType::Morphology;
+    if (str == "Sensory")       return ChromosomeType::Sensory;
+    if (str == "Metabolism")    return ChromosomeType::Metabolism;
+    if (str == "Locomotion")    return ChromosomeType::Locomotion;
+    if (str == "Behavior")      return ChromosomeType::Behavior;
+    if (str == "Reproduction")  return ChromosomeType::Reproduction;
+    if (str == "Environmental") return ChromosomeType::Environmental;
+    if (str == "Lifespan")      return ChromosomeType::Lifespan;
+    
+    throw std::runtime_error("Chromosome::stringToType: unknown chromosome type '" + str + "'");
 }
 
 } // namespace Genetics

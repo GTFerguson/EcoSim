@@ -297,7 +297,7 @@ void SDL2InputHandler::initializeDefaultMappings() {
     
     // Simulation control
     _keyActionMap[KeyCode::KEY_SPACE]  = InputAction::PAUSE;
-    _keyActionMap[KeyCode::KEY_ESCAPE] = InputAction::QUIT;
+    _keyActionMap[KeyCode::KEY_ESCAPE] = InputAction::TOGGLE_PAUSE_MENU;
     
     // UI actions
     _keyActionMap[KeyCode::KEY_F] = InputAction::TOGGLE_HUD;

@@ -9,6 +9,7 @@
 #include "genetics/expression/EnvironmentState.hpp"
 #include "genetics/expression/EnergyBudget.hpp"
 #include "rendering/RenderTypes.hpp"
+#include <nlohmann/json.hpp>
 #include <memory>
 #include <string>
 #include <array>
@@ -281,6 +282,12 @@ public:
      * @return Current size (starts small, grows to max_size)
      */
     float getCurrentSize() const { return current_size_; }
+    
+    /**
+     * @brief Get current health
+     * @return Health value (0.0 = dead, 1.0 = full health)
+     */
+    float getHealth() const { return health_; }
     
     /**
      * @brief Get hardiness (damage resistance)
@@ -603,6 +610,34 @@ public:
      */
     static std::unique_ptr<Plant> fromString(const std::string& data,
                                               const GeneRegistry& registry);
+    
+    /**
+     * @brief Serialize plant state to JSON
+     * @return JSON object containing all serializable plant state
+     */
+    nlohmann::json toJson() const;
+    
+    /**
+     * @brief Create plant from JSON data
+     * @param j JSON object containing plant state
+     * @param registry Gene registry for phenotype expression
+     * @return Reconstructed plant
+     */
+    static Plant fromJson(const nlohmann::json& j, const GeneRegistry& registry);
+    
+    /**
+     * @brief Convert DispersalStrategy enum to string
+     * @param strategy The dispersal strategy to convert
+     * @return String representation of the strategy
+     */
+    static std::string dispersalStrategyToString(DispersalStrategy strategy);
+    
+    /**
+     * @brief Convert string to DispersalStrategy enum
+     * @param str String representation of dispersal strategy
+     * @return The corresponding DispersalStrategy enum value
+     */
+    static DispersalStrategy stringToDispersalStrategy(const std::string& str);
     
     // ========================================================================
     // Scent System (Phase 1 - Scent Detection)

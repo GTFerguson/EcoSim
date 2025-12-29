@@ -1,4 +1,5 @@
 #include "genetics/core/Genome.hpp"
+#include <nlohmann/json.hpp>
 #include <stdexcept>
 #include <cmath>
 #include <algorithm>
@@ -221,6 +222,63 @@ float Genome::compare(const Genome& other) const {
     }
     
     return total_similarity / static_cast<float>(compared_count);
+}
+
+// ============================================================================
+// Genome Serialization
+// ============================================================================
+
+nlohmann::json Genome::toJson() const {
+    nlohmann::json j;
+    
+    nlohmann::json chromosomes_array = nlohmann::json::array();
+    for (const auto& chromosome : chromosomes_) {
+        chromosomes_array.push_back(chromosome.toJson());
+    }
+    j["chromosomes"] = chromosomes_array;
+    
+    return j;
+}
+
+Genome Genome::fromJson(const nlohmann::json& j) {
+    // Validate required fields
+    if (!j.contains("chromosomes")) {
+        throw std::runtime_error("Genome::fromJson: missing required field 'chromosomes'");
+    }
+    
+    Genome genome;
+    
+    const auto& chromosomes_array = j.at("chromosomes");
+    
+    for (const auto& chr_json : chromosomes_array) {
+        Chromosome chr = Chromosome::fromJson(chr_json);
+        ChromosomeType type = chr.getType();
+        
+        // Replace the empty chromosome with the loaded one
+        genome.chromosomes_[chromosomeIndex(type)] = std::move(chr);
+    }
+    
+    genome.cache_valid_ = false;
+    return genome;
+}
+
+void Genome::loadFromJson(const nlohmann::json& j) {
+    // Validate required fields
+    if (!j.contains("chromosomes")) {
+        throw std::runtime_error("Genome::loadFromJson: missing required field 'chromosomes'");
+    }
+    
+    const auto& chromosomes_array = j.at("chromosomes");
+    
+    for (const auto& chr_json : chromosomes_array) {
+        Chromosome chr = Chromosome::fromJson(chr_json);
+        ChromosomeType type = chr.getType();
+        
+        // Replace the chromosome with the loaded one
+        chromosomes_[chromosomeIndex(type)] = std::move(chr);
+    }
+    
+    cache_valid_ = false;
 }
 
 } // namespace Genetics
