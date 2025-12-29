@@ -14,8 +14,8 @@
 #include "genetics/defaults/PlantGenes.hpp"
 #include "genetics/defaults/UniversalGenes.hpp"
 #include "genetics/expression/OrganismState.hpp"
+#include "genetics/core/RandomEngine.hpp"
 #include "logging/Logger.hpp"
-#include <random>
 #include <algorithm>
 #include <cmath>
 #include <sstream>
@@ -436,13 +436,9 @@ std::unique_ptr<Plant> Plant::produceOffspring(const GeneRegistry& registry) con
     offspringGenome.mutate(mutationRate, registry.getAllDefinitions());
     
     // Calculate offspring position based on spread distance
-    static thread_local std::mt19937 rng(std::random_device{}());
     float spread = getSpreadDistance();
-    std::uniform_real_distribution<float> angleDist(0.0f, 2.0f * 3.14159f);
-    std::uniform_real_distribution<float> distDist(1.0f, spread);
-    
-    float angle = angleDist(rng);
-    float distance = distDist(rng);
+    float angle = RandomEngine::randomFloat(0.0f, 2.0f * 3.14159f);
+    float distance = RandomEngine::randomFloat(1.0f, spread);
     
     int offspringX = x_ + static_cast<int>(std::cos(angle) * distance);
     int offspringY = y_ + static_cast<int>(std::sin(angle) * distance);

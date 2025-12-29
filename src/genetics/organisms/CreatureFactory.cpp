@@ -10,15 +10,12 @@
 
 #include "genetics/organisms/CreatureFactory.hpp"
 #include "genetics/defaults/UniversalGenes.hpp"
-#include <random>
+#include "genetics/core/RandomEngine.hpp"
 #include <algorithm>
 #include <stdexcept>
 
 namespace EcoSim {
 namespace Genetics {
-
-// Thread-local random number generator
-static thread_local std::mt19937 s_rng(std::random_device{}());
 
 // ============================================================================
 // Constructor
@@ -1082,13 +1079,11 @@ void CreatureFactory::applyTemplate(Genome& genome, const CreatureTemplate& tmpl
 }
 
 float CreatureFactory::randomInRange(float min, float max) {
-    std::uniform_real_distribution<float> dist(min, max);
-    return dist(s_rng);
+    return RandomEngine::randomFloat(min, max);
 }
 
 int CreatureFactory::randomIntInRange(int min, int max) {
-    std::uniform_int_distribution<int> dist(min, max);
-    return dist(s_rng);
+    return RandomEngine::randomInt(min, max);
 }
 
 

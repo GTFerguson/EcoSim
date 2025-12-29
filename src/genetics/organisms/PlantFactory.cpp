@@ -9,15 +9,12 @@
 #include "genetics/organisms/PlantFactory.hpp"
 #include "genetics/defaults/UniversalGenes.hpp"
 #include "genetics/defaults/PlantGenes.hpp"
-#include <random>
+#include "genetics/core/RandomEngine.hpp"
 #include <algorithm>
 #include <stdexcept>
 
 namespace EcoSim {
 namespace Genetics {
-
-// Thread-local random number generator
-static thread_local std::mt19937 s_rng(std::random_device{}());
 
 // ============================================================================
 // Constructor
@@ -354,8 +351,7 @@ void PlantFactory::applyTemplate(Genome& genome, const SpeciesTemplate& tmpl) co
 }
 
 float PlantFactory::randomInRange(float min, float max) {
-    std::uniform_real_distribution<float> dist(min, max);
-    return dist(s_rng);
+    return RandomEngine::randomFloat(min, max);
 }
 
 } // namespace Genetics

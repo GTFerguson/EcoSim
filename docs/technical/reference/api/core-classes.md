@@ -1,7 +1,7 @@
 ---
 title: Core Classes API Reference
 created: 2025-12-24
-updated: 2025-12-24
+updated: 2025-12-29
 status: complete
 audience: developer
 type: reference
@@ -24,6 +24,7 @@ This document covers the foundational classes of the EcoSim genetics system. The
 - **Chromosome** - Collection of linked genes
 - **Genome** - Complete genetic makeup (8 chromosomes)
 - **GeneRegistry** - Storage for gene definitions
+- **RandomEngine** - Centralized thread-safe random number generation
 
 All classes are in the `EcoSim::Genetics` namespace.
 
@@ -88,7 +89,7 @@ public:
 
 ## GeneDefinition
 
-**Header:** [`include/genetics/core/Gene.hpp`](include/genetics/core/Gene.hpp:107)
+**Header:** [`include/genetics/core/GeneDefinition.hpp`](include/genetics/core/GeneDefinition.hpp:15)
 
 Blueprint for gene types, defining constraints and effects.
 
@@ -330,6 +331,61 @@ public:
 | `clear()` | `void` | Remove all definitions |
 | `size()` | `size_t` | Number of definitions |
 | `empty()` | `bool` | True if no definitions |
+
+---
+
+## RandomEngine
+
+**Header:** [`include/genetics/core/RandomEngine.hpp`](include/genetics/core/RandomEngine.hpp:14)
+
+Centralized thread-safe random number generation utility.
+
+```cpp
+namespace EcoSim::Genetics {
+
+class RandomEngine {
+public:
+    // Thread-local engine access
+    static std::mt19937& get();
+    
+    // Convenience methods
+    static float randomFloat(float min, float max);
+    static int randomInt(int min, int max);
+    static float randomProbability();
+    static bool rollProbability(float probability);
+};
+
+// Convenience function alias
+inline std::mt19937& getThreadLocalRNG();
+
+}
+```
+
+### Static Methods
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `get()` | `std::mt19937&` | Thread-local random engine reference |
+| `randomFloat(min, max)` | `float` | Random float in range [min, max] |
+| `randomInt(min, max)` | `int` | Random int in range [min, max] |
+| `randomProbability()` | `float` | Random float in range [0.0, 1.0] |
+| `rollProbability(p)` | `bool` | True if random roll < probability |
+
+### Design Notes
+
+- Each thread gets its own `std::mt19937` engine (thread-local storage)
+- Engines are seeded via `std::random_device` on first access
+- No synchronization overhead - each thread uses its own engine
+- Eliminates DRY violations where thread-local RNG was duplicated across classes
+
+### Convenience Alias
+
+```cpp
+// Short alias for backward compatibility
+inline std::mt19937& getThreadLocalRNG() {
+    return RandomEngine::get();
+}
+```
 
 ---
 

@@ -1,4 +1,5 @@
 #include "genetics/core/Chromosome.hpp"
+#include "genetics/core/RandomEngine.hpp"
 #include <nlohmann/json.hpp>
 #include <stdexcept>
 #include <algorithm>
@@ -65,7 +66,7 @@ Chromosome Chromosome::crossover(const Chromosome& parent1,
     }
     
     Chromosome offspring(parent1.type_);
-    auto& rng = getRandomEngine();
+    auto& rng = getThreadLocalRNG();
     std::uniform_real_distribution<float> dist(0.0f, 1.0f);
     
     // Track which parent we're currently copying from (for linked inheritance)
@@ -116,11 +117,6 @@ Chromosome Chromosome::crossover(const Chromosome& parent1,
     }
     
     return offspring;
-}
-
-std::mt19937& Chromosome::getRandomEngine() {
-    thread_local static std::mt19937 engine(std::random_device{}());
-    return engine;
 }
 
 // ============================================================================

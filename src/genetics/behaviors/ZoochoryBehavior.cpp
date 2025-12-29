@@ -3,9 +3,8 @@
 #include "genetics/interfaces/IGeneticOrganism.hpp"
 #include "genetics/defaults/UniversalGenes.hpp"
 #include "genetics/core/Genome.hpp"
+#include "genetics/core/RandomEngine.hpp"
 #include <sstream>
-#include <random>
-#include <chrono>
 #include <functional>
 
 namespace EcoSim {
@@ -161,11 +160,6 @@ std::vector<DispersalEvent> ZoochoryBehavior::processBurrDetachment(
         return events;
     }
     
-    static thread_local std::mt19937 rng(
-        static_cast<unsigned int>(
-            std::chrono::system_clock::now().time_since_epoch().count()));
-    std::uniform_real_distribution<float> dist(0.0f, 1.0f);
-    
     auto& burrs = it->second;
     auto burrIt = burrs.begin();
     
@@ -175,7 +169,7 @@ std::vector<DispersalEvent> ZoochoryBehavior::processBurrDetachment(
         float detachChance = BURR_DETACH_CHANCE + (ticksAttached * 0.001f);
         detachChance = std::min(1.0f, detachChance);
         
-        if (dist(rng) < detachChance) {
+        if (RandomEngine::rollProbability(detachChance)) {
             int strategy = std::get<0>(*burrIt);
             int originX = std::get<1>(*burrIt);
             int originY = std::get<2>(*burrIt);

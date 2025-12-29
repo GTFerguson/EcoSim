@@ -7,7 +7,6 @@
 #include <unordered_map>
 #include <string>
 #include <optional>
-#include <random>
 
 namespace EcoSim {
 namespace Genetics {
@@ -115,9 +114,6 @@ private:
     ChromosomeType type_;
     std::vector<Gene> genes_;
     std::unordered_map<std::string, size_t> gene_index_;  // O(1) lookup
-    
-    // Get thread-local random engine
-    static std::mt19937& getRandomEngine();
     
     /**
      * @brief Convert ChromosomeType to string for serialization

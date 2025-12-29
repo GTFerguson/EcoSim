@@ -11,7 +11,7 @@
 
 #include "genetics/defaults/UniversalGenes.hpp"
 #include "genetics/core/GeneticTypes.hpp"
-#include <random>
+#include "genetics/core/RandomEngine.hpp"
 
 namespace EcoSim {
 namespace Genetics {
@@ -2287,10 +2287,6 @@ Genome UniversalGenes::createPlantGenome(const GeneRegistry& registry) {
 Genome UniversalGenes::createRandomGenome(const GeneRegistry& registry) {
     Genome genome;
     
-    // Thread-local random engine
-    static thread_local std::mt19937 rng(std::random_device{}());
-    std::uniform_real_distribution<float> expressionDist(0.1f, 1.0f);
-    
     // Get all definitions and create random genes for each
     const auto& definitions = registry.getAllDefinitions();
     
@@ -2299,13 +2295,13 @@ Genome UniversalGenes::createRandomGenome(const GeneRegistry& registry) {
         GeneValue randomValue = definition.createRandomValue();
         
         // Random expression strength
-        float expression = expressionDist(rng);
+        float expression = RandomEngine::randomFloat(0.1f, 1.0f);
         
         Allele a1(randomValue, expression);
         
         // Second allele might be different (heterozygous)
         GeneValue randomValue2 = definition.createRandomValue();
-        float expression2 = expressionDist(rng);
+        float expression2 = RandomEngine::randomFloat(0.1f, 1.0f);
         Allele a2(randomValue2, expression2);
         
         Gene gene(id, a1, a2);

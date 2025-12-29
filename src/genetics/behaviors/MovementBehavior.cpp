@@ -4,17 +4,14 @@
 #include "genetics/interfaces/IGeneticOrganism.hpp"
 #include "genetics/interfaces/IPositionable.hpp"
 #include "genetics/defaults/UniversalGenes.hpp"
+#include "genetics/core/RandomEngine.hpp"
 #include <cmath>
 #include <sstream>
-#include <random>
 
 namespace EcoSim {
 namespace Genetics {
 
 namespace {
-    static std::random_device s_rd;
-    static std::mt19937 s_rng(s_rd());
-    
     float getTraitSafe(const Phenotype& phenotype, const std::string& traitName, float defaultValue) {
         if (phenotype.hasTrait(traitName)) {
             return phenotype.getTrait(traitName);
@@ -97,9 +94,8 @@ BehaviorResult MovementBehavior::execute(IGeneticOrganism& organism,
         result.debugInfo = ss.str();
         
     } else {
-        std::uniform_real_distribution<float> direction(-1.0f, 1.0f);
-        float wanderX = direction(s_rng);
-        float wanderY = direction(s_rng);
+        float wanderX = RandomEngine::randomFloat(-1.0f, 1.0f);
+        float wanderY = RandomEngine::randomFloat(-1.0f, 1.0f);
         
         float wanderMag = std::sqrt(wanderX * wanderX + wanderY * wanderY);
         if (wanderMag < 0.1f) {
