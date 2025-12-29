@@ -299,15 +299,45 @@ public:
     virtual void clearViewportCenterRequest() {}
 
     //==========================================================================
-    // Pause Menu Methods (for backends with UI support)
+    // Menu Methods (Unified Start/Pause Menu System)
     //==========================================================================
     
     /**
-     * @brief Toggle the pause menu visibility
+     * @brief Show the start menu (before game starts)
+     *
+     * Displays "EcoSim" title with New Game, Load Game, Quit options.
+     * Default implementation does nothing (for backends without UI support).
+     */
+    virtual void showStartMenu() {}
+    
+    /**
+     * @brief Show the pause menu (during game)
+     *
+     * Displays "Game Paused" with Resume, Save Game, Load Game, Quit options.
+     * Default implementation does nothing (for backends without UI support).
+     */
+    virtual void showPauseMenu() {}
+    
+    /**
+     * @brief Hide any open menu (start or pause)
+     *
+     * Default implementation does nothing (for backends without UI support).
+     */
+    virtual void hideMenu() {}
+    
+    /**
+     * @brief Toggle the pause menu visibility (legacy method)
      *
      * Default implementation does nothing (for backends without pause menu).
      */
     virtual void togglePauseMenu() {}
+    
+    /**
+     * @brief Check if any menu (start or pause) is currently open
+     *
+     * @return true if any menu is visible
+     */
+    virtual bool isMenuOpen() const { return false; }
     
     /**
      * @brief Check if pause menu is currently open
@@ -315,6 +345,25 @@ public:
      * @return true if pause menu is visible
      */
     virtual bool isPauseMenuOpen() const { return false; }
+    
+    /**
+     * @brief Check if start menu is currently open
+     *
+     * @return true if start menu is visible
+     */
+    virtual bool isStartMenuOpen() const { return false; }
+    
+    /**
+     * @brief Check if "New Game" was selected from start menu
+     *
+     * @return true if new game should start
+     */
+    virtual bool shouldStartNewGame() const { return false; }
+    
+    /**
+     * @brief Reset the start new game flag after handling
+     */
+    virtual void resetStartNewGameFlag() {}
     
     /**
      * @brief Check if quit was requested from pause menu

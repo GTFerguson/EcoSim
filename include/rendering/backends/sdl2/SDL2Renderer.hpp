@@ -302,8 +302,27 @@ public:
     void clearViewportCenterRequest() override;
     
     //==========================================================================
-    // Pause Menu Methods
+    // Menu Methods (Unified Start/Pause Menu System)
     //==========================================================================
+    
+    /**
+     * @brief Show the start menu (before game starts)
+     *
+     * Displays "EcoSim" title with New Game, Load Game, Quit options.
+     */
+    void showStartMenu() override;
+    
+    /**
+     * @brief Show the pause menu (during game)
+     *
+     * Displays "Game Paused" with Resume, Save Game, Load Game, Quit options.
+     */
+    void showPauseMenu() override;
+    
+    /**
+     * @brief Hide any open menu (start or pause)
+     */
+    void hideMenu() override;
     
     /**
      * @brief Toggle the pause menu visibility
@@ -311,11 +330,37 @@ public:
     void togglePauseMenu() override;
     
     /**
+     * @brief Check if any menu (start or pause) is currently open
+     *
+     * @return true if any menu is visible
+     */
+    bool isMenuOpen() const override;
+    
+    /**
      * @brief Check if pause menu is currently open
      *
      * @return true if pause menu is visible
      */
     bool isPauseMenuOpen() const override;
+    
+    /**
+     * @brief Check if start menu is currently open
+     *
+     * @return true if start menu is visible
+     */
+    bool isStartMenuOpen() const override;
+    
+    /**
+     * @brief Check if "New Game" was selected from start menu
+     *
+     * @return true if new game should start
+     */
+    bool shouldStartNewGame() const override;
+    
+    /**
+     * @brief Reset the start new game flag after handling
+     */
+    void resetStartNewGameFlag() override;
     
     /**
      * @brief Check if quit was requested from pause menu

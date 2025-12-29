@@ -26,7 +26,7 @@
 #include "../include/rendering/RenderTypes.hpp"
 #include "../include/rendering/IRenderer.hpp"
 
-// Genetics system integration (Phase 2.4)
+// Genetics system integration
 #include "../include/genetics/defaults/UniversalGenes.hpp"
 #include "../include/genetics/organisms/PlantFactory.hpp"
 #include "../include/genetics/organisms/CreatureFactory.hpp"
@@ -1147,6 +1147,17 @@ void runGameLoop(World& w, vector<Creature>& creatures,
       if (success) {
         tickCount = static_cast<int>(loadedTick);
         std::cout << "[Load] Loaded game from '" << filename << ".json'" << std::endl;
+        
+        // Reset creature ID counter to avoid ID conflicts with new creatures
+        // Find the maximum ID among loaded creatures and set counter to max+1
+        int maxId = 0;
+        for (const auto& creature : creatures) {
+          if (creature.getId() > maxId) {
+            maxId = creature.getId();
+          }
+        }
+        Creature::resetIdCounter(maxId + 1);
+        std::cout << "[Load] Reset creature ID counter to " << (maxId + 1) << std::endl;
       } else {
         std::cerr << "[Load] Failed to load game" << std::endl;
       }
@@ -1298,146 +1309,129 @@ int main() {
   FileHandling file(SAVE_FILES.at(1));
   Settings settings { true, true, false };
 
-  // Create menu options for title screen
-  std::vector<MenuOption> menuOptions = {
-    MenuOption("Load World", true, '1'),
-    MenuOption("New World", true, '2'),
-    MenuOption("Quit", true, '3')
-  };
-  
-  int menuOption = renderer.renderMenu("Deorys: Terminal Rebirth", menuOptions);
-  renderer.beginFrame();
-
   // Origin coordinates for drawing world map.
   int xOrigin = 0, yOrigin = 0;
 
-  switch (menuOption) {
-    case 0: // Load World - use new popup dialog
-      {
-        // Open the load dialog
-        renderer.openLoadDialog();
-        
-        // Populate save files list
-        std::vector<std::string> saveFileNames = file.listSaveFiles();
-        std::vector<SaveFileInfo> saveInfoList;
-        
-        for (const auto& filename : saveFileNames) {
-          SaveFileInfo info;
-          // Remove .json extension for display
-          if (filename.size() > 5) {
-            info.filename = filename.substr(0, filename.size() - 5);
-          } else {
-            info.filename = filename;
-          }
-          
-          // Get metadata from file
-          auto metadata = file.getSaveMetadata(filename);
-          if (metadata) {
-            info.timestamp = metadata->savedAt;
-            info.creatureCount = metadata->creatureCount;
-            info.plantCount = metadata->plantCount;
-            info.tick = metadata->tick;
-          } else {
-            info.timestamp = "Unknown";
-            info.creatureCount = 0;
-            info.plantCount = 0;
-            info.tick = 0;
-          }
-          
-          saveInfoList.push_back(info);
-        }
-        
-        renderer.setSaveFiles(saveInfoList);
-        
-        // Render loop waiting for user to select file or cancel
-        bool loadDialogActive = true;
-        bool loadSuccessful = false;
-        
-        // Create minimal HUD data for rendering ImGui overlay
-        HUDData hudData;
-        hudData.population = 0;
-        hudData.births = 0;
-        hudData.foodEaten = 0;
-        hudData.deaths.oldAge = 0;
-        hudData.deaths.starved = 0;
-        hudData.deaths.dehydrated = 0;
-        hudData.deaths.discomfort = 0;
-        hudData.deaths.predator = 0;
-        hudData.timeString = "00:00";
-        hudData.dateString = "Loading...";
-        hudData.worldWidth = MAP_COLS;
-        hudData.worldHeight = MAP_ROWS;
-        hudData.viewportX = 0;
-        hudData.viewportY = 0;
-        hudData.tickRate = 0;
-        hudData.paused = true;
-        
-        while (loadDialogActive) {
-          // Process events
-          input.pollInput();
-          
-          // Check if load was requested
-          if (renderer.shouldLoad()) {
-            std::string filename = renderer.getLoadFilename();
-            if (filename.empty()) {
-              filename = "quicksave";  // Fallback
-            }
-            
-            unsigned loadedTick = 0;
-            bool success = file.loadGameJson(
-              filename + ".json",
-              creatures,
-              w,
-              calendar,
-              loadedTick,
-              MAP_COLS,
-              MAP_ROWS
-            );
-            
-            if (success) {
-              std::cout << "[Load] Loaded game from '" << filename << ".json'" << std::endl;
-              loadSuccessful = true;
-            } else {
-              std::cerr << "[Load] Failed to load game" << std::endl;
-            }
-            
-            renderer.resetLoadFlag();
-            renderer.clearLoadFilename();
-            loadDialogActive = false;
-          }
-          
-          // Check if dialog was closed/cancelled
-          if (!renderer.isLoadDialogOpen()) {
-            loadDialogActive = false;
-          }
-          
-          // Render frame with just the load dialog (not full HUD with stats pane)
-          renderer.beginFrame();
-          renderer.renderDialogsOnly();  // Only render dialogs, not statistics panels
-          renderer.endFrame();
-          
-          // Small delay to prevent high CPU usage
-          std::this_thread::sleep_for(std::chrono::milliseconds(16));
-        }
-        
-        // If load failed or was cancelled, create a new world instead
-        if (!loadSuccessful) {
-          renderer.beginFrame();
-          renderer.renderMessage("No save loaded - creating new world...", -1);
-          renderer.endFrame();
-          std::this_thread::sleep_for(std::chrono::seconds(1));
-          handleNewWorld(w, creatures, file, xOrigin, yOrigin);
+  // =========================================================================
+  // ImGui Start Menu - Unified menu system
+  // =========================================================================
+  // Show the start menu with New Game, Load Game, Quit options
+  renderer.showStartMenu();
+  
+  // Create minimal HUD data for rendering (menu only, no simulation yet)
+  HUDData startMenuHudData;
+  startMenuHudData.population = 0;
+  startMenuHudData.births = 0;
+  startMenuHudData.foodEaten = 0;
+  startMenuHudData.deaths.oldAge = 0;
+  startMenuHudData.deaths.starved = 0;
+  startMenuHudData.deaths.dehydrated = 0;
+  startMenuHudData.deaths.discomfort = 0;
+  startMenuHudData.deaths.predator = 0;
+  startMenuHudData.timeString = "";
+  startMenuHudData.dateString = "";
+  startMenuHudData.worldWidth = MAP_COLS;
+  startMenuHudData.worldHeight = MAP_ROWS;
+  startMenuHudData.viewportX = 0;
+  startMenuHudData.viewportY = 0;
+  startMenuHudData.tickRate = 0;
+  startMenuHudData.paused = true;
+  
+  // Populate save files list for the load dialog
+  {
+    std::vector<std::string> saveFileNames = file.listSaveFiles();
+    std::vector<SaveFileInfo> saveInfoList;
+    
+    for (const auto& filename : saveFileNames) {
+      SaveFileInfo info;
+      // Remove .json extension for display
+      if (filename.size() > 5) {
+        info.filename = filename.substr(0, filename.size() - 5);
+      } else {
+        info.filename = filename;
+      }
+      
+      // Get metadata from file
+      auto metadata = file.getSaveMetadata(filename);
+      if (metadata) {
+        info.timestamp = metadata->savedAt;
+        info.creatureCount = metadata->creatureCount;
+        info.plantCount = metadata->plantCount;
+        info.tick = metadata->tick;
+      } else {
+        info.timestamp = "Unknown";
+        info.creatureCount = 0;
+        info.plantCount = 0;
+        info.tick = 0;
+      }
+      
+      saveInfoList.push_back(info);
+    }
+    
+    renderer.setSaveFiles(saveInfoList);
+  }
+  
+  // Start menu loop - wait for user to select an action
+  while (!renderer.shouldQuit() && !renderer.shouldStartNewGame() && !renderer.shouldLoad()) {
+    // Process input events
+    input.pollInput();
+    
+    // Render the start menu
+    renderer.beginFrame();
+    renderer.renderHUD(startMenuHudData);  // Renders ImGui overlay including start menu
+    renderer.endFrame();
+    
+    // Small delay to prevent high CPU usage
+    std::this_thread::sleep_for(std::chrono::milliseconds(16));
+  }
+  
+  // Handle the selected action
+  if (renderer.shouldQuit()) {
+    // User selected Quit from start menu
+    settings.alive = false;
+  } else if (renderer.shouldStartNewGame()) {
+    // User selected New Game
+    renderer.resetStartNewGameFlag();
+    renderer.hideMenu();
+    handleNewWorld(w, creatures, file, xOrigin, yOrigin);
+  } else if (renderer.shouldLoad()) {
+    // User selected and confirmed a save file to load
+    std::string filename = renderer.getLoadFilename();
+    if (filename.empty()) {
+      filename = "quicksave";  // Fallback
+    }
+    
+    unsigned loadedTick = 0;
+    bool success = file.loadGameJson(
+      filename + ".json",
+      creatures,
+      w,
+      calendar,
+      loadedTick,
+      MAP_COLS,
+      MAP_ROWS
+    );
+    
+    if (success) {
+      std::cout << "[Load] Loaded game from '" << filename << ".json'" << std::endl;
+      
+      // Reset creature ID counter to avoid ID conflicts with new creatures
+      int maxId = 0;
+      for (const auto& creature : creatures) {
+        if (creature.getId() > maxId) {
+          maxId = creature.getId();
         }
       }
-      break;
-  
-    case 1: // New World
+      Creature::resetIdCounter(maxId + 1);
+      std::cout << "[Load] Reset creature ID counter to " << (maxId + 1) << std::endl;
+    } else {
+      std::cerr << "[Load] Failed to load game - creating new world instead" << std::endl;
       handleNewWorld(w, creatures, file, xOrigin, yOrigin);
-      break;
-
-    case 2: case -1:  // Quit (2 = selected Quit, -1 = cancelled/Escape)
-      settings.alive = false;
-      break;
+    }
+    
+    renderer.resetLoadFlag();
+    renderer.clearLoadFilename();
+    renderer.hideMenu();
   }
 
   runGameLoop(w, creatures, calendar, stats, file, xOrigin, yOrigin, settings);

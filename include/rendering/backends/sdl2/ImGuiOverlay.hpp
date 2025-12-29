@@ -32,6 +32,15 @@ namespace Genetics {
 }
 
 /**
+ * @brief Menu mode for unified start/pause menu system
+ */
+enum class MenuMode {
+    NONE,        ///< No menu displayed
+    START_MENU,  ///< Start menu (before game starts): New Game, Load Game, Quit
+    PAUSE_MENU   ///< Pause menu (during game): Resume, Save, Load, Quit
+};
+
+/**
  * @brief Dear ImGui overlay for debug and statistics UI
  *
  * This class manages the ImGui integration with SDL2, providing
@@ -233,19 +242,79 @@ public:
     void clearCenterRequest() { _pendingCenterX = -1; _pendingCenterY = -1; }
     
     //==========================================================================
-    // Pause Menu Methods
+    // Menu Methods (Unified Start/Pause Menu System)
     //==========================================================================
     
     /**
-     * @brief Toggle the pause menu visibility
+     * @brief Show the start menu (before game starts)
+     *
+     * Displays "EcoSim" title with New Game, Load Game, Quit options.
+     */
+    void showStartMenu();
+    
+    /**
+     * @brief Show the pause menu (during game)
+     *
+     * Displays "Game Paused" with Resume, Save Game, Load Game, Quit options.
+     */
+    void showPauseMenu();
+    
+    /**
+     * @brief Hide any open menu
+     */
+    void hideMenu();
+    
+    /**
+     * @brief Toggle the pause menu visibility (legacy method, calls showPauseMenu/hideMenu)
      */
     void togglePauseMenu();
+    
+    /**
+     * @brief Check if any menu (start or pause) is currently open
+     * @return true if any menu is visible
+     */
+    bool isMenuOpen() const { return _menuMode != MenuMode::NONE; }
+    
+    /**
+     * @brief Get the current menu mode
+     * @return Current MenuMode
+     */
+    MenuMode getMenuMode() const { return _menuMode; }
     
     /**
      * @brief Check if pause menu is currently open
      * @return true if pause menu is visible
      */
-    bool isPauseMenuOpen() const { return _showPauseMenu; }
+    bool isPauseMenuOpen() const { return _menuMode == MenuMode::PAUSE_MENU; }
+    
+    /**
+     * @brief Check if start menu is currently open
+     * @return true if start menu is visible
+     */
+    bool isStartMenuOpen() const { return _menuMode == MenuMode::START_MENU; }
+    
+    /**
+     * @brief Check if "New Game" was selected from start menu
+     * @return true if new game should start
+     */
+    bool shouldStartNewGame() const { return _shouldStartNewGame; }
+    
+    /**
+     * @brief Reset the start new game flag after handling
+     */
+    void resetStartNewGameFlag() { _shouldStartNewGame = false; }
+    
+    /**
+     * @brief Check if any dialog (save, load, overwrite, post-save) is currently open
+     * @return true if any dialog is visible
+     *
+     * Used to block pause menu toggle when dialogs are open, ensuring ESC
+     * doesn't toggle pause menu while user is interacting with dialogs.
+     */
+    bool isAnyDialogOpen() const {
+        return _showSaveDialog || _showLoadDialog ||
+               _showOverwriteConfirm || _showPostSaveDialog;
+    }
     
     /**
      * @brief Check if quit was requested from pause menu
@@ -402,11 +471,18 @@ private:
     int _pendingCenterX;
     int _pendingCenterY;
     
-    // Pause menu state
-    bool _showPauseMenu = false;
+    // Unified menu state (replaces _showPauseMenu)
+    MenuMode _menuMode = MenuMode::NONE;
     bool _shouldQuit = false;
     bool _shouldSave = false;
     bool _shouldLoad = false;
+    bool _shouldStartNewGame = false;  ///< Set when "New Game" is selected from start menu
+    
+    // Popup open flags - set once when transitioning, cleared after OpenPopup() call
+    // This prevents calling OpenPopup() every frame which causes performance issues
+    bool _menuNeedsOpen = false;         ///< Trigger OpenPopup for main menu once
+    bool _saveDialogNeedsOpen = false;   ///< Trigger OpenPopup for save dialog once
+    bool _loadDialogNeedsOpen = false;   ///< Trigger OpenPopup for load dialog once
     
     // Save/Load dialog state
     bool _showSaveDialog = false;
@@ -420,6 +496,8 @@ private:
     std::vector<SaveFileInfo> _saveFiles;             ///< Available save files
     std::function<bool(const std::string&)> _fileExistsChecker; ///< Callback to check file existence
     bool _showPostSaveDialog = false;                 ///< Show post-save Continue/Quit dialog
+    bool _pendingLoadDialogClose = false;             ///< Deferred close for load dialog (set from BeginChild)
+    bool _pendingOverwriteConfirmOpen = false;        ///< Deferred open for overwrite confirm (set from BeginChild)
     
     //==========================================================================
     // Private Rendering Methods
@@ -466,9 +544,9 @@ private:
     void renderControlsWindow();
     
     /**
-     * @brief Render the pause menu
+     * @brief Render the unified main menu (handles both start and pause modes)
      */
-    void renderPauseMenu();
+    void renderMainMenu();
     
     /**
      * @brief Render the save dialog

@@ -865,8 +865,32 @@ void SDL2Renderer::clearViewportCenterRequest() {
 }
 
 //==============================================================================
-// Pause Menu Methods
+// Menu Methods (Unified Start/Pause Menu System)
 //==============================================================================
+
+void SDL2Renderer::showStartMenu() {
+#ifdef ECOSIM_HAS_IMGUI
+    if (_imguiOverlay != nullptr) {
+        _imguiOverlay->showStartMenu();
+    }
+#endif
+}
+
+void SDL2Renderer::showPauseMenu() {
+#ifdef ECOSIM_HAS_IMGUI
+    if (_imguiOverlay != nullptr) {
+        _imguiOverlay->showPauseMenu();
+    }
+#endif
+}
+
+void SDL2Renderer::hideMenu() {
+#ifdef ECOSIM_HAS_IMGUI
+    if (_imguiOverlay != nullptr) {
+        _imguiOverlay->hideMenu();
+    }
+#endif
+}
 
 void SDL2Renderer::togglePauseMenu() {
 #ifdef ECOSIM_HAS_IMGUI
@@ -876,6 +900,15 @@ void SDL2Renderer::togglePauseMenu() {
 #endif
 }
 
+bool SDL2Renderer::isMenuOpen() const {
+#ifdef ECOSIM_HAS_IMGUI
+    if (_imguiOverlay != nullptr) {
+        return _imguiOverlay->isMenuOpen();
+    }
+#endif
+    return false;
+}
+
 bool SDL2Renderer::isPauseMenuOpen() const {
 #ifdef ECOSIM_HAS_IMGUI
     if (_imguiOverlay != nullptr) {
@@ -883,6 +916,32 @@ bool SDL2Renderer::isPauseMenuOpen() const {
     }
 #endif
     return false;
+}
+
+bool SDL2Renderer::isStartMenuOpen() const {
+#ifdef ECOSIM_HAS_IMGUI
+    if (_imguiOverlay != nullptr) {
+        return _imguiOverlay->isStartMenuOpen();
+    }
+#endif
+    return false;
+}
+
+bool SDL2Renderer::shouldStartNewGame() const {
+#ifdef ECOSIM_HAS_IMGUI
+    if (_imguiOverlay != nullptr) {
+        return _imguiOverlay->shouldStartNewGame();
+    }
+#endif
+    return false;
+}
+
+void SDL2Renderer::resetStartNewGameFlag() {
+#ifdef ECOSIM_HAS_IMGUI
+    if (_imguiOverlay != nullptr) {
+        _imguiOverlay->resetStartNewGameFlag();
+    }
+#endif
 }
 
 bool SDL2Renderer::shouldQuit() const {

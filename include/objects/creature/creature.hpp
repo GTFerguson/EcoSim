@@ -262,6 +262,19 @@ class Creature: public GameObject,
     static void initializeGeneRegistry();
     
     /**
+     * @brief Reset the static ID counter to a specific value.
+     *        Used after loading saves to synchronize ID counter with loaded creatures.
+     * @param nextId The next ID to use for new creatures (typically max loaded ID + 1)
+     */
+    static void resetIdCounter(int nextId);
+    
+    /**
+     * @brief Get the current next ID value (for debugging/testing).
+     * @return The next ID that will be assigned to a new creature
+     */
+    static int getNextId();
+    
+    /**
      * @brief Get the shared gene registry (initializes if not already done).
      * @return Reference to the shared GeneRegistry
      */

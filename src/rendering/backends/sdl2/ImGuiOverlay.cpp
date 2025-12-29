@@ -206,57 +206,61 @@ void ImGuiOverlay::render(const HUDData& hudData, const World* world,
     // Store last HUD data for controls panel
     _lastHudData = hudData;
     
-    // Render main menu bar
-    renderMainMenuBar();
-    
-    // Render windows based on visibility flags
-    if (_showStatistics) {
-        renderStatisticsWindow(hudData);
-    }
-    
-    if (_showWorldInfo) {
-        renderWorldInfoWindow(world, creatures);
-    }
-    
-    if (_showPerformance) {
-        renderPerformanceWindow();
-    }
-    
-    if (_showCreatureList && creatures) {
-        renderCreatureListWindow(creatures);
-    }
-    
-    // Find and render selected creature inspector
-    if (_showCreatureInspector && creatures && _selectedCreatureId >= 0) {
-        const Creature* selectedCreature = nullptr;
+    // Don't render HUD elements when start menu is visible - only show the menu itself
+    // This creates a clean start screen without stats panels cluttering the view
+    if (_menuMode != MenuMode::START_MENU) {
+        // Render main menu bar
+        renderMainMenuBar();
         
-        // Find creature by unique ID (not vector index)
-        for (const auto& c : *creatures) {
-            if (c.getId() == _selectedCreatureId) {
-                selectedCreature = &c;
-                break;
+        // Render windows based on visibility flags
+        if (_showStatistics) {
+            renderStatisticsWindow(hudData);
+        }
+        
+        if (_showWorldInfo) {
+            renderWorldInfoWindow(world, creatures);
+        }
+        
+        if (_showPerformance) {
+            renderPerformanceWindow();
+        }
+        
+        if (_showCreatureList && creatures) {
+            renderCreatureListWindow(creatures);
+        }
+        
+        // Find and render selected creature inspector
+        if (_showCreatureInspector && creatures && _selectedCreatureId >= 0) {
+            const Creature* selectedCreature = nullptr;
+            
+            // Find creature by unique ID (not vector index)
+            for (const auto& c : *creatures) {
+                if (c.getId() == _selectedCreatureId) {
+                    selectedCreature = &c;
+                    break;
+                }
+            }
+            
+            if (selectedCreature) {
+                renderCreatureInspectorWindow(selectedCreature);
+            } else {
+                // Creature no longer exists (died), deselect
+                _selectedCreatureId = -1;
             }
         }
         
-        if (selectedCreature) {
-            renderCreatureInspectorWindow(selectedCreature);
-        } else {
-            // Creature no longer exists (died), deselect
-            _selectedCreatureId = -1;
+        if (_showControls) {
+            renderControlsWindow();
+        }
+        
+        // Show ImGui demo window for development reference
+        if (_showDemo) {
+            ImGui::ShowDemoWindow(&_showDemo);
         }
     }
     
-    if (_showControls) {
-        renderControlsWindow();
-    }
-    
-    // Show ImGui demo window for development reference
-    if (_showDemo) {
-        ImGui::ShowDemoWindow(&_showDemo);
-    }
-    
-    // Pause menu is rendered last so it appears on top
-    renderPauseMenu();
+    // Main menu (start or pause) is rendered last so it appears on top
+    renderMainMenu();
     
     // Save/Load dialogs render on top of everything
     renderSaveDialog();
@@ -1678,67 +1682,149 @@ void ImGuiOverlay::renderModalDarkOverlay() {
     ImGui::End();
 }
 
-void ImGuiOverlay::togglePauseMenu() {
-    _showPauseMenu = !_showPauseMenu;
+void ImGuiOverlay::showStartMenu() {
+    _menuMode = MenuMode::START_MENU;
+    _menuNeedsOpen = true;  // Trigger OpenPopup once on next frame
 }
 
-void ImGuiOverlay::renderPauseMenu() {
-    // Open the modal popup when flag is set
-    if (_showPauseMenu) {
-        ImGui::OpenPopup("Game Paused");
+void ImGuiOverlay::showPauseMenu() {
+    _menuMode = MenuMode::PAUSE_MENU;
+    _menuNeedsOpen = true;  // Trigger OpenPopup once on next frame
+}
+
+void ImGuiOverlay::hideMenu() {
+    _menuMode = MenuMode::NONE;
+}
+
+void ImGuiOverlay::togglePauseMenu() {
+    // Prevent toggling pause menu when any dialog is open
+    // This ensures ESC doesn't unexpectedly toggle pause while user interacts with dialogs
+    if (isAnyDialogOpen()) {
+        return;
+    }
+    
+    if (_menuMode == MenuMode::PAUSE_MENU) {
+        _menuMode = MenuMode::NONE;
+    } else if (_menuMode == MenuMode::NONE) {
+        _menuMode = MenuMode::PAUSE_MENU;
+        _menuNeedsOpen = true;  // Trigger OpenPopup once on next frame
+    }
+    // Note: Don't toggle if START_MENU is open - that requires explicit hideMenu()
+}
+
+void ImGuiOverlay::renderMainMenu() {
+    // Don't render if no menu is active
+    if (_menuMode == MenuMode::NONE) {
+        return;
+    }
+    
+    // Open save/load popups ONCE when flag is set (not every frame!)
+    // This prevents performance issues from calling OpenPopup every frame
+    if (_saveDialogNeedsOpen) {
+        ImGui::OpenPopup("Save Game");
+        _saveDialogNeedsOpen = false;
+    }
+    if (_loadDialogNeedsOpen) {
+        ImGui::OpenPopup("Load Game");
+        _loadDialogNeedsOpen = false;
+    }
+    
+    // Determine popup title based on mode
+    const char* popupId = (_menuMode == MenuMode::START_MENU) ? "##StartMenu" : "##PauseMenu";
+    const char* title = (_menuMode == MenuMode::START_MENU) ? "EcoSim" : "Game Paused";
+    
+    // Open main menu popup ONCE when flag is set (not every frame!)
+    // Only open when dialogs are not open
+    if (_menuNeedsOpen && !_showSaveDialog && !_showLoadDialog) {
+        ImGui::OpenPopup(popupId);
+        _menuNeedsOpen = false;
     }
     
     // Center the modal
     ImGuiIO& io = ImGui::GetIO();
     ImVec2 center = ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f);
-    ImVec2 menuSize = ImVec2(300, 280);
+    
+    // Adjust menu size based on mode (start menu has fewer buttons)
+    ImVec2 menuSize = (_menuMode == MenuMode::START_MENU)
+        ? ImVec2(300, 250)   // Start menu: fewer buttons
+        : ImVec2(300, 300);  // Pause menu: more buttons
+    
     ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
     ImGui::SetNextWindowSize(menuSize, ImGuiCond_Appearing);
     
     // Modal popup blocks input to all other windows and renders with dark overlay
-    if (ImGui::BeginPopupModal("Game Paused", nullptr,
-            ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
+    if (ImGui::BeginPopupModal(popupId, nullptr,
+            ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar)) {
+        
         // Center buttons
         float buttonWidth = 200;
         float xOffset = (menuSize.x - buttonWidth) * 0.5f;
         
+        // Title - centered
+        ImGui::Spacing();
+        float titleWidth = ImGui::CalcTextSize(title).x;
+        ImGui::SetCursorPosX((menuSize.x - titleWidth) * 0.5f);
+        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "%s", title);
+        ImGui::Spacing();
+        ImGui::Separator();
         ImGui::Spacing();
         ImGui::Spacing();
         
-        ImGui::SetCursorPosX(xOffset);
-        if (ImGui::Button("Resume", ImVec2(buttonWidth, 40))) {
-            _showPauseMenu = false;
-            ImGui::CloseCurrentPopup();
+        // --- START MENU SPECIFIC: New Game button ---
+        if (_menuMode == MenuMode::START_MENU) {
+            ImGui::SetCursorPosX(xOffset);
+            if (ImGui::Button("New Game", ImVec2(buttonWidth, 40))) {
+                _shouldStartNewGame = true;
+                _menuMode = MenuMode::NONE;
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::Spacing();
         }
         
-        ImGui::Spacing();
-        ImGui::SetCursorPosX(xOffset);
-        if (ImGui::Button("Save Game", ImVec2(buttonWidth, 40))) {
-            _showSaveDialog = true;
-            _selectedSaveIndex = -1;
-            // Default save name is "quick_save"
-            strncpy(_saveNameInput, "quick_save", sizeof(_saveNameInput) - 1);
-            _saveNameInput[sizeof(_saveNameInput) - 1] = '\0';
-            // Close pause menu modal so save dialog can be shown
-            _showPauseMenu = false;
-            ImGui::CloseCurrentPopup();
+        // --- PAUSE MENU SPECIFIC: Resume button ---
+        if (_menuMode == MenuMode::PAUSE_MENU) {
+            ImGui::SetCursorPosX(xOffset);
+            if (ImGui::Button("Resume", ImVec2(buttonWidth, 40))) {
+                _menuMode = MenuMode::NONE;
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::Spacing();
         }
         
-        ImGui::Spacing();
+        // --- PAUSE MENU SPECIFIC: Save Game button ---
+        if (_menuMode == MenuMode::PAUSE_MENU) {
+            ImGui::SetCursorPosX(xOffset);
+            if (ImGui::Button("Save Game", ImVec2(buttonWidth, 40))) {
+                _showSaveDialog = true;
+                _saveDialogNeedsOpen = true;  // Trigger OpenPopup once
+                _selectedSaveIndex = -1;
+                // Default save name is "quick_save"
+                strncpy(_saveNameInput, "quick_save", sizeof(_saveNameInput) - 1);
+                _saveNameInput[sizeof(_saveNameInput) - 1] = '\0';
+                // Close menu modal - save dialog will open on next frame
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::Spacing();
+        }
+        
+        // --- BOTH MENUS: Load Game button ---
         ImGui::SetCursorPosX(xOffset);
         if (ImGui::Button("Load Game", ImVec2(buttonWidth, 40))) {
             _showLoadDialog = true;
+            _loadDialogNeedsOpen = true;  // Trigger OpenPopup once
             _selectedSaveIndex = -1;
-            // Close pause menu modal so load dialog can be shown
-            _showPauseMenu = false;
+            // Close menu modal - load dialog will open on next frame
             ImGui::CloseCurrentPopup();
         }
         
         ImGui::Spacing();
         ImGui::Spacing();
+        
+        // --- BOTH MENUS: Quit button ---
         ImGui::SetCursorPosX(xOffset);
         if (ImGui::Button("Quit", ImVec2(buttonWidth, 40))) {
             _shouldQuit = true;
+            _menuMode = MenuMode::NONE;
             ImGui::CloseCurrentPopup();
         }
         
@@ -1751,10 +1837,8 @@ void ImGuiOverlay::renderPauseMenu() {
 //==============================================================================
 
 void ImGuiOverlay::renderSaveDialog() {
-    // Open the modal popup when flag is set
-    if (_showSaveDialog) {
-        ImGui::OpenPopup("Save Game");
-    }
+    // Note: OpenPopup("Save Game") is called from renderPauseMenu() in root context
+    // to ensure immediate popup opening on the same frame as button click
     
     // Center the modal
     ImGuiIO& io = ImGui::GetIO();
@@ -1807,6 +1891,13 @@ void ImGuiOverlay::renderSaveDialog() {
         }
         ImGui::EndChild();
         
+        // Handle deferred open from click inside BeginChild
+        // OpenPopup() must be called outside BeginChild to work properly
+        if (_pendingOverwriteConfirmOpen) {
+            _pendingOverwriteConfirmOpen = false;
+            ImGui::OpenPopup("Confirm Overwrite##save");
+        }
+        
         ImGui::Spacing();
         
         // Cancel button - right aligned
@@ -1814,6 +1905,10 @@ void ImGuiOverlay::renderSaveDialog() {
         ImGui::SetCursorPosX(dialogSize.x - cancelWidth - 20);
         if (ImGui::Button("Cancel", ImVec2(cancelWidth, 0))) {
             _showSaveDialog = false;
+            // If we came from a menu, reopen it
+            if (_menuMode != MenuMode::NONE) {
+                _menuNeedsOpen = true;
+            }
             ImGui::CloseCurrentPopup();
         }
         
@@ -1860,10 +1955,8 @@ void ImGuiOverlay::renderSaveDialog() {
 }
 
 void ImGuiOverlay::renderLoadDialog() {
-    // Open the modal popup when flag is set
-    if (_showLoadDialog) {
-        ImGui::OpenPopup("Load Game");
-    }
+    // Note: OpenPopup("Load Game") is called from renderPauseMenu() in root context
+    // to ensure immediate popup opening on the same frame as button click
     
     // Center the modal
     ImGuiIO& io = ImGui::GetIO();
@@ -1885,6 +1978,13 @@ void ImGuiOverlay::renderLoadDialog() {
         }
         ImGui::EndChild();
         
+        // Handle deferred close from double-click inside BeginChild
+        // CloseCurrentPopup() must be called outside BeginChild to work properly
+        if (_pendingLoadDialogClose) {
+            _pendingLoadDialogClose = false;
+            ImGui::CloseCurrentPopup();
+        }
+        
         ImGui::Spacing();
         
         // Buttons row
@@ -1899,10 +1999,10 @@ void ImGuiOverlay::renderLoadDialog() {
             ImGui::BeginDisabled();
         }
         if (ImGui::Button("Load", ImVec2(buttonWidth, 0))) {
-            _pendingLoadFilename = _saveFiles[_selectedSaveIndex].filename;
+            _pendingLoadFilename = _saveFiles[static_cast<size_t>(_selectedSaveIndex)].filename;
             _shouldLoad = true;
             _showLoadDialog = false;
-            _showPauseMenu = false;
+            _menuMode = MenuMode::NONE;  // Close menu after load
             ImGui::CloseCurrentPopup();
         }
         if (!hasSelection) {
@@ -1912,6 +2012,10 @@ void ImGuiOverlay::renderLoadDialog() {
         ImGui::SameLine(0, spacing);
         if (ImGui::Button("Cancel", ImVec2(buttonWidth, 0))) {
             _showLoadDialog = false;
+            // If we came from a menu, reopen it
+            if (_menuMode != MenuMode::NONE) {
+                _menuNeedsOpen = true;
+            }
             ImGui::CloseCurrentPopup();
         }
         
@@ -1920,6 +2024,12 @@ void ImGuiOverlay::renderLoadDialog() {
 }
 
 void ImGuiOverlay::renderOverwriteConfirmDialog() {
+    // Skip if save dialog is open - it has its own nested overwrite confirm popup
+    // This prevents two dialogs from responding to the same _showOverwriteConfirm flag
+    if (_showSaveDialog) {
+        return;
+    }
+    
     // Open the modal popup when flag is set
     if (_showOverwriteConfirm) {
         ImGui::OpenPopup("Confirm Overwrite");
@@ -1959,6 +2069,12 @@ void ImGuiOverlay::renderOverwriteConfirmDialog() {
         ImGui::SameLine(0, spacing);
         if (ImGui::Button("No", ImVec2(buttonWidth, 0))) {
             _showOverwriteConfirm = false;
+            // Reopen save dialog if it was open, or menu if we came from menu
+            if (_showSaveDialog) {
+                _saveDialogNeedsOpen = true;
+            } else if (_menuMode != MenuMode::NONE) {
+                _menuNeedsOpen = true;
+            }
             ImGui::CloseCurrentPopup();
         }
         
@@ -2009,7 +2125,7 @@ void ImGuiOverlay::renderPostSaveDialog() {
         ImGui::SetCursorPosX(startX);
         if (ImGui::Button("Continue", ImVec2(buttonWidth, 30))) {
             _showPostSaveDialog = false;
-            _showPauseMenu = false;  // Close everything and return to game
+            _menuMode = MenuMode::NONE;  // Close everything and return to game
             ImGui::CloseCurrentPopup();
         }
         
@@ -2045,15 +2161,17 @@ void ImGuiOverlay::renderSaveFileList(int clickAction) {
                 _saveNameInput[sizeof(_saveNameInput) - 1] = '\0';
                 _pendingOverwriteFilename = info.filename;
                 _showOverwriteConfirm = true;
-                // Open the nested modal popup within save dialog
-                ImGui::OpenPopup("Confirm Overwrite##save");
+                // Set deferred open flag - OpenPopup() doesn't work from inside BeginChild()
+                _pendingOverwriteConfirmOpen = true;
             } else {
                 // Load mode: on double-click, load immediately
                 if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
                     _pendingLoadFilename = info.filename;
                     _shouldLoad = true;
                     _showLoadDialog = false;
-                    _showPauseMenu = false;
+                    _menuMode = MenuMode::NONE;  // Close menu after load
+                    // Set deferred close flag - CloseCurrentPopup() doesn't work from inside BeginChild()
+                    _pendingLoadDialogClose = true;
                 }
             }
         }
@@ -2175,7 +2293,8 @@ void ImGuiOverlay::setupStyle() {
     colors[ImGuiCol_PlotHistogramHovered] = ImVec4(0.55f, 0.85f, 0.55f, 1.00f);
     
     // Modal window dimming background (dark overlay for pause menu, save dialogs, etc.)
-    colors[ImGuiCol_ModalWindowDimBg] = ImVec4(0.0f, 0.0f, 0.0f, 0.59f);
+    // High alpha (0.80 = 80% opacity) ensures clearly visible dark overlay
+    colors[ImGuiCol_ModalWindowDimBg] = ImVec4(0.0f, 0.0f, 0.0f, 0.80f);
 }
 
 const char* ImGuiOverlay::getProfileName(int profile) const {
