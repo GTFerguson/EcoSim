@@ -1,0 +1,171 @@
+#pragma once
+/**
+ * @file PlantManager.hpp
+ * @brief Manages genetics-based plant infrastructure
+ */
+
+#include "WorldGrid.hpp"
+#include "ScentLayer.hpp"
+#include "../genetics/core/GeneRegistry.hpp"
+#include "../genetics/organisms/Plant.hpp"
+#include "../genetics/organisms/PlantFactory.hpp"
+#include "../genetics/defaults/UniversalGenes.hpp"
+#include "../genetics/expression/EnvironmentState.hpp"
+#include "../genetics/interactions/SeedDispersal.hpp"
+
+#include <memory>
+#include <string>
+#include <random>
+#include <vector>
+#include <iostream>
+
+namespace EcoSim {
+
+/**
+ * @class PlantManager
+ * @brief Manages plant creation, lifecycle, and seed dispersal
+ * 
+ * Responsibilities:
+ * - Plant system initialization (registry, factory, templates)
+ * - Adding plants to the world (individual and bulk)
+ * - Plant lifecycle updates (growth, fruit production, death)
+ * - Seed dispersal and reproduction
+ * - Environment state management
+ * - Plant scent emission
+ */
+class PlantManager {
+public:
+    //==========================================================================
+    // Construction
+    //==========================================================================
+    
+    /**
+     * @brief Construct a PlantManager
+     * @param grid Reference to the world grid for plant placement
+     * @param scents Reference to the scent layer for plant odors
+     */
+    PlantManager(WorldGrid& grid, ScentLayer& scents);
+    
+    //==========================================================================
+    // Initialization
+    //==========================================================================
+    
+    /**
+     * @brief Initialize the plant factory and gene registry
+     * 
+     * Creates the gene registry, registers default genes, creates the plant
+     * factory, and registers default species templates (berry_bush, oak_tree,
+     * grass, thorn_bush).
+     */
+    void initialize();
+    
+    /**
+     * @brief Check if the plant system is initialized
+     * @return true if factory and registry are ready
+     */
+    bool isInitialized() const;
+    
+    //==========================================================================
+    // Population
+    //==========================================================================
+    
+    /**
+     * @brief Add plants throughout the world within elevation range
+     * @param lowElev Minimum elevation for plant placement
+     * @param highElev Maximum elevation for plant placement
+     * @param rate Percentage chance (1-100) of plant placement per tile
+     * @param species Species template name (e.g., "berry_bush", "oak_tree")
+     */
+    void addPlants(unsigned lowElev, unsigned highElev,
+                   unsigned rate, const std::string& species);
+    
+    /**
+     * @brief Add a single plant at a specific location
+     * @param x X coordinate
+     * @param y Y coordinate
+     * @param species Species template name
+     * @return true if plant was added successfully
+     */
+    bool addPlant(int x, int y, const std::string& species);
+    
+    //==========================================================================
+    // Lifecycle
+    //==========================================================================
+    
+    /**
+     * @brief Main update loop - process all plants
+     * @param currentTick The current simulation tick (for scent timestamps)
+     * 
+     * Handles:
+     * - Plant growth updates via environment state
+     * - Dead plant removal
+     * - Scent emission from fruiting plants
+     * - Seed dispersal and offspring spawning
+     */
+    void tick(unsigned currentTick);
+    
+    //==========================================================================
+    // Environment
+    //==========================================================================
+    
+    /**
+     * @brief Get the current environment state
+     * @return Mutable reference to environment state
+     */
+    Genetics::EnvironmentState& environment();
+    
+    /**
+     * @brief Get the current environment state (const)
+     * @return Const reference to environment state
+     */
+    const Genetics::EnvironmentState& environment() const;
+    
+    /**
+     * @brief Update the environment state
+     * @param temperature Current temperature
+     * @param lightLevel Light level (0.0 to 1.0, mapped to time_of_day)
+     * @param waterAvailability Water availability (0.0 to 1.0, mapped to humidity)
+     */
+    void updateEnvironment(float temperature, float lightLevel, float waterAvailability);
+    
+    //==========================================================================
+    // Access
+    //==========================================================================
+    
+    /**
+     * @brief Get the plant factory (for direct plant creation)
+     * @return Pointer to plant factory, or nullptr if not initialized
+     */
+    Genetics::PlantFactory* factory();
+    
+    /**
+     * @brief Get the plant factory (const)
+     * @return Const pointer to plant factory, or nullptr if not initialized
+     */
+    const Genetics::PlantFactory* factory() const;
+    
+    /**
+     * @brief Get the plant gene registry
+     * @return Shared pointer to the gene registry
+     */
+    std::shared_ptr<Genetics::GeneRegistry> registry();
+    
+    /**
+     * @brief Get the plant gene registry (const)
+     * @return Const shared pointer to the gene registry
+     */
+    std::shared_ptr<const Genetics::GeneRegistry> registry() const;
+
+private:
+    WorldGrid& _grid;
+    ScentLayer& _scents;
+    
+    std::shared_ptr<Genetics::GeneRegistry> _plantRegistry;
+    std::unique_ptr<Genetics::PlantFactory> _plantFactory;
+    Genetics::EnvironmentState _currentEnvironment;
+    Genetics::SeedDispersal _seedDispersal;
+    
+    std::mt19937 _rng;
+};
+
+} // namespace EcoSim

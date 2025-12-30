@@ -70,14 +70,14 @@ The genetic system that drives inheritance and evolution.
 
 ## Quick Controls Reference
 
-| Key | Action |
-|-----|--------|
-| **Arrow keys / HJKL** | Pan camera |
-| **+/-** | Zoom in/out |
-| **Space** | Pause/Resume |
-| **A** | Add 100 creatures |
-| **F1-F6** | Open UI windows |
-| **Esc** | Quit |
+| Key                   | Action                                                         |
+| --------------------- | -------------------------------------------------------------- |
+| **Arrow keys / HJKL** | Pan camera                                                     |
+| **+/-**               | Zoom in/out                                                    |
+| **Space**             | Pause/Resume                                                   |
+| **A**                 | Add 100 creatures                                              |
+| **F1-F6**             | Open UI windows                                                |
+| **Esc**               | Opens the pause menu with Save, Load, Resume, and Quit options |
 
 See the **[Usage Guide](usage-guide.md)** for complete controls.
 

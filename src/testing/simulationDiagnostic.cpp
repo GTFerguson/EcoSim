@@ -256,16 +256,16 @@ void addFoodSpawners(World& w) {
  * Add genetics-based plants
  */
 void addGeneticsPlants(World& w) {
-    w.initializeGeneticsPlants();
+    w.plants().initialize();
     
-    w.addGeneticsPlants(GRASS_MIN_ALTITUDE, GRASS_MAX_ALTITUDE,
-                        GRASS_SPAWN_RATE, "grass");
-    w.addGeneticsPlants(BERRY_MIN_ALTITUDE, BERRY_MAX_ALTITUDE,
-                        BERRY_SPAWN_RATE, "berry_bush");
-    w.addGeneticsPlants(OAK_MIN_ALTITUDE, OAK_MAX_ALTITUDE,
-                        OAK_SPAWN_RATE, "oak_tree");
-    w.addGeneticsPlants(THORN_MIN_ALTITUDE, THORN_MAX_ALTITUDE,
-                        THORN_SPAWN_RATE, "thorn_bush");
+    w.plants().addPlants(GRASS_MIN_ALTITUDE, GRASS_MAX_ALTITUDE,
+                         GRASS_SPAWN_RATE, "grass");
+    w.plants().addPlants(BERRY_MIN_ALTITUDE, BERRY_MAX_ALTITUDE,
+                         BERRY_SPAWN_RATE, "berry_bush");
+    w.plants().addPlants(OAK_MIN_ALTITUDE, OAK_MAX_ALTITUDE,
+                         OAK_SPAWN_RATE, "oak_tree");
+    w.plants().addPlants(THORN_MIN_ALTITUDE, THORN_MAX_ALTITUDE,
+                         THORN_SPAWN_RATE, "thorn_bush");
 }
 
 /**
@@ -349,7 +349,7 @@ int main(int argc, char* argv[]) {
     std::cout << "[Diagnostic] Running plant warm-up period (" << PLANT_WARMUP_TICKS << " ticks)..." << std::endl;
     
     for (int warmupTick = 0; warmupTick < PLANT_WARMUP_TICKS; warmupTick++) {
-        w.updateGeneticsPlants();
+        w.plants().tick(static_cast<unsigned>(warmupTick));
         if (warmupTick % 20 == 0) {
             std::cout << "  Plant warmup: " << warmupTick << "/" << PLANT_WARMUP_TICKS << std::endl;
         }

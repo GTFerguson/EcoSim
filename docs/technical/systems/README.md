@@ -19,6 +19,7 @@ Deep-dive documentation for individual subsystems.
 | [[save-load-system]] | JSON-based save/load and pause menu |
 | [[scent-system]] | Olfactory communication and scent layer |
 | [[spatial-index]] | O(1) neighbor queries for spatial entities |
+| [[world-system]] | World architecture and component subsystems |
 
 ## See Also
 

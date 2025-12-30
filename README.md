@@ -13,7 +13,7 @@ EcoSim is a real-time ecosystem simulation where autonomous creatures with genet
 ## ✨ Key Features
 
 ### Genetics System
-- **67 unique genes** controlling behavior, physiology, and reproduction
+- **88 unique genes** controlling behavior, physiology, and reproduction
 - **Diploid inheritance** with dominant/recessive alleles and codominance
 - **Unified genome** shared between creatures and plants
 - **Realistic mutation** with configurable rates
@@ -148,7 +148,3 @@ EcoSim was developed as part of academic research into evolutionary simulation. 
 ## 📜 License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
-
----
-
-**Happy Evolving!** 🦎🌱

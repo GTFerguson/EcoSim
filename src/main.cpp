@@ -848,21 +848,21 @@ void runWorldEditor(World& w, vector<Creature>& creatures,
 
 /**
  *  Initializes the genetics system and adds genetics-based plants.
- *  This supplements the existing spawner system with Phase 2.4 genetics plants.
+ *  Uses the PlantManager component for plant lifecycle management.
  */
 void addGeneticsPlants(World& w) {
-  // Initialize the genetics plant system
-  w.initializeGeneticsPlants();
+  // Initialize the plant manager
+  w.plants().initialize();
   
   // Add genetics-based plants by species and elevation range
-  w.addGeneticsPlants(GRASS_MIN_ALTITUDE, GRASS_MAX_ALTITUDE,
-                      GRASS_SPAWN_RATE, "grass");
-  w.addGeneticsPlants(BERRY_MIN_ALTITUDE, BERRY_MAX_ALTITUDE,
-                      BERRY_SPAWN_RATE, "berry_bush");
-  w.addGeneticsPlants(OAK_MIN_ALTITUDE, OAK_MAX_ALTITUDE,
-                      OAK_SPAWN_RATE, "oak_tree");
-  w.addGeneticsPlants(THORN_MIN_ALTITUDE, THORN_MAX_ALTITUDE,
-                      THORN_SPAWN_RATE, "thorn_bush");
+  w.plants().addPlants(GRASS_MIN_ALTITUDE, GRASS_MAX_ALTITUDE,
+                       GRASS_SPAWN_RATE, "grass");
+  w.plants().addPlants(BERRY_MIN_ALTITUDE, BERRY_MAX_ALTITUDE,
+                       BERRY_SPAWN_RATE, "berry_bush");
+  w.plants().addPlants(OAK_MIN_ALTITUDE, OAK_MAX_ALTITUDE,
+                       OAK_SPAWN_RATE, "oak_tree");
+  w.plants().addPlants(THORN_MIN_ALTITUDE, THORN_MAX_ALTITUDE,
+                       THORN_SPAWN_RATE, "thorn_bush");
 }
 
 /**

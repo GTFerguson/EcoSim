@@ -55,12 +55,12 @@ cd EcoSim
 
 ### Simulation Controls
 
-| Key | Action | Description |
-|-----|--------|-------------|
-| `Space` | Pause/Resume | Toggle simulation pause state |
-| `A` | Add Creatures | Spawn 100 new creatures into the world |
-| `S` | Quick Save | Quick save to legacy format |
-| `Escape` | Pause Menu | Opens the pause menu with Save, Load, Resume, and Quit options |
+| Key      | Action        | Description                                                    |
+| -------- | ------------- | -------------------------------------------------------------- |
+| `Space`  | Pause/Resume  | Toggle simulation pause state                                  |
+| `A`      | Add Creatures | Spawn 100 new creatures into the world                         |
+| `S`      | Quick Save    | Quick save to legacy format                                    |
+| `Escape` | Pause Menu    | Opens the pause menu with Save, Load, Resume, and Quit options |
 
 ### UI Controls
 

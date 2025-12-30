@@ -811,12 +811,12 @@ bool FileHandling::loadGameJson(
     }
     
     // Initialize plant system if needed
-    if (!world.hasGeneticsPlants()) {
-      world.initializeGeneticsPlants();
+    if (!world.plants().isInitialized()) {
+      world.plants().initialize();
     }
     
     // Get plant registry for loading
-    auto plantRegistry = world.getPlantRegistry();
+    auto plantRegistry = world.plants().registry();
     if (!plantRegistry) {
       std::cerr << "Error: Plant registry not available" << std::endl;
       return false;

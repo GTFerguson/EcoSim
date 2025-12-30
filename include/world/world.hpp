@@ -1,228 +1,204 @@
-#ifndef WORLD_H
-#define WORLD_H
+#ifndef ECOSIM_WORLD_WORLD_HPP
+#define ECOSIM_WORLD_WORLD_HPP
 
 /**
- *	Title	  : Ecosim - World
- *	Author	: Gary Ferguson
- *	Date	  : November 18th, 2019
- *	Purpose	: Storage and manipulation of world data.
+ * @file world.hpp
+ * @brief Main World class - coordinates all world subsystems
+ * @author Gary Ferguson
+ * 
+ * The World class serves as the central coordinator for the simulation environment,
+ * providing access to specialized subsystems that manage different aspects:
+ * 
+ * - WorldGrid: Tile storage and access
+ * - WorldGenerator: Terrain generation using simplex noise
+ * - ScentLayer: Scent-based communication system
+ * - SpatialIndex: O(1) creature neighbor queries
+ * - CorpseManager: Corpse lifecycle management
+ * - SeasonManager: Time and season tracking
+ * - EnvironmentSystem: Environmental queries
+ * - PlantManager: Plant lifecycle management
+ * 
+ * Access subsystems via their accessor methods (e.g., grid(), plants(), corpses()).
  */
 
-#include "../objects/creature/creature.hpp"
-#include "../objects/gameObject.hpp"
-#include "../colorPairs.hpp"
-#include "../rendering/RenderTypes.hpp"
-#include "tile.hpp"
-#include "SimplexNoise.hpp"
+#include "WorldGrid.hpp"
+#include "WorldGenerator.hpp"
 #include "ScentLayer.hpp"
-#include "Corpse.hpp"
 #include "SpatialIndex.hpp"
+#include "CorpseManager.hpp"
+#include "SeasonManager.hpp"
+#include "EnvironmentSystem.hpp"
+#include "PlantManager.hpp"
+#include "tile.hpp"
+#include "Corpse.hpp"
 
-// Genetics system integration (Phase 2.4)
-#include "../genetics/core/GeneRegistry.hpp"
-#include "../genetics/organisms/Plant.hpp"
-#include "../genetics/organisms/PlantFactory.hpp"
-#include "../genetics/defaults/UniversalGenes.hpp"
-#include "../genetics/expression/EnvironmentState.hpp"
-#include "../genetics/interactions/SeedDispersal.hpp"
+#include "../objects/creature/creature.hpp"
+#include "../rendering/RenderTypes.hpp"
 
-#include <iostream>
-#include <fstream>
-#include <stdlib.h>
-#include <string.h>
-#include <cmath>
 #include <vector>
-#include <random>
 #include <memory>
+#include <string>
 
-struct MapGen {
-  double    seed      = 0.0;
-  double    scale     = 0.01;
-  double    freq      = 1.0;
-  double    exponent  = 1.0;
-  unsigned  terraces  = 20;
-  unsigned  rows      = 500;
-  unsigned  cols      = 500;
-  bool      isIsland  = false;
-};
+// Use struct definitions from WorldGenerator.hpp
+using EcoSim::MapGen;
+using EcoSim::OctaveGen;
 
-struct OctaveGen {
-  unsigned  quantity     = 4;
-  double    minWeight    = 0.1;
-  double    maxWeight    = 0.5;
-  double    freqInterval = 1.0;
-
-  double weightInterval () const {
-    return (quantity > 1) ? (maxWeight - minWeight) / (quantity - 1) : 0.0;
-  }
-};
-
-struct TileGen {
-  double      elevation;
-  Tile        prefab;
-  TerrainType terrainType;  // NEW: Semantic terrain type for this tile
-};
-
+/**
+ * @class World
+ * @brief Central coordinator for all world subsystems
+ * 
+ * The World class owns and coordinates all world-related subsystems. Rather than
+ * implementing all functionality directly, it delegates to specialized components
+ * and provides a unified interface for the rest of the application.
+ */
 class World {
-	private:
-		std::vector<std::vector<Tile>> _grid;
-    MapGen                _mapGen;
-    OctaveGen             _octaveGen;
-    std::vector<TileGen>  _tileGen;
-    
-    // RNG for tree placement - initialized once and reused
-    std::mt19937          _rng;
-    
-    // Genetics system integration (Phase 2.4)
-    std::shared_ptr<EcoSim::Genetics::GeneRegistry> _plantRegistry;
-    std::unique_ptr<EcoSim::Genetics::PlantFactory> _plantFactory;
-    EcoSim::Genetics::EnvironmentState _currentEnvironment;
-    EcoSim::Genetics::SeedDispersal _seedDispersal;
-    
-    // Scent-based sensory system (Phase 1: Sensory System)
-    EcoSim::ScentLayer _scentLayer;
-    unsigned int _currentTick;
-    
-    // Spatial indexing for O(1) creature neighbor queries (Phase 3)
-    std::unique_ptr<EcoSim::SpatialIndex> _creatureIndex;
-    
-    // Corpse management
-    std::vector<std::unique_ptr<world::Corpse>> _corpses;
-
- public:
+public:
     //============================================================================
-		//	Constructor
+    // Construction
     //============================================================================
-    World (const MapGen &mapGen, const OctaveGen &octaveGen);
+    
+    /**
+     * @brief Construct a new World
+     * @param mapGen Map generation configuration
+     * @param octaveGen Octave generation configuration
+     */
+    World(const MapGen& mapGen, const OctaveGen& octaveGen);
 
     //============================================================================
-		//	Getters
+    // Core Subsystem Accessors
     //============================================================================
-		std::vector<std::vector<Tile>> &getGrid ();
-		double    getSeed				  () const;
-		double 	  getScale			  () const;
-		double 	  getFreq				  () const;
-		double 	  getExponent			() const;
-		unsigned  getTerraces 		() const;
-		double	  getTerrainLevel (const unsigned int &level) const;
-		unsigned  getRows				  () const;
-		unsigned  getCols				  () const;
-    MapGen    getMapGen       () const;
-    OctaveGen getOctaveGen    () const;
+    
+    /**
+     * @brief Get the WorldGrid for tile access
+     * @return Reference to the WorldGrid
+     */
+    EcoSim::WorldGrid& grid();
+    const EcoSim::WorldGrid& grid() const;
+    
+    /**
+     * @brief Get the scent layer for scent-based communication
+     * @return Reference to the ScentLayer
+     */
+    EcoSim::ScentLayer& scentLayer();
+    const EcoSim::ScentLayer& scentLayer() const;
+    
+    /**
+     * @brief Get the CorpseManager
+     * @return Reference to the CorpseManager
+     */
+    EcoSim::CorpseManager& corpses();
+    const EcoSim::CorpseManager& corpses() const;
+    
+    /**
+     * @brief Get the SeasonManager
+     * @return Reference to the SeasonManager
+     */
+    EcoSim::SeasonManager& seasons();
+    const EcoSim::SeasonManager& seasons() const;
+    
+    /**
+     * @brief Get the EnvironmentSystem
+     * @return Reference to the EnvironmentSystem
+     */
+    EcoSim::EnvironmentSystem& environment();
+    const EcoSim::EnvironmentSystem& environment() const;
+    
+    /**
+     * @brief Get the PlantManager
+     * @return Reference to the PlantManager
+     */
+    EcoSim::PlantManager& plants();
+    const EcoSim::PlantManager& plants() const;
+    
+    //============================================================================
+    // Spatial Indexing
+    //============================================================================
+    
+    /**
+     * @brief Initialize the creature spatial index
+     * Call after world dimensions are set, before adding creatures.
+     */
+    void initializeCreatureIndex();
+    
+    /**
+     * @brief Get the creature spatial index
+     * @return Pointer to spatial index, or nullptr if not initialized
+     */
+    EcoSim::SpatialIndex* getCreatureIndex();
+    const EcoSim::SpatialIndex* getCreatureIndex() const;
+    
+    /**
+     * @brief Rebuild the spatial index from a creature vector
+     * Call after loading saves or major population changes.
+     * @param creatures Vector of all creatures
+     */
+    void rebuildCreatureIndex(std::vector<Creature>& creatures);
+    
+    //============================================================================
+    // Terrain Generation Configuration
+    //============================================================================
+    
+    /** @brief Get the random seed for terrain generation */
+    double    getSeed() const;
+    /** @brief Get the scale factor for terrain generation */
+    double    getScale() const;
+    /** @brief Get the base frequency for noise generation */
+    double    getFreq() const;
+    /** @brief Get the exponent for terrain height curve */
+    double    getExponent() const;
+    /** @brief Get the number of terraces for height quantization */
+    unsigned  getTerraces() const;
+    /** @brief Get the elevation threshold for a terrain level */
+    double    getTerrainLevel(const unsigned int& level) const;
+    /** @brief Get number of rows in the grid */
+    unsigned  getRows() const;
+    /** @brief Get number of columns in the grid */
+    unsigned  getCols() const;
+    /** @brief Get the full map generation configuration */
+    MapGen    getMapGen() const;
+    /** @brief Get the octave generation configuration */
+    OctaveGen getOctaveGen() const;
+    
+    /** @brief Set the random seed for terrain generation */
+    void setSeed(const double& seed);
+    /** @brief Set the scale factor for terrain generation */
+    void setScale(const double& scale);
+    /** @brief Set the base frequency for noise generation */
+    void setFreq(const double& freq);
+    /** @brief Set the exponent for terrain height curve */
+    void setExponent(const double& exponent);
+    /** @brief Set the number of terraces for height quantization */
+    void setTerraces(const unsigned int& terraces);
+    /** @brief Set the number of rows (requires regeneration) */
+    void setRows(const unsigned int& rows);
+    /** @brief Set the number of columns (requires regeneration) */
+    void setCols(const unsigned int& cols);
+    /** @brief Set the elevation threshold for a terrain level */
+    void setTerrainLevel(const unsigned int& level, const unsigned int& newValue);
+    /** @brief Set the full map generation configuration */
+    void setMapGen(const MapGen& mg);
+    /** @brief Set the octave generation configuration */
+    void setOctaveGen(const OctaveGen& og);
+    
+    /**
+     * @brief Regenerate terrain using current configuration
+     * Call after changing generation parameters.
+     */
+    void simplexGen();
 
     //============================================================================
-		//	Setters
-    //============================================================================
-		void setSeed			    (const double &seed);
-		void setScale			    (const double &scale);
-		void setFreq			    (const double &freq);
-		void setExponent		  (const double &exponent);
-		void setTerraces		  (const unsigned int &terraces);
-		void setRows				  (const unsigned int &rows);
-		void setCols				  (const unsigned int &cols);
-		void setTerrainLevel	(const unsigned int &level, const unsigned int &newValue);
-		void set2Dgrid        ();
-    void setMapGen        (const MapGen &mg);
-    void setOctaveGen     (const OctaveGen &og);
-
-    //============================================================================
-		//	World Generation
-    //============================================================================
-    void  addOctaves    (double &noise, const double &nx, const double &ny);
-		Tile  assignTerrain (const double &height);
-		void  simplexGen		();
-
-    //============================================================================
-    //  Genetics-Based Plants (Phase 2.4)
+    // Simulation Update
     //============================================================================
     
     /**
-     * @brief Initialize the genetics plant factory and registry
-     * Call this once before adding genetics-based plants.
+     * @brief Update all world objects for one tick
+     * Updates plants and other time-dependent systems.
      */
-    void initializeGeneticsPlants();
-    
-    /**
-     * @brief Check if genetics plant system is initialized
-     * @return true if plant factory is ready
-     */
-    bool hasGeneticsPlants() const;
-    
-    /**
-     * @brief Add genetics-based plants throughout the world
-     * @param lowElev Minimum elevation for plant placement
-     * @param highElev Maximum elevation for plant placement
-     * @param rate Percentage chance (1-100) of plant placement per tile
-     * @param speciesName Species template name (e.g., "berry_bush", "oak_tree")
-     */
-    void addGeneticsPlants(unsigned int lowElev, unsigned int highElev,
-                           unsigned int rate, const std::string& speciesName);
-    
-    /**
-     * @brief Add a single genetics plant at specific location
-     * @param x X coordinate
-     * @param y Y coordinate
-     * @param speciesName Species template name
-     * @return true if plant added successfully
-     */
-    bool addGeneticsPlant(int x, int y, const std::string& speciesName);
-    
-    /**
-     * @brief Get the current environment state
-     * @return Reference to current environment state
-     */
-    EcoSim::Genetics::EnvironmentState& getEnvironment();
-    
-    /**
-     * @brief Update environment state (call each tick or when environment changes)
-     * @param temperature Current temperature
-     * @param lightLevel Light level (0.0 to 1.0)
-     * @param waterAvailability Water availability (0.0 to 1.0)
-     */
-    void updateEnvironment(float temperature, float lightLevel, float waterAvailability);
-    
-    /**
-     * @brief Get the plant factory (for direct plant creation)
-     * @return Pointer to plant factory, or nullptr if not initialized
-     */
-    EcoSim::Genetics::PlantFactory* getPlantFactory();
-    
-    /**
-     * @brief Get the plant registry (for gene lookups)
-     * @return Shared pointer to gene registry
-     */
-    std::shared_ptr<EcoSim::Genetics::GeneRegistry> getPlantRegistry();
- 
-    //============================================================================
-    //	Update Objects
-    //============================================================================
     void updateAllObjects();
     
     /**
-     * @brief Update all genetics-based plants in the world
-     * Handles growth, fruit production, death, and cleanup
-     */
-    void updateGeneticsPlants();
-    
-    //============================================================================
-    //  Scent Layer (Phase 1: Sensory System)
-    //============================================================================
-    
-    /**
-     * @brief Get the scent layer for querying or depositing scents
-     * @return Reference to the scent layer
-     */
-    EcoSim::ScentLayer& getScentLayer();
-    
-    /**
-     * @brief Get the scent layer (const version)
-     * @return Const reference to the scent layer
-     */
-    const EcoSim::ScentLayer& getScentLayer() const;
-    
-    /**
-     * @brief Update the scent layer (decay old scents, etc.)
-     * Call this each tick during the main update loop.
+     * @brief Update the scent layer (decay old scents)
+     * Call each tick during the main update loop.
      */
     void updateScentLayer();
     
@@ -233,82 +209,65 @@ class World {
     unsigned int getCurrentTick() const;
     
     //============================================================================
-    //  Spatial Indexing (Phase 3: O(1) Neighbor Queries)
+    // Corpse Convenience Methods
     //============================================================================
+    // These delegate to CorpseManager for backward compatibility.
+    // Prefer using corpses() accessor for new code.
     
-    /**
-     * @brief Initialize the creature spatial index
-     * Call this after world dimensions are set, before adding creatures.
-     */
-    void initializeCreatureIndex();
-    
-    /**
-     * @brief Get the creature spatial index
-     * @return Pointer to spatial index, or nullptr if not initialized
-     */
-    EcoSim::SpatialIndex* getCreatureIndex();
-    
-    /**
-     * @brief Get the creature spatial index (const version)
-     * @return Const pointer to spatial index, or nullptr if not initialized
-     */
-    const EcoSim::SpatialIndex* getCreatureIndex() const;
-    
-    /**
-     * @brief Rebuild the spatial index from a creature vector
-     * Call this after loading saves or major population changes.
-     * @param creatures Vector of all creatures
-     */
-    void rebuildCreatureIndex(std::vector<Creature>& creatures);
-    
-    //============================================================================
-    //  Corpse Management
-    //============================================================================
-    
-    /**
-     * @brief Add a corpse at a location when a creature dies
-     * @param x X coordinate
-     * @param y Y coordinate
-     * @param size Size of the creature (affects nutrition and decay time)
-     * @param speciesName Species name for the corpse
-     * @param bodyCondition Body condition (0.0-1.0) based on creature's energy when it died
-     */
     void addCorpse(float x, float y, float size, const std::string& speciesName, float bodyCondition = 0.5f);
-    
-    /**
-     * @brief Update all corpses (advance decay, remove fully decayed)
-     */
     void tickCorpses();
-    
-    /**
-     * @brief Get all corpses in the world
-     * @return Const reference to corpse vector
-     */
     const std::vector<std::unique_ptr<world::Corpse>>& getCorpses() const;
-    
-    /**
-     * @brief Find the nearest corpse within range
-     * @param x X coordinate to search from
-     * @param y Y coordinate to search from
-     * @param maxRange Maximum search range
-     * @return Pointer to nearest corpse, or nullptr if none found
-     */
     world::Corpse* findNearestCorpse(float x, float y, float maxRange);
-    
-    /**
-     * @brief Remove a specific corpse from the world
-     * @param corpse Pointer to the corpse to remove
-     */
     void removeCorpse(world::Corpse* corpse);
     
-    /// Maximum number of corpses for performance
-    static constexpr size_t MAX_CORPSES = 100;
+    //============================================================================
+    // Serialization
+    //============================================================================
+    
+    /** @brief Serialize the world state to a string for saving */
+    std::string toString() const;
+    
+    //============================================================================
+    // Legacy Interface
+    //============================================================================
+    // These methods are kept for backward compatibility with existing code.
+    // Prefer using grid() accessor for new code.
+    
+    /** @brief Get raw 2D grid (legacy - prefer grid() accessor) */
+    std::vector<std::vector<Tile>>& getGrid();
+    
+    /** @brief Get scent layer (legacy - prefer scentLayer() accessor) */
+    EcoSim::ScentLayer& getScentLayer();
+    const EcoSim::ScentLayer& getScentLayer() const;
 
+private:
     //============================================================================
-  //	To String
+    // Core Components
     //============================================================================
-    /** @brief Serializes the world state to a string for saving */
-    std::string toString () const;
+    EcoSim::WorldGrid _grid;
+    std::unique_ptr<EcoSim::WorldGenerator> _generator;
+    EcoSim::ScentLayer _scentLayer;
+    
+    //============================================================================
+    // Subsystem Managers
+    //============================================================================
+    std::unique_ptr<EcoSim::SpatialIndex> _creatureIndex;
+    std::unique_ptr<EcoSim::CorpseManager> _corpseManager;
+    std::unique_ptr<EcoSim::SeasonManager> _seasonManager;
+    std::unique_ptr<EcoSim::EnvironmentSystem> _environmentSystem;
+    std::unique_ptr<EcoSim::PlantManager> _plantManager;
+    
+    //============================================================================
+    // State
+    //============================================================================
+    unsigned int _currentTick;
+    
+    //============================================================================
+    // Private Methods
+    //============================================================================
+    
+    /** @brief Initialize 2D grid dimensions */
+    void set2Dgrid();
 };
 
 #endif  // ECOSIM_WORLD_WORLD_HPP

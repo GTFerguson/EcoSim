@@ -44,6 +44,12 @@ set(GENETICS_TEST_SOURCES
     genetics/test_modulation_policy.cpp
     genetics/test_serialization.cpp
     world/test_spatial_index.cpp
+    world/test_world_grid.cpp
+    world/test_world_generator.cpp
+    world/test_corpse_manager.cpp
+    world/test_season_manager.cpp
+    world/test_environment_system.cpp
+    world/test_plant_manager.cpp
 )
 
 add_executable(GeneticsTest

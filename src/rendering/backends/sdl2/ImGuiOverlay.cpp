@@ -13,6 +13,7 @@
 #include "rendering/IRenderer.hpp"  // For SaveFileInfo struct
 #include "world/world.hpp"
 #include "world/Corpse.hpp"
+#include "world/CorpseManager.hpp"
 #include "objects/creature/creature.hpp"
 
 // New genetics system includes
@@ -534,10 +535,10 @@ void ImGuiOverlay::renderWorldInfoWindow(const World* world, const std::vector<C
                 size_t corpseCount = corpses.size();
                 
                 ImGui::Text("Active Corpses: %zu", corpseCount);
-                ImGui::Text("Max Corpses: %zu", World::MAX_CORPSES);
+                ImGui::Text("Max Corpses: %zu", EcoSim::CorpseManager::MAX_CORPSES);
                 
                 // Corpse usage bar
-                float corpseUsage = static_cast<float>(corpseCount) / static_cast<float>(World::MAX_CORPSES);
+                float corpseUsage = static_cast<float>(corpseCount) / static_cast<float>(EcoSim::CorpseManager::MAX_CORPSES);
                 ImGui::Text("Usage:");
                 ImGui::SameLine(80);
                 ImVec4 usageColor;

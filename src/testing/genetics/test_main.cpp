@@ -66,6 +66,24 @@ extern void runSerializationTests();
 // SpatialIndex test runner (world spatial queries)
 extern void runSpatialIndexTests();
 
+// WorldGrid test runner (grid storage component)
+extern void runWorldGridTests();
+
+// WorldGenerator test runner (terrain generation component)
+extern void runWorldGeneratorTests();
+
+// CorpseManager test runner (corpse lifecycle management)
+extern void runCorpseManagerTests();
+
+// SeasonManager test runner (time/season progression)
+extern void runSeasonManagerTests();
+
+// EnvironmentSystem test runner (per-tile environmental queries)
+extern void runEnvironmentSystemTests();
+
+// PlantManager test runner (plant lifecycle management)
+extern void runPlantManagerTests();
+
 int main() {
     auto start = std::chrono::high_resolution_clock::now();
     
@@ -204,6 +222,36 @@ int main() {
     // SpatialIndex Tests (world spatial queries)
     std::cout << "=== SpatialIndex Tests (World) ===" << std::endl;
     runSpatialIndexTests();
+    std::cout << std::endl;
+    
+    // WorldGrid Tests (grid storage component)
+    std::cout << "=== WorldGrid Tests (World) ===" << std::endl;
+    runWorldGridTests();
+    std::cout << std::endl;
+    
+    // WorldGenerator Tests (terrain generation component)
+    std::cout << "=== WorldGenerator Tests (World) ===" << std::endl;
+    runWorldGeneratorTests();
+    std::cout << std::endl;
+    
+    // CorpseManager Tests (corpse lifecycle management)
+    std::cout << "=== CorpseManager Tests (World) ===" << std::endl;
+    runCorpseManagerTests();
+    std::cout << std::endl;
+    
+    // SeasonManager Tests (time/season progression)
+    std::cout << "=== SeasonManager Tests (World) ===" << std::endl;
+    runSeasonManagerTests();
+    std::cout << std::endl;
+    
+    // EnvironmentSystem Tests (per-tile environmental queries)
+    std::cout << "=== EnvironmentSystem Tests (World) ===" << std::endl;
+    runEnvironmentSystemTests();
+    std::cout << std::endl;
+    
+    // PlantManager Tests (plant lifecycle management)
+    std::cout << "=== PlantManager Tests (World) ===" << std::endl;
+    runPlantManagerTests();
     std::cout << std::endl;
     
     auto end = std::chrono::high_resolution_clock::now();
