@@ -718,82 +718,24 @@ float Plant::getScentProductionRate() const {
 }
 
 // ============================================================================
-// Phase 2.3: Serialization
+// String Serialization (delegates to JSON for complete genome preservation)
 // ============================================================================
 
 std::string Plant::toString() const {
-    std::ostringstream ss;
-    
-    // Format: id,x,y,age,alive,health,current_size,mature,entityType,fruitTimer
-    // Note: Full genome serialization to be added in future phase
-    ss << id_ << ","
-       << x_ << ","
-       << y_ << ","
-       << age_ << ","
-       << (alive_ ? 1 : 0) << ","
-       << health_ << ","
-       << current_size_ << ","
-       << (mature_ ? 1 : 0) << ","
-       << static_cast<int>(entityType_) << ","
-       << fruitTimer_;
-    
-    return ss.str();
+    // Use JSON serialization internally to ensure genome is preserved
+    return toJson().dump();
 }
 
 std::unique_ptr<Plant> Plant::fromString(const std::string& data,
                                           const GeneRegistry& registry) {
-    std::istringstream ss(data);
-    std::string token;
-    
-    // Parse fields
-    unsigned int id, age, fruitTimer;
-    int x, y, entityTypeInt;
-    bool alive, mature;
-    float health, currentSize;
-    
-    if (!std::getline(ss, token, ',')) return nullptr;
-    id = std::stoul(token);
-    
-    if (!std::getline(ss, token, ',')) return nullptr;
-    x = std::stoi(token);
-    
-    if (!std::getline(ss, token, ',')) return nullptr;
-    y = std::stoi(token);
-    
-    if (!std::getline(ss, token, ',')) return nullptr;
-    age = std::stoul(token);
-    
-    if (!std::getline(ss, token, ',')) return nullptr;
-    alive = (std::stoi(token) != 0);
-    
-    if (!std::getline(ss, token, ',')) return nullptr;
-    health = std::stof(token);
-    
-    if (!std::getline(ss, token, ',')) return nullptr;
-    currentSize = std::stof(token);
-    
-    if (!std::getline(ss, token, ',')) return nullptr;
-    mature = (std::stoi(token) != 0);
-    
-    if (!std::getline(ss, token, ',')) return nullptr;
-    entityTypeInt = std::stoi(token);
-    
-    if (!std::getline(ss, token, ',')) return nullptr;
-    fruitTimer = std::stoul(token);
-    
-    // Create plant with random genome (genome serialization to be added)
-    // Note: This creates a new random genome, not the original
-    auto plant = std::make_unique<Plant>(x, y, registry);
-    plant->setId(id);
-    plant->age_ = age;
-    plant->alive_ = alive;
-    plant->health_ = health;
-    plant->current_size_ = currentSize;
-    plant->mature_ = mature;
-    plant->entityType_ = static_cast<EntityType>(entityTypeInt);
-    plant->fruitTimer_ = fruitTimer;
-    
-    return plant;
+    try {
+        nlohmann::json j = nlohmann::json::parse(data);
+        Plant plant = fromJson(j, registry);
+        return std::make_unique<Plant>(std::move(plant));
+    } catch (const nlohmann::json::exception& e) {
+        // JSON parsing failed - return nullptr to indicate error
+        return nullptr;
+    }
 }
 
 // ============================================================================

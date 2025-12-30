@@ -807,6 +807,7 @@ short Creature::deathCheck () const {
   else if (_hunger  < STARVATION_POINT)   return 2;
   else if (_thirst  < DEHYDRATION_POINT)  return 3;
   else if (_mate    < DISCOMFORT_POINT)   return 4;
+  else if (_health  <= 0.0f)              return 5;  // Combat death
 
   return 0;
 }
@@ -1403,7 +1404,7 @@ bool Creature::findPrey (vector<vector<Tile>> &map,
           _hunger += calories;
           if (_hunger > RESOURCE_LIMIT) _hunger = RESOURCE_LIMIT;
           
-          // Log the creature death event (before erasing from vector)
+          // Log the creature death event
           logging::Logger::getInstance().creatureDied(
             closestPrey->getId(),
             closestPrey->generateName(),
@@ -1421,7 +1422,8 @@ bool Creature::findPrey (vector<vector<Tile>> &map,
             0.0f                    // damage received (prey is already dead)
           );
           
-          creatures.erase(closestPrey);
+          // Mark prey for removal by setting health to 0 (already done via takeDamage)
+          // The main simulation loop removes dead creatures via deathCheck()
           preyAte++;
           
           // Clear combat state

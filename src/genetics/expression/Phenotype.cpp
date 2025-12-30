@@ -88,53 +88,23 @@ float Phenotype::computeTrait(const std::string& trait_id) const {
         return 0.0f;
     }
     
-    // Check if this is a direct gene lookup
-    if (genome_->hasGene(trait_id) && registry_->hasGene(trait_id)) {
-        const GeneDefinition& definition = registry_->getDefinition(trait_id);
-        
-        // Express the gene
-        float raw_value = expressGene(trait_id, definition);
-        
-        // Apply modulations (organism state uses policy)
-        float modulated = applyAgeModulation(raw_value, organism_state_.age_normalized);
-        modulated = applyEnvironmentModulation(modulated, trait_id, environment_);
-        modulated = applyOrganismStateModulation(modulated, trait_id, organism_state_);
-        
-        // Store in computed traits map
-        computed_traits_[trait_id] = modulated;
-        
-        return modulated;
+    // Early exit if trait doesn't exist (either as direct gene or via effect bindings)
+    if (!hasTrait(trait_id)) {
+        return 0.0f;
     }
     
-    // Trait not found - check if it's derived from effect bindings
-    // Search all genes for effects that target this trait
-    PhenotypeUtils::AccumulatedEffect accumulated;
+    // Delegate to raw computation (handles both direct genes and effect bindings)
+    float raw_value = computeTraitRaw(trait_id);
     
-    for (const auto& [gene_id, definition] : registry_->getAllDefinitions()) {
-        for (const auto& effect : definition.getEffects()) {
-            if (effect.target_trait == trait_id) {
-                if (!genome_->hasGene(gene_id)) {
-                    continue;
-                }
-                
-                float gene_value = expressGene(gene_id, definition);
-                accumulated = PhenotypeUtils::applyEffect(
-                    accumulated, effect.effect_type, gene_value, effect.scale_factor);
-            }
-        }
-    }
+    // Apply all modulations
+    float modulated = applyAgeModulation(raw_value, organism_state_.age_normalized);
+    modulated = applyEnvironmentModulation(modulated, trait_id, environment_);
+    modulated = applyOrganismStateModulation(modulated, trait_id, organism_state_);
     
-    if (accumulated.found_contribution) {
-        // Apply modulations to accumulated value (organism state uses policy)
-        float modulated = applyAgeModulation(accumulated.value, organism_state_.age_normalized);
-        modulated = applyEnvironmentModulation(modulated, trait_id, environment_);
-        modulated = applyOrganismStateModulation(modulated, trait_id, organism_state_);
-        
-        computed_traits_[trait_id] = modulated;
-        return modulated;
-    }
+    // Store in computed traits map
+    computed_traits_[trait_id] = modulated;
     
-    return 0.0f;
+    return modulated;
 }
 
 float Phenotype::computeTraitRaw(const std::string& trait_id) const {
