@@ -20,10 +20,10 @@
 #include "../gameObject.hpp"
 #include "navigator.hpp"
 
-// Sensory system includes (Phase 1)
+// Sensory system includes
 #include "world/ScentLayer.hpp"
 
-// New genetics system includes (M5 integration)
+// New genetics system includes
 #include "genetics/core/Genome.hpp"
 #include "genetics/core/GeneRegistry.hpp"
 #include "genetics/expression/Phenotype.hpp"
@@ -33,14 +33,14 @@
 #include "genetics/interfaces/IGeneticOrganism.hpp"
 #include "genetics/interfaces/IReproducible.hpp"
 
-// Creature-Plant interaction includes (Phase 2.4)
+// Creature-Plant interaction includes
 #include "genetics/interactions/FeedingInteraction.hpp"
 #include "genetics/interactions/SeedDispersal.hpp"
 
-// Classification system (Phase 2 - Unified Identity)
+// Classification system
 #include "genetics/classification/ArchetypeIdentity.hpp"
 
-// Behavior system (Phase 3 - Creature God Class decomposition)
+// Behavior system
 #include "genetics/behaviors/BehaviorController.hpp"
 #include "genetics/behaviors/BehaviorContext.hpp"
 #include "genetics/systems/PerceptionSystem.hpp"
@@ -186,7 +186,7 @@ class Creature: public GameObject,
     std::unique_ptr<EcoSim::Genetics::Phenotype> _phenotype;
     
     //============================================================================
-    //  Archetype Identity (Phase 2 - Unified Identity System)
+    //  Archetype Identity
     //============================================================================
     /**
      * @brief Shared archetype flyweight (non-owning)
@@ -215,7 +215,7 @@ class Creature: public GameObject,
     static std::unique_ptr<EcoSim::Genetics::SeedDispersal> s_seedDispersal;
 
     //============================================================================
-    //  Behavior System (Phase 3 - Creature God Class decomposition)
+    //  Behavior System
     //============================================================================
     std::unique_ptr<EcoSim::Genetics::BehaviorController> _behaviorController;
     
@@ -232,6 +232,32 @@ class Creature: public GameObject,
      * @return New offspring creature
      */
     Creature  breedCreature (Creature &mate);
+
+  protected:
+    //============================================================================
+    //  Internal State Accessors (for testing and derived classes)
+    //============================================================================
+    // Enables unit testing of creature state transitions without exposing
+    // implementation details in the public API. Test fixtures can inherit
+    // from Creature to access these methods.
+    
+    float getInternalEnergy() const { return _hunger; }
+    float getInternalHydration() const { return _thirst; }
+    float getInternalFatigueLevel() const { return _fatigue; }
+    float getInternalMatingUrge() const { return _mate; }
+    float getInternalHealthValue() const { return _health; }
+    bool getInternalCombatFlag() const { return _inCombat; }
+    bool getInternalFleeingFlag() const { return _isFleeing; }
+    int getInternalTargetCreatureId() const { return _targetId; }
+    int getInternalCombatCooldownTicks() const { return _combatCooldown; }
+    
+    // Plant interaction state
+    const std::vector<std::tuple<int, int, int, int>>& getInternalAttachedBurrs() const { return _attachedBurrs; }
+    const std::vector<std::tuple<int, float, int>>& getInternalGutSeeds() const { return _gutSeeds; }
+    
+    // Allow mutable access for test setup
+    std::vector<std::tuple<int, int, int, int>>& getInternalAttachedBurrsMutable() { return _attachedBurrs; }
+    std::vector<std::tuple<int, float, int>>& getInternalGutSeedsMutable() { return _gutSeeds; }
 
   public:
     //============================================================================
@@ -257,7 +283,7 @@ class Creature: public GameObject,
              std::unique_ptr<EcoSim::Genetics::Genome> genome);
     
    
-   // Copy/Move constructors and assignment operators (M5: required due to unique_ptr members)
+   // Copy/Move constructors and assignment operators (required due to unique_ptr members)
     Creature(const Creature& other);
     Creature(Creature&& other) noexcept;
     Creature& operator=(const Creature& other);
@@ -826,7 +852,7 @@ class Creature: public GameObject,
     static void initializeInteractionSystems();
 
     //============================================================================
-    //  Behavior System (Phase 3 - Creature God Class decomposition)
+    //  Behavior System
     //============================================================================
     /**
      * @brief Get the behavior controller for this creature.
