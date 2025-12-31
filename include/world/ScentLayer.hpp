@@ -156,12 +156,22 @@ struct ScentDeposit {
 class ScentLayer {
 public:
     /**
+     * @brief Default decay rate - fraction of intensity retained per decay cycle
+     *
+     * A value of 0.95 means scents retain 95% of their intensity each decay cycle.
+     * Lower values cause faster decay; higher values cause slower decay.
+     */
+    static constexpr float DEFAULT_DECAY_RATE = 0.95f;
+    
+    /**
      * @brief Construct a scent layer for the given world dimensions
      * @param width World width in tiles
      * @param height World height in tiles
      * @param decayInterval Ticks between decay processing (default 10)
+     * @param decayRate Fraction of intensity retained per decay cycle (default 0.95)
      */
-    ScentLayer(int width, int height, unsigned int decayInterval = 10);
+    ScentLayer(int width, int height, unsigned int decayInterval = 10,
+               float decayRate = DEFAULT_DECAY_RATE);
     
     /**
      * @brief Default constructor for delayed initialization
@@ -272,12 +282,28 @@ public:
     bool isInBounds(int x, int y) const {
         return x >= 0 && x < _width && y >= 0 && y < _height;
     }
+    
+    /**
+     * @brief Set the decay rate for scent intensity reduction
+     * @param rate Fraction of intensity retained per decay cycle [0.0-1.0]
+     *
+     * Values closer to 1.0 result in slower decay (scents persist longer).
+     * Values closer to 0.0 result in faster decay (scents disappear quickly).
+     */
+    void setDecayRate(float rate);
+    
+    /**
+     * @brief Get the current decay rate
+     * @return Fraction of intensity retained per decay cycle
+     */
+    float getDecayRate() const { return _decayRate; }
 
 private:
     int _width;
     int _height;
     unsigned int _decayInterval;
     unsigned int _lastDecayTick;
+    float _decayRate;
     
     /**
      * @brief Hash function for tile coordinates

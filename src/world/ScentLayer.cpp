@@ -17,15 +17,21 @@ ScentLayer::ScentLayer()
     , _height(0)
     , _decayInterval(10)
     , _lastDecayTick(0)
+    , _decayRate(DEFAULT_DECAY_RATE)
 {
 }
 
-ScentLayer::ScentLayer(int width, int height, unsigned int decayInterval)
+ScentLayer::ScentLayer(int width, int height, unsigned int decayInterval, float decayRate)
     : _width(width)
     , _height(height)
     , _decayInterval(decayInterval)
     , _lastDecayTick(0)
+    , _decayRate(decayRate)
 {
+}
+
+void ScentLayer::setDecayRate(float rate) {
+    _decayRate = std::max(0.0f, std::min(1.0f, rate));
 }
 
 void ScentLayer::initialize(int width, int height) {
@@ -183,12 +189,23 @@ void ScentLayer::processDecay(unsigned int currentTick) {
             deposits.end()
         );
         
-        // Update remaining scent intensities
+        // Update remaining scent intensities with global decay rate multiplier
         for (auto& scent : deposits) {
-            scent.intensity = scent.getDecayedIntensity(currentTick);
+            float tickBasedIntensity = scent.getDecayedIntensity(currentTick);
+            scent.intensity = tickBasedIntensity * _decayRate;
             // Reset tick so the new intensity becomes the baseline
             scent.tickDeposited = currentTick;
         }
+        
+        // Remove scents that have decayed below threshold
+        constexpr float INTENSITY_THRESHOLD = 0.001f;
+        deposits.erase(
+            std::remove_if(deposits.begin(), deposits.end(),
+                [](const ScentDeposit& s) {
+                    return s.intensity < INTENSITY_THRESHOLD;
+                }),
+            deposits.end()
+        );
         
         // Remove tile entry if no scents remain
         if (deposits.empty()) {
