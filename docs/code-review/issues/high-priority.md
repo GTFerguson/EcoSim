@@ -8,8 +8,8 @@ tags: [code-review, issues, high-priority]
 
 # High Priority Issues
 
-> [!IMPORTANT]
-> These issues should be addressed in the next development cycle. They significantly impact functionality, performance, or maintainability.
+> [!NOTE]
+> All high priority issues have been resolved as of 2025-12-31.
 
 ## Overview
 
@@ -20,7 +20,7 @@ High priority issues are those that:
 - Have workarounds but are frequently encountered
 - Could escalate to critical if left unaddressed
 
-**Total High Priority Issues**: 10 (7 Resolved, 3 Open)
+**Total High Priority Issues**: 10 (10 Resolved, 0 Open)
 
 ## Issue Registry
 
@@ -30,12 +30,12 @@ High priority issues are those that:
 | H-002 | Genetics Core | Multiple | DRY violation: `getRandomEngine()` pattern | Code duplication | ✅ Resolved |
 | H-003 | Expression System | [`Phenotype.cpp:85-250`](../../../src/genetics/expression/Phenotype.cpp:85) | DRY violation: Effect processing switch | Maintenance burden | ✅ Resolved |
 | H-004 | Creature System | [`creature.cpp:1165`](../../../src/objects/creature/creature.cpp:1165) | Iterator invalidation risk | Potential crashes | ✅ Resolved |
-| H-005 | Combat & Interactions | Multiple interaction files | DRY violation: `getTraitSafe()` duplicated | Code duplication | ⏳ Open |
+| H-005 | Combat & Interactions | [`PhenotypeUtils.hpp`](../../../include/genetics/expression/PhenotypeUtils.hpp) | DRY violation: `getTraitSafe()` duplicated | Code duplication | ✅ Resolved |
 | H-006 | World System | [`SpatialIndex.hpp`](../../../include/world/SpatialIndex.hpp) | No spatial indexing for creatures | O(n²) performance | ✅ Resolved |
-| H-007 | Combat & Interactions | [`DamageTypes.hpp:30-35`](../../../include/genetics/interactions/DamageTypes.hpp:30) | Asymmetric defense defaults | Balance issue | ⏳ Open |
+| H-007 | Combat & Interactions | Multiple files | Asymmetric defense defaults | Balance issue | ✅ Resolved |
 | H-008 | Plant System | [`Plant.cpp:708-762`](../../../src/genetics/organisms/Plant.cpp:708) | Incomplete serialization | Data loss on load | ✅ Resolved |
 | H-009 | Plant System | [`Plant.hpp:66`](../../../include/genetics/organisms/Plant.hpp:66) | Missing IReproducible interface | API inconsistency | ✅ Resolved |
-| H-010 | Support Systems | [`Logger.hpp:300-301`](../../../include/logging/Logger.hpp:300) | Unbounded history growth | Memory exhaustion | ⏳ Open |
+| H-010 | Support Systems | [`Logger.hpp`](../../../include/logging/Logger.hpp) | Unbounded history growth | Memory exhaustion | ✅ Resolved |
 
 ---
 
@@ -120,15 +120,15 @@ Implemented mark-and-sweep pattern - creatures are now marked for death during i
 **Component**: Combat & Interactions
 **Files**: `CombatInteraction.cpp`, `FeedingInteraction.cpp`, `SeedDispersal.cpp`
 **Severity**: High
-**Status**: ⏳ Open
+**Status**: ✅ Resolved (2025-12-31)
 
 #### Description
 
 `getTraitSafe()` helper duplicated across multiple interaction files.
 
-#### Suggested Fix
+#### Resolution
 
-Extract to `PhenotypeUtils.hpp`.
+Consolidated all `getTraitSafe()` implementations into [`PhenotypeUtils.hpp`](../../../include/genetics/expression/PhenotypeUtils.hpp). All 8 files now use the shared utility, eliminating code duplication. Additionally, all 53 fallback values changed from non-zero defaults to 0.0f to prevent "phantom capabilities" for organisms without those genes.
 
 ---
 
@@ -152,17 +152,17 @@ Implemented [`SpatialIndex`](../../../include/world/SpatialIndex.hpp) with grid-
 ### H-007: Asymmetric Defense Defaults
 
 **Component**: Combat & Interactions
-**File**: [`DamageTypes.hpp:30-35`](../../../include/genetics/interactions/DamageTypes.hpp:30)
+**File**: Multiple files using `getTraitSafe()`
 **Severity**: High
-**Status**: ⏳ Open
+**Status**: ✅ Resolved (2025-12-31)
 
 #### Description
 
-Defense defaults (0.5, 0.3, 0.4) favor Blunt attacks inherently.
+Non-zero fallback values in `getTraitSafe()` calls were granting "phantom capabilities" to organisms without those genes. For example, defense traits defaulting to 0.3-0.5 meant creatures without defense genes still had inherent resistance.
 
-#### Suggested Fix
+#### Resolution
 
-Balance to (0.4, 0.4, 0.4).
+All 53 `getTraitSafe()` fallback values across 8 files changed to 0.0f. Organisms without specific genes now correctly have zero capability for those traits. This affects defense traits, weapon traits, perception, metabolism, and all other phenotype lookups.
 
 ---
 
@@ -203,17 +203,17 @@ Implemented unified `IReproducible` interface for Plant class, providing consist
 ### H-010: Unbounded Logger History
 
 **Component**: Support Systems
-**File**: [`Logger.hpp:300-301`](../../../include/logging/Logger.hpp:300)
+**File**: [`Logger.hpp`](../../../include/logging/Logger.hpp)
 **Severity**: High
-**Status**: ⏳ Open
+**Status**: ✅ Resolved (2025-12-31)
 
 #### Description
 
-`m_populationHistory` and `m_breedingHistory` grow without bounds.
+`m_populationHistory` and `m_breedingHistory` grow without bounds, leading to potential memory exhaustion in long-running simulations.
 
-#### Suggested Fix
+#### Resolution
 
-Add `MAX_HISTORY_SIZE` limit with ring buffer approach.
+Implemented bounded history using `std::deque` with `MAX_HISTORY_SIZE` limit (10,000 entries). When the limit is reached, oldest entries are removed via `pop_front()` before adding new ones. This provides O(1) insertion/removal while maintaining a sliding window of recent history.
 
 ---
 
