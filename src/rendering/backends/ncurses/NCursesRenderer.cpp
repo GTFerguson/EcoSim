@@ -103,8 +103,10 @@ void NCursesRenderer::renderWorld(const World& world, const Viewport& viewport) 
         return;
     }
     
-    // Get the grid from world (using const_cast temporarily since getGrid() isn't const)
-    // This is safe because we're only reading from the grid
+    // The legacy getGrid() method returns a non-const reference and lacks a const overload.
+    // This const_cast is safe because renderWorld only reads tile data for display purposes.
+    // Future improvement: Refactor to use the modern grid() accessor with WorldGrid's const
+    // interface, or add a const overload to getGrid() when the legacy interface is updated.
     World& mutableWorld = const_cast<World&>(world);
     std::vector<std::vector<Tile>>& grid = mutableWorld.getGrid();
     
