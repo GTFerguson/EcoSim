@@ -11,6 +11,7 @@
 #include "genetics/systems/PerceptionSystem.hpp"
 #include "genetics/interfaces/IGeneticOrganism.hpp"
 #include "genetics/expression/Phenotype.hpp"
+#include "genetics/expression/PhenotypeUtils.hpp"
 #include "world/ScentLayer.hpp"
 
 #include <cmath>
@@ -19,20 +20,7 @@
 namespace EcoSim {
 namespace Genetics {
 
-// =============================================================================
-// Helper: Safe Trait Access
-// =============================================================================
-
-float PerceptionSystem::getTraitSafe(
-    const Phenotype& phenotype,
-    const std::string& traitName,
-    float defaultValue) const
-{
-    if (phenotype.hasTrait(traitName)) {
-        return phenotype.getTrait(traitName);
-    }
-    return defaultValue;
-}
+using PhenotypeUtils::getTraitSafe;
 
 // =============================================================================
 // Scent Signature Generation
@@ -219,13 +207,13 @@ bool PerceptionSystem::isEdibleScent(
     float hardiness = signature[3];      // [3] = hardiness
     
     // Get eater's tolerance traits from phenotype
-    float toxinResistance = getTraitSafe(phenotype, "toxin_resistance", 0.3f);
-    float eaterHardiness = getTraitSafe(phenotype, "hardiness", 0.3f);
+    float toxinResistance = getTraitSafe(phenotype, "toxin_resistance", 0.0f);
+    float eaterHardiness = getTraitSafe(phenotype, "hardiness", 0.0f);
     
     // Get digestion capabilities (organism-agnostic diet checking)
     // plant_digestion > 0.1 means can eat plants
     // meat_digestion > 0.1 means can eat meat (for future creature scents)
-    float plantDigestion = getTraitSafe(phenotype, "plant_digestion", 0.5f);
+    float plantDigestion = getTraitSafe(phenotype, "plant_digestion", 0.0f);
     
     // Check 1: Can they digest plant matter at all?
     // (FOOD_TRAIL scents are primarily from plants currently)
@@ -264,10 +252,10 @@ float PerceptionSystem::calculateVisualRange(
     const Phenotype& phenotype = seeker.getPhenotype();
     
     // Get sight range from phenotype (base visual range)
-    float sightRange = getTraitSafe(phenotype, "sight_range", 50.0f);
+    float sightRange = getTraitSafe(phenotype, "sight_range", 0.0f);
     
     // Get color vision ability (0-1)
-    float colorVision = getTraitSafe(phenotype, "color_vision", 0.3f);
+    float colorVision = getTraitSafe(phenotype, "color_vision", 0.0f);
     
     // Visual bonus: high color vision helps spot colorful targets
     // Formula: sightRange + (colorVision * targetColorfulness * 100)
@@ -281,7 +269,7 @@ float PerceptionSystem::calculateScentRange(const IGeneticOrganism& seeker) cons
     const Phenotype& phenotype = seeker.getPhenotype();
     
     // Scent detection gene determines range (0-1 scaled to 0-100 tiles)
-    float scentDetection = getTraitSafe(phenotype, "scent_detection", 0.5f);
+    float scentDetection = getTraitSafe(phenotype, "scent_detection", 0.0f);
     
     return scentDetection * SCENT_RANGE_MULTIPLIER;
 }

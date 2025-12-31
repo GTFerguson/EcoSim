@@ -11,6 +11,7 @@
 #include "genetics/systems/HealthSystem.hpp"
 #include "genetics/interfaces/IGeneticOrganism.hpp"
 #include "genetics/expression/Phenotype.hpp"
+#include "genetics/expression/PhenotypeUtils.hpp"
 #include "genetics/defaults/UniversalGenes.hpp"
 
 #include <cmath>
@@ -19,20 +20,7 @@
 namespace EcoSim {
 namespace Genetics {
 
-// =============================================================================
-// Helper: Safe Trait Access
-// =============================================================================
-
-float HealthSystem::getTraitSafe(
-    const Phenotype& phenotype,
-    const std::string& traitName,
-    float defaultValue) const
-{
-    if (phenotype.hasTrait(traitName)) {
-        return phenotype.getTrait(traitName);
-    }
-    return defaultValue;
-}
+using PhenotypeUtils::getTraitSafe;
 
 // =============================================================================
 // Resistance Calculation
@@ -47,7 +35,7 @@ float HealthSystem::calculateResistance(
     switch (type) {
         case DamageType::Physical: {
             // Physical damage resisted by hardiness (max 50% reduction)
-            float hardiness = getTraitSafe(phenotype, UniversalGenes::HARDINESS, 0.5f);
+            float hardiness = getTraitSafe(phenotype, UniversalGenes::HARDINESS, 0.0f);
             return clamp01(hardiness * MAX_HARDINESS_RESISTANCE);
         }
         
@@ -64,7 +52,7 @@ float HealthSystem::calculateResistance(
         
         case DamageType::Environment: {
             // Environmental damage resisted by hardiness (max 50% reduction)
-            float hardiness = getTraitSafe(phenotype, UniversalGenes::HARDINESS, 0.5f);
+            float hardiness = getTraitSafe(phenotype, UniversalGenes::HARDINESS, 0.0f);
             return clamp01(hardiness * MAX_HARDINESS_RESISTANCE);
         }
         

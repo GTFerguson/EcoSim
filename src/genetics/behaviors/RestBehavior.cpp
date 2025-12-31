@@ -1,11 +1,14 @@
 #include "genetics/behaviors/RestBehavior.hpp"
 #include "genetics/expression/Phenotype.hpp"
+#include "genetics/expression/PhenotypeUtils.hpp"
 #include "genetics/defaults/UniversalGenes.hpp"
 #include <cmath>
 #include <sstream>
 
 namespace EcoSim {
 namespace Genetics {
+
+using PhenotypeUtils::getTraitSafe;
 
 std::string RestBehavior::getId() const {
     return "rest";
@@ -108,15 +111,6 @@ bool RestBehavior::isTired(const IGeneticOrganism& organism) const {
     float threshold = getFatigueThreshold(organism);
     
     return fatigue > threshold;
-}
-
-float RestBehavior::getTraitSafe(const Phenotype& phenotype,
-                                  const std::string& traitName,
-                                  float defaultValue) const {
-    if (phenotype.hasTrait(traitName)) {
-        return phenotype.getTrait(traitName);
-    }
-    return defaultValue;
 }
 
 } // namespace Genetics

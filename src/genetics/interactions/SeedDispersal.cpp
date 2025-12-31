@@ -1,10 +1,13 @@
 #include "genetics/interactions/SeedDispersal.hpp"
+#include "genetics/expression/PhenotypeUtils.hpp"
 #include "logging/Logger.hpp"
 #include <chrono>
 #include <cmath>
 
 namespace EcoSim {
 namespace Genetics {
+
+using PhenotypeUtils::getTraitSafe;
 
 // ============================================================================
 // Constructors
@@ -102,9 +105,9 @@ DispersalEvent SeedDispersal::disperseByAnimalFruit(
     event.disperserInfo = "creature_gut";
     
     // Get creature properties
-    float gutTransit = getTraitSafe(creature, UniversalGenes::GUT_TRANSIT_TIME, 6.0f);
-    float locomotion = getTraitSafe(creature, UniversalGenes::LOCOMOTION, 1.0f);
-    float seedDestruction = getTraitSafe(creature, UniversalGenes::SEED_DESTRUCTION_RATE, 0.5f);
+    float gutTransit = getTraitSafe(creature, UniversalGenes::GUT_TRANSIT_TIME, 0.0f);
+    float locomotion = getTraitSafe(creature, UniversalGenes::LOCOMOTION, 0.0f);
+    float seedDestruction = getTraitSafe(creature, UniversalGenes::SEED_DESTRUCTION_RATE, 0.0f);
     
     // Calculate dispersal distance based on transit time and movement speed
     float transitTicks = gutTransit * 10.0f;  // Convert hours to ticks
@@ -147,8 +150,8 @@ DispersalEvent SeedDispersal::disperseByAnimalBurr(
     event.disperserInfo = "creature_fur";
     
     // Get creature properties
-    float groomingFrequency = getTraitSafe(creature, UniversalGenes::GROOMING_FREQUENCY, 0.5f);
-    float locomotion = getTraitSafe(creature, UniversalGenes::LOCOMOTION, 1.0f);
+    float groomingFrequency = getTraitSafe(creature, UniversalGenes::GROOMING_FREQUENCY, 0.0f);
+    float locomotion = getTraitSafe(creature, UniversalGenes::LOCOMOTION, 0.0f);
     float hookStrength = plant.getSeedHookStrength();
     
     // Calculate expected carry distance
@@ -317,8 +320,8 @@ bool SeedDispersal::willBurrAttach(
     const Phenotype& creature
 ) const {
     float hookStrength = plant.getSeedHookStrength();
-    float furDensity = getTraitSafe(creature, UniversalGenes::FUR_DENSITY, 0.5f);
-    float locomotion = getTraitSafe(creature, UniversalGenes::LOCOMOTION, 1.0f);
+    float furDensity = getTraitSafe(creature, UniversalGenes::FUR_DENSITY, 0.0f);
+    float locomotion = getTraitSafe(creature, UniversalGenes::LOCOMOTION, 0.0f);
     
     // Base attachment probability
     float baseProb = BURR_ATTACH_BASE_PROB * hookStrength * furDensity;
@@ -338,7 +341,7 @@ bool SeedDispersal::willBurrDetach(
     const Phenotype& creature,
     int ticksAttached
 ) const {
-    float groomingFrequency = getTraitSafe(creature, UniversalGenes::GROOMING_FREQUENCY, 0.5f);
+    float groomingFrequency = getTraitSafe(creature, UniversalGenes::GROOMING_FREQUENCY, 0.0f);
     
     // Base detachment rate increases with time
     float naturalDetach = BURR_NATURAL_DETACH_RATE * static_cast<float>(ticksAttached);
@@ -359,8 +362,8 @@ float SeedDispersal::calculateExpectedBurrDistance(
     const Phenotype& creature
 ) const {
     float hookStrength = plant.getSeedHookStrength();
-    float groomingFrequency = getTraitSafe(creature, UniversalGenes::GROOMING_FREQUENCY, 0.5f);
-    float locomotion = getTraitSafe(creature, UniversalGenes::LOCOMOTION, 1.0f);
+    float groomingFrequency = getTraitSafe(creature, UniversalGenes::GROOMING_FREQUENCY, 0.0f);
+    float locomotion = getTraitSafe(creature, UniversalGenes::LOCOMOTION, 0.0f);
     
     // Expected time attached (ticks)
     float expectedAttachTime = hookStrength * (1.0f - groomingFrequency) * 50.0f;
@@ -372,17 +375,6 @@ float SeedDispersal::calculateExpectedBurrDistance(
 // ============================================================================
 // Internal helper methods
 // ============================================================================
-
-float SeedDispersal::getTraitSafe(
-    const Phenotype& phenotype,
-    const char* traitName,
-    float defaultValue
-) const {
-    if (phenotype.hasTrait(traitName)) {
-        return phenotype.getTrait(traitName);
-    }
-    return defaultValue;
-}
 
 std::pair<int, int> SeedDispersal::generateRandomOffset(float maxDistance) const {
     // Random direction

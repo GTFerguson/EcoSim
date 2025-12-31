@@ -1,6 +1,7 @@
 #include "genetics/behaviors/MovementBehavior.hpp"
 #include "genetics/behaviors/BehaviorContext.hpp"
 #include "genetics/expression/Phenotype.hpp"
+#include "genetics/expression/PhenotypeUtils.hpp"
 #include "genetics/interfaces/IGeneticOrganism.hpp"
 #include "genetics/interfaces/IPositionable.hpp"
 #include "genetics/defaults/UniversalGenes.hpp"
@@ -11,14 +12,7 @@
 namespace EcoSim {
 namespace Genetics {
 
-namespace {
-    float getTraitSafe(const Phenotype& phenotype, const std::string& traitName, float defaultValue) {
-        if (phenotype.hasTrait(traitName)) {
-            return phenotype.getTrait(traitName);
-        }
-        return defaultValue;
-    }
-}
+using PhenotypeUtils::getTraitSafe;
 
 std::string MovementBehavior::getId() const {
     return "movement";
@@ -160,8 +154,8 @@ std::pair<int, int> MovementBehavior::getTarget() const {
 float MovementBehavior::getMovementSpeed(const IGeneticOrganism& organism) const {
     const Phenotype& phenotype = organism.getPhenotype();
     
-    float locomotion = getTraitSafe(phenotype, UniversalGenes::LOCOMOTION, 0.5f);
-    float bodyMass = getTraitSafe(phenotype, UniversalGenes::MAX_SIZE, 1.0f);
+    float locomotion = getTraitSafe(phenotype, UniversalGenes::LOCOMOTION, 0.0f);
+    float bodyMass = getTraitSafe(phenotype, UniversalGenes::MAX_SIZE, 0.0f);
     
     bodyMass = 0.5f + (bodyMass / 20.0f) * 1.5f;
     float legLength = 0.3f + locomotion * 0.7f;
@@ -177,7 +171,7 @@ float MovementBehavior::getMovementSpeed(const IGeneticOrganism& organism) const
 float MovementBehavior::calculateMovementCost(const IGeneticOrganism& organism, float distance) const {
     const Phenotype& phenotype = organism.getPhenotype();
     
-    float metabolism = getTraitSafe(phenotype, UniversalGenes::METABOLISM_RATE, 0.5f);
+    float metabolism = getTraitSafe(phenotype, UniversalGenes::METABOLISM_RATE, 0.0f);
     
     return BASE_MOVEMENT_COST * distance * metabolism;
 }

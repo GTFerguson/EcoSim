@@ -196,17 +196,6 @@ private:
                                                    const IGeneticOrganism& parent2) const;
     
     /**
-     * @brief Safe trait getter with default value
-     * @param phenotype The phenotype to query
-     * @param traitName Name of the trait
-     * @param defaultValue Value to return if trait doesn't exist
-     * @return Trait value or default
-     */
-    float getTraitSafe(const Phenotype& phenotype,
-                       const std::string& traitName,
-                       float defaultValue) const;
-    
-    /**
      * @brief Get organism's unique ID for tracking
      * @param organism The organism
      * @return Unique identifier

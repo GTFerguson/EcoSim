@@ -216,17 +216,6 @@ private:
     float getHungerThreshold(const IGeneticOrganism& organism) const;
     
     /**
-     * @brief Safe trait getter with default value
-     * @param phenotype The phenotype to query
-     * @param traitName Name of the trait
-     * @param defaultValue Value to return if trait doesn't exist
-     * @return Trait value or default
-     */
-    float getTraitSafe(const Phenotype& phenotype,
-                       const std::string& traitName,
-                       float defaultValue) const;
-    
-    /**
      * @brief Get organism's unique ID for tracking
      *
      * Uses a hash of the organism's genome pointer as a stable identifier.

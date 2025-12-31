@@ -3,6 +3,7 @@
 #include "genetics/interactions/CombatInteraction.hpp"
 #include "genetics/systems/PerceptionSystem.hpp"
 #include "genetics/expression/Phenotype.hpp"
+#include "genetics/expression/PhenotypeUtils.hpp"
 #include "genetics/expression/OrganismState.hpp"
 #include "genetics/interfaces/IGeneticOrganism.hpp"
 #include "genetics/defaults/UniversalGenes.hpp"
@@ -13,6 +14,8 @@
 
 namespace EcoSim {
 namespace Genetics {
+
+using PhenotypeUtils::getTraitSafe;
 
 HuntingBehavior::HuntingBehavior(CombatInteraction& combat, PerceptionSystem& perception)
     : combat_(combat)
@@ -166,8 +169,8 @@ float HuntingBehavior::calculateEscapeChance(const IGeneticOrganism& predator,
     const Phenotype& preyPhenotype = prey.getPhenotype();
     const Phenotype& predatorPhenotype = predator.getPhenotype();
     
-    float preyFlee = getTraitSafe(preyPhenotype, UniversalGenes::FLEE_THRESHOLD, 10.0f);
-    float predatorPursue = getTraitSafe(predatorPhenotype, UniversalGenes::PURSUE_THRESHOLD, 20.0f);
+    float preyFlee = getTraitSafe(preyPhenotype, UniversalGenes::FLEE_THRESHOLD, 0.0f);
+    float predatorPursue = getTraitSafe(predatorPhenotype, UniversalGenes::PURSUE_THRESHOLD, 0.0f);
     
     float denominator = preyFlee + predatorPursue + BASE_ESCAPE_DENOMINATOR;
     if (denominator <= 0.0f) {
@@ -213,7 +216,7 @@ void HuntingBehavior::cleanupStaleEntries(unsigned int currentTick) {
 float HuntingBehavior::getHungerLevel(const IGeneticOrganism& organism) const {
     const Phenotype& phenotype = organism.getPhenotype();
     
-    float maxHunger = getTraitSafe(phenotype, UniversalGenes::MAX_SIZE, DEFAULT_HUNGER_THRESHOLD);
+    float maxHunger = getTraitSafe(phenotype, UniversalGenes::MAX_SIZE, 0.0f);
     
     return maxHunger * 0.3f;
 }
@@ -226,15 +229,6 @@ float HuntingBehavior::getHungerThreshold(const IGeneticOrganism& organism) cons
     }
     
     return DEFAULT_HUNGER_THRESHOLD;
-}
-
-float HuntingBehavior::getTraitSafe(const Phenotype& phenotype,
-                                     const std::string& traitName,
-                                     float defaultValue) const {
-    if (phenotype.hasTrait(traitName)) {
-        return phenotype.getTrait(traitName);
-    }
-    return defaultValue;
 }
 
 unsigned int HuntingBehavior::getOrganismId(const IGeneticOrganism& organism) const {

@@ -157,17 +157,6 @@ private:
     float getDetectionRange(const IGeneticOrganism& organism) const;
     
     /**
-     * @brief Safely get a trait value from phenotype
-     * @param phenotype The phenotype to query
-     * @param traitName Name of the trait
-     * @param defaultValue Value if trait not present
-     * @return Trait value or default
-     */
-    float getTraitSafe(const Phenotype& phenotype, 
-                       const std::string& traitName,
-                       float defaultValue) const;
-    
-    /**
      * @brief Calculate distance between two positions
      * @param x1 First x coordinate
      * @param y1 First y coordinate

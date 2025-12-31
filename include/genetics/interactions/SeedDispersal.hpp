@@ -239,15 +239,6 @@ private:
     // ========================================================================
     
     /**
-     * @brief Safe trait getter with default value
-     */
-    float getTraitSafe(
-        const Phenotype& phenotype,
-        const char* traitName,
-        float defaultValue = 0.0f
-    ) const;
-    
-    /**
      * @brief Generate random offset from origin
      * @param maxDistance Maximum distance from origin
      * @return Pair of (deltaX, deltaY)

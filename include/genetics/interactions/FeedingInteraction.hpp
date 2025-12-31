@@ -192,11 +192,6 @@ private:
     // ========================================================================
     
     /**
-     * @brief Safe trait getter with default value
-     */
-    float getTraitSafe(const Phenotype& phenotype, const char* traitName, float defaultValue = 0.0f) const;
-    
-    /**
      * @brief Calculate risk-benefit ratio for desperation check
      */
     float calculateRiskBenefitRatio(float expectedNutrition, float expectedDamage) const;

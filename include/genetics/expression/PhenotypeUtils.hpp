@@ -1,13 +1,17 @@
 #pragma once
 
 #include "genetics/core/GeneticTypes.hpp"
+#include <string>
 
 namespace EcoSim {
 namespace Genetics {
 
+// Forward declaration
+class Phenotype;
+
 /**
  * @brief Utility functions for phenotype effect calculations
- * 
+ *
  * Extracted to reduce code duplication in Phenotype.cpp.
  * These utilities handle the common effect accumulation logic
  * used by both computeTrait() and computeTraitRaw().
@@ -48,6 +52,18 @@ AccumulatedEffect applyEffect(const AccumulatedEffect& accumulated,
                                EffectType effect_type,
                                float gene_value,
                                float scale_factor);
+
+/**
+ * @brief Safely get a trait value from a phenotype with a fallback default
+ *
+ * @param phenotype The phenotype to query
+ * @param traitName The name of the trait to retrieve
+ * @param defaultValue Value to return if trait doesn't exist
+ * @return The trait value if present, otherwise defaultValue
+ */
+float getTraitSafe(const Phenotype& phenotype,
+                   const std::string& traitName,
+                   float defaultValue);
 
 } // namespace PhenotypeUtils
 

@@ -1,8 +1,11 @@
 #include "genetics/interactions/FeedingInteraction.hpp"
+#include "genetics/expression/PhenotypeUtils.hpp"
 #include <sstream>
 
 namespace EcoSim {
 namespace Genetics {
+
+using PhenotypeUtils::getTraitSafe;
 
 // ============================================================================
 // Main interaction method
@@ -19,10 +22,10 @@ FeedingResult FeedingInteraction::attemptToEatPlant(
     // STEP 1: Detection - Can creature find/identify the plant as food?
     // ========================================================================
     
-    float colorVision = getTraitSafe(creaturePhenotype, UniversalGenes::COLOR_VISION, 0.3f);
-    float scentDetection = getTraitSafe(creaturePhenotype, UniversalGenes::SCENT_DETECTION, 0.5f);
-    float sweetnessPreference = getTraitSafe(creaturePhenotype, UniversalGenes::SWEETNESS_PREFERENCE, 0.5f);
-    float plantDigestion = getTraitSafe(creaturePhenotype, UniversalGenes::PLANT_DIGESTION_EFFICIENCY, 0.5f);
+    float colorVision = getTraitSafe(creaturePhenotype, UniversalGenes::COLOR_VISION, 0.0f);
+    float scentDetection = getTraitSafe(creaturePhenotype, UniversalGenes::SCENT_DETECTION, 0.0f);
+    float sweetnessPreference = getTraitSafe(creaturePhenotype, UniversalGenes::SWEETNESS_PREFERENCE, 0.0f);
+    float plantDigestion = getTraitSafe(creaturePhenotype, UniversalGenes::PLANT_DIGESTION_EFFICIENCY, 0.0f);
     
     // Plant genes
     float fruitAppeal = plant.getFruitAppeal();
@@ -63,10 +66,10 @@ FeedingResult FeedingInteraction::attemptToEatPlant(
     // ========================================================================
     
     // Creature defense genes
-    float hideThickness = getTraitSafe(creaturePhenotype, UniversalGenes::HIDE_THICKNESS, 0.5f);
-    float painSensitivity = getTraitSafe(creaturePhenotype, UniversalGenes::PAIN_SENSITIVITY, 0.5f);
-    float toxinTolerance = getTraitSafe(creaturePhenotype, UniversalGenes::TOXIN_TOLERANCE, 0.3f);
-    float toxinMetabolism = getTraitSafe(creaturePhenotype, UniversalGenes::TOXIN_METABOLISM, 0.3f);
+    float hideThickness = getTraitSafe(creaturePhenotype, UniversalGenes::HIDE_THICKNESS, 0.0f);
+    float painSensitivity = getTraitSafe(creaturePhenotype, UniversalGenes::PAIN_SENSITIVITY, 0.0f);
+    float toxinTolerance = getTraitSafe(creaturePhenotype, UniversalGenes::TOXIN_TOLERANCE, 0.0f);
+    float toxinMetabolism = getTraitSafe(creaturePhenotype, UniversalGenes::TOXIN_METABOLISM, 0.0f);
     
     // Plant defense genes
     float thornDensity = plant.getThornDamage();
@@ -128,8 +131,8 @@ FeedingResult FeedingInteraction::attemptToEatPlant(
     // ========================================================================
     
     // Creature seed handling
-    float seedDestruction = getTraitSafe(creaturePhenotype, UniversalGenes::SEED_DESTRUCTION_RATE, 0.5f);
-    float gutTransit = getTraitSafe(creaturePhenotype, UniversalGenes::GUT_TRANSIT_TIME, 6.0f);
+    float seedDestruction = getTraitSafe(creaturePhenotype, UniversalGenes::SEED_DESTRUCTION_RATE, 0.0f);
+    float gutTransit = getTraitSafe(creaturePhenotype, UniversalGenes::GUT_TRANSIT_TIME, 0.0f);
     
     // Plant seed properties
     float seedCoatDurability = plant.getSeedCoatDurability();
@@ -190,9 +193,9 @@ float FeedingInteraction::getDetectionRange(
     const Phenotype& creature,
     const Plant& plant
 ) const {
-    float colorVision = getTraitSafe(creature, UniversalGenes::COLOR_VISION, 0.3f);
-    float scentDetection = getTraitSafe(creature, UniversalGenes::SCENT_DETECTION, 0.5f);
-    float sightRange = getTraitSafe(creature, UniversalGenes::SIGHT_RANGE, 50.0f);
+    float colorVision = getTraitSafe(creature, UniversalGenes::COLOR_VISION, 0.0f);
+    float scentDetection = getTraitSafe(creature, UniversalGenes::SCENT_DETECTION, 0.0f);
+    float sightRange = getTraitSafe(creature, UniversalGenes::SIGHT_RANGE, 0.0f);
     
     float fruitAppeal = plant.getFruitAppeal();
     
@@ -217,7 +220,7 @@ float FeedingInteraction::calculateThornDamage(
     const Phenotype& creature,
     const Plant& plant
 ) const {
-    float hideThickness = getTraitSafe(creature, UniversalGenes::HIDE_THICKNESS, 0.5f);
+    float hideThickness = getTraitSafe(creature, UniversalGenes::HIDE_THICKNESS, 0.0f);
     float thornDensity = plant.getThornDamage();
     
     // Base thorn damage from plant
@@ -233,9 +236,9 @@ float FeedingInteraction::calculateToxinDamage(
     const Phenotype& creature,
     const Plant& plant
 ) const {
-    float toxinTolerance = getTraitSafe(creature, UniversalGenes::TOXIN_TOLERANCE, 0.3f);
-    float toxinMetabolism = getTraitSafe(creature, UniversalGenes::TOXIN_METABOLISM, 0.3f);
-    float mucusProtection = getTraitSafe(creature, UniversalGenes::MUCUS_PROTECTION, 0.3f);
+    float toxinTolerance = getTraitSafe(creature, UniversalGenes::TOXIN_TOLERANCE, 0.0f);
+    float toxinMetabolism = getTraitSafe(creature, UniversalGenes::TOXIN_METABOLISM, 0.0f);
+    float mucusProtection = getTraitSafe(creature, UniversalGenes::MUCUS_PROTECTION, 0.0f);
     
     float toxinProduction = plant.getToxicity();
     
@@ -293,8 +296,8 @@ float FeedingInteraction::getDigestionEfficiency(
     const Phenotype& creature,
     const Plant& plant
 ) const {
-    float plantDigestion = getTraitSafe(creature, UniversalGenes::PLANT_DIGESTION_EFFICIENCY, 0.5f);
-    float celluloseBreakdown = getTraitSafe(creature, UniversalGenes::CELLULOSE_BREAKDOWN, 0.3f);
+    float plantDigestion = getTraitSafe(creature, UniversalGenes::PLANT_DIGESTION_EFFICIENCY, 0.0f);
+    float celluloseBreakdown = getTraitSafe(creature, UniversalGenes::CELLULOSE_BREAKDOWN, 0.0f);
     
     // Base efficiency from plant digestion gene
     float baseEfficiency = plantDigestion;
@@ -315,7 +318,7 @@ float FeedingInteraction::calculateSeedSurvivalRate(
     const Phenotype& creature,
     const Plant& plant
 ) const {
-    float seedDestruction = getTraitSafe(creature, UniversalGenes::SEED_DESTRUCTION_RATE, 0.5f);
+    float seedDestruction = getTraitSafe(creature, UniversalGenes::SEED_DESTRUCTION_RATE, 0.0f);
     float seedCoatDurability = plant.getSeedCoatDurability();
     
     // Seeds survive passage if coat is durable AND creature doesn't destroy them
@@ -328,8 +331,8 @@ float FeedingInteraction::calculateSeedSurvivalRate(
 float FeedingInteraction::calculateDispersalDistance(
     const Phenotype& creature
 ) const {
-    float locomotion = getTraitSafe(creature, UniversalGenes::LOCOMOTION, 1.0f);
-    float gutTransit = getTraitSafe(creature, UniversalGenes::GUT_TRANSIT_TIME, 6.0f);
+    float locomotion = getTraitSafe(creature, UniversalGenes::LOCOMOTION, 0.0f);
+    float gutTransit = getTraitSafe(creature, UniversalGenes::GUT_TRANSIT_TIME, 0.0f);
     
     // Distance = speed * transit time (in game ticks)
     // Convert transit time from hours to approximate game ticks
@@ -348,17 +351,6 @@ bool FeedingInteraction::willCacheSeeds(
 // ============================================================================
 // Internal helper methods
 // ============================================================================
-
-float FeedingInteraction::getTraitSafe(
-    const Phenotype& phenotype,
-    const char* traitName,
-    float defaultValue
-) const {
-    if (phenotype.hasTrait(traitName)) {
-        return phenotype.getTrait(traitName);
-    }
-    return defaultValue;
-}
 
 float FeedingInteraction::calculateRiskBenefitRatio(
     float expectedNutrition,

@@ -2,6 +2,7 @@
 #include "genetics/interactions/FeedingInteraction.hpp"
 #include "genetics/systems/PerceptionSystem.hpp"
 #include "genetics/expression/Phenotype.hpp"
+#include "genetics/expression/PhenotypeUtils.hpp"
 #include "genetics/organisms/Plant.hpp"
 #include "genetics/defaults/UniversalGenes.hpp"
 #include <cmath>
@@ -10,6 +11,8 @@
 
 namespace EcoSim {
 namespace Genetics {
+
+using PhenotypeUtils::getTraitSafe;
 
 FeedingBehavior::FeedingBehavior(FeedingInteraction& feeding, PerceptionSystem& perception)
     : feeding_(feeding)
@@ -131,7 +134,7 @@ BehaviorResult FeedingBehavior::execute(IGeneticOrganism& organism,
 float FeedingBehavior::getEnergyCost(const IGeneticOrganism& organism) const {
     // Base cost modified by organism's metabolism
     const Phenotype& phenotype = organism.getPhenotype();
-    float metabolism = getTraitSafe(phenotype, UniversalGenes::METABOLISM_RATE, 0.5f);
+    float metabolism = getTraitSafe(phenotype, UniversalGenes::METABOLISM_RATE, 0.0f);
     
     return BASE_ENERGY_COST * (0.5f + metabolism);
 }
@@ -190,7 +193,7 @@ float FeedingBehavior::getHungerLevel(const IGeneticOrganism& organism) const {
     const Phenotype& phenotype = organism.getPhenotype();
     
     // Use max_hunger trait as reference
-    float maxHunger = getTraitSafe(phenotype, UniversalGenes::MAX_SIZE, 10.0f);
+    float maxHunger = getTraitSafe(phenotype, UniversalGenes::MAX_SIZE, 0.0f);
     
     // Without access to actual organism state, return a default
     // that indicates the organism is hungry (triggering applicability)
@@ -215,26 +218,17 @@ float FeedingBehavior::getDetectionRange(const IGeneticOrganism& organism) const
     const Phenotype& phenotype = organism.getPhenotype();
     
     // Base sight range
-    float sightRange = getTraitSafe(phenotype, UniversalGenes::SIGHT_RANGE, 50.0f);
+    float sightRange = getTraitSafe(phenotype, UniversalGenes::SIGHT_RANGE, 0.0f);
     
     // Bonuses from color vision and scent detection
-    float colorVision = getTraitSafe(phenotype, UniversalGenes::COLOR_VISION, 0.3f);
-    float scentDetection = getTraitSafe(phenotype, UniversalGenes::SCENT_DETECTION, 0.5f);
+    float colorVision = getTraitSafe(phenotype, UniversalGenes::COLOR_VISION, 0.0f);
+    float scentDetection = getTraitSafe(phenotype, UniversalGenes::SCENT_DETECTION, 0.0f);
     
     // Visual and scent bonuses (same formula as FeedingInteraction)
     float visualBonus = colorVision * 0.3f * 100.0f;  // Up to 30 tiles for colorful plants
     float scentBonus = scentDetection * 0.5f * 100.0f;  // Up to 50 tiles via scent
     
     return sightRange + std::max(visualBonus, scentBonus);
-}
-
-float FeedingBehavior::getTraitSafe(const Phenotype& phenotype,
-                                     const std::string& traitName,
-                                     float defaultValue) const {
-    if (phenotype.hasTrait(traitName)) {
-        return phenotype.getTrait(traitName);
-    }
-    return defaultValue;
 }
 
 float FeedingBehavior::calculateDistance(int x1, int y1, int x2, int y2) {

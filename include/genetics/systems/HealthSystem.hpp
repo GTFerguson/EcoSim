@@ -298,18 +298,6 @@ private:
                               DamageType type) const;
     
     /**
-     * @brief Safely get a trait from phenotype, returning default if not present
-     *
-     * @param phenotype The phenotype to query
-     * @param traitName Name of the trait
-     * @param defaultValue Value to return if trait doesn't exist
-     * @return Trait value or default
-     */
-    float getTraitSafe(const Phenotype& phenotype,
-                       const std::string& traitName,
-                       float defaultValue = 0.0f) const;
-    
-    /**
      * @brief Clamp value to range [0, 1]
      */
     static float clamp01(float value) {

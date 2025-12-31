@@ -4,6 +4,7 @@
 #include <string>
 #include <fstream>
 #include <vector>
+#include <deque>
 #include <map>
 #include <set>
 #include <memory>
@@ -258,7 +259,7 @@ public:
     void breedingStateCount(int tick, int inBreedState, int seekingMate, float avgMateValue, float avgThreshold);
     void recordBreedingSnapshot(const BreedingSnapshot& snapshot);
     void printBreedingSummary();
-    const std::vector<BreedingSnapshot>& getBreedingHistory() const { return m_breedingHistory; }
+    const std::deque<BreedingSnapshot>& getBreedingHistory() const { return m_breedingHistory; }
     const BreedingStats& getBreedingStats() const { return m_breedingStats; }
     void resetBreedingStats();
 
@@ -312,8 +313,8 @@ private:
     DeathStats m_deathStats;
     FeedingStats m_feedingStats;
     BreedingStats m_breedingStats;
-    std::vector<PopulationSnapshot> m_populationHistory;
-    std::vector<BreedingSnapshot> m_breedingHistory;
+    std::deque<PopulationSnapshot> m_populationHistory;
+    std::deque<BreedingSnapshot> m_breedingHistory;
     
     // File output
     std::ofstream m_fileStream;

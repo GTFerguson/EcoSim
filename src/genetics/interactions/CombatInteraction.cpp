@@ -1,8 +1,11 @@
 #include "genetics/interactions/CombatInteraction.hpp"
+#include "genetics/expression/PhenotypeUtils.hpp"
 #include <sstream>
 
 namespace EcoSim {
 namespace Genetics {
+
+using PhenotypeUtils::getTraitSafe;
 
 // ============================================================================
 // Weapon Damage Calculation
@@ -29,20 +32,20 @@ DamageDistribution CombatInteraction::calculateWeaponDamage(
 
 DefenseProfile CombatInteraction::getDefenseProfile(const Phenotype& phenotype) {
     DefenseProfile profile;
-    profile.thickHide = getTraitSafe(phenotype, UniversalGenes::HIDE_THICKNESS, 0.5f);
-    profile.scales = getTraitSafe(phenotype, UniversalGenes::SCALE_COVERAGE, 0.3f);
-    profile.fatLayer = getTraitSafe(phenotype, UniversalGenes::FAT_LAYER_THICKNESS, 0.4f);
+    profile.thickHide = getTraitSafe(phenotype, UniversalGenes::HIDE_THICKNESS, 0.0f);
+    profile.scales = getTraitSafe(phenotype, UniversalGenes::SCALE_COVERAGE, 0.0f);
+    profile.fatLayer = getTraitSafe(phenotype, UniversalGenes::FAT_LAYER_THICKNESS, 0.0f);
     return profile;
 }
 
 float CombatInteraction::getDefenseValue(const Phenotype& phenotype, DefenseType type) {
     switch (type) {
         case DefenseType::ThickHide:
-            return getTraitSafe(phenotype, UniversalGenes::HIDE_THICKNESS, 0.5f);
+            return getTraitSafe(phenotype, UniversalGenes::HIDE_THICKNESS, 0.0f);
         case DefenseType::Scales:
-            return getTraitSafe(phenotype, UniversalGenes::SCALE_COVERAGE, 0.3f);
+            return getTraitSafe(phenotype, UniversalGenes::SCALE_COVERAGE, 0.0f);
         case DefenseType::FatLayer:
-            return getTraitSafe(phenotype, UniversalGenes::FAT_LAYER_THICKNESS, 0.4f);
+            return getTraitSafe(phenotype, UniversalGenes::FAT_LAYER_THICKNESS, 0.0f);
         default:
             return 0.0f;
     }
@@ -89,8 +92,8 @@ bool CombatInteraction::shouldInitiateCombat(
     const Phenotype& targetPhenotype,
     float attackerHunger
 ) {
-    float aggression = getTraitSafe(attackerPhenotype, UniversalGenes::COMBAT_AGGRESSION, 0.5f);
-    float huntInstinct = getTraitSafe(attackerPhenotype, UniversalGenes::HUNT_INSTINCT, 0.5f);
+    float aggression = getTraitSafe(attackerPhenotype, UniversalGenes::COMBAT_AGGRESSION, 0.0f);
+    float huntInstinct = getTraitSafe(attackerPhenotype, UniversalGenes::HUNT_INSTINCT, 0.0f);
     
     // More aggressive creatures attack more readily
     // Also consider hunger level - desperate creatures fight more
@@ -103,7 +106,7 @@ bool CombatInteraction::shouldInitiateCombat(
 }
 
 bool CombatInteraction::shouldRetreat(const Phenotype& phenotype, float healthPercent) {
-    float retreatThreshold = getTraitSafe(phenotype, UniversalGenes::RETREAT_THRESHOLD, 0.3f);
+    float retreatThreshold = getTraitSafe(phenotype, UniversalGenes::RETREAT_THRESHOLD, 0.0f);
     
     // Creature retreats when health drops below its retreat threshold
     return healthPercent < retreatThreshold;
@@ -201,25 +204,25 @@ std::vector<WeaponType> CombatInteraction::getAvailableWeapons(const Phenotype& 
     weapons.push_back(WeaponType::Body);
     
     // Check if teeth are developed enough
-    float teethSize = getTraitSafe(phenotype, UniversalGenes::TEETH_SIZE, 0.5f);
+    float teethSize = getTraitSafe(phenotype, UniversalGenes::TEETH_SIZE, 0.0f);
     if (teethSize >= WEAPON_USABILITY_THRESHOLD) {
         weapons.push_back(WeaponType::Teeth);
     }
     
     // Check if claws are developed
-    float clawLength = getTraitSafe(phenotype, UniversalGenes::CLAW_LENGTH, 0.5f);
+    float clawLength = getTraitSafe(phenotype, UniversalGenes::CLAW_LENGTH, 0.0f);
     if (clawLength >= WEAPON_USABILITY_THRESHOLD) {
         weapons.push_back(WeaponType::Claws);
     }
     
     // Check if horns are developed
-    float hornLength = getTraitSafe(phenotype, UniversalGenes::HORN_LENGTH, 0.5f);
+    float hornLength = getTraitSafe(phenotype, UniversalGenes::HORN_LENGTH, 0.0f);
     if (hornLength >= WEAPON_USABILITY_THRESHOLD) {
         weapons.push_back(WeaponType::Horns);
     }
     
     // Check if tail is developed
-    float tailLength = getTraitSafe(phenotype, UniversalGenes::TAIL_LENGTH, 0.5f);
+    float tailLength = getTraitSafe(phenotype, UniversalGenes::TAIL_LENGTH, 0.0f);
     if (tailLength >= WEAPON_USABILITY_THRESHOLD) {
         weapons.push_back(WeaponType::Tail);
     }
@@ -275,8 +278,8 @@ AttackResult CombatInteraction::resolveAttack(
     if (result.primaryType == CombatDamageType::Piercing &&
         damage.piercing > BLEEDING_DAMAGE_THRESHOLD) {
         // Bleeding resistance check
-        float bleedResist = getTraitSafe(defenderPhenotype, 
-            UniversalGenes::BLEEDING_RESISTANCE, 0.5f);
+        float bleedResist = getTraitSafe(defenderPhenotype,
+            UniversalGenes::BLEEDING_RESISTANCE, 0.0f);
         result.causedBleeding = (damage.piercing * (1.0f - bleedResist)) > BLEEDING_DAMAGE_THRESHOLD;
     }
     
@@ -319,8 +322,8 @@ CombatResult CombatInteraction::resolveCombatTick(
     }
     
     // Defender counter-attacks (if combat-oriented)
-    float defenderAggression = getTraitSafe(defenderPhenotype, 
-        UniversalGenes::COMBAT_AGGRESSION, 0.5f);
+    float defenderAggression = getTraitSafe(defenderPhenotype,
+        UniversalGenes::COMBAT_AGGRESSION, 0.0f);
     
     if (defenderAggression > 0.3f) {  // Only counter if aggressive enough
         CombatAction defenderAction = selectBestAction(defenderPhenotype, attackerPhenotype);
@@ -343,8 +346,8 @@ CombatResult CombatInteraction::resolveCombatTick(
 DamageDistribution CombatInteraction::calculateTeethDamage(const Phenotype& phenotype) {
     DamageDistribution damage;
     
-    float sharpness = getTraitSafe(phenotype, UniversalGenes::TEETH_SHARPNESS, 0.7f);
-    float serration = getTraitSafe(phenotype, UniversalGenes::TEETH_SERRATION, 0.3f);
+    float sharpness = getTraitSafe(phenotype, UniversalGenes::TEETH_SHARPNESS, 0.0f);
+    float serration = getTraitSafe(phenotype, UniversalGenes::TEETH_SERRATION, 0.0f);
     // Note: TEETH_SIZE is now applied as magnitude multiplier in resolveAttack()
     
     // Calculate raw weights for each damage type
@@ -366,8 +369,8 @@ DamageDistribution CombatInteraction::calculateTeethDamage(const Phenotype& phen
 DamageDistribution CombatInteraction::calculateClawsDamage(const Phenotype& phenotype) {
     DamageDistribution damage;
     
-    float curvature = getTraitSafe(phenotype, UniversalGenes::CLAW_CURVATURE, 0.4f);
-    float sharpness = getTraitSafe(phenotype, UniversalGenes::CLAW_SHARPNESS, 0.6f);
+    float curvature = getTraitSafe(phenotype, UniversalGenes::CLAW_CURVATURE, 0.0f);
+    float sharpness = getTraitSafe(phenotype, UniversalGenes::CLAW_SHARPNESS, 0.0f);
     // Note: CLAW_LENGTH is now applied as magnitude multiplier in resolveAttack()
     
     // Calculate raw weights for each damage type
@@ -389,8 +392,8 @@ DamageDistribution CombatInteraction::calculateClawsDamage(const Phenotype& phen
 DamageDistribution CombatInteraction::calculateHornsDamage(const Phenotype& phenotype) {
     DamageDistribution damage;
     
-    float pointiness = getTraitSafe(phenotype, UniversalGenes::HORN_POINTINESS, 0.5f);
-    float spread = getTraitSafe(phenotype, UniversalGenes::HORN_SPREAD, 0.3f);
+    float pointiness = getTraitSafe(phenotype, UniversalGenes::HORN_POINTINESS, 0.0f);
+    float spread = getTraitSafe(phenotype, UniversalGenes::HORN_SPREAD, 0.0f);
     // Note: HORN_LENGTH is now applied as magnitude multiplier in resolveAttack()
     
     // Calculate raw weights for each damage type
@@ -412,8 +415,8 @@ DamageDistribution CombatInteraction::calculateHornsDamage(const Phenotype& phen
 DamageDistribution CombatInteraction::calculateTailDamage(const Phenotype& phenotype) {
     DamageDistribution damage;
     
-    float spines = getTraitSafe(phenotype, UniversalGenes::TAIL_SPINES, 0.1f);
-    float mass = getTraitSafe(phenotype, UniversalGenes::TAIL_MASS, 0.4f);
+    float spines = getTraitSafe(phenotype, UniversalGenes::TAIL_SPINES, 0.0f);
+    float mass = getTraitSafe(phenotype, UniversalGenes::TAIL_MASS, 0.0f);
     // Note: TAIL_LENGTH is now applied as magnitude multiplier in resolveAttack()
     
     // Calculate raw weights for each damage type
@@ -459,17 +462,6 @@ DamageDistribution CombatInteraction::calculateBodyDamage(const Phenotype& pheno
 // Helper Methods
 // ============================================================================
 
-float CombatInteraction::getTraitSafe(
-    const Phenotype& phenotype,
-    const char* traitName,
-    float defaultValue
-) {
-    if (phenotype.hasTrait(traitName)) {
-        return phenotype.getTrait(traitName);
-    }
-    return defaultValue;
-}
-
 DefenseType CombatInteraction::getCounteringDefense(CombatDamageType attackType) {
     switch (attackType) {
         case CombatDamageType::Piercing: return DefenseType::ThickHide;
@@ -482,16 +474,16 @@ DefenseType CombatInteraction::getCounteringDefense(CombatDamageType attackType)
 float CombatInteraction::getSizeFactorForWeapon(const Phenotype& phenotype, WeaponType weapon) {
     switch (weapon) {
         case WeaponType::Teeth:
-            return getTraitSafe(phenotype, UniversalGenes::TEETH_SIZE, 0.5f);
+            return getTraitSafe(phenotype, UniversalGenes::TEETH_SIZE, 0.0f);
         case WeaponType::Claws:
-            return getTraitSafe(phenotype, UniversalGenes::CLAW_LENGTH, 0.5f);
+            return getTraitSafe(phenotype, UniversalGenes::CLAW_LENGTH, 0.0f);
         case WeaponType::Horns:
-            return getTraitSafe(phenotype, UniversalGenes::HORN_LENGTH, 0.5f);
+            return getTraitSafe(phenotype, UniversalGenes::HORN_LENGTH, 0.0f);
         case WeaponType::Tail:
-            return getTraitSafe(phenotype, UniversalGenes::TAIL_LENGTH, 0.5f);
+            return getTraitSafe(phenotype, UniversalGenes::TAIL_LENGTH, 0.0f);
         case WeaponType::Body:
         default:
-            return getTraitSafe(phenotype, UniversalGenes::MAX_SIZE, 1.0f);
+            return getTraitSafe(phenotype, UniversalGenes::MAX_SIZE, 0.0f);
     }
 }
 

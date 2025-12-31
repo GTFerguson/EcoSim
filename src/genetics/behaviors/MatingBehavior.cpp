@@ -2,6 +2,7 @@
 #include "genetics/behaviors/BehaviorContext.hpp"
 #include "genetics/systems/PerceptionSystem.hpp"
 #include "genetics/expression/Phenotype.hpp"
+#include "genetics/expression/PhenotypeUtils.hpp"
 #include "genetics/expression/OrganismState.hpp"
 #include "genetics/interfaces/IGeneticOrganism.hpp"
 #include "genetics/interfaces/IPositionable.hpp"
@@ -15,6 +16,8 @@
 
 namespace EcoSim {
 namespace Genetics {
+
+using PhenotypeUtils::getTraitSafe;
 
 MatingBehavior::MatingBehavior(PerceptionSystem& perception, const GeneRegistry& registry)
     : perception_(perception)
@@ -134,7 +137,7 @@ float MatingBehavior::getMateValue(const IGeneticOrganism& organism) const {
 float MatingBehavior::checkFitness(const IGeneticOrganism& seeker,
                                     const IGeneticOrganism& candidate) const {
     const Phenotype& seekerPhenotype = seeker.getPhenotype();
-    float sightRange = getTraitSafe(seekerPhenotype, UniversalGenes::SIGHT_RANGE, 100.0f);
+    float sightRange = getTraitSafe(seekerPhenotype, UniversalGenes::SIGHT_RANGE, 0.0f);
     
     float distance = calculateDistance(seeker, candidate);
     float proximity = 1.0f - std::min(1.0f, distance / sightRange);
@@ -167,7 +170,7 @@ bool MatingBehavior::isMature(const IGeneticOrganism& organism) const {
 bool MatingBehavior::hasResourcesToBread(const IGeneticOrganism& organism) const {
     const Phenotype& phenotype = organism.getPhenotype();
     
-    float hunger = getTraitSafe(phenotype, UniversalGenes::HUNGER_THRESHOLD, 10.0f);
+    float hunger = getTraitSafe(phenotype, UniversalGenes::HUNGER_THRESHOLD, 0.0f);
     
     return hunger >= MIN_HUNGER_TO_BREED;
 }
@@ -204,15 +207,6 @@ std::unique_ptr<Genome> MatingBehavior::createOffspringGenome(const IGeneticOrga
     crossed.mutate(0.05f, registry_.getAllDefinitions());
     
     return std::make_unique<Genome>(std::move(crossed));
-}
-
-float MatingBehavior::getTraitSafe(const Phenotype& phenotype,
-                                    const std::string& traitName,
-                                    float defaultValue) const {
-    if (phenotype.hasTrait(traitName)) {
-        return phenotype.getTrait(traitName);
-    }
-    return defaultValue;
 }
 
 unsigned int MatingBehavior::getOrganismId(const IGeneticOrganism& organism) const {

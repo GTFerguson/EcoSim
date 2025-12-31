@@ -135,17 +135,6 @@ private:
      */
     bool isTired(const IGeneticOrganism& organism) const;
     
-    /**
-     * @brief Safely get a trait value from phenotype
-     * @param phenotype The phenotype to query
-     * @param traitName Name of the trait
-     * @param defaultValue Value if trait not present
-     * @return Trait value or default
-     */
-    float getTraitSafe(const Phenotype& phenotype, 
-                       const std::string& traitName,
-                       float defaultValue) const;
-    
     /// Default fatigue threshold (need rest above this)
     static constexpr float DEFAULT_FATIGUE_THRESHOLD = 3.0f;
     

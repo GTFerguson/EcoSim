@@ -1,4 +1,5 @@
 #include "genetics/expression/PhenotypeUtils.hpp"
+#include "genetics/expression/Phenotype.hpp"
 
 namespace EcoSim {
 namespace Genetics {
@@ -50,6 +51,15 @@ AccumulatedEffect applyEffect(const AccumulatedEffect& accumulated,
     }
     
     return result;
+}
+
+float getTraitSafe(const Phenotype& phenotype,
+                   const std::string& traitName,
+                   float defaultValue) {
+    if (!phenotype.hasTrait(traitName)) {
+        return defaultValue;
+    }
+    return phenotype.getTrait(traitName);
 }
 
 } // namespace PhenotypeUtils

@@ -399,11 +399,6 @@ private:
     // ========================================================================
     
     /**
-     * @brief Safe trait getter with default value
-     */
-    static float getTraitSafe(const Phenotype& phenotype, const char* traitName, float defaultValue = 0.0f);
-    
-    /**
      * @brief Get the size/magnitude factor for a weapon type
      * @param phenotype The creature's expressed traits
      * @param weapon The weapon type
