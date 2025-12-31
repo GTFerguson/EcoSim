@@ -225,7 +225,7 @@ void UniversalGenes::registerUniversalGenes(GeneRegistry& registry) {
     metabolismRate.addEffect(EffectBinding("metabolism", "base_rate", EffectType::Direct, 1.0f));
     metabolismRate.setMaintenanceCost(0.03f);
     metabolismRate.setCostScaling(1.0f);
-    metabolismRate.setModulationPolicy(TraitModulationPolicy::HEALTH_ONLY);
+    metabolismRate.setModulationPolicy(TraitModulationPolicy::CONSUMER_APPLIED);
     registry.tryRegisterGene(std::move(metabolismRate));
     
     // Color Hue - HSV hue for visual appearance
@@ -349,7 +349,7 @@ void UniversalGenes::registerAutotrophyGenes(GeneRegistry& registry) {
     photosynthesis.addEffect(EffectBinding("metabolism", "photosynthesis_efficiency", EffectType::Direct, 1.0f));
     photosynthesis.setMaintenanceCost(0.04f);
     photosynthesis.setCostScaling(1.0f);
-    photosynthesis.setModulationPolicy(TraitModulationPolicy::HEALTH_ONLY);
+    photosynthesis.setModulationPolicy(TraitModulationPolicy::CONSUMER_APPLIED);
     registry.tryRegisterGene(std::move(photosynthesis));
     
     // Root Depth - underground resource access
@@ -455,6 +455,7 @@ void UniversalGenes::registerHeterotrophyGenes(GeneRegistry& registry) {
     digestiveEff.addEffect(EffectBinding("metabolism", "digestive_efficiency", EffectType::Direct, 1.0f));
     digestiveEff.setMaintenanceCost(0.08f);
     digestiveEff.setCostScaling(1.2f);
+    digestiveEff.setModulationPolicy(TraitModulationPolicy::CONSUMER_APPLIED);
     registry.tryRegisterGene(std::move(digestiveEff));
     
     // Nutrient Value - how nutritious when eaten
@@ -486,7 +487,7 @@ void UniversalGenes::registerCoevolutionHeterotrophyGenes(GeneRegistry& registry
     plantDigest.addEffect(EffectBinding("metabolism", "meat_digestion_efficiency", EffectType::Additive, -0.5f));
     plantDigest.setMaintenanceCost(0.10f);
     plantDigest.setCostScaling(1.2f);
-    plantDigest.setModulationPolicy(TraitModulationPolicy::HEALTH_ONLY);
+    plantDigest.setModulationPolicy(TraitModulationPolicy::CONSUMER_APPLIED);
     registry.tryRegisterGene(std::move(plantDigest));
     
     // Meat Digestion Efficiency - extract calories from meat
@@ -500,7 +501,7 @@ void UniversalGenes::registerCoevolutionHeterotrophyGenes(GeneRegistry& registry
     meatDigest.addEffect(EffectBinding("metabolism", "plant_digestion_efficiency", EffectType::Additive, -0.5f));
     meatDigest.setMaintenanceCost(0.10f);
     meatDigest.setCostScaling(1.2f);
-    meatDigest.setModulationPolicy(TraitModulationPolicy::HEALTH_ONLY);
+    meatDigest.setModulationPolicy(TraitModulationPolicy::CONSUMER_APPLIED);
     registry.tryRegisterGene(std::move(meatDigest));
     
     // Cellulose Breakdown - digest tough plant fibers
@@ -514,7 +515,7 @@ void UniversalGenes::registerCoevolutionHeterotrophyGenes(GeneRegistry& registry
     cellulose.addEffect(EffectBinding("morphology", "stomach_acidity", EffectType::Additive, -0.5f));
     cellulose.setMaintenanceCost(0.15f);
     cellulose.setCostScaling(1.5f);  // Very expensive to maintain gut flora
-    cellulose.setModulationPolicy(TraitModulationPolicy::HEALTH_ONLY);
+    cellulose.setModulationPolicy(TraitModulationPolicy::CONSUMER_APPLIED);
     registry.tryRegisterGene(std::move(cellulose));
     
     // Toxin Tolerance - resist plant toxins
@@ -525,6 +526,7 @@ void UniversalGenes::registerCoevolutionHeterotrophyGenes(GeneRegistry& registry
     toxinTol.addEffect(EffectBinding("metabolism", "toxin_tolerance", EffectType::Direct, 1.0f));
     toxinTol.setMaintenanceCost(0.08f);
     toxinTol.setCostScaling(1.0f);
+    toxinTol.setModulationPolicy(TraitModulationPolicy::CONSUMER_APPLIED);
     registry.tryRegisterGene(std::move(toxinTol));
     
     // Toxin Metabolism - detoxify plant compounds
@@ -535,6 +537,7 @@ void UniversalGenes::registerCoevolutionHeterotrophyGenes(GeneRegistry& registry
     toxinMet.addEffect(EffectBinding("metabolism", "toxin_metabolism", EffectType::Direct, 1.0f));
     toxinMet.setMaintenanceCost(0.12f);
     toxinMet.setCostScaling(1.3f);  // Expensive detox enzymes
+    toxinMet.setModulationPolicy(TraitModulationPolicy::CONSUMER_APPLIED);
     registry.tryRegisterGene(std::move(toxinMet));
     
     // Scent Detection - smell food from distance

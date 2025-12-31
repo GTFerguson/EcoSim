@@ -122,10 +122,11 @@ void testRegistryStoresGenePolicy() {
     const G::GeneDefinition& hideDef = registry.getDefinition(G::UniversalGenes::HIDE_THICKNESS);
     TEST_ASSERT(hideDef.getModulationPolicy() == G::TraitModulationPolicy::NEVER);
     
-    // Verify MEAT_DIGESTION_EFFICIENCY has HEALTH_ONLY policy
+    // Verify MEAT_DIGESTION_EFFICIENCY has CONSUMER_APPLIED policy
+    // (formerly HEALTH_ONLY, now consumers apply health modulation at use-time)
     TEST_ASSERT(registry.hasGene(G::UniversalGenes::MEAT_DIGESTION_EFFICIENCY));
     const G::GeneDefinition& meatDef = registry.getDefinition(G::UniversalGenes::MEAT_DIGESTION_EFFICIENCY);
-    TEST_ASSERT(meatDef.getModulationPolicy() == G::TraitModulationPolicy::HEALTH_ONLY);
+    TEST_ASSERT(meatDef.getModulationPolicy() == G::TraitModulationPolicy::CONSUMER_APPLIED);
     
     // Verify TOXIN_PRODUCTION has ENERGY_GATED policy
     TEST_ASSERT(registry.hasGene(G::UniversalGenes::TOXIN_PRODUCTION));
@@ -301,16 +302,14 @@ void testHealthOnlyPolicyLowHealth() {
     G::Phenotype phenotype = createTestPhenotype(registry, genome);
     float rawValue = phenotype.computeTraitRaw(G::UniversalGenes::MEAT_DIGESTION_EFFICIENCY);
     
-    // At health = 0.3 (below 0.5 threshold), modulation should occur
-    // health_factor = 0.7 + (0.3/0.5) * 0.3 = 0.7 + 0.6 * 0.3 = 0.7 + 0.18 = 0.88
+    // CONSUMER_APPLIED: Phenotype returns raw value regardless of health
+    // Consumers (e.g., FeedingInteraction) apply health modulation at use-time
     updateOrganismState(phenotype, 1.0f, 0.3f, false);
     phenotype.invalidateCache();
     float traitValue = phenotype.getTrait(G::UniversalGenes::MEAT_DIGESTION_EFFICIENCY);
     
-    float expectedFactor = 0.7f + (0.3f / 0.5f) * 0.3f;  // 0.88
-    float expectedValue = rawValue * expectedFactor;
-    
-    TEST_ASSERT_NEAR(traitValue, expectedValue, 0.01f);
+    // Raw value returned - no phenotype-level health modulation
+    TEST_ASSERT_NEAR(traitValue, rawValue, 0.001f);
 }
 
 void testHealthOnlyPolicyVeryLowHealth() {
@@ -321,16 +320,13 @@ void testHealthOnlyPolicyVeryLowHealth() {
     G::Phenotype phenotype = createTestPhenotype(registry, genome);
     float rawValue = phenotype.computeTraitRaw(G::UniversalGenes::PLANT_DIGESTION_EFFICIENCY);
     
-    // At health = 0.1, modulation should be more severe
-    // health_factor = 0.7 + (0.1/0.5) * 0.3 = 0.7 + 0.2 * 0.3 = 0.7 + 0.06 = 0.76
+    // CONSUMER_APPLIED: Phenotype returns raw value regardless of health
     updateOrganismState(phenotype, 1.0f, 0.1f, false);
     phenotype.invalidateCache();
     float traitValue = phenotype.getTrait(G::UniversalGenes::PLANT_DIGESTION_EFFICIENCY);
     
-    float expectedFactor = 0.7f + (0.1f / 0.5f) * 0.3f;  // 0.76
-    float expectedValue = rawValue * expectedFactor;
-    
-    TEST_ASSERT_NEAR(traitValue, expectedValue, 0.01f);
+    // Raw value returned - consumers apply health factor at use-time
+    TEST_ASSERT_NEAR(traitValue, rawValue, 0.001f);
 }
 
 void testHealthOnlyPolicyUnaffectedByEnergy() {
@@ -354,22 +350,21 @@ void testHealthOnlyPolicyCelluloseBreakdown() {
     G::UniversalGenes::registerDefaults(registry);
     G::Genome genome = G::UniversalGenes::createCreatureGenome(registry);
     
-    // Verify CELLULOSE_BREAKDOWN has HEALTH_ONLY policy
+    // Verify CELLULOSE_BREAKDOWN has CONSUMER_APPLIED policy
+    // (formerly HEALTH_ONLY - consumers now apply health modulation at use-time)
     const G::GeneDefinition& def = registry.getDefinition(G::UniversalGenes::CELLULOSE_BREAKDOWN);
-    TEST_ASSERT(def.getModulationPolicy() == G::TraitModulationPolicy::HEALTH_ONLY);
+    TEST_ASSERT(def.getModulationPolicy() == G::TraitModulationPolicy::CONSUMER_APPLIED);
     
     G::Phenotype phenotype = createTestPhenotype(registry, genome);
     float rawValue = phenotype.computeTraitRaw(G::UniversalGenes::CELLULOSE_BREAKDOWN);
     
-    // At health = 0.25
+    // CONSUMER_APPLIED: Raw value returned regardless of health
     updateOrganismState(phenotype, 1.0f, 0.25f, false);
     phenotype.invalidateCache();
     float traitValue = phenotype.getTrait(G::UniversalGenes::CELLULOSE_BREAKDOWN);
     
-    float expectedFactor = 0.7f + (0.25f / 0.5f) * 0.3f;  // 0.85
-    float expectedValue = rawValue * expectedFactor;
-    
-    TEST_ASSERT_NEAR(traitValue, expectedValue, 0.01f);
+    // Raw value returned - no phenotype-level modulation
+    TEST_ASSERT_NEAR(traitValue, rawValue, 0.001f);
 }
 
 // ============================================================================
@@ -594,8 +589,9 @@ void testStructuralVsPerformanceTraitBehavior() {
     // CONSUMER_APPLIED policy (locomotion): Should be unchanged (consumer applies modulation)
     TEST_ASSERT_NEAR(locoBase, locoLowHealth, 0.001f);
     
-    // HEALTH_ONLY policy (meat digestion): Should be reduced
-    TEST_ASSERT_LT(meatDigestLowHealth, meatDigestBase);
+    // CONSUMER_APPLIED policy (meat digestion): Should also be unchanged at phenotype level
+    // Consumers apply health modulation at use-time
+    TEST_ASSERT_NEAR(meatDigestBase, meatDigestLowHealth, 0.001f);
 }
 
 void testPolicyCategorization() {
@@ -668,9 +664,9 @@ void testMultipleTraitsSimultaneously() {
     // NEVER: unchanged
     TEST_ASSERT_NEAR(hideBase, hideStressed, 0.001f);
     
-    // HEALTH_ONLY: reduced (health 0.3 < 0.5)
-    float healthFactor = 0.7f + (0.3f / 0.5f) * 0.3f;
-    TEST_ASSERT_NEAR(meatBase * healthFactor, meatStressed, 0.01f);
+    // CONSUMER_APPLIED (meat digestion): unchanged at phenotype level
+    // Consumers apply health modulation at use-time
+    TEST_ASSERT_NEAR(meatBase, meatStressed, 0.001f);
     
     // ENERGY_GATED: unchanged
     TEST_ASSERT_NEAR(toxinBase, toxinStressed, 0.001f);

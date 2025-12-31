@@ -315,12 +315,8 @@ float Phenotype::applyOrganismStateModulation(float value, const std::string& tr
             return value;
             
         case TraitModulationPolicy::HEALTH_ONLY:
-            // Metabolic efficiency traits - only affected by health
-            // Poor health reduces digestive/metabolic efficiency
-            if (org.health < 0.5f) {
-                float health_factor = 0.7f + (org.health / 0.5f) * 0.3f;
-                return value * health_factor;
-            }
+            // DEPRECATED: Health modulation now handled by consumers via CONSUMER_APPLIED.
+            // This case preserved for backwards compatibility but behaves like CONSUMER_APPLIED.
             return value;
             
         case TraitModulationPolicy::ENERGY_GATED:

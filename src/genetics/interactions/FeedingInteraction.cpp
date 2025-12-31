@@ -236,9 +236,16 @@ float FeedingInteraction::calculateToxinDamage(
     const Phenotype& creature,
     const Plant& plant
 ) const {
+    // Get raw trait values (CONSUMER_APPLIED policy for toxin traits)
     float toxinTolerance = getTraitSafe(creature, UniversalGenes::TOXIN_TOLERANCE, 0.0f);
     float toxinMetabolism = getTraitSafe(creature, UniversalGenes::TOXIN_METABOLISM, 0.0f);
     float mucusProtection = getTraitSafe(creature, UniversalGenes::MUCUS_PROTECTION, 0.0f);
+    
+    // Apply health modulation at use-time (CONSUMER_APPLIED pattern)
+    // Injured creatures have reduced toxin processing ability
+    float healthFactor = creature.getHealth();
+    toxinTolerance *= healthFactor;
+    toxinMetabolism *= healthFactor;
     
     float toxinProduction = plant.getToxicity();
     
@@ -296,8 +303,15 @@ float FeedingInteraction::getDigestionEfficiency(
     const Phenotype& creature,
     const Plant& plant
 ) const {
+    // Get raw trait values (CONSUMER_APPLIED policy)
     float plantDigestion = getTraitSafe(creature, UniversalGenes::PLANT_DIGESTION_EFFICIENCY, 0.0f);
     float celluloseBreakdown = getTraitSafe(creature, UniversalGenes::CELLULOSE_BREAKDOWN, 0.0f);
+    
+    // Apply health modulation at use-time (CONSUMER_APPLIED pattern)
+    // Injured creatures have reduced digestive efficiency
+    float healthFactor = creature.getHealth();
+    plantDigestion *= healthFactor;
+    celluloseBreakdown *= healthFactor;
     
     // Base efficiency from plant digestion gene
     float baseEfficiency = plantDigestion;

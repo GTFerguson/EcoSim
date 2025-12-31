@@ -147,6 +147,15 @@ public:
     bool isValid() const;
     
     /**
+     * @brief Get the current health percentage from organism state
+     * @return Health value (0.0 to 1.0) where 1.0 is full health
+     *
+     * This is provided for consumers that need to apply health-based
+     * modulation at use-time (CONSUMER_APPLIED traits).
+     */
+    float getHealth() const { return organism_state_.health; }
+    
+    /**
      * @brief Calculate emergent diet type from digestion genes
      * @return The emergent DietType based on digestive capabilities
      *
