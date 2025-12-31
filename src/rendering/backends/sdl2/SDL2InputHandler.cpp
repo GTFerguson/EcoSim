@@ -9,6 +9,7 @@
  */
 
 #include "../../../../include/rendering/backends/sdl2/SDL2InputHandler.hpp"
+#include "../../../../include/rendering/KeyMappings.hpp"
 #include <algorithm>
 
 // ImGui integration for event handling
@@ -283,59 +284,14 @@ KeyCode SDL2InputHandler::mapSDLKey(SDL_Keycode sdlKey) {
 //==============================================================================
 
 void SDL2InputHandler::initializeDefaultMappings() {
-    // Navigation - arrow keys
-    _keyActionMap[KeyCode::KEY_UP]    = InputAction::MOVE_UP;
-    _keyActionMap[KeyCode::KEY_DOWN]  = InputAction::MOVE_DOWN;
-    _keyActionMap[KeyCode::KEY_LEFT]  = InputAction::MOVE_LEFT;
-    _keyActionMap[KeyCode::KEY_RIGHT] = InputAction::MOVE_RIGHT;
+    // Use shared default mappings from KeyMappings.hpp
+    _keyActionMap = KeyMappings::getDefaultMappings();
     
-    // Navigation - vim-style (hjkl)
-    _keyActionMap[KeyCode::KEY_H] = InputAction::MOVE_LEFT;
-    _keyActionMap[KeyCode::KEY_J] = InputAction::MOVE_DOWN;
-    _keyActionMap[KeyCode::KEY_K] = InputAction::MOVE_UP;
-    _keyActionMap[KeyCode::KEY_L] = InputAction::MOVE_RIGHT;
-    
-    // Simulation control
-    _keyActionMap[KeyCode::KEY_SPACE]  = InputAction::PAUSE;
+    // SDL2-specific overrides: ESCAPE opens pause menu instead of quitting directly
     _keyActionMap[KeyCode::KEY_ESCAPE] = InputAction::TOGGLE_PAUSE_MENU;
     
-    // UI actions
-    _keyActionMap[KeyCode::KEY_F] = InputAction::TOGGLE_HUD;
-    
-    // Simulation actions
-    _keyActionMap[KeyCode::KEY_A] = InputAction::ADD_CREATURES;
-    _keyActionMap[KeyCode::KEY_S] = InputAction::SAVE_STATE;
-    
-    // Menu navigation
-    _keyActionMap[KeyCode::KEY_ENTER] = InputAction::MENU_SELECT;
-    
-    // World editor actions
-    _keyActionMap[KeyCode::KEY_PAGE_UP]   = InputAction::INCREASE_SCALE;
-    _keyActionMap[KeyCode::KEY_PAGE_DOWN] = InputAction::DECREASE_SCALE;
-    _keyActionMap[KeyCode::KEY_N] = InputAction::NEW_SEED;
-    _keyActionMap[KeyCode::KEY_EQUALS] = InputAction::INCREASE_FREQ;
-    _keyActionMap[KeyCode::KEY_MINUS]  = InputAction::DECREASE_FREQ;
-    _keyActionMap[KeyCode::KEY_V] = InputAction::INCREASE_EXPONENT;
-    _keyActionMap[KeyCode::KEY_C] = InputAction::DECREASE_EXPONENT;
-    
-    // Terrain selection (1-9)
-    _keyActionMap[KeyCode::KEY_1] = InputAction::SELECT_TERRAIN_1;
-    _keyActionMap[KeyCode::KEY_2] = InputAction::SELECT_TERRAIN_2;
-    _keyActionMap[KeyCode::KEY_3] = InputAction::SELECT_TERRAIN_3;
-    _keyActionMap[KeyCode::KEY_4] = InputAction::SELECT_TERRAIN_4;
-    _keyActionMap[KeyCode::KEY_5] = InputAction::SELECT_TERRAIN_5;
-    _keyActionMap[KeyCode::KEY_6] = InputAction::SELECT_TERRAIN_6;
-    _keyActionMap[KeyCode::KEY_7] = InputAction::SELECT_TERRAIN_7;
-    _keyActionMap[KeyCode::KEY_8] = InputAction::SELECT_TERRAIN_8;
-    _keyActionMap[KeyCode::KEY_9] = InputAction::SELECT_TERRAIN_9;
-    
-    _keyActionMap[KeyCode::KEY_W] = InputAction::INCREASE_TERRAIN_LEVEL;
-    _keyActionMap[KeyCode::KEY_Q] = InputAction::DECREASE_TERRAIN_LEVEL;
-    
-    // Zoom controls
-    _keyActionMap[KeyCode::KEY_PLUS]   = InputAction::ZOOM_IN;
-    _keyActionMap[KeyCode::KEY_EQUALS] = InputAction::ZOOM_IN;   // Unshifted + key
-    _keyActionMap[KeyCode::KEY_MINUS]  = InputAction::ZOOM_OUT;
+    // SDL2-specific: MINUS also works for zoom out
+    _keyActionMap[KeyCode::KEY_MINUS] = InputAction::ZOOM_OUT;
 }
 
 InputEvent SDL2InputHandler::processSDLEvent(const SDL_Event& event) {

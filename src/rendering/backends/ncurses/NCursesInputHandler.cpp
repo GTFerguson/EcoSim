@@ -18,6 +18,7 @@
 
 // Now safe to include our headers
 #include "../../../../include/rendering/backends/ncurses/NCursesInputHandler.hpp"
+#include "../../../../include/rendering/KeyMappings.hpp"
 
 //==============================================================================
 // Constructor / Destructor
@@ -281,58 +282,8 @@ KeyCode NCursesInputHandler::mapNcursesKey(int ncursesKey) {
 //==============================================================================
 
 void NCursesInputHandler::initializeDefaultMappings() {
-    // Navigation - arrow keys
-    _keyActionMap[KeyCode::KEY_UP]    = InputAction::MOVE_UP;
-    _keyActionMap[KeyCode::KEY_DOWN]  = InputAction::MOVE_DOWN;
-    _keyActionMap[KeyCode::KEY_LEFT]  = InputAction::MOVE_LEFT;
-    _keyActionMap[KeyCode::KEY_RIGHT] = InputAction::MOVE_RIGHT;
-    
-    // Navigation - vim-style (hjkl)
-    _keyActionMap[KeyCode::KEY_H] = InputAction::MOVE_LEFT;
-    _keyActionMap[KeyCode::KEY_J] = InputAction::MOVE_DOWN;
-    _keyActionMap[KeyCode::KEY_K] = InputAction::MOVE_UP;
-    _keyActionMap[KeyCode::KEY_L] = InputAction::MOVE_RIGHT;
-    
-    // Simulation control
-    _keyActionMap[KeyCode::KEY_SPACE]  = InputAction::PAUSE;
-    _keyActionMap[KeyCode::KEY_ESCAPE] = InputAction::QUIT;
-    
-    // UI actions
-    _keyActionMap[KeyCode::KEY_F] = InputAction::TOGGLE_HUD;
-    
-    // Simulation actions
-    _keyActionMap[KeyCode::KEY_A] = InputAction::ADD_CREATURES;
-    _keyActionMap[KeyCode::KEY_S] = InputAction::SAVE_STATE;
-    
-    // Menu navigation
-    // Arrow keys also work for menus - same as navigation
-    _keyActionMap[KeyCode::KEY_ENTER] = InputAction::MENU_SELECT;
-    // ESC already mapped to QUIT which also works for MENU_CANCEL
-    
-    // World editor actions
-    _keyActionMap[KeyCode::KEY_PAGE_UP]   = InputAction::INCREASE_SCALE;
-    _keyActionMap[KeyCode::KEY_PAGE_DOWN] = InputAction::DECREASE_SCALE;
-    _keyActionMap[KeyCode::KEY_N] = InputAction::NEW_SEED;
-    // D/F already mapped, we'll use context-based handling
-    _keyActionMap[KeyCode::KEY_EQUALS] = InputAction::INCREASE_FREQ;
-    _keyActionMap[KeyCode::KEY_MINUS]  = InputAction::DECREASE_FREQ;
-    _keyActionMap[KeyCode::KEY_V] = InputAction::INCREASE_EXPONENT;
-    _keyActionMap[KeyCode::KEY_C] = InputAction::DECREASE_EXPONENT;
-    // S/A already have mappings, context-based handling needed
-    
-    // Terrain selection (1-9)
-    _keyActionMap[KeyCode::KEY_1] = InputAction::SELECT_TERRAIN_1;
-    _keyActionMap[KeyCode::KEY_2] = InputAction::SELECT_TERRAIN_2;
-    _keyActionMap[KeyCode::KEY_3] = InputAction::SELECT_TERRAIN_3;
-    _keyActionMap[KeyCode::KEY_4] = InputAction::SELECT_TERRAIN_4;
-    _keyActionMap[KeyCode::KEY_5] = InputAction::SELECT_TERRAIN_5;
-    _keyActionMap[KeyCode::KEY_6] = InputAction::SELECT_TERRAIN_6;
-    _keyActionMap[KeyCode::KEY_7] = InputAction::SELECT_TERRAIN_7;
-    _keyActionMap[KeyCode::KEY_8] = InputAction::SELECT_TERRAIN_8;
-    _keyActionMap[KeyCode::KEY_9] = InputAction::SELECT_TERRAIN_9;
-    
-    _keyActionMap[KeyCode::KEY_W] = InputAction::INCREASE_TERRAIN_LEVEL;
-    _keyActionMap[KeyCode::KEY_Q] = InputAction::DECREASE_TERRAIN_LEVEL;
+    // Use shared default mappings from KeyMappings.hpp
+    _keyActionMap = KeyMappings::getDefaultMappings();
 }
 
 InputEvent NCursesInputHandler::processKey(int rawKey) {
