@@ -1,4 +1,5 @@
 #include "genetics/interactions/CombatInteraction.hpp"
+#include "genetics/interactions/CombatConfig.hpp"
 #include "genetics/expression/PhenotypeUtils.hpp"
 #include <sstream>
 
@@ -6,6 +7,7 @@ namespace EcoSim {
 namespace Genetics {
 
 using PhenotypeUtils::getTraitSafe;
+using namespace CombatConfig;
 
 // ============================================================================
 // Weapon Damage Calculation
@@ -99,8 +101,9 @@ bool CombatInteraction::shouldInitiateCombat(
     // Also consider hunger level - desperate creatures fight more
     float hungerMotive = 1.0f - attackerHunger;  // Low hunger (high value) = high motive
     
-    // Formula: aggression × huntInstinct × (0.5 + hungerMotive × 0.5)
-    float combatScore = aggression * huntInstinct * (0.5f + hungerMotive * 0.5f);
+    // Formula: aggression × huntInstinct × (base + hungerMotive × scale)
+    float combatScore = aggression * huntInstinct *
+        (HUNGER_MOTIVATION_BASE + hungerMotive * HUNGER_MOTIVATION_SCALE);
     
     return combatScore > COMBAT_INITIATION_THRESHOLD;
 }
@@ -129,8 +132,8 @@ float CombatInteraction::calculateSpecializationBonus(const DamageDistribution& 
     
     // 0-50% bonus based on specialization
     // Pure specialist (100% in one type) gets 50% bonus
-    // Perfect generalist (33% each) gets ~17% bonus (0.33 * 0.5)
-    return maxRatio * 0.5f;
+    // Perfect generalist (33% each) gets ~17% bonus
+    return maxRatio * SPECIALIZATION_BONUS_MAX;
 }
 
 // ============================================================================
@@ -146,7 +149,7 @@ CombatAction CombatInteraction::selectBestAction(
     
     // Find the weakest defense
     DefenseType weakestDefense;
-    float minDefense = 2.0f;  // Start higher than max possible
+    float minDefense = DEFENSE_COMPARISON_INITIAL;  // Start higher than max possible
     
     if (defProfile.thickHide < minDefense) {
         minDefense = defProfile.thickHide;
@@ -315,7 +318,7 @@ CombatResult CombatInteraction::resolveCombatTick(
     result.attackerResult = resolveAttack(attackerPhenotype, defenderPhenotype, attackerAction);
     
     // Check if defender would die
-    float newDefenderHealth = defenderHealth - (result.attackerResult.finalDamage / 100.0f);
+    float newDefenderHealth = defenderHealth - (result.attackerResult.finalDamage / HEALTH_CONVERSION_DIVISOR);
     if (newDefenderHealth <= 0.0f) {
         result.defenderDied = true;
         return result;
@@ -325,12 +328,12 @@ CombatResult CombatInteraction::resolveCombatTick(
     float defenderAggression = getTraitSafe(defenderPhenotype,
         UniversalGenes::COMBAT_AGGRESSION, 0.0f);
     
-    if (defenderAggression > 0.3f) {  // Only counter if aggressive enough
+    if (defenderAggression > COUNTER_ATTACK_AGGRESSION_THRESHOLD) {
         CombatAction defenderAction = selectBestAction(defenderPhenotype, attackerPhenotype);
         result.defenderResult = resolveAttack(defenderPhenotype, attackerPhenotype, defenderAction);
         
         // Check if attacker would die
-        float newAttackerHealth = attackerHealth - (result.defenderResult.finalDamage / 100.0f);
+        float newAttackerHealth = attackerHealth - (result.defenderResult.finalDamage / HEALTH_CONVERSION_DIVISOR);
         if (newAttackerHealth <= 0.0f) {
             result.attackerDied = true;
         }
@@ -352,7 +355,7 @@ DamageDistribution CombatInteraction::calculateTeethDamage(const Phenotype& phen
     
     // Calculate raw weights for each damage type
     float pierceWeight = sharpness;
-    float slashWeight = serration * 0.5f;
+    float slashWeight = serration * TEETH_SERRATION_SLASH_WEIGHT;
     float bluntWeight = 1.0f - sharpness;
     
     // Normalize so distribution sums to 1.0
@@ -376,7 +379,7 @@ DamageDistribution CombatInteraction::calculateClawsDamage(const Phenotype& phen
     // Calculate raw weights for each damage type
     float pierceWeight = curvature * sharpness;
     float slashWeight = (1.0f - curvature) * sharpness;
-    float bluntWeight = (1.0f - sharpness) * 0.3f;
+    float bluntWeight = (1.0f - sharpness) * CLAWS_BLUNT_WEIGHT;
     
     // Normalize so distribution sums to 1.0
     float totalWeight = pierceWeight + slashWeight + bluntWeight;
@@ -398,7 +401,7 @@ DamageDistribution CombatInteraction::calculateHornsDamage(const Phenotype& phen
     
     // Calculate raw weights for each damage type
     float pierceWeight = pointiness;
-    float slashWeight = spread * 0.3f;
+    float slashWeight = spread * HORNS_SPREAD_SLASH_WEIGHT;
     float bluntWeight = 1.0f - pointiness;
     
     // Normalize so distribution sums to 1.0
@@ -421,7 +424,7 @@ DamageDistribution CombatInteraction::calculateTailDamage(const Phenotype& pheno
     
     // Calculate raw weights for each damage type
     float pierceWeight = spines;
-    float slashWeight = (1.0f - mass) * 0.5f;
+    float slashWeight = (1.0f - mass) * TAIL_SLASH_WEIGHT;
     float bluntWeight = mass;
     
     // Normalize so distribution sums to 1.0

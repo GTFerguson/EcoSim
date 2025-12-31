@@ -1,6 +1,7 @@
 #pragma once
 #include "DamageTypes.hpp"
 #include "CombatAction.hpp"
+#include "CombatConfig.hpp"
 #include "genetics/expression/Phenotype.hpp"
 #include "genetics/defaults/UniversalGenes.hpp"
 #include <vector>
@@ -413,24 +414,6 @@ private:
      */
     static float getSizeFactorForWeapon(const Phenotype& phenotype, WeaponType weapon);
     
-    // ========================================================================
-    // Constants
-    // ========================================================================
-    
-    /// Minimum gene value to consider weapon "usable"
-    static constexpr float WEAPON_USABILITY_THRESHOLD = 0.1f;
-    
-    /// Default stamina cost per attack
-    static constexpr float DEFAULT_STAMINA_COST = 0.1f;
-    
-    /// Threshold for combat initiation (aggression × hunt_instinct × hunger_mod)
-    static constexpr float COMBAT_INITIATION_THRESHOLD = 0.3f;
-    
-    /// Bleeding chance threshold (pierce damage that exceeds this may cause bleeding)
-    static constexpr float BLEEDING_DAMAGE_THRESHOLD = 5.0f;
-    
-    /// Maximum defense reduction (50% at max defense value)
-    static constexpr float MAX_DEFENSE_REDUCTION = 0.5f;
 };
 
 } // namespace Genetics
