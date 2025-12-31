@@ -52,62 +52,62 @@ const ArchetypeIdentity* CreatureTaxonomy::classifyArchetype(const Genome& genom
     float retreat = getRawGeneValue(genome, UniversalGenes::RETREAT_THRESHOLD);
     
     // Classification logic - check in priority order
-    // (Same thresholds as CreatureFactory::classifyCreature)
+    namespace CT = ClassificationThresholds;
     
     // Apex Predator: Large, aggressive carnivore
-    if (meatDig > 0.8f && size > 2.0f && aggression > 0.7f) {
+    if (meatDig > CT::CARNIVORE_HIGH && size > CT::SIZE_LARGE && aggression > CT::AGGRESSION_HIGH) {
         return ArchetypeIdentity::ApexPredator();
     }
     
     // Pack Hunter: Coordinated carnivore, smaller
-    if (meatDig > 0.7f && packCoord > 0.7f && size < 1.5f) {
+    if (meatDig > CT::CARNIVORE_MIN && packCoord > CT::PACK_COORD_MIN && size < CT::SIZE_SMALL_MAX) {
         return ArchetypeIdentity::PackHunter();
     }
     
     // Ambush Predator: Stealthy carnivore
-    if (meatDig > 0.8f && scentMasking > 0.6f && locomotion < 0.8f) {
+    if (meatDig > CT::CARNIVORE_HIGH && scentMasking > CT::SCENT_MASKING_MIN && locomotion < CT::LOCOMOTION_SLOW_MAX) {
         return ArchetypeIdentity::AmbushPredator();
     }
     
     // Pursuit Hunter: Fast carnivore
-    if (meatDig > 0.7f && locomotion > 1.5f) {
+    if (meatDig > CT::CARNIVORE_MIN && locomotion > CT::LOCOMOTION_FAST) {
         return ArchetypeIdentity::PursuitHunter();
     }
     
     // Scavenger: Carrion-eater (check before herbivores)
-    if (meatDig > 0.5f && huntInstinct < 0.3f && toxinTol > 0.7f) {
+    if (meatDig > CT::SCAVENGER_MEAT_MIN && huntInstinct < CT::HUNT_INSTINCT_LOW_MAX && toxinTol > CT::TOXIN_TOLERANCE_MIN) {
         return ArchetypeIdentity::Scavenger();
     }
     
     // Tank Herbivore: Large, armored with horns
-    if (plantDig > 0.7f && hide > 0.7f && size > 2.0f && hornLen > 0.6f) {
+    if (plantDig > CT::HERBIVORE_MIN && hide > CT::HIDE_MIN && size > CT::SIZE_LARGE && hornLen > CT::HORN_LENGTH_MIN) {
         return ArchetypeIdentity::TankHerbivore();
     }
     
     // Armored Grazer: Scaled herbivore
-    if (plantDig > 0.7f && scales > 0.7f) {
+    if (plantDig > CT::HERBIVORE_MIN && scales > CT::SCALES_MIN) {
         return ArchetypeIdentity::ArmoredGrazer();
     }
     
     // Spiky Defender: Spine defense
-    if ((bodySpines > 0.5f || tailSpines > 0.5f) && plantDig > 0.4f) {
+    if ((bodySpines > CT::SPINES_MIN || tailSpines > CT::SPINES_MIN) && plantDig > CT::SPIKY_PLANT_MIN) {
         return ArchetypeIdentity::SpikyDefender();
     }
     
     // Canopy Forager: Fruit specialist with excellent sensory abilities
     float sweetPref = getRawGeneValue(genome, UniversalGenes::SWEETNESS_PREFERENCE);
     float colorVision = getRawGeneValue(genome, UniversalGenes::COLOR_VISION);
-    if (sweetPref > 0.6f && colorVision > 0.7f && meatDig < 0.3f) {
+    if (sweetPref > CT::SWEET_PREFERENCE_MIN && colorVision > CT::COLOR_VISION_MIN && meatDig < CT::LOW_DIET_MAX) {
         return ArchetypeIdentity::CanopyForager();
     }
     
     // Fleet Runner: Fast herbivore
-    if (plantDig > 0.5f && locomotion > 1.5f && retreat > 0.7f) {
+    if (plantDig > CT::FLEET_PLANT_MIN && locomotion > CT::LOCOMOTION_FAST && retreat > CT::RETREAT_HIGH) {
         return ArchetypeIdentity::FleetRunner();
     }
     
     // Omnivore Generalist: Both diets
-    if (plantDig > 0.4f && meatDig > 0.4f) {
+    if (plantDig > CT::OMNIVORE_MIN && meatDig > CT::OMNIVORE_MIN) {
         return ArchetypeIdentity::OmnivoreGeneralist();
     }
     
@@ -147,14 +147,15 @@ std::string CreatureTaxonomy::generateScientificName(const Genome& genome) {
     float retreat = getRawGeneValue(genome, UniversalGenes::RETREAT_THRESHOLD);
     
     // === GENUS (Diet + Behavior) ===
+    namespace CT = ClassificationThresholds;
     std::string dietPrefix;
     std::string behaviorSuffix;
     
     // Diet prefix
-    bool isCarnivore = meatDig > 0.7f && plantDig < 0.3f;
-    bool isHerbivore = plantDig > 0.7f && meatDig < 0.3f;
-    bool isOmnivore = plantDig > 0.4f && meatDig > 0.4f;
-    bool isScavenger = meatDig > 0.5f && huntInstinct < 0.3f && toxinTol > 0.7f;
+    bool isCarnivore = meatDig > CT::CARNIVORE_MIN && plantDig < CT::LOW_DIET_MAX;
+    bool isHerbivore = plantDig > CT::HERBIVORE_MIN && meatDig < CT::LOW_DIET_MAX;
+    bool isOmnivore = plantDig > CT::OMNIVORE_MIN && meatDig > CT::OMNIVORE_MIN;
+    bool isScavenger = meatDig > CT::SCAVENGER_MEAT_MIN && huntInstinct < CT::HUNT_INSTINCT_LOW_MAX && toxinTol > CT::TOXIN_TOLERANCE_MIN;
     
     if (isScavenger) {
         dietPrefix = "Necro";
@@ -172,21 +173,21 @@ std::string CreatureTaxonomy::generateScientificName(const Genome& genome) {
     // Behavior suffix (priority order)
     if (isScavenger) {
         behaviorSuffix = "scavus";
-    } else if (aggression > 0.8f && size > 2.0f) {
+    } else if (aggression > CT::AGGRESSION_VERY_HIGH && size > CT::SIZE_LARGE) {
         behaviorSuffix = "rex";
-    } else if (aggression > 0.7f && meatDig > 0.7f) {
+    } else if (aggression > CT::AGGRESSION_HIGH && meatDig > CT::CARNIVORE_MIN) {
         behaviorSuffix = "predax";
-    } else if (scentMasking > 0.6f && meatDig > 0.7f) {
+    } else if (scentMasking > CT::SCENT_MASKING_MIN && meatDig > CT::CARNIVORE_MIN) {
         behaviorSuffix = "latens";
-    } else if (packCoord > 0.7f) {
+    } else if (packCoord > CT::PACK_COORD_MIN) {
         behaviorSuffix = "socialis";
-    } else if (locomotion > 1.5f) {
+    } else if (locomotion > CT::LOCOMOTION_FAST) {
         behaviorSuffix = "cursor";
-    } else if (scales > 0.7f || hide > 0.7f) {
+    } else if (scales > CT::SCALES_MIN || hide > CT::HIDE_MIN) {
         behaviorSuffix = "scutum";
-    } else if (scentMasking > 0.6f) {
+    } else if (scentMasking > CT::SCENT_MASKING_MIN) {
         behaviorSuffix = "insidia";
-    } else if (plantDig > 0.7f && aggression < 0.3f) {
+    } else if (plantDig > CT::HERBIVORE_MIN && aggression < CT::AGGRESSION_LOW_MAX) {
         behaviorSuffix = "grazer";
     } else {
         behaviorSuffix = "flexus";
@@ -196,15 +197,15 @@ std::string CreatureTaxonomy::generateScientificName(const Genome& genome) {
     
     // === SPECIES (Size) ===
     std::string species;
-    if (size < 0.7f) {
+    if (size < CT::SIZE_MINIMUS_MAX) {
         species = "minimus";
-    } else if (size < 1.0f) {
+    } else if (size < CT::SIZE_MINOR_MAX) {
         species = "minor";
-    } else if (size < 1.5f) {
+    } else if (size < CT::SIZE_MEDIOCRIS_MAX) {
         species = "mediocris";
-    } else if (size < 2.0f) {
+    } else if (size < CT::SIZE_MAJOR_MAX) {
         species = "major";
-    } else if (size < 2.5f) {
+    } else if (size < CT::SIZE_GRANDIS_MAX) {
         species = "grandis";
     } else {
         species = "titan";
@@ -230,26 +231,26 @@ std::string CreatureTaxonomy::generateScientificName(const Genome& genome) {
         {fatLayer, "crassus"},
         {(bodySpines > tailSpines ? bodySpines : tailSpines), "spinosus"},
         
-        // Special
-        {regen / 2.0f, "regenerans"}, // Normalize (max is 2.0)
+        // Special - normalized using threshold constants
+        {regen / CT::REGEN_MAX, "regenerans"},
         {olfactory, "olfactans"},
-        {sightRange / 150.0f, "vigilans"}, // Normalize (max is ~150)
-        {locomotion / 2.0f, "velocis"} // Normalize (max is 2.0)
+        {sightRange / CT::SIGHT_RANGE_MAX, "vigilans"},
+        {locomotion / CT::LOCOMOTION_MAX, "velocis"}
     };
     
     // Combined armor check
-    if (hide > 0.5f && scales > 0.5f) {
-        traits.push_back({(hide + scales) / 2.0f + 0.1f, "armatus"});
+    if (hide > CT::COMBINED_ARMOR_MIN && scales > CT::COMBINED_ARMOR_MIN) {
+        traits.push_back({(hide + scales) / 2.0f + CT::COMBINED_ARMOR_BONUS, "armatus"});
     }
     
     // Defensive posture
-    if (retreat > 0.8f) {
+    if (retreat > CT::RETREAT_VERY_HIGH) {
         traits.push_back({retreat, "timidus"});
     }
     
     // Find highest scoring trait above threshold
     std::string epithet = "vulgaris"; // Default
-    float bestScore = 0.5f; // Threshold
+    float bestScore = CT::TRAIT_THRESHOLD;
     
     for (const auto& t : traits) {
         if (t.score > bestScore) {

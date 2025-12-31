@@ -8,6 +8,98 @@ namespace EcoSim {
 namespace Genetics {
 
 /**
+ * @brief Named constants for creature classification thresholds
+ *
+ * Centralizes magic numbers used in archetype classification and
+ * scientific name generation for improved maintainability and tuning.
+ */
+namespace ClassificationThresholds {
+
+    // ========================================================================
+    // Diet Thresholds
+    // ========================================================================
+    
+    constexpr float CARNIVORE_MIN = 0.7f;       // Minimum meat digestion for carnivore
+    constexpr float CARNIVORE_HIGH = 0.8f;      // High meat digestion (apex/ambush predator)
+    constexpr float HERBIVORE_MIN = 0.7f;       // Minimum plant digestion for herbivore
+    constexpr float OMNIVORE_MIN = 0.4f;        // Minimum for both diets to be omnivore
+    constexpr float SCAVENGER_MEAT_MIN = 0.5f;  // Minimum meat digestion for scavenger
+    constexpr float LOW_DIET_MAX = 0.3f;        // Maximum for "low" diet classification
+    constexpr float SPIKY_PLANT_MIN = 0.4f;     // Plant digestion for spiky defender
+    constexpr float FLEET_PLANT_MIN = 0.5f;     // Plant digestion for fleet runner
+
+    // ========================================================================
+    // Size Thresholds
+    // ========================================================================
+    
+    constexpr float SIZE_LARGE = 2.0f;          // Large creature threshold
+    constexpr float SIZE_SMALL_MAX = 1.5f;      // Maximum for "small" (pack hunters)
+    
+    // Species naming size brackets
+    constexpr float SIZE_MINIMUS_MAX = 0.7f;    // "minimus" species
+    constexpr float SIZE_MINOR_MAX = 1.0f;      // "minor" species
+    constexpr float SIZE_MEDIOCRIS_MAX = 1.5f;  // "mediocris" species
+    constexpr float SIZE_MAJOR_MAX = 2.0f;      // "major" species
+    constexpr float SIZE_GRANDIS_MAX = 2.5f;    // "grandis" species (>=2.5 is "titan")
+
+    // ========================================================================
+    // Behavior Thresholds
+    // ========================================================================
+    
+    constexpr float AGGRESSION_HIGH = 0.7f;     // High aggression threshold
+    constexpr float AGGRESSION_VERY_HIGH = 0.8f;// Very high aggression (rex behavior)
+    constexpr float AGGRESSION_LOW_MAX = 0.3f;  // Maximum for "peaceful" grazer
+    constexpr float PACK_COORD_MIN = 0.7f;      // Pack coordination for social behavior
+    constexpr float HUNT_INSTINCT_LOW_MAX = 0.3f;// Low hunt instinct (scavenger indicator)
+    constexpr float RETREAT_HIGH = 0.7f;        // High retreat threshold (fleet runner)
+    constexpr float RETREAT_VERY_HIGH = 0.8f;   // Very high retreat (timidus epithet)
+
+    // ========================================================================
+    // Stealth & Toxin Thresholds
+    // ========================================================================
+    
+    constexpr float SCENT_MASKING_MIN = 0.6f;   // Scent masking for ambush/insidia
+    constexpr float TOXIN_TOLERANCE_MIN = 0.7f; // Toxin tolerance for scavenger
+
+    // ========================================================================
+    // Physical Trait Thresholds
+    // ========================================================================
+    
+    constexpr float HIDE_MIN = 0.7f;            // Hide thickness for armored types
+    constexpr float SCALES_MIN = 0.7f;          // Scale coverage for armored grazer
+    constexpr float HORN_LENGTH_MIN = 0.6f;     // Horn length for tank herbivore
+    constexpr float SPINES_MIN = 0.5f;          // Spine threshold for spiky defender
+    constexpr float COMBINED_ARMOR_MIN = 0.5f;  // Both hide and scales for "armatus"
+
+    // ========================================================================
+    // Movement Thresholds
+    // ========================================================================
+    
+    constexpr float LOCOMOTION_FAST = 1.5f;     // Fast locomotion (pursuit/fleet runner)
+    constexpr float LOCOMOTION_SLOW_MAX = 0.8f; // Maximum for "slow" (ambush predator)
+
+    // ========================================================================
+    // Sensory Thresholds (Canopy Forager)
+    // ========================================================================
+    
+    constexpr float SWEET_PREFERENCE_MIN = 0.6f;// Sweetness preference for fruit specialist
+    constexpr float COLOR_VISION_MIN = 0.7f;    // Color vision for canopy forager
+
+    // ========================================================================
+    // Trait Scoring (Scientific Name Generation)
+    // ========================================================================
+    
+    constexpr float TRAIT_THRESHOLD = 0.5f;     // Minimum score for distinctive trait
+    constexpr float COMBINED_ARMOR_BONUS = 0.1f;// Bonus for combined hide+scales
+    
+    // Normalization factors for traits with non-standard ranges
+    constexpr float REGEN_MAX = 2.0f;           // Maximum regeneration rate
+    constexpr float SIGHT_RANGE_MAX = 150.0f;   // Maximum sight range
+    constexpr float LOCOMOTION_MAX = 2.0f;      // Maximum locomotion value
+
+} // namespace ClassificationThresholds
+
+/**
  * @brief Stateless classification utility for creatures
  * 
  * Single source of truth for organism identification.
