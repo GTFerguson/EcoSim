@@ -65,9 +65,22 @@ class FileHandling {
 
   public:
     //============================================================================
-    //  JSON Save Format Version
+    //  JSON Save Format Constants
     //============================================================================
-    static constexpr int SAVE_VERSION = 1;
+    /**
+     * @brief Save format identification and versioning namespace.
+     *
+     * Magic header enables quick identification of valid save files.
+     * Version number enables forward-compatible loading of older saves.
+     */
+    struct SaveFormat {
+        static constexpr const char* MAGIC_HEADER = "ECOSIM";
+        static constexpr int CURRENT_VERSION = 1;
+        static constexpr int MIN_SUPPORTED_VERSION = 1;
+    };
+    
+    /// Backwards-compatible alias for existing code
+    static constexpr int SAVE_VERSION = SaveFormat::CURRENT_VERSION;
     
     //============================================================================
     //  Save Metadata Structure

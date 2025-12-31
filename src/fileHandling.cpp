@@ -320,8 +320,9 @@ bool FileHandling::saveGameJson(
     // Build the root JSON object
     json saveData;
     
-    // Version and metadata
-    saveData["version"] = SAVE_VERSION;
+    // Magic header and version for format identification and forward compatibility
+    saveData["magic"] = SaveFormat::MAGIC_HEADER;
+    saveData["version"] = SaveFormat::CURRENT_VERSION;
     saveData["savedAt"] = generateTimestamp();
     
     // World state with generation parameters for terrain regeneration
@@ -726,13 +727,30 @@ bool FileHandling::loadGameJson(
     }
     file.close();
     
-    // Version check
-    int version = saveData.value("version", 0);
-    if (version != SAVE_VERSION) {
-      std::cerr << "Error: Incompatible save file version. Expected " 
-                << SAVE_VERSION << ", got " << version << std::endl;
+    // Validate magic header for format identification
+    std::string magic = saveData.value("magic", "");
+    if (magic != SaveFormat::MAGIC_HEADER) {
+      std::cerr << "Error: Invalid save file format (missing or incorrect magic header)" << std::endl;
       return false;
     }
+    
+    // Version check with forward compatibility
+    int version = saveData.value("version", 0);
+    if (version > SaveFormat::CURRENT_VERSION) {
+      std::cerr << "Error: Save file from newer version (v" << version
+                << "). Please update EcoSim to load this save." << std::endl;
+      return false;
+    }
+    if (version < SaveFormat::MIN_SUPPORTED_VERSION) {
+      std::cerr << "Error: Save file too old (v" << version
+                << "). Minimum supported version is v"
+                << SaveFormat::MIN_SUPPORTED_VERSION << std::endl;
+      return false;
+    }
+    
+    // Version-specific loading logic
+    // Currently all supported versions use the same loading path (v1)
+    // Future versions may add version-specific branches here
     
     // Validate world dimensions
     const auto& worldData = saveData["world"];
@@ -900,6 +918,12 @@ std::optional<FileHandling::SaveMetadata> FileHandling::getSaveMetadata(
       return std::nullopt;
     }
     file.close();
+    
+    // Validate magic header
+    std::string magic = saveData.value("magic", "");
+    if (magic != SaveFormat::MAGIC_HEADER) {
+      return std::nullopt;
+    }
     
     // Extract metadata
     SaveMetadata metadata;
