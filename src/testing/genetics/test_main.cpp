@@ -84,6 +84,9 @@ extern void runEnvironmentSystemTests();
 // PlantManager test runner (plant lifecycle management)
 extern void runPlantManagerTests();
 
+// IReproducible interface test runner
+extern void runReproducibleInterfaceTests();
+
 int main() {
     auto start = std::chrono::high_resolution_clock::now();
     
@@ -252,6 +255,11 @@ int main() {
     // PlantManager Tests (plant lifecycle management)
     std::cout << "=== PlantManager Tests (World) ===" << std::endl;
     runPlantManagerTests();
+    std::cout << std::endl;
+    
+    // IReproducible Interface Tests
+    std::cout << "=== IReproducible Interface Tests ===" << std::endl;
+    runReproducibleInterfaceTests();
     std::cout << std::endl;
     
     auto end = std::chrono::high_resolution_clock::now();

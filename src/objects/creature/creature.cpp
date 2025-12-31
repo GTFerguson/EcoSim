@@ -1589,6 +1589,104 @@ Creature Creature::breedCreature (Creature &mate) {
 }
 
 //================================================================================
+//  IReproducible Interface Implementation
+//================================================================================
+
+/**
+ * Check if creature can reproduce.
+ * Uses existing fitness checks: mature, healthy, sufficient resources.
+ */
+bool Creature::canReproduce() const {
+    // Mature (not too young), has resources, and healthy
+    unsigned lifespan = getLifespan();
+    bool isMature = _age > lifespan / 10;  // At least 10% of lifespan
+    bool hasResources = _hunger > BREED_COST && _thirst > BREED_COST;
+    bool isHealthy = _health > getMaxHealth() * 0.25f;
+    
+    return isMature && hasResources && isHealthy && _profile == Profile::breed;
+}
+
+/**
+ * Get reproductive urge (normalized 0.0-1.0).
+ * Based on internal _mate state normalized to resource limit.
+ */
+float Creature::getReproductiveUrge() const {
+    // _mate typically ranges from negative (discomfort) to RESOURCE_LIMIT
+    // Normalize to 0.0-1.0 range
+    float urge = (_mate + 3.0f) / (RESOURCE_LIMIT + 3.0f);  // Offset for negative values
+    return std::max(0.0f, std::min(1.0f, urge));
+}
+
+/**
+ * Get energy cost of reproduction.
+ * Returns BREED_COST, potentially adjusted by genetics in the future.
+ */
+float Creature::getReproductionEnergyCost() const {
+    // Currently uses static BREED_COST; could be gene-driven in future
+    return BREED_COST;
+}
+
+/**
+ * Get reproduction mode.
+ * Creatures always reproduce sexually.
+ */
+EcoSim::Genetics::ReproductionMode Creature::getReproductionMode() const {
+    return EcoSim::Genetics::ReproductionMode::SEXUAL;
+}
+
+/**
+ * Check compatibility with another organism for mating.
+ * Uses existing checkFitness logic based on genetic similarity.
+ */
+bool Creature::isCompatibleWith(const EcoSim::Genetics::IGeneticOrganism& other) const {
+    // Try to cast to Creature (only creatures can mate with creatures)
+    const Creature* otherCreature = dynamic_cast<const Creature*>(&other);
+    if (!otherCreature) {
+        return false;  // Can't mate with non-creatures
+    }
+    
+    // Use existing fitness check - returns desirability score
+    // Consider compatible if fitness is above a threshold
+    float fitness = checkFitness(*otherCreature);
+    return fitness > 0.3f;  // Minimum compatibility threshold
+}
+
+/**
+ * Reproduce to create offspring.
+ * Wraps existing breedCreature logic but returns IGeneticOrganism pointer.
+ *
+ * @todo Return concrete Creature type once Creature/Plant are unified into Organism
+ */
+std::unique_ptr<EcoSim::Genetics::IGeneticOrganism> Creature::reproduce(
+    const EcoSim::Genetics::IGeneticOrganism* partner) {
+    
+    // Sexual reproduction requires a partner
+    if (!partner) {
+        return nullptr;
+    }
+    
+    // Partner must be a Creature
+    // @todo Remove dynamic_cast once Creature/Plant are unified into Organism
+    Creature* mateCreature = const_cast<Creature*>(
+        dynamic_cast<const Creature*>(partner)
+    );
+    if (!mateCreature) {
+        return nullptr;  // Can't mate with non-creatures
+    }
+    
+    // Check if we can actually reproduce
+    if (!canReproduce()) {
+        return nullptr;
+    }
+    
+    // Use existing breedCreature logic
+    Creature offspring = breedCreature(*mateCreature);
+    
+    // Return as unique_ptr<IGeneticOrganism>
+    return std::make_unique<Creature>(std::move(offspring));
+}
+
+//================================================================================
 //  Sensory System Methods (Phase 1)
 //================================================================================
 

@@ -43,6 +43,7 @@ set(GENETICS_TEST_SOURCES
     genetics/test_rest_behavior.cpp
     genetics/test_modulation_policy.cpp
     genetics/test_serialization.cpp
+    genetics/test_reproducible_interface.cpp
     world/test_spatial_index.cpp
     world/test_world_grid.cpp
     world/test_world_generator.cpp

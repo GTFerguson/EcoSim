@@ -425,15 +425,49 @@ void Plant::takeDamage(float amount) {
     }
 }
 
-std::unique_ptr<Plant> Plant::produceOffspring(const GeneRegistry& registry) const {
-    if (!canSpreadSeeds()) return nullptr;
+// ============================================================================
+// IReproducible interface implementation
+// ============================================================================
+
+bool Plant::canReproduce() const {
+    return canSpreadSeeds();
+}
+
+float Plant::getReproductiveUrge() const {
+    // Plants reproduce opportunistically when mature, not based on urge
+    return mature_ && alive_ && health_ > 0.5f ? 1.0f : 0.0f;
+}
+
+float Plant::getReproductionEnergyCost() const {
+    // Energy cost based on seed production and nutrient value
+    float baseCost = 0.1f;
+    float seedCount = static_cast<float>(getSeedCount());
+    return baseCost * seedCount;
+}
+
+ReproductionMode Plant::getReproductionMode() const {
+    // Plants always reproduce asexually in this simulation
+    return ReproductionMode::ASEXUAL;
+}
+
+bool Plant::isCompatibleWith(const IGeneticOrganism& /* other */) const {
+    // Plants reproduce asexually, so compatibility is not applicable
+    return false;
+}
+
+std::unique_ptr<IGeneticOrganism> Plant::reproduce(const IGeneticOrganism* /* partner */) {
+    // @todo Return concrete Plant type once Creature/Plant are unified into Organism
+    // For now, we need to use the registry stored in this plant
+    if (!canReproduce() || !registry_) {
+        return nullptr;
+    }
     
     // Create offspring genome through mutation (asexual reproduction for plants)
     Genome offspringGenome = genome_;
     
     // Apply mutation
     float mutationRate = 0.05f;  // 5% mutation rate
-    offspringGenome.mutate(mutationRate, registry.getAllDefinitions());
+    offspringGenome.mutate(mutationRate, registry_->getAllDefinitions());
     
     // Calculate offspring position based on spread distance
     float spread = getSpreadDistance();
@@ -443,8 +477,8 @@ std::unique_ptr<Plant> Plant::produceOffspring(const GeneRegistry& registry) con
     int offspringX = x_ + static_cast<int>(std::cos(angle) * distance);
     int offspringY = y_ + static_cast<int>(std::sin(angle) * distance);
     
-    // Create and return offspring
-    return std::make_unique<Plant>(offspringX, offspringY, offspringGenome, registry);
+    // Create offspring Plant and return as IGeneticOrganism
+    return std::make_unique<Plant>(offspringX, offspringY, offspringGenome, *registry_);
 }
 
 // ============================================================================

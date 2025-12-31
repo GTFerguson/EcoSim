@@ -602,11 +602,15 @@ void testSeedDispersal() {
     
     printSubsection("Testing Offspring Creation");
     
-    // Test produceOffspring
-    if (berryBush.canSpreadSeeds()) {
-        auto offspring = berryBush.produceOffspring(*registry);
+    // Test reproduce() - the unified IReproducible interface
+    if (berryBush.canReproduce()) {
+        auto offspringBase = berryBush.reproduce();  // nullptr = asexual
         
-        if (offspring) {
+        if (offspringBase) {
+            // @todo Remove dynamic_cast when Creature/Plant unified into Organism
+            auto* offspring = dynamic_cast<G::Plant*>(offspringBase.get());
+            TEST_ASSERT_MSG(offspring != nullptr, "reproduce() should return Plant");
+            
             std::cout << "Offspring created successfully!\n";
             std::cout << "  Position: (" << offspring->getX() << ", " << offspring->getY() << ")\n";
             std::cout << "  Is Alive: " << (offspring->isAlive() ? "YES" : "NO") << "\n";
@@ -615,12 +619,12 @@ void testSeedDispersal() {
             
             TEST_ASSERT(offspring->isAlive());
         } else {
-            std::cout << "WARNING: produceOffspring() returned nullptr\n";
-            TEST_ASSERT_MSG(false, "produceOffspring should return valid plant");
+            std::cout << "WARNING: reproduce() returned nullptr\n";
+            TEST_ASSERT_MSG(false, "reproduce should return valid plant");
         }
     } else {
-        std::cout << "Plant cannot spread seeds yet:\n";
-        std::cout << "  canSpreadSeeds() = false\n";
+        std::cout << "Plant cannot reproduce yet:\n";
+        std::cout << "  canReproduce() = false\n";
         std::cout << "  Checking conditions:\n";
         std::cout << "    - alive: " << (berryBush.isAlive() ? "YES" : "NO") << "\n";
         std::cout << "    - seedCount: " << berryBush.getSeedCount() << "\n";

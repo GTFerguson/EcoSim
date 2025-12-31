@@ -3,6 +3,7 @@
 #include "genetics/interfaces/IPositionable.hpp"
 #include "genetics/interfaces/ILifecycle.hpp"
 #include "genetics/interfaces/IGeneticOrganism.hpp"
+#include "genetics/interfaces/IReproducible.hpp"
 #include "genetics/core/Genome.hpp"
 #include "genetics/core/GeneRegistry.hpp"
 #include "genetics/expression/Phenotype.hpp"
@@ -56,16 +57,16 @@ enum class DispersalStrategy {
  * @code
  *   GeneRegistry plantRegistry;
  *   PlantGenes::registerDefaults(plantRegistry);
- *   
+ *
  *   Plant plant(10, 20, plantRegistry);  // Create at position (10, 20)
  *   plant.update(environmentState);       // Update each tick
- *   
- *   if (plant.canSpreadSeeds()) {
- *       auto offspring = plant.produceOffspring(plantRegistry);
+ *
+ *   if (plant.canReproduce()) {
+ *       auto offspring = plant.reproduce();  // Asexual reproduction
  *   }
  * @endcode
  */
-class Plant : public IPositionable, public ILifecycle, public IGeneticOrganism {
+class Plant : public IPositionable, public ILifecycle, public IGeneticOrganism, public IReproducible {
 public:
     /**
      * @brief Construct a plant with a random genome
@@ -244,6 +245,53 @@ public:
     void updatePhenotype() override;
     
     // ========================================================================
+    // IReproducible interface
+    // ========================================================================
+    
+    /**
+     * @brief Check if plant can reproduce
+     * @return true if plant is mature and can spread seeds
+     */
+    bool canReproduce() const override;
+    
+    /**
+     * @brief Get reproductive urge (normalized 0.0-1.0)
+     * @return Always 1.0 for plants when mature, 0.0 otherwise
+     *
+     * Plants don't have urges - they reproduce when conditions are met.
+     */
+    float getReproductiveUrge() const override;
+    
+    /**
+     * @brief Get energy cost of reproduction
+     * @return Energy cost based on seed production genes
+     */
+    float getReproductionEnergyCost() const override;
+    
+    /**
+     * @brief Get reproduction mode
+     * @return Always ASEXUAL for plants (clonal with mutation)
+     */
+    ReproductionMode getReproductionMode() const override;
+    
+    /**
+     * @brief Check compatibility with another organism
+     * @param other The other organism
+     * @return Always false for plants (asexual reproduction)
+     */
+    bool isCompatibleWith(const IGeneticOrganism& other) const override;
+    
+    /**
+     * @brief Reproduce to create offspring
+     * @param partner Unused for asexual plant reproduction (should be nullptr)
+     * @return Offspring as IGeneticOrganism pointer
+     *
+     * @todo Return concrete Plant type once Creature/Plant are unified into Organism
+     */
+    std::unique_ptr<IGeneticOrganism> reproduce(
+        const IGeneticOrganism* partner = nullptr) override;
+    
+    // ========================================================================
     // Plant-specific methods
     // ========================================================================
     
@@ -333,17 +381,6 @@ public:
      * Damage is reduced by the hardiness gene.
      */
     void takeDamage(float amount);
-    
-    /**
-     * @brief Produce an offspring plant (seed)
-     * @param registry Gene registry for offspring genome
-     * @return New Plant with mutated copy of this plant's genome
-     * 
-     * The offspring will have:
-     * - A position offset from parent (based on spread_distance)
-     * - A slightly mutated genome
-     */
-    std::unique_ptr<Plant> produceOffspring(const GeneRegistry& registry) const;
     
     /**
      * @brief Get number of seeds to produce this cycle

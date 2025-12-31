@@ -31,6 +31,7 @@
 #include "genetics/defaults/UniversalGenes.hpp"  // For DietType
 #include "genetics/interfaces/ILifecycle.hpp"
 #include "genetics/interfaces/IGeneticOrganism.hpp"
+#include "genetics/interfaces/IReproducible.hpp"
 
 // Creature-Plant interaction includes (Phase 2.4)
 #include "genetics/interactions/FeedingInteraction.hpp"
@@ -99,7 +100,8 @@ enum class Profile { thirsty, hungry, breed, sleep, migrate };
 
 class Creature: public GameObject,
                 public EcoSim::Genetics::ILifecycle,
-                public EcoSim::Genetics::IGeneticOrganism {
+                public EcoSim::Genetics::IGeneticOrganism,
+                public EcoSim::Genetics::IReproducible {
   public:
     //============================================================================
     //  Public Constants (for balance analysis and external tools)
@@ -220,6 +222,16 @@ class Creature: public GameObject,
     // Shared services for behavior system
     static std::unique_ptr<EcoSim::Genetics::PerceptionSystem> s_perceptionSystem;
     static std::unique_ptr<EcoSim::Genetics::CombatInteraction> s_combatInteraction;
+    
+    //============================================================================
+    //  Private Breeding Implementation
+    //============================================================================
+    /**
+     * @brief Internal breeding implementation (use reproduce() for public interface)
+     * @param mate The mating partner
+     * @return New offspring creature
+     */
+    Creature  breedCreature (Creature &mate);
 
   public:
     //============================================================================
@@ -638,7 +650,50 @@ class Creature: public GameObject,
     //  Breeding
     //============================================================================
     float     checkFitness  (const Creature &c2) const;
-    Creature  breedCreature (Creature &mate);
+    
+    //============================================================================
+    //  IReproducible Interface
+    //============================================================================
+    /**
+     * @brief Check if creature can reproduce
+     * @return true if mature, healthy, and has sufficient resources
+     */
+    bool canReproduce() const override;
+    
+    /**
+     * @brief Get reproductive urge (normalized 0.0-1.0)
+     * @return Mating drive based on _mate internal state
+     */
+    float getReproductiveUrge() const override;
+    
+    /**
+     * @brief Get energy cost of reproduction
+     * @return BREED_COST adjusted by genetics
+     */
+    float getReproductionEnergyCost() const override;
+    
+    /**
+     * @brief Get reproduction mode
+     * @return Always SEXUAL for creatures
+     */
+    EcoSim::Genetics::ReproductionMode getReproductionMode() const override;
+    
+    /**
+     * @brief Check compatibility with another organism for mating
+     * @param other The other organism
+     * @return true if compatible based on species/archetype
+     */
+    bool isCompatibleWith(const EcoSim::Genetics::IGeneticOrganism& other) const override;
+    
+    /**
+     * @brief Reproduce to create offspring
+     * @param partner Partner for sexual reproduction (required for creatures)
+     * @return Offspring as IGeneticOrganism pointer, or nullptr if reproduction fails
+     *
+     * @todo Return concrete Creature type once Creature/Plant are unified into Organism
+     */
+    std::unique_ptr<EcoSim::Genetics::IGeneticOrganism> reproduce(
+        const EcoSim::Genetics::IGeneticOrganism* partner = nullptr) override;
     
     //============================================================================
     //  Sensory System
