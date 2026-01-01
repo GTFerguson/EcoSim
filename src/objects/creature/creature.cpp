@@ -778,11 +778,46 @@ bool Creature::flock (World &world, vector<Creature> &creatures) {
 
 
 /**
+ *  Process growth for one tick.
+ *  Growth depends on nutrition (energy) and age factors.
+ *  Creatures mature at 50% of max size, matching Plant behavior.
+ */
+void Creature::grow() {
+    if (mature_) return;  // Already fully grown
+    
+    // Growth rate based on nutrition (energy relative to needs)
+    float nutritionFactor = std::clamp(_hunger / 100.0f, 0.1f, 1.5f);
+    
+    // Base growth rate from genetics (could use METABOLISM gene)
+    float baseGrowthRate = 0.001f;  // Small increment per tick
+    
+    // Age factor - grow faster when young
+    float ageFactor = 1.0f;
+    if (_age < 1000) {
+        ageFactor = 1.5f;  // Juveniles grow faster
+    }
+    
+    // Calculate growth increment
+    float growthIncrement = baseGrowthRate * nutritionFactor * ageFactor;
+    
+    // Apply growth
+    currentSize_ = std::min(currentSize_ + growthIncrement, maxSize_);
+    
+    // Check maturity (50% of max size, matching Plant)
+    if (currentSize_ >= maxSize_ * 0.5f) {
+        mature_ = true;
+    }
+}
+
+/**
  *  This method updates the creatures variables relevant to one turn within the
  *  simulation.
  */
 void Creature::update () {
   decideBehaviour();
+  
+  // Growth happens each tick
+  grow();
 
   //  Sleeping slows down metabolism
   float change = _metabolism;
@@ -1424,13 +1459,10 @@ Creature Creature::breedCreature (Creature &mate) {
  * Uses existing fitness checks: mature, healthy, sufficient resources.
  */
 bool Creature::canReproduce() const {
-    // Mature (not too young), has resources, and healthy
-    unsigned lifespan = getLifespan();
-    bool isMature = _age > lifespan / 10;  // At least 10% of lifespan
     bool hasResources = _hunger > BREED_COST && _thirst > BREED_COST;
     bool isHealthy = _health > getMaxHealth() * 0.25f;
     
-    return isMature && hasResources && isHealthy && _profile == Profile::breed;
+    return isMature() && hasResources && isHealthy && _profile == Profile::breed;
 }
 
 /**
@@ -2349,6 +2381,9 @@ EcoSim::Genetics::BehaviorResult Creature::updateWithBehaviors(EcoSim::Genetics:
     if (result.executed && result.energyCost > 0.0f) {
         _hunger -= result.energyCost;
     }
+    
+    // Growth happens each tick
+    grow();
     
     // Update metabolism effects (similar to legacy update())
     float change = _metabolism;

@@ -48,9 +48,12 @@ Creature createBreedingTestCreature(int x = 10, int y = 10) {
     // Need mate > 3.0f and higher than other needs for Profile::breed
     creature.setMate(5.0f);
     
-    // Set age to be mature (canReproduce requires age > lifespan/10)
-    unsigned lifespan = creature.getLifespan();
-    creature.setAge(lifespan / 10 + 1);  // Just over 10% maturity
+    // Grow creature to maturity (canReproduce requires isMature() which checks
+    // if creature has grown to 50% of max size via the growth system)
+    // With high hunger (nutrition), growth is fast
+    while (!creature.isMature()) {
+        creature.grow();
+    }
     
     // Call decideBehaviour() to set _profile based on current needs
     // This should set _profile to Profile::breed since mate need is highest
@@ -83,8 +86,10 @@ Creature createModifiedCreature(int x, int y, float geneModifier) {
     creature.setFatigue(0.0f);
     creature.setMate(5.0f);
     
-    unsigned lifespan = creature.getLifespan();
-    creature.setAge(lifespan / 10 + 1);
+    // Grow creature to maturity (canReproduce requires isMature())
+    while (!creature.isMature()) {
+        creature.grow();
+    }
     
     creature.decideBehaviour();
     

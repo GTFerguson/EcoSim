@@ -81,8 +81,9 @@ bool findPrey(Creature& creature,
                 CombatAction action = CombatInteraction::selectBestAction(
                     attackerPhenotype, preyPhenotype);
                 
+                // Pass attacker's size ratio for growth-based damage scaling
                 AttackResult result = CombatInteraction::resolveAttack(
-                    attackerPhenotype, preyPhenotype, action);
+                    attackerPhenotype, preyPhenotype, action, creature.getSizeRatio());
                 
                 // Capture health BEFORE applying damage for accurate logging
                 float defenderHealthBefore = getHealth(*closestPrey);

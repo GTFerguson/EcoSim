@@ -511,6 +511,13 @@ class Creature: public GameObject,
     void setMature(bool mature) { mature_ = mature; }
     
     /**
+     * @brief Process growth for one tick.
+     * Growth rate depends on nutrition and age factors.
+     * Creatures mature at 50% of max size.
+     */
+    void grow();
+    
+    /**
      * @brief Get maximum health based on genetics.
      *        Uses MASS gene as proxy (larger creatures have more health).
      * @return Maximum health value

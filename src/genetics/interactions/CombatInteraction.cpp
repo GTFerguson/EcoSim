@@ -240,7 +240,8 @@ std::vector<WeaponType> CombatInteraction::getAvailableWeapons(const Phenotype& 
 AttackResult CombatInteraction::resolveAttack(
     const Phenotype& attackerPhenotype,
     const Phenotype& defenderPhenotype,
-    const CombatAction& action
+    const CombatAction& action,
+    float attackerSizeRatio
 ) {
     AttackResult result;
     result.hit = true;  // For now, all attacks hit (could add evasion later)
@@ -259,12 +260,18 @@ AttackResult CombatInteraction::resolveAttack(
     // Get size gene based on weapon type for magnitude multiplier
     float sizeFactor = getSizeFactorForWeapon(attackerPhenotype, action.weapon);
     
+    // Apply growth-based size scaling: juveniles deal less damage
+    // Formula: 0.5 + 0.5 * sizeRatio gives range [0.5, 1.0]
+    // - 10% grown juvenile deals 55% damage (0.5 + 0.5 * 0.1)
+    // - 100% grown adult deals 100% damage (0.5 + 0.5 * 1.0)
+    float growthMultiplier = 0.5f + 0.5f * std::clamp(attackerSizeRatio, 0.0f, 1.0f);
+    
     // Get the dominant damage type
     result.primaryType = damage.getDominantType();
     
-    // Calculate raw damage (total damage × base weapon damage × size × specialization)
+    // Calculate raw damage (total damage × base weapon damage × size × specialization × growth)
     // Note: damage.total() should now be ~1.0 (normalized distribution)
-    result.rawDamage = damage.total() * baseStats.baseDamage * sizeFactor * specMultiplier;
+    result.rawDamage = damage.total() * baseStats.baseDamage * sizeFactor * specMultiplier * growthMultiplier;
     
     // Get type effectiveness against defender's defense
     DefenseType counterDefense = getCounteringDefense(result.primaryType);

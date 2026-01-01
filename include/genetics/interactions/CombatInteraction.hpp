@@ -316,12 +316,15 @@ public:
      * @param attackerPhenotype The attacker's expressed traits
      * @param defenderPhenotype The defender's expressed traits
      * @param action The attack action to resolve
+     * @param attackerSizeRatio Attacker's size ratio (0.0-1.0) for growth scaling
+     *        Juveniles deal less damage: effective = base * (0.5 + 0.5 * sizeRatio)
      * @return AttackResult with damage details
      */
     static AttackResult resolveAttack(
         const Phenotype& attackerPhenotype,
         const Phenotype& defenderPhenotype,
-        const CombatAction& action
+        const CombatAction& action,
+        float attackerSizeRatio = 1.0f
     );
     
     /**
