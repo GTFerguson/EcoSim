@@ -5,9 +5,6 @@
  * This file implements the plant organism that uses the genetics system.
  * Plants share the same genome infrastructure as creatures but use
  * plant-specific genes defined in PlantGenes.hpp.
- *
- * Phase 2.3: Added defense system, food production, emergent dispersal,
- * energy budget integration, and rendering support.
  */
 
 #include "genetics/organisms/Plant.hpp"
@@ -16,6 +13,7 @@
 #include "genetics/defaults/UniversalGenes.hpp"
 #include "genetics/expression/OrganismState.hpp"
 #include "genetics/core/RandomEngine.hpp"
+#include "genetics/core/GeneRegistry.hpp"
 #include "logging/Logger.hpp"
 #include <algorithm>
 #include <cmath>
@@ -35,35 +33,21 @@ unsigned int Plant::nextId_ = 1;
 // ============================================================================
 
 Plant::Plant(int x, int y, const GeneRegistry& registry)
-    : x_(x)
-    , y_(y)
-    , registry_(&registry)
-    , id_(nextId_++)
+    : Organism(x, y, PlantGenes::createRandomGenome(registry), registry)
 {
-    // Create a random genome using plant genes
-    genome_ = PlantGenes::createRandomGenome(registry);
-    
-    // Initialize phenotype
-    phenotype_ = Phenotype(&genome_, &registry);
     updatePhenotype();
     
-    // Log plant spawn
-    logging::Logger::getInstance().plantSpawned(id_, "random", x_, y_);
+    logging::Logger::getInstance().plantSpawned(
+        static_cast<unsigned int>(getId()), "random", x_, y_);
 }
 
 Plant::Plant(int x, int y, const Genome& genome, const GeneRegistry& registry)
-    : x_(x)
-    , y_(y)
-    , genome_(genome)
-    , registry_(&registry)
-    , id_(nextId_++)
+    : Organism(x, y, genome, registry)
 {
-    // Initialize phenotype from provided genome
-    phenotype_ = Phenotype(&genome_, &registry);
     updatePhenotype();
     
-    // Log plant spawn
-    logging::Logger::getInstance().plantSpawned(id_, "offspring", x_, y_);
+    logging::Logger::getInstance().plantSpawned(
+        static_cast<unsigned int>(getId()), "offspring", x_, y_);
 }
 
 // ============================================================================
@@ -71,67 +55,63 @@ Plant::Plant(int x, int y, const Genome& genome, const GeneRegistry& registry)
 // ============================================================================
 
 Plant::Plant(const Plant& other)
-    : x_(other.x_)
-    , y_(other.y_)
-    , age_(other.age_)
-    , alive_(other.alive_)
-    , health_(other.health_)
-    , current_size_(other.current_size_)
-    , mature_(other.mature_)
-    , genome_(other.genome_)  // Deep copy of genome
-    , registry_(other.registry_)
+    : Organism(other.x_, other.y_, other.genome_, *other.registry_)
     , energyState_(other.energyState_)
     , fruitTimer_(other.fruitTimer_)
-    , id_(nextId_++)  // New plant gets new ID
     , entityType_(other.entityType_)
 {
-    // CRITICAL: Rebind phenotype to THIS plant's genome, not the source's
-    phenotype_ = Phenotype(&genome_, registry_);
+    // Copy lifecycle state
+    if (!other.alive_) {
+        die();
+    }
+    setHealth(other.health_);
+    setCurrentSize(other.currentSize_);
+    if (other.mature_) {
+        setMature(true);
+    }
+    
+    // Copy age manually since it's not passed through base constructor
+    for (unsigned int i = 0; i < other.age_; ++i) {
+        incrementAge();
+    }
+    
     updatePhenotype();
 }
 
 Plant::Plant(Plant&& other) noexcept
-    : x_(other.x_)
-    , y_(other.y_)
-    , age_(other.age_)
-    , alive_(other.alive_)
-    , health_(other.health_)
-    , current_size_(other.current_size_)
-    , mature_(other.mature_)
-    , genome_(std::move(other.genome_))  // Move genome
-    , registry_(other.registry_)
+    : Organism(std::move(other))
     , energyState_(std::move(other.energyState_))
     , fruitTimer_(other.fruitTimer_)
-    , id_(other.id_)  // Keep same ID for moved plant
     , entityType_(other.entityType_)
 {
-    // CRITICAL: Rebind phenotype to THIS plant's genome after move
-    phenotype_ = Phenotype(&genome_, registry_);
-    updatePhenotype();
-    
     // Invalidate moved-from object
-    other.registry_ = nullptr;
-    other.alive_ = false;
+    other.fruitTimer_ = 0;
 }
 
 Plant& Plant::operator=(const Plant& other) {
     if (this != &other) {
+        // Copy position (set directly on base class protected members)
         x_ = other.x_;
         y_ = other.y_;
+        
+        // Copy genetics
+        genome_ = other.genome_;
+        registry_ = other.registry_;
+        
+        // Copy lifecycle state
         age_ = other.age_;
         alive_ = other.alive_;
         health_ = other.health_;
-        current_size_ = other.current_size_;
+        currentSize_ = other.currentSize_;
         mature_ = other.mature_;
-        genome_ = other.genome_;  // Deep copy
-        registry_ = other.registry_;
+        
+        // Copy Plant-specific state
         energyState_ = other.energyState_;
         fruitTimer_ = other.fruitTimer_;
-        // id_ stays the same - this is the same plant
         entityType_ = other.entityType_;
         
-        // CRITICAL: Rebind phenotype to THIS plant's genome
-        phenotype_ = Phenotype(&genome_, registry_);
+        // Rebind phenotype to THIS plant's genome
+        rebindPhenotypeGenome();
         updatePhenotype();
     }
     return *this;
@@ -139,27 +119,16 @@ Plant& Plant::operator=(const Plant& other) {
 
 Plant& Plant::operator=(Plant&& other) noexcept {
     if (this != &other) {
-        x_ = other.x_;
-        y_ = other.y_;
-        age_ = other.age_;
-        alive_ = other.alive_;
-        health_ = other.health_;
-        current_size_ = other.current_size_;
-        mature_ = other.mature_;
-        genome_ = std::move(other.genome_);  // Move genome
-        registry_ = other.registry_;
+        // Move base class
+        Organism::operator=(std::move(other));
+        
+        // Move Plant-specific state
         energyState_ = std::move(other.energyState_);
         fruitTimer_ = other.fruitTimer_;
-        id_ = other.id_;  // Take the ID from moved object
         entityType_ = other.entityType_;
         
-        // CRITICAL: Rebind phenotype to THIS plant's genome after move
-        phenotype_ = Phenotype(&genome_, registry_);
-        updatePhenotype();
-        
         // Invalidate moved-from object
-        other.registry_ = nullptr;
-        other.alive_ = false;
+        other.fruitTimer_ = 0;
     }
     return *this;
 }
@@ -174,7 +143,6 @@ unsigned int Plant::getMaxLifespan() const {
     // PlantGenes::LIFESPAN is legacy fallback only
     if (genome_.hasGene(UniversalGenes::LIFESPAN)) {
         const Gene& gene = genome_.getGene(UniversalGenes::LIFESPAN);
-        // Use average of both alleles for consistent behavior
         GeneValue gv = gene.getExpressedValue(DominanceType::Incomplete);
         if (std::holds_alternative<float>(gv)) {
             return static_cast<unsigned int>(std::get<float>(gv));
@@ -190,23 +158,8 @@ unsigned int Plant::getMaxLifespan() const {
     return 5000;  // Default lifespan
 }
 
-float Plant::getAgeNormalized() const {
-    unsigned int maxLife = getMaxLifespan();
-    if (maxLife == 0) return 1.0f;
-    return static_cast<float>(age_) / static_cast<float>(maxLife);
-}
-
-void Plant::age(unsigned int ticks) {
-    if (!alive_) return;
-    
-    age_ += ticks;
-    
-    // Note: Death by old age is now checked in update() after other lifecycle events
-    // This ensures fruit production and other events can happen at max lifespan
-}
-
 // ============================================================================
-// IGeneticOrganism implementation
+// IGenetic implementation
 // ============================================================================
 
 void Plant::updatePhenotype() {
@@ -241,19 +194,16 @@ float Plant::getGeneValueFromGenome(const char* geneId, float defaultValue) cons
 // ============================================================================
 
 float Plant::getGrowthRate() const {
-    // Read directly from genome for reliability
     return getGeneValueFromGenome(PlantGenes::GROWTH_RATE, 0.5f);
 }
 
 float Plant::getMaxSize() const {
-    // Read directly from genome for reliability
     return getGeneValueFromGenome(PlantGenes::MAX_SIZE, 5.0f);
 }
 
 float Plant::getNutrientValue() const {
-    // Scale nutrient value by current size
     float baseValue = getGeneValueFromGenome(PlantGenes::NUTRIENT_VALUE, 25.0f);
-    float sizeRatio = current_size_ / getMaxSize();
+    float sizeRatio = currentSize_ / getMaxSize();
     return baseValue * sizeRatio;
 }
 
@@ -280,9 +230,8 @@ float Plant::getSpreadDistance() const {
 int Plant::getSeedCount() const {
     if (!mature_) return 0;
     
-    // Seed production scales with plant size and health
     float baseSeedCount = getGeneValueFromGenome(PlantGenes::SEED_PRODUCTION, 5.0f);
-    float sizeRatio = current_size_ / getMaxSize();
+    float sizeRatio = currentSize_ / getMaxSize();
     return static_cast<int>(baseSeedCount * sizeRatio * health_);
 }
 
@@ -291,8 +240,6 @@ bool Plant::canSpreadSeeds() const {
 }
 
 bool Plant::canSurviveTemperature(float temperature) const {
-    // Use the more reliable getGeneValueFromGenome helper
-    // Note: PlantFactory sets temperature tolerance using UniversalGenes, not PlantGenes
     float tempLow = getGeneValueFromGenome(UniversalGenes::TEMP_TOLERANCE_LOW, 5.0f);
     float tempHigh = getGeneValueFromGenome(UniversalGenes::TEMP_TOLERANCE_HIGH, 35.0f);
     return temperature >= tempLow && temperature <= tempHigh;
@@ -318,35 +265,39 @@ void Plant::update(const EnvironmentState& env) {
     // Increment fruit timer for production cooldown
     fruitTimer_++;
     
-    // Age the plant (just increments age counter)
-    age(1);
+    // Increment age manually (don't use age() which checks for death)
+    // Plant handles its own death check below with > instead of >=
+    incrementAge();
     
     // Check death conditions (health-based)
     checkDeathConditions(env);
     
     // Check for death from old age AFTER other lifecycle events
-    // Use > (not >=) so plant can act at exactly max lifespan
     float maxLifespan = static_cast<float>(getMaxLifespan());
     if (static_cast<float>(age_) > maxLifespan) {
-        alive_ = false;
+        die();
         health_ = 0.0f;
         
-        // Log plant death from old age
-        logging::Logger::getInstance().plantDied(id_, "plant", "old_age", age_);
+        logging::Logger::getInstance().plantDied(
+            static_cast<unsigned int>(getId()), "plant", "old_age", age_);
     }
+}
+
+void Plant::grow() {
+    // Default growth without environment - use default environment
+    EnvironmentState defaultEnv;
+    grow(defaultEnv);
 }
 
 void Plant::grow(const EnvironmentState& env) {
     if (!alive_) return;
     
     float maxSize = getMaxSize();
-    if (current_size_ >= maxSize) {
-        // Already at max size
-        if (!mature_) mature_ = true;
+    if (currentSize_ >= maxSize) {
+        if (!mature_) setMature(true);
         return;
     }
     
-    // Get plant properties needed for energy calculations
     float growthRate = getGrowthRate();
     float lightNeed = getLightNeed();
     float waterNeed = getWaterNeed();
@@ -362,30 +313,26 @@ void Plant::grow(const EnvironmentState& env) {
     float effectiveGrowth = PlantEnergyCalculator::calculatePhotosynthesisGrowth(
         env, lightNeed, waterNeed, growthRate, canSurviveTemp);
     
-    current_size_ = std::min(current_size_ + effectiveGrowth, maxSize);
+    setCurrentSize(std::min(currentSize_ + effectiveGrowth, maxSize));
     
     // Check for maturity (can reproduce when at 50% of max size)
-    if (!mature_ && current_size_ >= maxSize * 0.5f) {
-        mature_ = true;
+    if (!mature_ && currentSize_ >= maxSize * 0.5f) {
+        setMature(true);
     }
 }
 
 void Plant::checkDeathConditions(const EnvironmentState& env) {
-    // Death by age is handled in age()
-    
     // Death by health
     if (health_ <= 0.0f) {
-        alive_ = false;
+        die();
         
-        // Log plant death from health depletion
-        logging::Logger::getInstance().plantDied(id_, "plant", "health_depleted", age_);
+        logging::Logger::getInstance().plantDied(
+            static_cast<unsigned int>(getId()), "plant", "health_depleted", age_);
         return;
     }
     
-    // Death by extreme temperature (prolonged exposure)
-    if (!canSurviveTemperature(env.temperature)) {
-        // Already taking damage in grow(), health will eventually drop to 0
-    }
+    // Temperature damage is handled in grow()
+    (void)env;  // Suppress unused warning
 }
 
 void Plant::takeDamage(float amount) {
@@ -399,10 +346,10 @@ void Plant::takeDamage(float amount) {
     health_ = std::max(0.0f, health_);
     
     if (health_ <= 0.0f) {
-        alive_ = false;
+        die();
         
-        // Log plant death from damage
-        logging::Logger::getInstance().plantDied(id_, "plant", "damage", age_);
+        logging::Logger::getInstance().plantDied(
+            static_cast<unsigned int>(getId()), "plant", "damage", age_);
     }
 }
 
@@ -415,28 +362,22 @@ bool Plant::canReproduce() const {
 }
 
 float Plant::getReproductiveUrge() const {
-    // Plants reproduce opportunistically when mature, not based on urge
     return mature_ && alive_ && health_ > 0.5f ? 1.0f : 0.0f;
 }
 
 float Plant::getReproductionEnergyCost() const {
-    // Delegate to PlantEnergyCalculator for energy cost calculation
     return PlantEnergyCalculator::calculateReproductionEnergy(getSeedCount());
 }
 
 ReproductionMode Plant::getReproductionMode() const {
-    // Plants always reproduce asexually in this simulation
     return ReproductionMode::ASEXUAL;
 }
 
 bool Plant::isCompatibleWith(const IGeneticOrganism& /* other */) const {
-    // Plants reproduce asexually, so compatibility is not applicable
     return false;
 }
 
 std::unique_ptr<IGeneticOrganism> Plant::reproduce(const IGeneticOrganism* /* partner */) {
-    // @todo Return concrete Plant type once Creature/Plant are unified into Organism
-    // For now, we need to use the registry stored in this plant
     if (!canReproduce() || !registry_) {
         return nullptr;
     }
@@ -456,12 +397,11 @@ std::unique_ptr<IGeneticOrganism> Plant::reproduce(const IGeneticOrganism* /* pa
     int offspringX = x_ + static_cast<int>(std::cos(angle) * distance);
     int offspringY = y_ + static_cast<int>(std::sin(angle) * distance);
     
-    // Create offspring Plant and return as IGeneticOrganism
     return std::make_unique<Plant>(offspringX, offspringY, offspringGenome, *registry_);
 }
 
 // ============================================================================
-// Phase 2.3: Defense System
+// Defense System
 // ============================================================================
 
 float Plant::getToxicity() const {
@@ -479,9 +419,7 @@ float Plant::getRegrowthRate() const {
 bool Plant::canRegenerate() const {
     if (!alive_ || health_ >= 1.0f) return false;
     
-    // Need minimum energy and regrowth ability
     float regrowth = getRegrowthRate();
-    // Calculate surplus as energy above maintenance costs
     float surplus = energyState_.currentEnergy - energyState_.maintenanceCost - energyState_.baseMetabolism;
     bool hasEnergy = surplus > 0.0f;
     
@@ -494,45 +432,35 @@ void Plant::regenerate() {
     float regrowthRate = getRegrowthRate();
     
     // Regenerate health proportional to regrowth rate
-    float healthGain = regrowthRate * 0.01f;  // 1% max per tick
+    float healthGain = regrowthRate * 0.01f;
     health_ = std::min(1.0f, health_ + healthGain);
     
     // Also regenerate size if damaged
     float maxSize = getMaxSize();
-    if (current_size_ < maxSize * 0.9f) {
-        current_size_ = std::min(maxSize, current_size_ + regrowthRate * 0.001f);
+    if (currentSize_ < maxSize * 0.9f) {
+        setCurrentSize(std::min(maxSize, currentSize_ + regrowthRate * 0.001f));
     }
 }
 
 // ============================================================================
-// Phase 2.3: Food Production (Hybrid Model)
+// Food Production
 // ============================================================================
 
 bool Plant::canProduceFruit() const {
     if (!alive_ || !mature_) return false;
     
-    // Check size maturity: at least 50% of max size
     float maxSize = getMaxSize();
-    if (current_size_ < maxSize * 0.5f) return false;
+    if (currentSize_ < maxSize * 0.5f) return false;
     
-    // Check age maturity: at least 10% of lifespan (reduced from 25% for achievability)
     float maturityAge = getMaxLifespan() * 0.10f;
     if (age_ < static_cast<unsigned int>(maturityAge)) return false;
     
-    // Check fruit production rate - zero means no fruit production
     float fruitRate = getFruitProductionRate();
     if (fruitRate <= 0.01f) return false;
     
-    // Check cooldown timer (higher rate = faster production)
-    // With fruitRate ~0.8 (berry bush), cooldown is ~111 ticks
-    // With fruitRate ~0.2 (oak), cooldown is ~333 ticks
     unsigned int cooldown = static_cast<unsigned int>(100.0f / (fruitRate + 0.1f));
     return fruitTimer_ >= cooldown;
 }
-
-// NOTE: produceFruit() method removed - Food class has been deleted.
-// Creatures now feed directly on plants via FeedingInteraction.
-// The nutrition value comes from Plant::getNutrientValue() and related genes.
 
 float Plant::getFruitProductionRate() const {
     return getGeneValueFromGenome(UniversalGenes::FRUIT_PRODUCTION_RATE, 0.3f);
@@ -541,19 +469,15 @@ float Plant::getFruitProductionRate() const {
 bool Plant::canSpreadVegetatively() const {
     if (!alive_ || !mature_) return false;
     
-    // Check size maturity: at least 50% of max size (same as fruit production)
     float maxSize = getMaxSize();
-    if (current_size_ < maxSize * 0.5f) return false;
+    if (currentSize_ < maxSize * 0.5f) return false;
     
-    // Check age maturity: at least 10% of lifespan (same as fruit production)
     float maturityAge = getMaxLifespan() * 0.10f;
     if (age_ < static_cast<unsigned int>(maturityAge)) return false;
     
-    // Check runner production - this is the key trait for vegetative spread
     float runnerProd = getRunnerProduction();
-    if (runnerProd < 0.5f) return false;  // Need significant runner production
+    if (runnerProd < 0.5f) return false;
     
-    // Vegetative reproduction uses a timer similar to fruit, but based on runner production
     unsigned int cooldown = static_cast<unsigned int>(150.0f / (runnerProd + 0.1f));
     return fruitTimer_ >= cooldown;
 }
@@ -567,7 +491,7 @@ float Plant::getFruitAppeal() const {
 }
 
 // ============================================================================
-// Phase 2.3: Seed Properties
+// Seed Properties
 // ============================================================================
 
 float Plant::getSeedMass() const {
@@ -591,7 +515,7 @@ float Plant::getExplosivePodForce() const {
 }
 
 // ============================================================================
-// Phase 2.3: Emergent Dispersal Strategy
+// Emergent Dispersal Strategy
 // ============================================================================
 
 DispersalStrategy Plant::getPrimaryDispersalStrategy() const {
@@ -608,24 +532,20 @@ DispersalStrategy Plant::getPrimaryDispersalStrategy() const {
         {DispersalStrategy::ANIMAL_FRUIT, getFruitAppeal() * getSeedCoatDurability()},
     };
     
-    // Find the highest scoring active strategy
     auto best = std::max_element(scores.begin(), scores.end(),
         [](const auto& a, const auto& b) { return a.score < b.score; });
     
-    // MINIMUM THRESHOLD: If no strategy scores high enough, use GRAVITY
-    // 0.1f accounts for very slow runners and other low-trait plants
     const float MIN_STRATEGY_THRESHOLD = 0.1f;
     
     if (best != scores.end() && best->score >= MIN_STRATEGY_THRESHOLD) {
         return best->strategy;
     }
     
-    // Default: GRAVITY - seeds simply fall (requires no adaptation)
     return DispersalStrategy::GRAVITY;
 }
 
 // ============================================================================
-// Phase 2.3: Energy Budget Integration
+// Energy Budget Integration
 // ============================================================================
 
 void Plant::setEnergyState(const EnergyState& state) {
@@ -641,7 +561,7 @@ const EnergyState& Plant::getEnergyState() const {
 }
 
 // ============================================================================
-// Phase 2.3: Rendering Support
+// Rendering Support
 // ============================================================================
 
 EntityType Plant::getEntityType() const {
@@ -653,37 +573,33 @@ void Plant::setEntityType(EntityType type) {
 }
 
 char Plant::getRenderCharacter() const {
-    // Return character based on entity type
     switch (entityType_) {
         case EntityType::PLANT_BERRY_BUSH:
-            return 'B';  // Berry bush
+            return 'B';
         case EntityType::PLANT_OAK_TREE:
-            return 'T';  // Tree
+            return 'T';
         case EntityType::PLANT_GRASS:
-            return '"';  // Grass blades
+            return '"';
         case EntityType::PLANT_THORN_BUSH:
-            return '*';  // Thorny
+            return '*';
         case EntityType::PLANT_GENERIC:
         default:
-            // For generic plants, choose based on size
-            if (current_size_ < 1.0f) return '.';       // Seedling
-            else if (current_size_ < 3.0f) return 'p';  // Small plant
-            else if (current_size_ < 7.0f) return 'P';  // Medium plant
-            else return 'T';                             // Large = tree
+            if (currentSize_ < 1.0f) return '.';
+            else if (currentSize_ < 3.0f) return 'p';
+            else if (currentSize_ < 7.0f) return 'P';
+            else return 'T';
     }
 }
 
 Color Plant::getRenderColor() const {
-    // Convert COLOR_HUE gene (HSV) to RGB color
     float hue = getColorHue();
     
-    // Simple HSV to RGB conversion (assuming S=1.0, V=1.0)
     float h = hue / 60.0f;
     int i = static_cast<int>(h) % 6;
     float f = h - std::floor(h);
     
-    unsigned char v = 255;  // Full value
-    unsigned char p = 0;    // S = 1.0, so p = 0
+    unsigned char v = 255;
+    unsigned char p = 0;
     unsigned char q = static_cast<unsigned char>(255 * (1.0f - f));
     unsigned char t = static_cast<unsigned char>(255 * f);
     
@@ -694,48 +610,41 @@ Color Plant::getRenderColor() const {
         case 3: return Color(p, q, v);
         case 4: return Color(t, p, v);
         case 5: return Color(v, p, q);
-        default: return Color(0, 255, 0);  // Default green
+        default: return Color(0, 255, 0);
     }
 }
 
 // ============================================================================
-// Phase 1: Scent System
+// Scent System
 // ============================================================================
 
 std::array<float, 8> Plant::getScentSignature() const {
     std::array<float, 8> signature;
     
-    // Core plant traits for scent
-    signature[0] = getFruitAppeal();      // How appealing the fruit smells
-    signature[1] = getToxicity();         // Toxin warning scent
-    signature[2] = getThornDamage();      // Physical defense indicator
-    signature[3] = getHardiness();        // Toughness indicator
-    
-    // Plant-ness indicator (inverted: 1.0 = definitely plant, 0.0 = not plant)
-    // This helps creatures distinguish plant scents from creature scents
+    signature[0] = getFruitAppeal();
+    signature[1] = getToxicity();
+    signature[2] = getThornDamage();
+    signature[3] = getHardiness();
     signature[4] = 1.0f;  // Plants always have this at 1.0
     
-    // Encode plant ID in remaining slots for source identification
-    // Use float representation of ID components
-    signature[5] = static_cast<float>(id_ % 1000) / 1000.0f;
-    signature[6] = static_cast<float>((id_ / 1000) % 1000) / 1000.0f;
-    signature[7] = static_cast<float>((id_ / 1000000) % 1000) / 1000.0f;
+    // Encode plant ID in remaining slots
+    unsigned int id = static_cast<unsigned int>(getId());
+    signature[5] = static_cast<float>(id % 1000) / 1000.0f;
+    signature[6] = static_cast<float>((id / 1000) % 1000) / 1000.0f;
+    signature[7] = static_cast<float>((id / 1000000) % 1000) / 1000.0f;
     
     return signature;
 }
 
 float Plant::getScentProductionRate() const {
-    // Plants require SCENT_PRODUCTION gene to emit scent
-    // Returns 0.0f if the gene is not present
     return getGeneValueFromGenome(UniversalGenes::SCENT_PRODUCTION, 0.0f);
 }
 
 // ============================================================================
-// String Serialization (delegates to JSON for complete genome preservation)
+// String Serialization
 // ============================================================================
 
 std::string Plant::toString() const {
-    // Use JSON serialization internally to ensure genome is preserved
     return toJson().dump();
 }
 
@@ -746,7 +655,6 @@ std::unique_ptr<Plant> Plant::fromString(const std::string& data,
         Plant plant = fromJson(j, registry);
         return std::make_unique<Plant>(std::move(plant));
     } catch (const nlohmann::json::exception& e) {
-        // JSON parsing failed - return nullptr to indicate error
         return nullptr;
     }
 }
@@ -774,14 +682,14 @@ DispersalStrategy Plant::stringToDispersalStrategy(const std::string& str) {
     if (str == "ANIMAL_BURR")  return DispersalStrategy::ANIMAL_BURR;
     if (str == "EXPLOSIVE")    return DispersalStrategy::EXPLOSIVE;
     if (str == "VEGETATIVE")   return DispersalStrategy::VEGETATIVE;
-    return DispersalStrategy::GRAVITY;  // Default fallback
+    return DispersalStrategy::GRAVITY;
 }
 
 nlohmann::json Plant::toJson() const {
     nlohmann::json j;
     
     // Identity
-    j["id"] = static_cast<int>(id_);
+    j["id"] = getId();
     
     // Species name derived from entity type
     std::string speciesName;
@@ -803,13 +711,13 @@ nlohmann::json Plant::toJson() const {
         {"worldY", getWorldY()}
     };
     
-    // Lifecycle - derive stage from maturity and health
+    // Lifecycle
     std::string stage;
     if (!alive_) {
         stage = "DEAD";
     } else if (mature_) {
         stage = "MATURE";
-    } else if (current_size_ >= getMaxSize() * 0.25f) {
+    } else if (currentSize_ >= getMaxSize() * 0.25f) {
         stage = "GROWING";
     } else {
         stage = "SEEDLING";
@@ -818,15 +726,15 @@ nlohmann::json Plant::toJson() const {
     j["lifecycle"] = {
         {"stage", stage},
         {"currentAge", age_},
-        {"stageAge", age_},  // Simplified - no separate stage tracking
+        {"stageAge", age_},
         {"isAlive", alive_}
     };
     
     // Resources
     j["resources"] = {
         {"storedEnergy", energyState_.currentEnergy},
-        {"currentBiomass", current_size_},
-        {"currentHeight", current_size_},  // Height approximated from size
+        {"currentBiomass", currentSize_},
+        {"currentHeight", currentSize_},
         {"health", health_}
     };
     
@@ -834,7 +742,7 @@ nlohmann::json Plant::toJson() const {
     j["reproduction"] = {
         {"hasSeeds", canSpreadSeeds()},
         {"seedCount", getSeedCount()},
-        {"seedsProduced", 0},  // Not tracked - placeholder
+        {"seedsProduced", 0},
         {"ticksSinceLastSeed", fruitTimer_},
         {"dispersalStrategy", dispersalStrategyToString(getPrimaryDispersalStrategy())},
         {"mature", mature_}
@@ -850,35 +758,33 @@ nlohmann::json Plant::toJson() const {
 }
 
 Plant Plant::fromJson(const nlohmann::json& j, const GeneRegistry& registry) {
-    // Extract position
     int tileX = j.at("position").at("tileX").get<int>();
     int tileY = j.at("position").at("tileY").get<int>();
     
-    // Extract and reconstruct genome
     Genome genome = Genome::fromJson(j.at("genome"));
     
-    // Create plant with the loaded genome
     Plant plant(tileX, tileY, genome, registry);
-    
-    // Override the auto-generated ID with the saved one
-    if (j.contains("id")) {
-        plant.id_ = static_cast<unsigned int>(j.at("id").get<int>());
-    }
     
     // Restore lifecycle state
     if (j.contains("lifecycle")) {
         const auto& lifecycle = j.at("lifecycle");
-        plant.age_ = lifecycle.value("currentAge", 0u);
-        plant.alive_ = lifecycle.value("isAlive", true);
+        
+        // Restore age
+        unsigned int savedAge = lifecycle.value("currentAge", 0u);
+        for (unsigned int i = 0; i < savedAge; ++i) {
+            plant.incrementAge();
+        }
+        
+        if (!lifecycle.value("isAlive", true)) {
+            plant.die();
+        }
     }
     
     // Restore resources
     if (j.contains("resources")) {
         const auto& resources = j.at("resources");
         plant.health_ = resources.value("health", 1.0f);
-        plant.current_size_ = resources.value("currentBiomass", 0.1f);
-        
-        // Restore energy state
+        plant.setCurrentSize(resources.value("currentBiomass", 0.1f));
         plant.energyState_.currentEnergy = resources.value("storedEnergy", 0.0f);
     }
     
@@ -886,7 +792,9 @@ Plant Plant::fromJson(const nlohmann::json& j, const GeneRegistry& registry) {
     if (j.contains("reproduction")) {
         const auto& repro = j.at("reproduction");
         plant.fruitTimer_ = repro.value("ticksSinceLastSeed", 0u);
-        plant.mature_ = repro.value("mature", false);
+        if (repro.value("mature", false)) {
+            plant.setMature(true);
+        }
     }
     
     // Restore entity type
@@ -894,8 +802,6 @@ Plant Plant::fromJson(const nlohmann::json& j, const GeneRegistry& registry) {
         plant.entityType_ = static_cast<EntityType>(j.at("entityType").get<int>());
     }
     
-    // Regenerate phenotype from the loaded genome
-    plant.phenotype_ = Phenotype(&plant.genome_, &registry);
     plant.updatePhenotype();
     
     return plant;

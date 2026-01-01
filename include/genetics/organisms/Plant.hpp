@@ -1,12 +1,7 @@
 #pragma once
 
-#include "genetics/interfaces/IPositionable.hpp"
-#include "genetics/interfaces/ILifecycle.hpp"
+#include "genetics/organisms/Organism.hpp"
 #include "genetics/interfaces/IGeneticOrganism.hpp"
-#include "genetics/interfaces/IReproducible.hpp"
-#include "genetics/core/Genome.hpp"
-#include "genetics/core/GeneRegistry.hpp"
-#include "genetics/expression/Phenotype.hpp"
 #include "genetics/expression/EnvironmentState.hpp"
 #include "genetics/expression/EnergyBudget.hpp"
 #include "rendering/RenderTypes.hpp"
@@ -15,37 +10,26 @@
 #include <string>
 #include <array>
 
-// Forward declarations removed - Food class has been replaced by direct plant feeding
-
 namespace EcoSim {
 namespace Genetics {
 
-/**
- * @brief Emergent seed dispersal strategy determined by physical properties
- *
- * Rather than being a categorical gene, the dispersal strategy emerges
- * from continuous physical properties of the seeds (mass, aerodynamics,
- * hooks, fruit appeal, etc.). This creates realistic trade-offs and
- * evolutionary pathways.
- *
- * @see Plant::getPrimaryDispersalStrategy()
- */
+/// Emergent seed dispersal strategy determined by physical properties
 enum class DispersalStrategy {
-    GRAVITY,        ///< Heavy seeds fall near parent (default)
-    WIND,           ///< Light seeds with wings/parachutes travel far on wind
-    ANIMAL_FRUIT,   ///< Attractive fruit eaten, seeds pass through digestive system
-    ANIMAL_BURR,    ///< Hooks attach to animal fur for transport
-    EXPLOSIVE,      ///< Pod tension launches seeds ballistically
-    VEGETATIVE      ///< Runners/stolons create clonal spread
+    GRAVITY,
+    WIND,
+    ANIMAL_FRUIT,
+    ANIMAL_BURR,
+    EXPLOSIVE,
+    VEGETATIVE
 };
 
 /**
- * @brief Base class for plants in the genetics system
+ * @brief Plant organism that extends the Organism base class
  * 
- * This is a foundation class that demonstrates how plants can use the same
- * genome system as creatures but with different genes. Plants implement the
- * same genetic interfaces (IGeneticOrganism, ILifecycle, IPositionable) but
- * have plant-specific traits and behaviors.
+ * Plants use the same genome system as creatures but with plant-specific genes.
+ * They inherit shared functionality (position, lifecycle, growth, genetics) from
+ * Organism and add plant-specific behaviors like photosynthesis-based growth,
+ * seed dispersal, and defense mechanisms.
  * 
  * Key differences from creatures:
  * - Plants don't move (position is fixed after creation)
@@ -66,7 +50,7 @@ enum class DispersalStrategy {
  *   }
  * @endcode
  */
-class Plant : public IPositionable, public ILifecycle, public IGeneticOrganism, public IReproducible {
+class Plant : public Organism, public IGeneticOrganism {
 public:
     /**
      * @brief Construct a plant with a random genome
@@ -123,10 +107,8 @@ public:
     Plant& operator=(Plant&& other) noexcept;
     
     // ========================================================================
-    // IPositionable interface
+    // IPositionable overrides - Plants are fixed at tile center
     // ========================================================================
-    // Note: getX() and getY() are declared in IGeneticOrganism interface section
-    // to satisfy both IPositionable and IGeneticOrganism requirements
     
     /**
      * @brief Get world X coordinate (float precision)
@@ -160,14 +142,8 @@ public:
     }
     
     // ========================================================================
-    // ILifecycle interface
+    // ILifecycle overrides - Gene-dependent lifespan
     // ========================================================================
-    
-    /**
-     * @brief Get current age in ticks
-     * @return Age in simulation ticks
-     */
-    unsigned int getAge() const override { return age_; }
     
     /**
      * @brief Get maximum lifespan based on genome
@@ -175,77 +151,33 @@ public:
      */
     unsigned int getMaxLifespan() const override;
     
-    /**
-     * @brief Get normalized age (0.0 = seedling, 1.0 = end of life)
-     * @return Age as fraction of max lifespan
-     */
-    float getAgeNormalized() const override;
-    
-    /**
-     * @brief Check if plant is still alive
-     * @return true if alive, false if dead
-     */
-    bool isAlive() const override { return alive_; }
-    
-    /**
-     * @brief Age the plant by specified ticks
-     * @param ticks Number of ticks to age (default 1)
-     * 
-     * Increments age and checks against lifespan. Sets alive_ to false
-     * if age exceeds maximum lifespan.
-     */
-    void age(unsigned int ticks = 1) override;
-    
     // ========================================================================
-    // IGeneticOrganism interface
+    // IGeneticOrganism overrides - Satisfies both IGenetic and IGeneticOrganism
     // ========================================================================
     
-    /**
-     * @brief Get const reference to genome
-     * @return The plant's genome
-     */
-    const Genome& getGenome() const override { return genome_; }
+    /// Get const reference to genome (satisfies both IGenetic and IGeneticOrganism)
+    const Genome& getGenome() const override { return Organism::getGenome(); }
     
-    /**
-     * @brief Get mutable reference to genome
-     * @return Mutable reference for modifications
-     */
-    Genome& getGenomeMutable() override { return genome_; }
+    /// Get mutable reference to genome
+    Genome& getGenomeMutable() override { return Organism::getGenomeMutable(); }
     
-    /**
-     * @brief Get const reference to expressed phenotype
-     * @return The plant's phenotype
-     */
-    const Phenotype& getPhenotype() const override { return phenotype_; }
+    /// Get const reference to phenotype
+    const Phenotype& getPhenotype() const override { return Organism::getPhenotype(); }
     
-    /**
-     * @brief Get tile X coordinate (satisfies both IPositionable and IGeneticOrganism)
-     * @return X position in tile coordinates
-     */
-    int getX() const override { return x_; }
-    
-    /**
-     * @brief Get tile Y coordinate (satisfies both IPositionable and IGeneticOrganism)
-     * @return Y position in tile coordinates
-     */
-    int getY() const override { return y_; }
-    
-    /**
-     * @brief Get unique ID (IGeneticOrganism interface)
-     * @return Unique identifier as int
-     */
-    int getId() const override { return static_cast<int>(id_); }
-    
-    /**
-     * @brief Recalculate expressed traits from genome
-     * 
-     * Should be called after genome modifications or significant
-     * environmental changes.
-     */
+    /// Recalculate expressed traits from genome
     void updatePhenotype() override;
     
+    /// Get tile X coordinate (satisfies both IPositionable and IGeneticOrganism)
+    int getX() const override { return Organism::getX(); }
+    
+    /// Get tile Y coordinate
+    int getY() const override { return Organism::getY(); }
+    
+    /// Get unique identifier
+    int getId() const override { return Organism::getId(); }
+    
     // ========================================================================
-    // IReproducible interface
+    // IReproducible overrides - Asexual seed-based reproduction
     // ========================================================================
     
     /**
@@ -285,11 +217,27 @@ public:
      * @brief Reproduce to create offspring
      * @param partner Unused for asexual plant reproduction (should be nullptr)
      * @return Offspring as IGeneticOrganism pointer
-     *
-     * @todo Return concrete Plant type once Creature/Plant are unified into Organism
      */
     std::unique_ptr<IGeneticOrganism> reproduce(
         const IGeneticOrganism* partner = nullptr) override;
+    
+    // ========================================================================
+    // Organism overrides - Growth system
+    // ========================================================================
+    
+    /**
+     * @brief Get maximum size from phenotype
+     * @return Maximum size the plant can reach
+     */
+    float getMaxSize() const override;
+    
+    /**
+     * @brief Perform growth for this tick (environment-dependent)
+     * 
+     * Plant growth depends on light, water, and temperature.
+     * This overload uses default environment - prefer update(env) instead.
+     */
+    void grow() override;
     
     // ========================================================================
     // Plant-specific methods
@@ -300,12 +248,6 @@ public:
      * @return Growth rate (higher = faster growing)
      */
     float getGrowthRate() const;
-    
-    /**
-     * @brief Get maximum size from phenotype
-     * @return Maximum size the plant can reach
-     */
-    float getMaxSize() const;
     
     /**
      * @brief Get nutrient value when eaten
@@ -324,18 +266,6 @@ public:
      * @return Light need (0.0 = shade tolerant, 1.0 = full sun)
      */
     float getLightNeed() const;
-    
-    /**
-     * @brief Get current size (grows over time)
-     * @return Current size (starts small, grows to max_size)
-     */
-    float getCurrentSize() const { return current_size_; }
-    
-    /**
-     * @brief Get current health
-     * @return Health value (0.0 = dead, 1.0 = full health)
-     */
-    float getHealth() const { return health_; }
     
     /**
      * @brief Get hardiness (damage resistance)
@@ -395,7 +325,7 @@ public:
     float getSpreadDistance() const;
     
     // ========================================================================
-    // Defense System (Phase 2.3)
+    // Defense System
     // ========================================================================
     
     /**
@@ -438,7 +368,7 @@ public:
     void regenerate();
     
     // ========================================================================
-    // Fruit Production (Phase 2.3) - Direct Plant Feeding
+    // Fruit Production - Direct Plant Feeding
     // ========================================================================
     
     /**
@@ -450,8 +380,8 @@ public:
      * - Sufficient energy (from EnergyBudget)
      * - Fruit timer cooldown complete
      *
-     * Note: Food class has been removed. Creatures now feed directly on plants
-     * via FeedingInteraction, which handles nutrient extraction and defense bypass.
+     * Note: Creatures feed directly on plants via FeedingInteraction,
+     * which handles nutrient extraction and defense bypass.
      */
     bool canProduceFruit() const;
     
@@ -497,7 +427,7 @@ public:
     float getFruitAppeal() const;
     
     // ========================================================================
-    // Seed Properties (Phase 2.3)
+    // Seed Properties
     // ========================================================================
     
     /**
@@ -542,7 +472,7 @@ public:
     float getExplosivePodForce() const;
     
     // ========================================================================
-    // Emergent Dispersal Strategy (Phase 2.3)
+    // Emergent Dispersal Strategy
     // ========================================================================
     
     /**
@@ -563,7 +493,7 @@ public:
     DispersalStrategy getPrimaryDispersalStrategy() const;
     
     // ========================================================================
-    // Energy Budget Integration (Phase 2.3)
+    // Energy Budget Integration
     // ========================================================================
     
     /**
@@ -585,7 +515,7 @@ public:
     const EnergyState& getEnergyState() const;
     
     // ========================================================================
-    // Rendering Support (Phase 2.3)
+    // Rendering Support
     // ========================================================================
     
     /**
@@ -617,21 +547,8 @@ public:
     Color getRenderColor() const;
     
     // ========================================================================
-    // Unique ID and Serialization (Phase 2.3)
+    // Serialization
     // ========================================================================
-    // Note: getId() is declared above in IGeneticOrganism interface section
-    
-    /**
-     * @brief Get unsigned ID for internal use
-     * @return Unique identifier as unsigned int
-     */
-    unsigned int getUnsignedId() const { return id_; }
-    
-    /**
-     * @brief Set unique ID (used during creation/deserialization)
-     * @param id The unique identifier
-     */
-    void setId(unsigned int id) { id_ = id; }
     
     /**
      * @brief Serialize plant state to string
@@ -677,7 +594,7 @@ public:
     static DispersalStrategy stringToDispersalStrategy(const std::string& str);
     
     // ========================================================================
-    // Scent System (Phase 1 - Scent Detection)
+    // Scent System
     // ========================================================================
     
     /**
@@ -699,36 +616,17 @@ public:
     float getScentProductionRate() const;
 
 protected:
-    // Position
-    int x_;
-    int y_;
-    
-    // Lifecycle state
-    unsigned int age_ = 0;
-    bool alive_ = true;
-    float health_ = 1.0f;  // 0.0 = dead, 1.0 = full health
-    
-    // Growth state
-    float current_size_ = 0.1f;  // Starts as a seedling
-    bool mature_ = false;        // Can reproduce when mature
-    
-    // Genetics
-    Genome genome_;
-    Phenotype phenotype_;
-    const GeneRegistry* registry_;
-    
-    // Phase 2.3: Energy budget integration
+    // Plant-specific energy budget integration
     EnergyState energyState_;
     
-    // Phase 2.3: Fruit production timing
+    // Fruit production timing
     unsigned int fruitTimer_ = 0;
     
-    // Phase 2.3: Unique identifier
-    unsigned int id_ = 0;
-    static unsigned int nextId_;  // For generating unique IDs
-    
-    // Phase 2.3: Rendering
+    // Rendering
     EntityType entityType_ = EntityType::PLANT_GENERIC;
+    
+    // Static ID generator for unique plant IDs
+    static unsigned int nextId_;
     
     // Internal helpers
     void checkDeathConditions(const EnvironmentState& env);
