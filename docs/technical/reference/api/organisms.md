@@ -1,7 +1,7 @@
 ---
 title: Organisms API Reference
 created: 2025-12-24
-updated: 2025-12-27
+updated: 2026-01-01
 status: complete
 audience: developer
 type: reference
@@ -227,6 +227,79 @@ public:
 |--------|---------|-------------|
 | [`getScentSignature()`](include/genetics/organisms/Plant.hpp:621) | `std::array<float, 8>` | Plant's unique scent profile |
 | `getScentProductionRate()` | `float` | How strongly plant emits scent |
+
+---
+
+## Creature
+
+**Header:** [`include/objects/creature/creature.hpp`](include/objects/creature/creature.hpp)
+
+Core class representing animals in the simulation. Implements multiple interfaces for genetics, lifecycle, position, and reproduction.
+
+```cpp
+class Creature : public IGeneticOrganism, public ILifecycle,
+                 public IPositionable, public IReproducible {
+    // See interface implementations and namespace modules below
+};
+```
+
+### Interfaces Implemented
+
+| Interface | Purpose |
+|-----------|---------|
+| `IGeneticOrganism` | Genome/phenotype access |
+| `ILifecycle` | Age, lifespan, alive status |
+| `IPositionable` | World position management |
+| `IReproducible` | Breeding and offspring creation |
+
+### Namespace Modules
+
+The Creature implementation is decomposed into focused namespace modules for maintainability:
+
+| Module | File | Responsibility |
+|--------|------|----------------|
+| CreatureCombat | [`include/objects/creature/CreatureCombat.hpp`](include/objects/creature/CreatureCombat.hpp) | Combat hunting, prey finding, combat state management |
+| CreatureScent | [`include/objects/creature/CreatureScent.hpp`](include/objects/creature/CreatureScent.hpp) | Scent signatures, deposits, detection, navigation |
+| CreaturePlantInteraction | [`include/objects/creature/CreaturePlantInteraction.hpp`](include/objects/creature/CreaturePlantInteraction.hpp) | Plant feeding, burrs (epizoochory), gut seeds (endozoochory) |
+| CreatureSerialization | [`include/objects/creature/CreatureSerialization.hpp`](include/objects/creature/CreatureSerialization.hpp) | String/JSON serialization, enum converters |
+| CreatureResourceSearch | [`include/objects/creature/CreatureResourceSearch.hpp`](include/objects/creature/CreatureResourceSearch.hpp) | Water finding, plant finding, mate finding |
+
+### Key Methods
+
+#### Lifecycle
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `update()` | `void` | Process one simulation tick |
+| `die()` | `void` | Mark creature as dead |
+| `getEnergy()` | `float` | Current energy level |
+| `setEnergy(float)` | `void` | Set energy level |
+
+#### Movement
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `move()` | `void` | Execute movement based on current state |
+| `setPosition(float, float)` | `void` | Set world position |
+| `getPosition()` | `std::pair<float, float>` | Get current position |
+
+#### Genetics
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `getGenome()` | `const Genome&` | Access creature's genome |
+| `getPhenotype()` | `const Phenotype&` | Access expressed traits |
+| `breed(Creature&)` | `std::unique_ptr<Creature>` | Create offspring with another creature |
+
+#### State
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `getCurrentMotivation()` | `Motivation` | Current behavioral drive |
+| `getCurrentAction()` | `Action` | Current action being performed |
+
+> [!NOTE]
+> For behavior system integration, see [[../../systems/behavior-system|Behavior System Architecture]].
 
 ---
 

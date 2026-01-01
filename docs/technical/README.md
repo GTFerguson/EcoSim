@@ -2,7 +2,7 @@
 title: Technical Documentation
 aliases: [technical, technical-index]
 created: 2025-12-24
-updated: 2025-12-24
+updated: 2026-01-01
 status: complete
 tags: [documentation, index, navigation]
 ---
@@ -51,6 +51,8 @@ Detailed documentation for individual subsystems.
 | Document | Description | Status |
 |----------|-------------|--------|
 | [[systems/scent-system]] | Olfactory communication | ✅ Available |
+| [[systems/world-system]] | World environment management | ✅ Available |
+| [[systems/spatial-index]] | O(1) creature queries | ✅ Available |
 | [[design/resource-allocation]] | Energy budget framework | ✅ Available |
 | [[systems/energy-budget]] | Energy system details | 🚧 Coming |
 | [[systems/dispersal]] | Seed dispersal mechanics | 🚧 Coming |
@@ -131,5 +133,5 @@ src/genetics/       # Implementations mirror include/
 
 ---
 
-**Last Updated:** 2025-12-24
+**Last Updated:** 2026-01-01
 **Documentation Version:** 3.0 (Complete)
