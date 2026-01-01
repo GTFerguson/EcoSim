@@ -223,6 +223,13 @@ nlohmann::json toJson(const Creature& creature) {
         {"woundState", woundStateToString(creature.getWoundState())}
     };
     
+    // Growth state
+    j["growth"] = {
+        {"currentSize", creature.getCurrentSize()},
+        {"maxSize", creature.getMaxSize()},
+        {"mature", creature.isMature()}
+    };
+    
     // Combat state
     j["combat"] = {
         {"targetId", creature.getTargetId()},
@@ -325,6 +332,18 @@ Creature fromJson(const nlohmann::json& j, int mapWidth, int mapHeight) {
         }
         if (behavior.contains("action")) {
             creature.setAction(stringToAction(behavior.at("action").get<std::string>()));
+        }
+    }
+    
+    // Restore growth state (with backward compatibility defaults)
+    if (j.contains("growth")) {
+        const auto& growth = j.at("growth");
+        // Must set maxSize first so setCurrentSize can compute mature_ correctly
+        creature.setMaxSize(growth.value("maxSize", creature.getMaxSize()));
+        creature.setCurrentSize(growth.value("currentSize", 0.1f));
+        // Override mature if explicitly set (backward compatibility)
+        if (growth.contains("mature")) {
+            creature.setMature(growth.at("mature").get<bool>());
         }
     }
     

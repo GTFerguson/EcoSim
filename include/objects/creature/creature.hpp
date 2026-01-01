@@ -174,6 +174,13 @@ class Creature: public GameObject,
     //  How quickly the creature burns through food
     float     _metabolism = 0.001f;
     unsigned  _speed      = 1;
+    
+    //============================================================================
+    //  Growth State
+    //============================================================================
+    float currentSize_;    // Current physical size (0.0 to maxSize_)
+    float maxSize_;        // Maximum size from MAX_SIZE gene
+    bool mature_;          // Whether creature has reached maturity (50% of max size)
 
     //============================================================================
     //  Genetics System
@@ -457,6 +464,51 @@ class Creature: public GameObject,
      * @return Calculated movement speed (tiles per tick)
      */
     float getMovementSpeed() const;
+    
+    //============================================================================
+    //  Growth State Getters
+    //============================================================================
+    /**
+     * @brief Get current physical size.
+     * @return Current size (0.0 to maxSize_)
+     */
+    float getCurrentSize() const { return currentSize_; }
+    
+    /**
+     * @brief Get maximum size from MAX_SIZE gene.
+     * @return Maximum achievable size
+     */
+    float getMaxSize() const { return maxSize_; }
+    
+    /**
+     * @brief Check if creature has reached maturity.
+     * @return True if creature has reached 50% of max size
+     */
+    bool isMature() const { return mature_; }
+    
+    /**
+     * @brief Get ratio of current size to max size.
+     * @return Size ratio (0.0 to 1.0)
+     */
+    float getSizeRatio() const { return maxSize_ > 0.0f ? currentSize_ / maxSize_ : 0.0f; }
+    
+    /**
+     * @brief Set current size (for deserialization).
+     * @param size New current size value
+     */
+    void setCurrentSize(float size) { currentSize_ = size; mature_ = (currentSize_ >= maxSize_ * 0.5f); }
+    
+    /**
+     * @brief Set maximum size (for deserialization).
+     * @param size New maximum size value
+     */
+    void setMaxSize(float size) { maxSize_ = size; }
+    
+    /**
+     * @brief Set maturity state (for deserialization).
+     * @param mature New maturity state
+     */
+    void setMature(bool mature) { mature_ = mature; }
     
     /**
      * @brief Get maximum health based on genetics.

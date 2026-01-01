@@ -163,6 +163,9 @@ Creature::Creature(const Creature& other)
       _mate(other._mate),
       _metabolism(other._metabolism),
       _speed(other._speed),
+      currentSize_(other.currentSize_),
+      maxSize_(other.maxSize_),
+      mature_(other.mature_),
       _archetype(other._archetype),
       _attachedBurrs(other._attachedBurrs),
       _gutSeeds(other._gutSeeds) {
@@ -205,6 +208,9 @@ Creature::Creature(Creature&& other) noexcept
       _mate(other._mate),
       _metabolism(other._metabolism),
       _speed(other._speed),
+      currentSize_(other.currentSize_),
+      maxSize_(other.maxSize_),
+      mature_(other.mature_),
       _genome(std::move(other._genome)),
       _phenotype(std::move(other._phenotype)),
       _archetype(other._archetype),
@@ -246,6 +252,9 @@ Creature& Creature::operator=(const Creature& other) {
         _mate = other._mate;
         _metabolism = other._metabolism;
         _speed = other._speed;
+        currentSize_ = other.currentSize_;
+        maxSize_ = other.maxSize_;
+        mature_ = other.mature_;
         
         // Deep copy unique_ptr members
         if (other._genome) {
@@ -305,6 +314,9 @@ Creature& Creature::operator=(Creature&& other) noexcept {
         _mate = other._mate;
         _metabolism = other._metabolism;
         _speed = other._speed;
+        currentSize_ = other.currentSize_;
+        maxSize_ = other.maxSize_;
+        mature_ = other.mature_;
         _genome = std::move(other._genome);
         _phenotype = std::move(other._phenotype);
         
@@ -2103,6 +2115,9 @@ Creature::Creature(int x, int y, std::unique_ptr<EcoSim::Genetics::Genome> genom
       _mate(0.0f),
       _metabolism(0.001f),  // Default, will be updated from phenotype
       _speed(1),
+      currentSize_(0.1f),    // Small juvenile starting size
+      maxSize_(1.0f),        // Default, will be updated from phenotype
+      mature_(false),        // Not yet mature
       _genome(std::move(genome)),
       _archetype(nullptr) {
     
@@ -2116,6 +2131,11 @@ Creature::Creature(int x, int y, std::unique_ptr<EcoSim::Genetics::Genome> genom
         _metabolism = _phenotype->getTrait(EcoSim::Genetics::UniversalGenes::METABOLISM_RATE) * 0.001f;
     } else {
         _metabolism = 0.001f;
+    }
+    
+    // Set maxSize from MAX_SIZE gene
+    if (_phenotype->hasTrait(EcoSim::Genetics::UniversalGenes::MAX_SIZE)) {
+        maxSize_ = _phenotype->getTrait(EcoSim::Genetics::UniversalGenes::MAX_SIZE);
     }
     
     // Classify archetype from genome (after phenotype is ready)
@@ -2162,6 +2182,9 @@ Creature::Creature(int x, int y, float hunger, float thirst,
       _mate(0.0f),
       _metabolism(0.001f),  // Default, will be updated from phenotype
       _speed(1),
+      currentSize_(0.1f),    // Small juvenile starting size
+      maxSize_(1.0f),        // Default, will be updated from phenotype
+      mature_(false),        // Not yet mature
       _genome(std::move(genome)),
       _archetype(nullptr) {
     
@@ -2175,6 +2198,11 @@ Creature::Creature(int x, int y, float hunger, float thirst,
         _metabolism = _phenotype->getTrait(EcoSim::Genetics::UniversalGenes::METABOLISM_RATE) * 0.001f;
     } else {
         _metabolism = 0.001f;
+    }
+    
+    // Set maxSize from MAX_SIZE gene
+    if (_phenotype->hasTrait(EcoSim::Genetics::UniversalGenes::MAX_SIZE)) {
+        maxSize_ = _phenotype->getTrait(EcoSim::Genetics::UniversalGenes::MAX_SIZE);
     }
     
     // Classify archetype from genome (after phenotype is ready)
