@@ -11,6 +11,7 @@
  */
 
 #include "genetics/organisms/Plant.hpp"
+#include "genetics/organisms/PlantEnergyCalculator.hpp"
 #include "genetics/defaults/PlantGenes.hpp"
 #include "genetics/defaults/UniversalGenes.hpp"
 #include "genetics/expression/OrganismState.hpp"
@@ -345,42 +346,22 @@ void Plant::grow(const EnvironmentState& env) {
         return;
     }
     
-    // Base growth rate from genes
+    // Get plant properties needed for energy calculations
     float growthRate = getGrowthRate();
-    
-    // Modify growth based on environment
-    // Light factor: plants need light to grow (via photosynthesis)
-    float lightFactor = 1.0f;
     float lightNeed = getLightNeed();
-    // time_of_day 0.5 = noon = full light
-    float availableLight = std::sin(env.time_of_day * 3.14159f);
-    if (availableLight < lightNeed) {
-        lightFactor = availableLight / (lightNeed + 0.01f);
-    }
-    
-    // Humidity/water factor
-    float waterFactor = 1.0f;
     float waterNeed = getWaterNeed();
-    if (env.humidity < waterNeed) {
-        waterFactor = env.humidity / (waterNeed + 0.01f);
+    bool canSurviveTemp = canSurviveTemperature(env.temperature);
+    
+    // Handle temperature stress damage
+    float tempDamage = PlantEnergyCalculator::calculateTemperatureStressDamage(canSurviveTemp);
+    if (tempDamage > 0.0f) {
+        takeDamage(tempDamage);
     }
     
-    // Temperature factor - growth is reduced if temperature is extreme
-    float tempFactor = 1.0f;
-    if (!canSurviveTemperature(env.temperature)) {
-        // Outside survival range, no growth and take damage
-        tempFactor = 0.0f;
-        takeDamage(0.01f);
-    } else {
-        // Optimal temperature around 20-25°C
-        float optimalTemp = 22.5f;
-        float tempDiff = std::abs(env.temperature - optimalTemp);
-        tempFactor = std::max(0.5f, 1.0f - (tempDiff / 30.0f));
-    }
+    // Calculate effective growth using PlantEnergyCalculator
+    float effectiveGrowth = PlantEnergyCalculator::calculatePhotosynthesisGrowth(
+        env, lightNeed, waterNeed, growthRate, canSurviveTemp);
     
-    // Calculate actual growth
-    // Note: Multiplier of 0.003 allows berry bushes to mature in ~900 ticks
-    float effectiveGrowth = growthRate * lightFactor * waterFactor * tempFactor * 0.003f;
     current_size_ = std::min(current_size_ + effectiveGrowth, maxSize);
     
     // Check for maturity (can reproduce when at 50% of max size)
@@ -439,10 +420,8 @@ float Plant::getReproductiveUrge() const {
 }
 
 float Plant::getReproductionEnergyCost() const {
-    // Energy cost based on seed production and nutrient value
-    float baseCost = 0.1f;
-    float seedCount = static_cast<float>(getSeedCount());
-    return baseCost * seedCount;
+    // Delegate to PlantEnergyCalculator for energy cost calculation
+    return PlantEnergyCalculator::calculateReproductionEnergy(getSeedCount());
 }
 
 ReproductionMode Plant::getReproductionMode() const {
