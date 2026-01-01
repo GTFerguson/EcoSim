@@ -7,6 +7,11 @@
 */
 
 #include "../../../include/objects/creature/creature.hpp"
+#include "objects/creature/CreatureCombat.hpp"
+#include "objects/creature/CreatureScent.hpp"
+#include "objects/creature/CreaturePlantInteraction.hpp"
+#include "objects/creature/CreatureSerialization.hpp"
+#include "objects/creature/CreatureResourceSearch.hpp"
 #include "genetics/organisms/Plant.hpp"
 #include "genetics/defaults/UniversalGenes.hpp"
 #include "world/SpatialIndex.hpp"
@@ -16,6 +21,7 @@
 #include "genetics/systems/PerceptionSystem.hpp"  // Phase 4: Scent-based plant detection
 #include "logging/Logger.hpp"
 #include <unordered_map>
+#include <optional>
 
 #include "genetics/behaviors/BehaviorController.hpp"
 #include "genetics/behaviors/BehaviorContext.hpp"
@@ -916,13 +922,7 @@ bool Creature::waterCheck (const vector<vector<Tile>> &map,
                            const unsigned &cols,
                            const int &x,
                            const int &y) {
-  if (Navigator::boundaryCheck (x, y, rows, cols)) {
-    if (map.at(x).at(y).isSource()) {
-      if (Navigator::astarSearch (*this, map, rows, cols, x, y))
-        return true; 
-    }
-  }
-  return false;
+  return CreatureResourceSearch::waterCheck(*this, map, rows, cols, x, y);
 }
 
 // This template method performs an expanding square search pattern
@@ -1116,16 +1116,7 @@ bool Creature::findGeneticsPlants(World &world, unsigned &feedingCounter) {
  * @return True if scent_detection trait exceeds threshold (0.1)
  */
 bool Creature::hasScentDetection() const {
-  if (!_phenotype) {
-    return false;
-  }
-  
-  // Check if scent_detection trait exists, default to 0.0 if not
-  float scentDetection = 0.0f;
-  if (_phenotype->hasTrait(EcoSim::Genetics::UniversalGenes::SCENT_DETECTION)) {
-    scentDetection = _phenotype->getTrait(EcoSim::Genetics::UniversalGenes::SCENT_DETECTION);
-  }
-  return scentDetection > 0.1f;  // Threshold for meaningful scent ability
+  return CreatureScent::hasScentDetection(*this);
 }
 
 /**
@@ -1139,46 +1130,7 @@ bool Creature::hasScentDetection() const {
  * @return True if a valid food scent was found, false otherwise
  */
 bool Creature::findFoodScent(const EcoSim::ScentLayer& scentLayer, int& outX, int& outY) const {
-  if (!_phenotype) {
-    return false;
-  }
-  
-  // Get scent detection range from phenotype
-  // Uses SCENT_DETECTION_BASE_RANGE and SCENT_DETECTION_ACUITY_MULT constants
-  float scentDetection = DEFAULT_OLFACTORY_ACUITY;
-  if (_phenotype->hasTrait(EcoSim::Genetics::UniversalGenes::SCENT_DETECTION)) {
-    scentDetection = _phenotype->getTrait(EcoSim::Genetics::UniversalGenes::SCENT_DETECTION);
-  }
-  
-  // Calculate detection range: base + scent_detection * multiplier
-  int detectionRange = static_cast<int>(SCENT_DETECTION_BASE_RANGE + scentDetection * SCENT_DETECTION_ACUITY_MULT);
-  
-  // Query the scent layer for strongest FOOD_TRAIL scent in range
-  int scentX = tileX(), scentY = tileY();
-  EcoSim::ScentDeposit strongestScent = scentLayer.getStrongestScentInRadius(
-    tileX(), tileY(), detectionRange,
-    EcoSim::ScentType::FOOD_TRAIL,
-    scentX, scentY
-  );
-  
-  // Check if we found a valid scent with meaningful intensity
-  if (strongestScent.intensity <= 0.0f) {
-    return false;
-  }
-  
-  // Check if scent is at our current position (shouldn't navigate to self)
-  if (scentX == tileX() && scentY == tileY()) {
-    return false;
-  }
-  
-  // TODO: Future enhancement - filter by edibility using scent signature
-  // For now, we follow any FOOD_TRAIL scent and verify edibility on arrival
-  // The creature will check canEatPlant() when it reaches the food source
-  
-  // Return the scent coordinates for A* pathfinding
-  outX = scentX;
-  outY = scentY;
-  return true;
+  return CreatureScent::findFoodScent(*this, scentLayer, outX, outY);
 }
 
 /**
@@ -1296,6 +1248,7 @@ bool Creature::findMate (vector<vector<Tile>> &map,
 
 /**
  *  Used by carnivorous creatures to seek out prey.
+ *  Delegates to CreatureCombat::findPrey for implementation.
  *
  *  @param map          A reference to the world map.
  *  @param rows         Number of rows on the map.
@@ -1308,145 +1261,7 @@ bool Creature::findPrey (vector<vector<Tile>> &map,
                          const int &cols,
                          vector<Creature> &creatures,
                          unsigned &preyAte) {
-  float closestDistance = getSightRange();
-  vector<Creature>::iterator creature     = creatures.begin();
-  vector<Creature>::iterator closestPrey  = creature;
-
-  while (creature != creatures.end()) {
-    //  Exclude predators (carnivores and necrovores)
-    DietType creatureDiet = creature->getDietType();
-    if (creatureDiet != DietType::CARNIVORE && creatureDiet != DietType::NECROVORE) {
-      //  Calculate the distance between the creatures
-      float distance = calculateDistance(creature->getX(), creature->getY());
-
-      if (distance < closestDistance) {
-        closestPrey = creature;
-        closestDistance = distance;
-      }
-    }
-    creature++;
-  }
-
-  //  If prey is found seek it
-  if (closestDistance < getSightRange()) {
-    int preyX = closestPrey->getX();
-    int preyY = closestPrey->getY();
-    // Phase 1: Float Movement - use tile positions for grid-based distance
-    unsigned xDist = abs(tileX() - preyX);
-    unsigned yDist = abs(tileY() - preyY);
-
-    // If on prey, engage in combat
-    if (xDist <= 1 && yDist <= 1) {
-      using namespace EcoSim::Genetics;
-      
-      // Set combat state
-      setInCombat(true);
-      setTargetId(closestPrey->getId());
-      
-      // Check cooldown before attacking
-      if (_combatCooldown <= 0) {
-        setAction(Action::Attacking);
-        
-        // Use CombatInteraction to resolve attack
-        if (_phenotype) {
-          // Select best attack and resolve it
-          const Phenotype& preyPhenotype = closestPrey->getPhenotype();
-          CombatAction action = CombatInteraction::selectBestAction(
-              *_phenotype, preyPhenotype);
-          
-          AttackResult result = CombatInteraction::resolveAttack(
-              *_phenotype, preyPhenotype, action);
-          
-          // Capture health BEFORE applying damage for accurate logging
-          float defenderHealthBefore = closestPrey->getHealth();
-          
-          // Apply damage to prey
-          closestPrey->takeDamage(result.finalDamage);
-          
-          // Log combat attack using detailed combat event
-          logging::CombatLogEvent logEvent;
-          logEvent.attackerId = _id;
-          logEvent.defenderId = closestPrey->getId();
-          logEvent.attackerName = generateName();
-          logEvent.defenderName = closestPrey->generateName();
-          logEvent.weapon = action.weapon;
-          logEvent.primaryDamageType = result.primaryType;
-          logEvent.rawDamage = result.rawDamage;
-          logEvent.finalDamage = result.finalDamage;
-          logEvent.effectivenessMultiplier = result.effectivenessMultiplier;
-          logEvent.defenseUsed = CombatInteraction::getCounteringDefense(result.primaryType);
-          logEvent.defenseValue = CombatInteraction::getDefenseProfile(preyPhenotype)
-                                  .getDefenseForType(logEvent.defenseUsed);
-          logEvent.attackerHealthBefore = getHealth();
-          logEvent.attackerHealthAfter = getHealth();
-          logEvent.attackerMaxHealth = getMaxHealth();
-          logEvent.defenderHealthBefore = defenderHealthBefore;  // Use captured value
-          logEvent.defenderHealthAfter = closestPrey->getHealth();
-          logEvent.defenderMaxHealth = closestPrey->getMaxHealth();
-          logEvent.hit = result.hit;
-          logEvent.causedBleeding = result.causedBleeding;
-          logEvent.defenderDied = (closestPrey->getHealth() <= 0.0f);
-          
-          logging::Logger::getInstance().combatEvent(logEvent);
-          
-          // Set cooldown based on weapon type (use weapon's base cooldown)
-          _combatCooldown = getWeaponStats(action.weapon).baseCooldown;
-        } else {
-          // Fallback: basic damage without genetics
-          closestPrey->takeDamage(5.0f);
-          _combatCooldown = 3;
-        }
-        
-        // Check if prey died
-        if (closestPrey->getHealth() <= 0.0f) {
-          // Prey killed - gain calories
-          float calories = PREY_CALORIES + closestPrey->getHunger();
-          _hunger += calories;
-          if (_hunger > RESOURCE_LIMIT) _hunger = RESOURCE_LIMIT;
-          
-          // Log the creature death event
-          logging::Logger::getInstance().creatureDied(
-            closestPrey->getId(),
-            closestPrey->generateName(),
-            "combat",
-            closestPrey->getHunger(),
-            static_cast<int>(closestPrey->getAge())
-          );
-          
-          // Log the feeding event (carnivore eating prey)
-          logging::Logger::getInstance().feeding(
-            _id,                    // predator ID
-            closestPrey->getId(),   // prey ID (used in place of plant ID)
-            true,                   // success
-            calories,               // nutrition gained
-            0.0f                    // damage received (prey is already dead)
-          );
-          
-          // Mark prey for removal by setting health to 0 (already done via takeDamage)
-          // The main simulation loop removes dead creatures via deathCheck()
-          preyAte++;
-          
-          // Clear combat state
-          setInCombat(false);
-          setTargetId(-1);
-        }
-        // Else: prey survives, combat continues next tick
-      } else {
-        // On cooldown - decrement and wait
-        _combatCooldown--;
-        setAction(Action::Attacking);  // Still in combat stance
-      }
-      
-      return true;
-
-    //  Move towards prey
-    } else {
-      setAction(Action::Chasing);
-      return Navigator::astarSearch (*this, map, rows, cols, preyX, preyY);
-    }
-  }
-
-  return false;
+  return CreatureCombat::findPrey(*this, map, rows, cols, creatures, preyAte);
 }
 
 
@@ -1692,95 +1507,18 @@ std::unique_ptr<EcoSim::Genetics::IGeneticOrganism> Creature::reproduce(
 
 /**
  * Compute this creature's unique genetic scent signature.
- * Creates an 8-float fingerprint based on genome characteristics.
+ * Delegates to CreatureScent::computeScentSignature.
  */
 std::array<float, 8> Creature::computeScentSignature() const {
-  std::array<float, 8> signature;
-  
-  // Use genome traits to create a unique fingerprint
-  // This allows related creatures to have similar signatures
-  
-  // Component 0: Diet-based (0.0-0.2 range based on diet type)
-  signature[0] = static_cast<float>(static_cast<int>(getDietType())) * 0.2f;
-  
-  // Component 1: Lifespan-based (normalized)
-  signature[1] = std::min(1.0f, static_cast<float>(getLifespan()) / 1000000.0f);
-  
-  // Component 2: Sight range (normalized)
-  signature[2] = std::min(1.0f, static_cast<float>(getSightRange()) / 200.0f);
-  
-  // Component 3: Metabolism-based (normalized)
-  signature[3] = std::min(1.0f, getMetabolism() * 100.0f);
-  
-  // Component 4: Social behavior (flee/pursue ratio)
-  float fleeVal = static_cast<float>(getFlee());
-  float pursueVal = static_cast<float>(getPursue());
-  signature[4] = (pursueVal > 0) ? std::min(1.0f, fleeVal / pursueVal) : 0.5f;
-  
-  // Component 5: Flocking tendency
-  signature[5] = ifFlocks() ? 0.8f : 0.2f;
-  
-  // Components 6-7: Use olfactory genes if available
-  if (_phenotype) {
-    signature[6] = _phenotype->hasTrait(EcoSim::Genetics::UniversalGenes::SCENT_SIGNATURE_VARIANCE) ?
-                   _phenotype->getTrait(EcoSim::Genetics::UniversalGenes::SCENT_SIGNATURE_VARIANCE) : 0.5f;
-    signature[7] = _phenotype->hasTrait(EcoSim::Genetics::UniversalGenes::SCENT_PRODUCTION) ?
-                   _phenotype->getTrait(EcoSim::Genetics::UniversalGenes::SCENT_PRODUCTION) : 0.5f;
-  } else {
-    // Derive from other traits for legacy creatures
-    signature[6] = std::min(1.0f, getTHunger() + getTThirst());
-    signature[7] = std::min(1.0f, getTFatigue() + getTMate());
-  }
-  
-  return signature;
+  return CreatureScent::computeScentSignature(*this);
 }
 
 /**
  * Deposit breeding pheromone when in breeding state.
- * Creates a MATE_SEEKING scent deposit based on creature's olfactory genes.
+ * Delegates to CreatureScent::depositBreedingScent.
  */
 void Creature::depositBreedingScent(EcoSim::ScentLayer& layer, unsigned int currentTick) {
-  // Only deposit if in breeding profile
-  if (_profile != Profile::breed) {
-    return;
-  }
-  
-  // Get scent production rate from phenotype
-  // Uses DEFAULT_SCENT_PRODUCTION constant
-  float scentProduction = DEFAULT_SCENT_PRODUCTION;
-  float scentMasking = 0.0f;     // Default - no masking
-  
-  if (_phenotype) {
-    if (_phenotype->hasTrait(EcoSim::Genetics::UniversalGenes::SCENT_PRODUCTION)) {
-      scentProduction = _phenotype->getTrait(EcoSim::Genetics::UniversalGenes::SCENT_PRODUCTION);
-    }
-    if (_phenotype->hasTrait(EcoSim::Genetics::UniversalGenes::SCENT_MASKING)) {
-      scentMasking = _phenotype->getTrait(EcoSim::Genetics::UniversalGenes::SCENT_MASKING);
-    }
-  }
-  
-  // Apply scent masking - high masking reduces effective production
-  float effectiveProduction = scentProduction * (1.0f - scentMasking * 0.8f);
-  
-  // Only deposit if effective production is significant
-  if (effectiveProduction < 0.05f) {
-    return;
-  }
-  
-  // Create scent deposit
-  EcoSim::ScentDeposit deposit;
-  deposit.type = EcoSim::ScentType::MATE_SEEKING;
-  deposit.creatureId = _id;
-  deposit.intensity = effectiveProduction;
-  deposit.signature = computeScentSignature();
-  deposit.tickDeposited = currentTick;
-  
-  // Decay rate based on intensity - stronger scents last longer
-  // Base decay: 50-200 ticks depending on intensity
-  deposit.decayRate = static_cast<unsigned int>(50 + effectiveProduction * 150);
-  
-  // Deposit at creature's current position
-  layer.deposit(tileX(), tileY(), deposit);
+  CreatureScent::depositBreedingScent(*this, layer, currentTick);
 }
 
 //================================================================================
@@ -1789,154 +1527,28 @@ void Creature::depositBreedingScent(EcoSim::ScentLayer& layer, unsigned int curr
 
 /**
  * Calculate genetic similarity between two scent signatures.
- * Uses cosine similarity for comparing 8-dimensional signature vectors.
+ * Delegates to CreatureScent::calculateSignatureSimilarity.
  */
 float Creature::calculateSignatureSimilarity(
     const std::array<float, 8>& sig1,
     const std::array<float, 8>& sig2) {
-  // Calculate cosine similarity
-  float dotProduct = 0.0f;
-  float norm1 = 0.0f;
-  float norm2 = 0.0f;
-  
-  for (size_t i = 0; i < 8; ++i) {
-    dotProduct += sig1[i] * sig2[i];
-    norm1 += sig1[i] * sig1[i];
-    norm2 += sig2[i] * sig2[i];
-  }
-  
-  if (norm1 == 0.0f || norm2 == 0.0f) {
-    return 0.0f;
-  }
-  
-  return dotProduct / (std::sqrt(norm1) * std::sqrt(norm2));
+  return CreatureScent::calculateSignatureSimilarity(sig1, sig2);
 }
 
 /**
  * Detect the direction to a potential mate using scent trails.
- * Uses OLFACTORY_ACUITY gene to determine detection range.
- * Filters by genetic similarity to ensure same-species recognition.
+ * Delegates to CreatureScent::detectMateDirection.
  */
 std::optional<Direction> Creature::detectMateDirection(const EcoSim::ScentLayer& scentLayer) const {
-  // Only detect if we're in breeding mode
-  if (_profile != Profile::breed) {
-    return std::nullopt;
-  }
-  
-  // Get olfactory acuity from phenotype (default to moderate if not available)
-  // Uses DEFAULT_OLFACTORY_ACUITY constant
-  float olfactoryAcuity = DEFAULT_OLFACTORY_ACUITY;
-  if (_phenotype) {
-    if (_phenotype->hasTrait(EcoSim::Genetics::UniversalGenes::OLFACTORY_ACUITY)) {
-      olfactoryAcuity = _phenotype->getTrait(EcoSim::Genetics::UniversalGenes::OLFACTORY_ACUITY);
-    }
-  }
-  
-  // Calculate detection range: base + acuity * multiplier
-  // Range: SCENT_DETECTION_BASE_RANGE (acuity=0) to BASE+MULT (acuity=1)
-  // This allows creatures to detect mates at typical population distances (avg ~116 tiles)
-  // Uses SCENT_DETECTION_BASE_RANGE and SCENT_DETECTION_ACUITY_MULT constants
-  int detectionRange = static_cast<int>(SCENT_DETECTION_BASE_RANGE + olfactoryAcuity * SCENT_DETECTION_ACUITY_MULT);
-  
-  // Query the scent layer for strongest MATE_SEEKING scent in range
-  int scentX = tileX(), scentY = tileY();
-  EcoSim::ScentDeposit strongestScent = scentLayer.getStrongestScentInRadius(
-    tileX(), tileY(), detectionRange,
-    EcoSim::ScentType::MATE_SEEKING,
-    scentX, scentY
-  );
-  
-  // Check if we found a valid scent
-  if (strongestScent.intensity <= 0.0f || strongestScent.creatureId == _id) {
-    // No scent found, or it's our own scent
-    return std::nullopt;
-  }
-  
-  // No genetic similarity filter - any MATE_SEEKING scent from another creature is valid
-  // The findMate() method already handles compatibility checks when creatures meet
-  
-  // Check if scent is at our current position (we've arrived!)
-  if (scentX == tileX() && scentY == tileY()) {
-    return Direction::none;  // At the scent source
-  }
-  
-  // Calculate direction toward scent source
-  int dx = scentX - tileX();
-  int dy = scentY - tileY();
-  
-  // Convert delta to one of 8 directions
-  Direction result = Direction::none;
-  
-  if (dx > 0 && dy > 0) {
-    result = Direction::SE;
-  } else if (dx > 0 && dy < 0) {
-    result = Direction::NE;
-  } else if (dx > 0 && dy == 0) {
-    result = Direction::E;
-  } else if (dx < 0 && dy > 0) {
-    result = Direction::SW;
-  } else if (dx < 0 && dy < 0) {
-    result = Direction::NW;
-  } else if (dx < 0 && dy == 0) {
-    result = Direction::W;
-  } else if (dx == 0 && dy > 0) {
-    result = Direction::S;
-  } else if (dx == 0 && dy < 0) {
-    result = Direction::N;
-  }
-  
-  return result;
+  return CreatureScent::detectMateDirection(*this, scentLayer);
 }
 
 /**
  * Find the coordinates of the strongest mate scent in range.
- * Returns target coordinates for A* pathfinding navigation.
- *
- * Mate compatibility is determined by genetic similarity in checkFitness() 
- * when creatures actually meet. Creatures follow any breeding pheromone to 
- * increase chances of finding compatible mates.
+ * Delegates to CreatureScent::findMateScent.
  */
 bool Creature::findMateScent(const EcoSim::ScentLayer& scentLayer, int& outX, int& outY) const {
-  // Only detect if we're in breeding mode
-  if (_profile != Profile::breed) {
-    return false;
-  }
-  
-  // Get olfactory acuity from phenotype (default to moderate if not available)
-  float olfactoryAcuity = DEFAULT_OLFACTORY_ACUITY;
-  if (_phenotype) {
-    if (_phenotype->hasTrait(EcoSim::Genetics::UniversalGenes::OLFACTORY_ACUITY)) {
-      olfactoryAcuity = _phenotype->getTrait(EcoSim::Genetics::UniversalGenes::OLFACTORY_ACUITY);
-    }
-  }
-  
-  // Calculate detection range: base + acuity * multiplier
-  int detectionRange = static_cast<int>(
-    SCENT_DETECTION_BASE_RANGE + olfactoryAcuity * SCENT_DETECTION_ACUITY_MULT
-  );
-  
-  // Query the scent layer for strongest MATE_SEEKING scent in range
-  int scentX = tileX(), scentY = tileY();
-  EcoSim::ScentDeposit strongestScent = scentLayer.getStrongestScentInRadius(
-    tileX(), tileY(), detectionRange,
-    EcoSim::ScentType::MATE_SEEKING,
-    scentX, scentY
-  );
-  
-  // Check if we found a valid scent (not our own)
-  if (strongestScent.intensity <= 0.0f || strongestScent.creatureId == _id) {
-    return false;
-  }
-  
-  // Check if scent is at our current position (shouldn't navigate to self)
-  if (scentX == tileX() && scentY == tileY()) {
-    return false;
-  }
-  
-  // Return the scent coordinates for A* pathfinding
-  outX = scentX;
-  outY = scentY;
-  return true;
+  return CreatureScent::findMateScent(*this, scentLayer, outX, outY);
 }
 
 //================================================================================
@@ -1958,6 +1570,7 @@ void Creature::initializeInteractionSystems() {
 
 /**
 	* Attempt to eat a plant using genetics-based feeding calculations.
+	* Delegates core logic to CreaturePlantInteraction namespace.
 	*/
 EcoSim::Genetics::FeedingResult Creature::eatPlant(EcoSim::Genetics::Plant& plant) {
 	   using namespace EcoSim::Genetics;
@@ -1975,34 +1588,17 @@ EcoSim::Genetics::FeedingResult Creature::eatPlant(EcoSim::Genetics::Plant& plan
 	       return result;
 	   }
 	   
-	   // Calculate hunger level (0-1, higher = more desperate)
-	   float hungerLevel = 1.0f - std::max(0.0f, std::min(1.0f, _hunger / RESOURCE_LIMIT));
-	   
-	   // Attempt the feeding interaction
-	   FeedingResult result = s_feedingInteraction->attemptToEatPlant(
-	       *_phenotype, plant, hungerLevel
+	   // Delegate to namespace function for core feeding logic
+	   FeedingResult result = CreaturePlantInteraction::eatPlant(
+	       *this, plant, *s_feedingInteraction
 	   );
 	   
-	   if (result.success) {
-	       // Apply nutrition gained
-	       _hunger += result.nutritionGained;
-	       if (_hunger > RESOURCE_LIMIT) {
-	           _hunger = RESOURCE_LIMIT;
-	       }
-	       
-	       // Apply damage from plant defenses
-	       // For now, damage reduces hunger (representing injury cost)
-	       float totalDamage = result.damageReceived;
-	       _hunger -= totalDamage * 0.5f;  // Damage costs energy to heal
-	       
-	       // Apply damage to the plant
-	       plant.takeDamage(result.plantDamage);
-	       
-	       // Handle seed consumption
-	       if (result.seedsConsumed && result.seedsToDisperse > 0) {
-	           consumeSeeds(plant, static_cast<int>(result.seedsToDisperse),
-	                       1.0f - (result.seedsDestroyed ? 0.5f : 0.0f));
-	       }
+	   // Handle seed consumption (requires access to _gutSeeds member)
+	   if (result.success && result.seedsConsumed && result.seedsToDisperse > 0) {
+	       CreaturePlantInteraction::consumeSeeds(
+	           *this, plant, static_cast<int>(result.seedsToDisperse),
+	           1.0f - (result.seedsDestroyed ? 0.5f : 0.0f), _gutSeeds
+	       );
 	   }
 	   
 	   return result;
@@ -2010,11 +1606,9 @@ EcoSim::Genetics::FeedingResult Creature::eatPlant(EcoSim::Genetics::Plant& plan
 
 /**
 	* Check if creature can eat the given plant.
-	* When called for a plant on the same tile, assume distance = 0.
+	* Delegates to CreaturePlantInteraction namespace.
 	*/
 bool Creature::canEatPlant(const EcoSim::Genetics::Plant& plant) const {
-	   using namespace EcoSim::Genetics;
-	   
 	   if (!s_feedingInteraction) {
 	       const_cast<Creature*>(this)->initializeInteractionSystems();
 	   }
@@ -2023,58 +1617,26 @@ bool Creature::canEatPlant(const EcoSim::Genetics::Plant& plant) const {
 	       return false;
 	   }
 	   
-	   // For plants on the same tile as creature, use distance 0
-	   // Plant.getX()/getY() may not be set correctly for tile-stored plants
-	   // The calling code in findGeneticsPlants already verifies the plant is reachable
-	   float distance = 0.0f;
-	   if (plant.getX() >= 0 && plant.getY() >= 0) {
-	       // Only calculate distance if plant has valid coordinates
-	       distance = calculateDistance(plant.getX(), plant.getY());
-	   }
-	   
-	   // Detection check - with distance 0, should always pass
-	   bool canDetect = s_feedingInteraction->canDetectPlant(*_phenotype, plant, distance);
-	   if (!canDetect) {
-	       return false;
-	   }
-	   
-	   return s_feedingInteraction->canOvercomeDefenses(*_phenotype, plant);
+	   return CreaturePlantInteraction::canEatPlant(*this, plant, *s_feedingInteraction);
 }
 
 /**
 	* Get maximum plant detection range based on creature's senses.
+	* Delegates to CreaturePlantInteraction namespace.
 	*/
 float Creature::getPlantDetectionRange() const {
-	   using namespace EcoSim::Genetics;
-	   
-	   if (!s_feedingInteraction) {
-	       const_cast<Creature*>(this)->initializeInteractionSystems();
-	   }
-	   
 	   if (!_phenotype) {
 	       return static_cast<float>(getSightRange());
 	   }
 	   
-	   // Use the feeding interaction's detection range calculation
-	   // For a "generic" plant, use default values
-	   float colorVision = _phenotype->hasTrait(UniversalGenes::COLOR_VISION) ?
-	                       _phenotype->getTrait(UniversalGenes::COLOR_VISION) : 0.5f;
-	   float scentDetection = _phenotype->hasTrait(UniversalGenes::SCENT_DETECTION) ?
-	                          _phenotype->getTrait(UniversalGenes::SCENT_DETECTION) : 0.5f;
-	   
-	   // Base range from sight, enhanced by color vision and scent
-	   float baseRange = static_cast<float>(getSightRange());
-	   float enhancement = 1.0f + (colorVision * 0.3f) + (scentDetection * 0.5f);
-	   
-	   return baseRange * enhancement;
+	   return CreaturePlantInteraction::getPlantDetectionRange(*this);
 }
 
 /**
 	* Attach a burr from a plant to this creature.
+	* Delegates to CreaturePlantInteraction namespace.
 	*/
 void Creature::attachBurr(const EcoSim::Genetics::Plant& plant) {
-	   using namespace EcoSim::Genetics;
-	   
 	   if (!s_seedDispersal) {
 	       initializeInteractionSystems();
 	   }
@@ -2083,166 +1645,55 @@ void Creature::attachBurr(const EcoSim::Genetics::Plant& plant) {
 	       return;
 	   }
 	   
-	   // Check if burr will attach based on plant hook strength and creature fur
-	   if (s_seedDispersal->willBurrAttach(plant, *_phenotype)) {
-	       // Store burr info: (dispersal strategy as int, originX, originY, ticksAttached)
-	       _attachedBurrs.push_back(std::make_tuple(
-	           static_cast<int>(plant.getPrimaryDispersalStrategy()),
-	           plant.getX(),
-	           plant.getY(),
-	           0  // Just attached
-	       ));
-	   }
+	   CreaturePlantInteraction::attachBurr(*this, plant, *s_seedDispersal, _attachedBurrs);
 }
 
 /**
 	* Process burr detachment and return dispersal events.
+	* Delegates to CreaturePlantInteraction namespace.
 	*/
 std::vector<EcoSim::Genetics::DispersalEvent> Creature::detachBurrs() {
-	   using namespace EcoSim::Genetics;
-	   
-	   std::vector<DispersalEvent> events;
-	   
 	   if (!s_seedDispersal || !_phenotype) {
-	       return events;
+	       return {};
 	   }
 	   
-	   auto it = _attachedBurrs.begin();
-	   while (it != _attachedBurrs.end()) {
-	       int ticksAttached = std::get<3>(*it);
-	       
-	       // Check if burr detaches
-	       if (s_seedDispersal->willBurrDetach(*_phenotype, ticksAttached)) {
-	           // Create dispersal event at current creature location
-	           DispersalEvent event;
-	           event.originX = std::get<1>(*it);
-	           event.originY = std::get<2>(*it);
-	           event.targetX = tileX();
-	           event.targetY = tileY();
-	           event.method = static_cast<DispersalStrategy>(std::get<0>(*it));
-	           event.disperserInfo = "creature_burr_detach";
-	           event.seedViability = 0.85f;  // Good viability for burr dispersal
-	           
-	           events.push_back(event);
-	           it = _attachedBurrs.erase(it);
-	       } else {
-	           // Increment ticks attached
-	           std::get<3>(*it) = ticksAttached + 1;
-	           ++it;
-	       }
-	   }
-	   
-	   return events;
+	   return CreaturePlantInteraction::detachBurrs(*this, *s_seedDispersal, _attachedBurrs);
 }
 
 /**
 	* Check if creature has burrs attached.
+	* Delegates to CreaturePlantInteraction namespace.
 	*/
 bool Creature::hasBurrs() const {
-	   return !_attachedBurrs.empty();
+	   return CreaturePlantInteraction::hasBurrs(_attachedBurrs);
 }
 
 /**
 	* Get pending dispersal events from attached burrs.
+	* Delegates to CreaturePlantInteraction namespace.
 	*/
 std::vector<EcoSim::Genetics::DispersalEvent> Creature::getPendingBurrDispersal() const {
-	   using namespace EcoSim::Genetics;
-	   
-	   std::vector<DispersalEvent> events;
-	   
-	   for (const auto& burr : _attachedBurrs) {
-	       DispersalEvent event;
-	       event.originX = std::get<1>(burr);
-	       event.originY = std::get<2>(burr);
-	       event.targetX = tileX();  // Current creature position
-	       event.targetY = tileY();
-	       event.method = static_cast<DispersalStrategy>(std::get<0>(burr));
-	       event.disperserInfo = "creature_burr_pending";
-	       event.seedViability = 0.85f;
-	       
-	       events.push_back(event);
-	   }
-	   
-	   return events;
+	   return CreaturePlantInteraction::getPendingBurrDispersal(*this, _attachedBurrs);
 }
 
 /**
 	* Add seeds to gut for digestion and dispersal.
+	* Delegates to CreaturePlantInteraction namespace.
 	*/
 void Creature::consumeSeeds(const EcoSim::Genetics::Plant& plant, int count, float viability) {
 	   if (!_phenotype) {
 	       return;
 	   }
 	   
-	   // Calculate gut transit time from phenotype
-	   float gutTransit = _phenotype->hasTrait(EcoSim::Genetics::UniversalGenes::GUT_TRANSIT_TIME) ?
-	                      _phenotype->getTrait(EcoSim::Genetics::UniversalGenes::GUT_TRANSIT_TIME) : 6.0f;
-	   
-	   // Convert hours to ticks (assuming ~10 ticks per hour)
-	   int transitTicks = static_cast<int>(gutTransit * 10.0f);
-	   
-	   // Encode origin position as single int for storage
-	   int encodedOrigin = plant.getX() * 10000 + plant.getY();
-	   
-	   // Add each seed to gut
-	   for (int i = 0; i < count; ++i) {
-	       _gutSeeds.push_back(std::make_tuple(encodedOrigin, viability, transitTicks));
-	   }
+	   CreaturePlantInteraction::consumeSeeds(*this, plant, count, viability, _gutSeeds);
 }
 
 /**
 	* Process gut seed passage and return dispersal events.
+	* Delegates to CreaturePlantInteraction namespace.
 	*/
 std::vector<EcoSim::Genetics::DispersalEvent> Creature::processGutSeeds(int ticksElapsed) {
-	   using namespace EcoSim::Genetics;
-	   
-	   std::vector<DispersalEvent> events;
-	   
-	   auto it = _gutSeeds.begin();
-	   while (it != _gutSeeds.end()) {
-	       int ticksRemaining = std::get<2>(*it) - ticksElapsed;
-	       
-	       if (ticksRemaining <= 0) {
-	           // Seed is ready to be dispersed
-	           int encodedOrigin = std::get<0>(*it);
-	           float viability = std::get<1>(*it);
-	           
-	           // Decode origin position
-	           int originX = encodedOrigin / 10000;
-	           int originY = encodedOrigin % 10000;
-	           
-	           // Create dispersal event at current creature location
-	           DispersalEvent event;
-	           event.originX = originX;
-	           event.originY = originY;
-	           event.targetX = tileX();
-	           event.targetY = tileY();
-	           event.method = DispersalStrategy::ANIMAL_FRUIT;
-	           event.disperserInfo = "creature_gut_passage";
-	           
-	           // Viability affected by gut passage
-	           // Optimal transit time (4-12 hours) can improve viability through scarification
-	           float transitHours = (_phenotype && _phenotype->hasTrait(UniversalGenes::GUT_TRANSIT_TIME)) ?
-	                                _phenotype->getTrait(UniversalGenes::GUT_TRANSIT_TIME) : 6.0f;
-	           
-	           if (transitHours >= 4.0f && transitHours <= 12.0f) {
-	               viability = std::min(1.0f, viability * 1.15f);  // Scarification bonus
-	           } else if (transitHours > 12.0f) {
-	               viability *= 0.9f;  // Acid damage
-	           }
-	           
-	           event.seedViability = viability;
-	           events.push_back(event);
-	           
-	           it = _gutSeeds.erase(it);
-	       } else {
-	           // Update remaining time
-	           std::get<2>(*it) = ticksRemaining;
-	           ++it;
-	       }
-	   }
-	   
-	   return events;
+	   return CreaturePlantInteraction::processGutSeeds(*this, ticksElapsed, _gutSeeds);
 }
 
 //================================================================================
@@ -2317,91 +1768,42 @@ string Creature::generateName () {
 //  To String
 //================================================================================
 Profile Creature::stringToProfile (const string &str) {
-  static const std::unordered_map<string, Profile> profileMap = {
-    {"hungry",  Profile::hungry},
-    {"thirsty", Profile::thirsty},
-    {"sleep",   Profile::sleep},
-    {"breed",   Profile::breed},
-    {"migrate", Profile::migrate}
-  };
-
-  auto it = profileMap.find(str);
-  return (it != profileMap.end()) ? it->second : Profile::migrate;
+  return CreatureSerialization::stringToProfile(str);
 }
 
 Direction Creature::stringToDirection (const string &str) {
-  static const std::unordered_map<string, Direction> directionMap = {
-    {"SE",   Direction::SE},
-    {"NE",   Direction::NE},
-    {"E",    Direction::E},
-    {"SW",   Direction::SW},
-    {"NW",   Direction::NW},
-    {"W",    Direction::W},
-    {"S",    Direction::S},
-    {"N",    Direction::N},
-    {"none", Direction::none}
-  };
-
-  auto it = directionMap.find(str);
-  return (it != directionMap.end()) ? it->second : Direction::none;
+  return CreatureSerialization::stringToDirection(str);
 }
 
 /**
  *  This method converts the profile to a human readable string.
+ *  Delegates to CreatureSerialization namespace.
  *
  *  @return A human readable string representation of the profile.
  */
 string Creature::profileToString () const {
-  switch(_profile) {
-    case Profile::hungry:   return "hungry";
-    case Profile::thirsty:  return "thirsty";
-    case Profile::sleep:    return "sleep";
-    case Profile::breed:    return "breed";
-    case Profile::migrate:  return "migrate";
-    default:                return "error";
-  }
+  return CreatureSerialization::profileToString(_profile);
 }
 
 /**
  *  This method converts the direction to a human readable string.
+ *  Delegates to CreatureSerialization namespace.
  *
  *  @return A human readable string representation of the profile.
- */  
+ */
 string Creature::directionToString () const {
-  switch (_direction) {
-    case Direction::SE:   return "SE";
-    case Direction::NE:   return "NE";
-    case Direction::E:    return "E";
-    case Direction::SW:   return "SW";
-    case Direction::NW:   return "NW";
-    case Direction::W:    return "W";
-    case Direction::S:    return "S";
-    case Direction::N:    return "N";
-    case Direction::none: return "none";
-    default:              return "error";
-  }
+  return CreatureSerialization::directionToString(_direction);
 }
 
 /**
  *  This converts the creature objects member variables to a string that can
  *  be read by a user or saved to a file.
+ *  Delegates to CreatureSerialization namespace.
  *
  *  @return A string representation of the creature.
  */
 string Creature::toString () const {
-  ostringstream ss;
-  ss  << this->GameObject::toString ()  << ","
-      << tileX() << "," << tileY() << "," << _age << ","
-      << directionToString ()           << ","
-      << profileToString ()             << ","
-      << _hunger      << ","
-      << _thirst      << ","
-      << _fatigue     << ","
-      << _mate        << ","
-      << _metabolism  << ","
-      << _speed;
-
-  return ss.str();
+  return CreatureSerialization::toString(*this);
 }
 
 //================================================================================
@@ -2941,90 +2343,27 @@ EcoSim::Genetics::BehaviorResult Creature::updateWithBehaviors(EcoSim::Genetics:
 //================================================================================
 
 std::string Creature::woundStateToString(WoundState state) {
-    switch (state) {
-        case WoundState::Healthy:  return "HEALTHY";
-        case WoundState::Injured:  return "INJURED";
-        case WoundState::Wounded:  return "WOUNDED";
-        case WoundState::Critical: return "CRITICAL";
-        case WoundState::Dead:     return "DEAD";
-        default:                   return "HEALTHY";
-    }
+    return CreatureSerialization::woundStateToString(state);
 }
 
 WoundState Creature::stringToWoundState(const std::string& str) {
-    static const std::unordered_map<std::string, WoundState> map = {
-        {"HEALTHY",  WoundState::Healthy},
-        {"INJURED",  WoundState::Injured},
-        {"WOUNDED",  WoundState::Wounded},
-        {"CRITICAL", WoundState::Critical},
-        {"DEAD",     WoundState::Dead}
-    };
-    auto it = map.find(str);
-    return (it != map.end()) ? it->second : WoundState::Healthy;
+    return CreatureSerialization::stringToWoundState(str);
 }
 
 std::string Creature::motivationToString(Motivation m) {
-    switch (m) {
-        case Motivation::Hungry:   return "HUNGRY";
-        case Motivation::Thirsty:  return "THIRSTY";
-        case Motivation::Amorous:  return "AMOROUS";
-        case Motivation::Tired:    return "TIRED";
-        case Motivation::Content:  return "CONTENT";
-        default:                   return "CONTENT";
-    }
+    return CreatureSerialization::motivationToString(m);
 }
 
 Motivation Creature::stringToMotivation(const std::string& str) {
-    static const std::unordered_map<std::string, Motivation> map = {
-        {"HUNGRY",   Motivation::Hungry},
-        {"THIRSTY",  Motivation::Thirsty},
-        {"AMOROUS",  Motivation::Amorous},
-        {"TIRED",    Motivation::Tired},
-        {"CONTENT",  Motivation::Content}
-    };
-    auto it = map.find(str);
-    return (it != map.end()) ? it->second : Motivation::Content;
+    return CreatureSerialization::stringToMotivation(str);
 }
 
 std::string Creature::actionToString(Action a) {
-    switch (a) {
-        case Action::Idle:       return "IDLE";
-        case Action::Wandering:  return "WANDERING";
-        case Action::Searching:  return "SEARCHING";
-        case Action::Navigating: return "NAVIGATING";
-        case Action::Eating:     return "EATING";
-        case Action::Grazing:    return "GRAZING";
-        case Action::Hunting:    return "HUNTING";
-        case Action::Chasing:    return "CHASING";
-        case Action::Attacking:  return "ATTACKING";
-        case Action::Fleeing:    return "FLEEING";
-        case Action::Drinking:   return "DRINKING";
-        case Action::Courting:   return "COURTING";
-        case Action::Mating:     return "MATING";
-        case Action::Resting:    return "RESTING";
-        default:                 return "IDLE";
-    }
+    return CreatureSerialization::actionToString(a);
 }
 
 Action Creature::stringToAction(const std::string& str) {
-    static const std::unordered_map<std::string, Action> map = {
-        {"IDLE",       Action::Idle},
-        {"WANDERING",  Action::Wandering},
-        {"SEARCHING",  Action::Searching},
-        {"NAVIGATING", Action::Navigating},
-        {"EATING",     Action::Eating},
-        {"GRAZING",    Action::Grazing},
-        {"HUNTING",    Action::Hunting},
-        {"CHASING",    Action::Chasing},
-        {"ATTACKING",  Action::Attacking},
-        {"FLEEING",    Action::Fleeing},
-        {"DRINKING",   Action::Drinking},
-        {"COURTING",   Action::Courting},
-        {"MATING",     Action::Mating},
-        {"RESTING",    Action::Resting}
-    };
-    auto it = map.find(str);
-    return (it != map.end()) ? it->second : Action::Idle;
+    return CreatureSerialization::stringToAction(str);
 }
 
 //================================================================================
@@ -3032,147 +2371,9 @@ Action Creature::stringToAction(const std::string& str) {
 //================================================================================
 
 nlohmann::json Creature::toJson() const {
-    nlohmann::json j;
-    
-    // Identity
-    j["id"] = _id;
-    j["archetypeLabel"] = getArchetypeLabel();
-    j["scientificName"] = getScientificName();
-    
-    // State (0-10 scales)
-    j["state"] = {
-        {"hunger", _hunger},
-        {"thirst", _thirst},
-        {"fatigue", _fatigue},
-        {"mate", _mate},
-        {"age", _age},
-        {"lifespan", getLifespan()}
-    };
-    
-    // Position
-    j["position"] = {
-        {"worldX", _worldX},
-        {"worldY", _worldY},
-        {"tileX", tileX()},
-        {"tileY", tileY()}
-    };
-    
-    // Health system
-    j["health"] = {
-        {"current", _health},
-        {"max", getMaxHealth()},
-        {"woundSeverity", getWoundSeverity()},
-        {"woundState", woundStateToString(getWoundState())}
-    };
-    
-    // Combat state
-    j["combat"] = {
-        {"targetId", _targetId},
-        {"inCombat", _inCombat},
-        {"isFleeing", _isFleeing},
-        {"cooldown", _combatCooldown}
-    };
-    
-    // Behavior
-    j["behavior"] = {
-        {"motivation", motivationToString(_motivation)},
-        {"action", actionToString(_action)}
-    };
-    
-    // Genome (uses Genome::toJson())
-    if (_genome) {
-        j["genome"] = _genome->toJson();
-    }
-    
-    return j;
+    return CreatureSerialization::toJson(*this);
 }
 
 Creature Creature::fromJson(const nlohmann::json& j, int mapWidth, int mapHeight) {
-    // Validate required fields
-    if (!j.contains("genome")) {
-        throw std::runtime_error("Creature::fromJson: missing required field 'genome'");
-    }
-    
-    // Load genome first
-    auto genome = std::make_unique<EcoSim::Genetics::Genome>(
-        EcoSim::Genetics::Genome::fromJson(j.at("genome"))
-    );
-    
-    // Get position with bounds checking
-    float worldX = 0.0f, worldY = 0.0f;
-    if (j.contains("position")) {
-        const auto& pos = j.at("position");
-        worldX = pos.value("worldX", 0.0f);
-        worldY = pos.value("worldY", 0.0f);
-        
-        // Clamp to world bounds
-        worldX = std::max(0.0f, std::min(worldX, static_cast<float>(mapWidth - 1)));
-        worldY = std::max(0.0f, std::min(worldY, static_cast<float>(mapHeight - 1)));
-    }
-    
-    // Get initial state values
-    float hunger = RESOURCE_LIMIT / 2.0f;  // Default to half
-    float thirst = RESOURCE_LIMIT / 2.0f;
-    if (j.contains("state")) {
-        const auto& state = j.at("state");
-        hunger = state.value("hunger", hunger);
-        thirst = state.value("thirst", thirst);
-    }
-    
-    // Create creature with genome and position
-    Creature creature(
-        static_cast<int>(worldX),
-        static_cast<int>(worldY),
-        hunger,
-        thirst,
-        std::move(genome)
-    );
-    
-    // Restore precise world position
-    creature.setWorldPosition(worldX, worldY);
-    
-    // Restore state
-    if (j.contains("state")) {
-        const auto& state = j.at("state");
-        creature._fatigue = state.value("fatigue", 0.0f);
-        creature._mate = state.value("mate", 0.0f);
-        creature._age = state.value("age", 0u);
-    }
-    
-    // Restore health
-    if (j.contains("health")) {
-        const auto& health = j.at("health");
-        creature._health = health.value("current", creature.getMaxHealth());
-    }
-    
-    // Restore combat state
-    if (j.contains("combat")) {
-        const auto& combat = j.at("combat");
-        creature._targetId = combat.value("targetId", -1);
-        creature._inCombat = combat.value("inCombat", false);
-        creature._isFleeing = combat.value("isFleeing", false);
-        creature._combatCooldown = combat.value("cooldown", 0);
-    }
-    
-    // Restore behavior state
-    if (j.contains("behavior")) {
-        const auto& behavior = j.at("behavior");
-        if (behavior.contains("motivation")) {
-            creature._motivation = stringToMotivation(behavior.at("motivation").get<std::string>());
-        }
-        if (behavior.contains("action")) {
-            creature._action = stringToAction(behavior.at("action").get<std::string>());
-        }
-    }
-    
-    // Restore the saved creature ID (overwrite the auto-generated one)
-    // This preserves creature identity across save/load cycles
-    if (j.contains("id")) {
-        creature._id = j.at("id").get<int>();
-    }
-    
-    // Archetype is reclassified from genome in constructor
-    // Phenotype is regenerated from genome in constructor
-    
-    return creature;
+    return CreatureSerialization::fromJson(j, mapWidth, mapHeight);
 }
