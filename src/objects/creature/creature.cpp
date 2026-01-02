@@ -145,14 +145,12 @@ const float Creature::DEFAULT_BODY_MASS             = 1.0f;    // Default body m
  */
 Creature::Creature(const Creature& other)
     : GameObject(other),
+      Organism(other.x_, other.y_, other.genome_, getGeneRegistry()),
       _worldX(other._worldX), _worldY(other._worldY),
-      _age(other._age),
-      _id(other._id),
       _direction(other._direction),
       _profile(other._profile),
       _motivation(other._motivation),
       _action(other._action),
-      _health(other._health),
       _inCombat(other._inCombat),
       _isFleeing(other._isFleeing),
       _targetId(other._targetId),
@@ -163,19 +161,16 @@ Creature::Creature(const Creature& other)
       _mate(other._mate),
       _metabolism(other._metabolism),
       _speed(other._speed),
-      currentSize_(other.currentSize_),
-      maxSize_(other.maxSize_),
-      mature_(other.mature_),
       _archetype(other._archetype),
       _attachedBurrs(other._attachedBurrs),
       _gutSeeds(other._gutSeeds) {
-    // Deep copy unique_ptr members if they exist
-    if (other._genome) {
-        _genome = std::make_unique<EcoSim::Genetics::Genome>(*other._genome);
-    }
-    if (other._phenotype) {
-        _phenotype = std::make_unique<EcoSim::Genetics::Phenotype>(_genome.get(), &getGeneRegistry());
-    }
+    // Copy Organism state that isn't set in constructor
+    age_ = other.age_;
+    health_ = other.health_;
+    currentSize_ = other.currentSize_;
+    maxSize_ = other.maxSize_;
+    mature_ = other.mature_;
+    
     // Increment archetype population for the copy
     if (_archetype) {
         _archetype->incrementPopulation();
@@ -190,14 +185,12 @@ Creature::Creature(const Creature& other)
  */
 Creature::Creature(Creature&& other) noexcept
     : GameObject(std::move(other)),
+      Organism(std::move(other)),
       _worldX(other._worldX), _worldY(other._worldY),
-      _age(other._age),
-      _id(other._id),
       _direction(other._direction),
       _profile(other._profile),
       _motivation(other._motivation),
       _action(other._action),
-      _health(other._health),
       _inCombat(other._inCombat),
       _isFleeing(other._isFleeing),
       _targetId(other._targetId),
@@ -208,15 +201,10 @@ Creature::Creature(Creature&& other) noexcept
       _mate(other._mate),
       _metabolism(other._metabolism),
       _speed(other._speed),
-      currentSize_(other.currentSize_),
-      maxSize_(other.maxSize_),
-      mature_(other.mature_),
-      _genome(std::move(other._genome)),
-      _phenotype(std::move(other._phenotype)),
       _archetype(other._archetype),
       _attachedBurrs(std::move(other._attachedBurrs)),
-      _gutSeeds(std::move(other._gutSeeds))
-      , _behaviorController(std::move(other._behaviorController))
+      _gutSeeds(std::move(other._gutSeeds)),
+      _behaviorController(std::move(other._behaviorController))
 {
     // Transfer archetype without incrementing - just null out source
     other._archetype = nullptr;
@@ -224,6 +212,9 @@ Creature::Creature(Creature&& other) noexcept
 
 /**
  * Copy assignment operator
+ *
+ * Since Organism has copy disabled, we must manually copy all state.
+ * This creates a new genome/phenotype rather than using Organism's copy assignment.
  */
 Creature& Creature::operator=(const Creature& other) {
     if (this != &other) {
@@ -233,15 +224,28 @@ Creature& Creature::operator=(const Creature& other) {
         }
         
         GameObject::operator=(other);
+        
+        // Copy Organism state manually (Organism has copy disabled)
+        x_ = other.x_;
+        y_ = other.y_;
+        age_ = other.age_;
+        alive_ = other.alive_;
+        health_ = other.health_;
+        currentSize_ = other.currentSize_;
+        maxSize_ = other.maxSize_;
+        mature_ = other.mature_;
+        genome_ = other.genome_;  // Genome has copy constructor
+        phenotype_ = EcoSim::Genetics::Phenotype(&genome_, &getGeneRegistry());
+        registry_ = other.registry_;
+        id_ = other.id_;
+        
+        // Copy Creature-specific state
         _worldX = other._worldX;
         _worldY = other._worldY;
-        _age = other._age;
-        _id = other._id;
         _direction = other._direction;
         _profile = other._profile;
         _motivation = other._motivation;
         _action = other._action;
-        _health = other._health;
         _inCombat = other._inCombat;
         _isFleeing = other._isFleeing;
         _targetId = other._targetId;
@@ -252,21 +256,6 @@ Creature& Creature::operator=(const Creature& other) {
         _mate = other._mate;
         _metabolism = other._metabolism;
         _speed = other._speed;
-        currentSize_ = other.currentSize_;
-        maxSize_ = other.maxSize_;
-        mature_ = other.mature_;
-        
-        // Deep copy unique_ptr members
-        if (other._genome) {
-            _genome = std::make_unique<EcoSim::Genetics::Genome>(*other._genome);
-        } else {
-            _genome.reset();
-        }
-        if (other._phenotype) {
-            _phenotype = std::make_unique<EcoSim::Genetics::Phenotype>(_genome.get(), &getGeneRegistry());
-        } else {
-            _phenotype.reset();
-        }
         
         // Copy archetype and increment population
         _archetype = other._archetype;
@@ -295,15 +284,15 @@ Creature& Creature::operator=(Creature&& other) noexcept {
         }
         
         GameObject::operator=(std::move(other));
+        Organism::operator=(std::move(other));
+        
+        // Move Creature-specific state
         _worldX = other._worldX;
         _worldY = other._worldY;
-        _age = other._age;
-        _id = other._id;
         _direction = other._direction;
         _profile = other._profile;
         _motivation = other._motivation;
         _action = other._action;
-        _health = other._health;
         _inCombat = other._inCombat;
         _isFleeing = other._isFleeing;
         _targetId = other._targetId;
@@ -314,11 +303,6 @@ Creature& Creature::operator=(Creature&& other) noexcept {
         _mate = other._mate;
         _metabolism = other._metabolism;
         _speed = other._speed;
-        currentSize_ = other.currentSize_;
-        maxSize_ = other.maxSize_;
-        mature_ = other.mature_;
-        _genome = std::move(other._genome);
-        _phenotype = std::move(other._phenotype);
         
         // Transfer archetype - don't increment, just null source
         _archetype = other._archetype;
@@ -349,7 +333,7 @@ Creature::~Creature() {
 //================================================================================
 //  Setters
 //================================================================================
-void Creature::setAge     (unsigned age) { _age    = age;    }
+void Creature::setAge     (unsigned age) { age_    = age;    }
 void Creature::setHunger  (float hunger) { _hunger = hunger; }
 void Creature::setThirst  (float thirst) { _thirst = thirst; }
 void Creature::setFatigue (float fatigue) { _fatigue = fatigue; }
@@ -378,7 +362,7 @@ unsigned int Creature::getMaxLifespan() const {
 float Creature::getAgeNormalized() const {
     unsigned int lifespan = getLifespan();
     if (lifespan == 0) return 0.0f;
-    return static_cast<float>(_age) / static_cast<float>(lifespan);
+    return static_cast<float>(age_) / static_cast<float>(lifespan);
 }
 
 bool Creature::isAlive() const {
@@ -386,25 +370,20 @@ bool Creature::isAlive() const {
 }
 
 void Creature::age(unsigned int ticks) {
-    _age += ticks;
+    age_ += ticks;
 }
-
-unsigned int Creature::getAge     () const { return _age;                   }
-int       Creature::getId         () const { return _id;                    }
 float     Creature::getHunger     () const { return _hunger;                }
 float     Creature::getThirst     () const { return _thirst;                }
 float     Creature::getFatigue    () const { return _fatigue;               }
 float     Creature::getMate       () const { return _mate;                  }
 float     Creature::getMetabolism () const { return _metabolism;            }
 unsigned  Creature::getSpeed      () const { return _speed;                 }
-int       Creature::getX          () const { return tileX();                }
-int       Creature::getY          () const { return tileY();                }
 
 // Float position getters (Phase 1: Float Movement)
+// getX(), getY(), getWorldX(), getWorldY() are now defined inline in creature.hpp
+// delegating to Organism or using _worldX/_worldY directly
 int       Creature::tileX         () const { return static_cast<int>(_worldX); }
 int       Creature::tileY         () const { return static_cast<int>(_worldY); }
-float     Creature::getWorldX     () const { return _worldX;                }
-float     Creature::getWorldY     () const { return _worldY;                }
 
 // Movement speed calculation (Phase 1: Float Movement)
 float Creature::getMovementSpeed() const {
@@ -413,21 +392,19 @@ float Creature::getMovementSpeed() const {
     float legLength = DEFAULT_LEG_LENGTH;   // Stride length
     float bodyMass = DEFAULT_BODY_MASS;     // Weight affects speed
     
-    if (_phenotype) {
-        // Use LOCOMOTION gene for movement speed capability
-        if (_phenotype->hasTrait(EcoSim::Genetics::UniversalGenes::LOCOMOTION)) {
-            locomotion = _phenotype->getTrait(EcoSim::Genetics::UniversalGenes::LOCOMOTION);
-        }
-        // Use MAX_SIZE as proxy for body mass (larger creatures are heavier)
-        if (_phenotype->hasTrait(EcoSim::Genetics::UniversalGenes::MAX_SIZE)) {
-            bodyMass = _phenotype->getTrait(EcoSim::Genetics::UniversalGenes::MAX_SIZE);
-            // Normalize max_size - gene value is 0.5-20.0, scale to reasonable mass range
-            bodyMass = 0.5f + (bodyMass / 20.0f) * 1.5f;  // Range: 0.5 to 2.0
-        }
-        // Leg length could be derived from body morphology genes
-        // For now, use locomotion as a proxy
-        legLength = 0.3f + locomotion * 0.7f;  // Range: 0.3 to 1.0
+    // Use LOCOMOTION gene for movement speed capability
+    if (phenotype_.hasTrait(EcoSim::Genetics::UniversalGenes::LOCOMOTION)) {
+        locomotion = phenotype_.getTrait(EcoSim::Genetics::UniversalGenes::LOCOMOTION);
     }
+    // Use MAX_SIZE as proxy for body mass (larger creatures are heavier)
+    if (phenotype_.hasTrait(EcoSim::Genetics::UniversalGenes::MAX_SIZE)) {
+        bodyMass = phenotype_.getTrait(EcoSim::Genetics::UniversalGenes::MAX_SIZE);
+        // Normalize max_size - gene value is 0.5-20.0, scale to reasonable mass range
+        bodyMass = 0.5f + (bodyMass / 20.0f) * 1.5f;  // Range: 0.5 to 2.0
+    }
+    // Leg length could be derived from body morphology genes
+    // For now, use locomotion as a proxy
+    legLength = 0.3f + locomotion * 0.7f;  // Range: 0.3 to 1.0
     
     // Speed formula: baseSpeed = (locomotion * legLength) / sqrt(mass)
     float speed = (BASE_MOVEMENT_SPEED * locomotion * legLength) / std::sqrt(bodyMass);
@@ -440,18 +417,18 @@ Profile   Creature::getProfile    () const { return _profile;   }
 
 // Genetics-only getters - derive all values from phenotype
 unsigned Creature::getLifespan() const {
-    if (_phenotype && _phenotype->hasTrait(EcoSim::Genetics::UniversalGenes::LIFESPAN)) {
+    if (phenotype_.hasTrait(EcoSim::Genetics::UniversalGenes::LIFESPAN)) {
         return static_cast<unsigned>(
-            _phenotype->getTrait(EcoSim::Genetics::UniversalGenes::LIFESPAN)
+            phenotype_.getTrait(EcoSim::Genetics::UniversalGenes::LIFESPAN)
         );
     }
     return 500000;  // Default lifespan
 }
 
 unsigned Creature::getSightRange() const {
-    if (_phenotype && _phenotype->hasTrait(EcoSim::Genetics::UniversalGenes::SIGHT_RANGE)) {
+    if (phenotype_.hasTrait(EcoSim::Genetics::UniversalGenes::SIGHT_RANGE)) {
         return static_cast<unsigned>(
-            _phenotype->getTrait(EcoSim::Genetics::UniversalGenes::SIGHT_RANGE)
+            phenotype_.getTrait(EcoSim::Genetics::UniversalGenes::SIGHT_RANGE)
         );
     }
     return 100;  // Default sight range
@@ -459,74 +436,71 @@ unsigned Creature::getSightRange() const {
 
 // Phenotype-derived behavioral thresholds
 float Creature::getTHunger() const {
-    if (_phenotype && _phenotype->hasTrait(EcoSim::Genetics::UniversalGenes::HUNGER_THRESHOLD)) {
-        return _phenotype->getTrait(EcoSim::Genetics::UniversalGenes::HUNGER_THRESHOLD);
+    if (phenotype_.hasTrait(EcoSim::Genetics::UniversalGenes::HUNGER_THRESHOLD)) {
+        return phenotype_.getTrait(EcoSim::Genetics::UniversalGenes::HUNGER_THRESHOLD);
     }
     return 3.0f;  // Default hunger threshold
 }
 
 float Creature::getTThirst() const {
-    if (_phenotype && _phenotype->hasTrait(EcoSim::Genetics::UniversalGenes::THIRST_THRESHOLD)) {
-        return _phenotype->getTrait(EcoSim::Genetics::UniversalGenes::THIRST_THRESHOLD);
+    if (phenotype_.hasTrait(EcoSim::Genetics::UniversalGenes::THIRST_THRESHOLD)) {
+        return phenotype_.getTrait(EcoSim::Genetics::UniversalGenes::THIRST_THRESHOLD);
     }
     return 3.0f;  // Default thirst threshold
 }
 
 float Creature::getTFatigue() const {
-    if (_phenotype && _phenotype->hasTrait(EcoSim::Genetics::UniversalGenes::FATIGUE_THRESHOLD)) {
-        return _phenotype->getTrait(EcoSim::Genetics::UniversalGenes::FATIGUE_THRESHOLD);
+    if (phenotype_.hasTrait(EcoSim::Genetics::UniversalGenes::FATIGUE_THRESHOLD)) {
+        return phenotype_.getTrait(EcoSim::Genetics::UniversalGenes::FATIGUE_THRESHOLD);
     }
     return 3.0f;  // Default fatigue threshold
 }
 
 float Creature::getTMate() const {
-    if (_phenotype && _phenotype->hasTrait(EcoSim::Genetics::UniversalGenes::MATE_THRESHOLD)) {
-        return _phenotype->getTrait(EcoSim::Genetics::UniversalGenes::MATE_THRESHOLD);
+    if (phenotype_.hasTrait(EcoSim::Genetics::UniversalGenes::MATE_THRESHOLD)) {
+        return phenotype_.getTrait(EcoSim::Genetics::UniversalGenes::MATE_THRESHOLD);
     }
     return 3.0f;  // Default mate threshold
 }
 
 float Creature::getComfInc() const {
-    if (_phenotype && _phenotype->hasTrait(EcoSim::Genetics::UniversalGenes::COMFORT_INCREASE)) {
-        return _phenotype->getTrait(EcoSim::Genetics::UniversalGenes::COMFORT_INCREASE);
+    if (phenotype_.hasTrait(EcoSim::Genetics::UniversalGenes::COMFORT_INCREASE)) {
+        return phenotype_.getTrait(EcoSim::Genetics::UniversalGenes::COMFORT_INCREASE);
     }
     return 0.01f;  // Default comfort increase
 }
 
 float Creature::getComfDec() const {
-    if (_phenotype && _phenotype->hasTrait(EcoSim::Genetics::UniversalGenes::COMFORT_DECREASE)) {
-        return _phenotype->getTrait(EcoSim::Genetics::UniversalGenes::COMFORT_DECREASE);
+    if (phenotype_.hasTrait(EcoSim::Genetics::UniversalGenes::COMFORT_DECREASE)) {
+        return phenotype_.getTrait(EcoSim::Genetics::UniversalGenes::COMFORT_DECREASE);
     }
     return 0.01f;  // Default comfort decrease
 }
 
 // Diet is now emergent from digestion genes
 DietType Creature::getDietType() const {
-    if (_phenotype) {
-        return _phenotype->calculateDietType();
-    }
-    return DietType::OMNIVORE;  // Default
+    return phenotype_.calculateDietType();
 }
 
 bool Creature::ifFlocks() const {
     // Flocking behavior derived from social genes
-    if (_phenotype && _phenotype->hasTrait(EcoSim::Genetics::UniversalGenes::HUNT_INSTINCT)) {
+    if (phenotype_.hasTrait(EcoSim::Genetics::UniversalGenes::HUNT_INSTINCT)) {
         // Low hunt instinct means more social/flocking tendency
-        return _phenotype->getTrait(EcoSim::Genetics::UniversalGenes::HUNT_INSTINCT) < 0.5f;
+        return phenotype_.getTrait(EcoSim::Genetics::UniversalGenes::HUNT_INSTINCT) < 0.5f;
     }
     return true;  // Default to flocking
 }
 
 unsigned Creature::getFlee() const {
-    if (_phenotype && _phenotype->hasTrait(EcoSim::Genetics::UniversalGenes::FLEE_THRESHOLD)) {
-        return static_cast<unsigned>(_phenotype->getTrait(EcoSim::Genetics::UniversalGenes::FLEE_THRESHOLD));
+    if (phenotype_.hasTrait(EcoSim::Genetics::UniversalGenes::FLEE_THRESHOLD)) {
+        return static_cast<unsigned>(phenotype_.getTrait(EcoSim::Genetics::UniversalGenes::FLEE_THRESHOLD));
     }
     return 10;  // Default flee distance
 }
 
 unsigned Creature::getPursue() const {
-    if (_phenotype && _phenotype->hasTrait(EcoSim::Genetics::UniversalGenes::PURSUE_THRESHOLD)) {
-        return static_cast<unsigned>(_phenotype->getTrait(EcoSim::Genetics::UniversalGenes::PURSUE_THRESHOLD));
+    if (phenotype_.hasTrait(EcoSim::Genetics::UniversalGenes::PURSUE_THRESHOLD)) {
+        return static_cast<unsigned>(phenotype_.getTrait(EcoSim::Genetics::UniversalGenes::PURSUE_THRESHOLD));
     }
     return 20;  // Default pursue distance
 }
@@ -561,43 +535,34 @@ EcoSim::Genetics::GeneRegistry& Creature::getGeneRegistry() {
 //================================================================================
 
 /**
- * Get the phenotype.
- */
-const EcoSim::Genetics::Phenotype& Creature::getPhenotype() const {
-    return *_phenotype;
-}
-
-/**
  * Update phenotype context with current environment and organism state.
  * Should be called each tick or when environment changes significantly.
  */
 void Creature::updatePhenotypeContext(const EcoSim::Genetics::EnvironmentState& env) {
-    if (_phenotype) {
-        EcoSim::Genetics::OrganismState orgState;
-        
-        // Calculate normalized age (0.0 = birth, 1.0 = max lifespan)
-        unsigned lifespan = getLifespan();  // Use phenotype-derived value
-        if (lifespan > 0) {
-            orgState.age_normalized = static_cast<float>(_age) / static_cast<float>(lifespan);
-        } else {
-            orgState.age_normalized = 0.0f;
-        }
-        
-        // Convert hunger level to energy (higher hunger = lower energy)
-        // _hunger ranges from about -1 to RESOURCE_LIMIT (10.0)
-        orgState.energy_level = std::max(0.0f, std::min(1.0f, _hunger / RESOURCE_LIMIT));
-        
-        // Health is always 1.0 for now (could be expanded later)
-        orgState.health = 1.0f;
-        
-        _phenotype->updateContext(env, orgState);
-        
-        // Clamp health when maxHealth changes due to modulation
-        // This ensures _health never exceeds current maxHealth
-        float maxHP = getMaxHealth();
-        if (_health > maxHP) {
-            _health = maxHP;
-        }
+    EcoSim::Genetics::OrganismState orgState;
+    
+    // Calculate normalized age (0.0 = birth, 1.0 = max lifespan)
+    unsigned lifespan = getLifespan();  // Use phenotype-derived value
+    if (lifespan > 0) {
+        orgState.age_normalized = static_cast<float>(age_) / static_cast<float>(lifespan);
+    } else {
+        orgState.age_normalized = 0.0f;
+    }
+    
+    // Convert hunger level to energy (higher hunger = lower energy)
+    // _hunger ranges from about -1 to RESOURCE_LIMIT (10.0)
+    orgState.energy_level = std::max(0.0f, std::min(1.0f, _hunger / RESOURCE_LIMIT));
+    
+    // Health is always 1.0 for now (could be expanded later)
+    orgState.health = 1.0f;
+    
+    phenotype_.updateContext(env, orgState);
+    
+    // Clamp health when maxHealth changes due to modulation
+    // This ensures health_ never exceeds current maxHealth
+    float maxHP = getMaxHealth();
+    if (health_ > maxHP) {
+        health_ = maxHP;
     }
 }
 
@@ -793,7 +758,7 @@ void Creature::grow() {
     
     // Age factor - grow faster when young
     float ageFactor = 1.0f;
-    if (_age < 1000) {
+    if (age_ < 1000) {
         ageFactor = 1.5f;  // Juveniles grow faster
     }
     
@@ -836,10 +801,10 @@ void Creature::update () {
   
   // Log when creature enters critical starvation zone (approaching death)
   if (hungerBefore > STARVATION_POINT && _hunger <= STARVATION_POINT + 0.5f) {
-    logging::Logger::getInstance().starvation(_id, hungerBefore, _hunger);
+    logging::Logger::getInstance().starvation(id_, hungerBefore, _hunger);
   }
   
-  _age++;
+  age_++;
 }
 
 /**
@@ -856,11 +821,11 @@ void Creature::update () {
  */
 short Creature::deathCheck () const {
   //  First check creatures age against limit remove if dead
-  if      (_age     > getLifespan())      return 1;
+  if      (age_     > getLifespan())      return 1;
   else if (_hunger  < STARVATION_POINT)   return 2;
   else if (_thirst  < DEHYDRATION_POINT)  return 3;
   else if (_mate    < DISCOMFORT_POINT)   return 4;
-  else if (_health  <= 0.0f)              return 5;  // Combat death
+  else if (health_  <= 0.0f)              return 5;  // Combat death
 
   return 0;
 }
@@ -1058,11 +1023,6 @@ void Creature::forEachTileInRange(unsigned maxRadius, Visitor visitor) {
 bool Creature::findGeneticsPlants(World &world, unsigned &feedingCounter) {
   using namespace EcoSim::Genetics;
   
-  // Ensure phenotype is available
-  if (!_phenotype) {
-    return false;
-  }
-  
   vector<vector<Tile>> &map = world.getGrid();
   const int rows = world.getRows();
   const int cols = world.getCols();
@@ -1096,7 +1056,7 @@ bool Creature::findGeneticsPlants(World &world, unsigned &feedingCounter) {
         
         // Log the feeding event
         logging::Logger::getInstance().feeding(
-          _id, plantPtr->getId(), result.success, result.nutritionGained, result.damageReceived
+          id_, plantPtr->getId(), result.success, result.nutritionGained, result.damageReceived
         );
         
         return true;
@@ -1377,11 +1337,8 @@ float Creature::checkFitness (const Creature &c2) const {
   float proximity  = 1.0f - distance / static_cast<float>(sight);
   
   // Calculate genetic similarity using Genome::compare()
-  float similarity = 0.5f;  // Default moderate similarity
-  if (_genome) {
-    // Use Genome's built-in compare() method
-    similarity = _genome->compare(c2.getGenome());
-  }
+  // genome_ is always valid (value member inherited from Organism)
+  float similarity = genome_.compare(c2.getGenome());
 
   //  Penalise if too similar
   if (similarity > IDEAL_SIMILARITY) {
@@ -1419,23 +1376,14 @@ Creature Creature::breedCreature (Creature &mate) {
   _mate = 0.0f; mate.setMate (0.0f);
 
   // Create offspring genome using Genome::crossover()
-  std::unique_ptr<EcoSim::Genetics::Genome> offspringGenome;
+  // genome_ is always valid (value member inherited from Organism)
+  EcoSim::Genetics::Genome crossed = EcoSim::Genetics::Genome::crossover(genome_, mate.getGenome(), 0.5f);
   
-  if (_genome) {
-    // Use Genome's built-in crossover method (recombination_rate = 0.5f)
-    EcoSim::Genetics::Genome crossed = EcoSim::Genetics::Genome::crossover(*_genome, mate.getGenome(), 0.5f);
-    
-    // Apply mutation (5% rate)
-    crossed.mutate(0.05f, getGeneRegistry().getAllDefinitions());
-    
-    offspringGenome = std::make_unique<EcoSim::Genetics::Genome>(std::move(crossed));
-  } else if (_genome) {
-    // Clone my genome if mate has none
-    offspringGenome = std::make_unique<EcoSim::Genetics::Genome>(*_genome);
-  } else {
-    // Neither parent has genome - create default
-    offspringGenome = std::make_unique<EcoSim::Genetics::Genome>();
-  }
+  // Apply mutation (5% rate)
+  crossed.mutate(0.05f, getGeneRegistry().getAllDefinitions());
+  
+  std::unique_ptr<EcoSim::Genetics::Genome> offspringGenome =
+      std::make_unique<EcoSim::Genetics::Genome>(std::move(crossed));
 
   Creature offspring(tileX(), tileY(), hunger, thirst, std::move(offspringGenome));
   
@@ -1443,7 +1391,7 @@ Creature Creature::breedCreature (Creature &mate) {
   logging::Logger::getInstance().creatureBorn(
     offspring.getId(),
     offspring.generateName(),
-    _id,
+    id_,
     mate.getId()
   );
   
@@ -1460,7 +1408,7 @@ Creature Creature::breedCreature (Creature &mate) {
  */
 bool Creature::canReproduce() const {
     bool hasResources = _hunger > BREED_COST && _thirst > BREED_COST;
-    bool isHealthy = _health > getMaxHealth() * 0.25f;
+    bool isHealthy = health_ > getMaxHealth() * 0.25f;
     
     return isMature() && hasResources && isHealthy && _profile == Profile::breed;
 }
@@ -1624,13 +1572,6 @@ EcoSim::Genetics::FeedingResult Creature::eatPlant(EcoSim::Genetics::Plant& plan
 	       initializeInteractionSystems();
 	   }
 	   
-	   // Need new genetics system enabled for plant interactions
-	   if (!_phenotype) {
-	       FeedingResult result;
-	       result.success = false;
-	       result.description = "New genetics system not enabled";
-	       return result;
-	   }
 	   
 	   // Delegate to namespace function for core feeding logic
 	   FeedingResult result = CreaturePlantInteraction::eatPlant(
@@ -1657,9 +1598,6 @@ bool Creature::canEatPlant(const EcoSim::Genetics::Plant& plant) const {
 	       const_cast<Creature*>(this)->initializeInteractionSystems();
 	   }
 	   
-	   if (!_phenotype) {
-	       return false;
-	   }
 	   
 	   return CreaturePlantInteraction::canEatPlant(*this, plant, *s_feedingInteraction);
 }
@@ -1669,9 +1607,6 @@ bool Creature::canEatPlant(const EcoSim::Genetics::Plant& plant) const {
 	* Delegates to CreaturePlantInteraction namespace.
 	*/
 float Creature::getPlantDetectionRange() const {
-	   if (!_phenotype) {
-	       return static_cast<float>(getSightRange());
-	   }
 	   
 	   return CreaturePlantInteraction::getPlantDetectionRange(*this);
 }
@@ -1685,9 +1620,6 @@ void Creature::attachBurr(const EcoSim::Genetics::Plant& plant) {
 	       initializeInteractionSystems();
 	   }
 	   
-	   if (!_phenotype) {
-	       return;
-	   }
 	   
 	   CreaturePlantInteraction::attachBurr(*this, plant, *s_seedDispersal, _attachedBurrs);
 }
@@ -1697,7 +1629,7 @@ void Creature::attachBurr(const EcoSim::Genetics::Plant& plant) {
 	* Delegates to CreaturePlantInteraction namespace.
 	*/
 std::vector<EcoSim::Genetics::DispersalEvent> Creature::detachBurrs() {
-	   if (!s_seedDispersal || !_phenotype) {
+	   if (!s_seedDispersal) {
 	       return {};
 	   }
 	   
@@ -1725,10 +1657,6 @@ std::vector<EcoSim::Genetics::DispersalEvent> Creature::getPendingBurrDispersal(
 	* Delegates to CreaturePlantInteraction namespace.
 	*/
 void Creature::consumeSeeds(const EcoSim::Genetics::Plant& plant, int count, float viability) {
-	   if (!_phenotype) {
-	       return;
-	   }
-	   
 	   CreaturePlantInteraction::consumeSeeds(*this, plant, count, viability, _gutSeeds);
 }
 
@@ -1855,30 +1783,13 @@ string Creature::toString () const {
 //================================================================================
 
 /**
- * Get the genome (IGeneticOrganism interface).
- */
-const EcoSim::Genetics::Genome& Creature::getGenome() const {
-    return *_genome;
-}
-
-/**
- * Get the mutable genome (IGeneticOrganism interface).
- */
-EcoSim::Genetics::Genome& Creature::getGenomeMutable() {
-    return *_genome;
-}
-
-/**
  * Get the scientific name for this creature.
  * Uses CreatureTaxonomy for dynamic scientific name generation.
  */
 std::string Creature::getScientificName() const {
     // Use CreatureTaxonomy for dynamic scientific name generation
-    if (_genome) {
-        return EcoSim::Genetics::CreatureTaxonomy::generateScientificName(*_genome);
-    }
-    // Fallback to stored name
-    return _name;
+    // genome_ is always valid (value member inherited from Organism)
+    return EcoSim::Genetics::CreatureTaxonomy::generateScientificName(genome_);
 }
 
 /**
@@ -1899,21 +1810,12 @@ std::string Creature::getArchetypeLabel() const {
 //================================================================================
 
 /**
- * Get current health value.
- * Now uses the actual _health member for combat system.
- * Clamped to maxHealth to handle cases where max health decreased after initialization.
- */
-float Creature::getHealth() const {
-    return _health;
-}
-
-/**
  * Get maximum health value.
  * Based on MAX_SIZE gene for creature mass scaling.
  */
 float Creature::getMaxHealth() const {
-    if (_phenotype && _phenotype->hasTrait(EcoSim::Genetics::UniversalGenes::MAX_SIZE)) {
-        return _phenotype->getTrait(EcoSim::Genetics::UniversalGenes::MAX_SIZE) * 10.0f;
+    if (phenotype_.hasTrait(EcoSim::Genetics::UniversalGenes::MAX_SIZE)) {
+        return phenotype_.getTrait(EcoSim::Genetics::UniversalGenes::MAX_SIZE) * 10.0f;
     }
     return RESOURCE_LIMIT * 10.0f;  // 100.0f default
 }
@@ -1923,7 +1825,7 @@ float Creature::getMaxHealth() const {
  */
 void Creature::takeDamage(float amount) {
     if (amount <= 0.0f) return;
-    _health = std::max(0.0f, _health - amount);
+    health_ = std::max(0.0f, health_ - amount);
 }
 
 /**
@@ -1931,7 +1833,7 @@ void Creature::takeDamage(float amount) {
  */
 void Creature::heal(float amount) {
     if (amount <= 0.0f) return;
-    _health = std::min(getMaxHealth(), _health + amount);
+    health_ = std::min(getMaxHealth(), health_ + amount);
 }
 
 /**
@@ -1994,8 +1896,8 @@ float Creature::getWoundSeverity() const {
  * Get healing rate per tick.
  */
 float Creature::getHealingRate() const {
-    if (_phenotype) {
-        return _phenotype->getTrait(EcoSim::Genetics::UniversalGenes::REGENERATION_RATE) * 0.001f;
+    if (phenotype_.hasTrait(EcoSim::Genetics::UniversalGenes::REGENERATION_RATE)) {
+        return phenotype_.getTrait(EcoSim::Genetics::UniversalGenes::REGENERATION_RATE) * 0.001f;
     }
     return 0.001f;  // Default healing rate
 }
@@ -2057,8 +1959,8 @@ Action Creature::getAction() const {
  * Get expressed value of a gene from the phenotype.
  */
 float Creature::getExpressedValue(const std::string& geneId) const {
-    if (_phenotype && _phenotype->hasTrait(geneId)) {
-        return _phenotype->getTrait(geneId);
+    if (phenotype_.hasTrait(geneId)) {
+        return phenotype_.getTrait(geneId);
     }
     return 0.0f;
 }
@@ -2128,15 +2030,14 @@ void Creature::tiredBehavior(World &world,
  * Constructor with new genetics genome only.
  */
 Creature::Creature(int x, int y, std::unique_ptr<EcoSim::Genetics::Genome> genome)
-    : _worldX(static_cast<float>(x)),
+    : GameObject(),
+      Organism(x, y, std::move(*genome), getGeneRegistry()),
+      _worldX(static_cast<float>(x)),
       _worldY(static_cast<float>(y)),
-      _age(0),
-      _id(s_nextCreatureId++),
       _direction(Direction::none),
       _profile(Profile::migrate),
       _motivation(Motivation::Content),
       _action(Action::Idle),
-      _health(0.0f),  // Will be set to maxHealth after phenotype init
       _inCombat(false),
       _isFleeing(false),
       _targetId(-1),
@@ -2145,65 +2046,47 @@ Creature::Creature(int x, int y, std::unique_ptr<EcoSim::Genetics::Genome> genom
       _thirst(1.0f),
       _fatigue(INIT_FATIGUE),
       _mate(0.0f),
-      _metabolism(0.001f),  // Default, will be updated from phenotype
+      _metabolism(0.001f),
       _speed(1),
-      currentSize_(0.1f),    // Small juvenile starting size
-      maxSize_(1.0f),        // Default, will be updated from phenotype
-      mature_(false),        // Not yet mature
-      _genome(std::move(genome)),
       _archetype(nullptr) {
     
-    // Initialize phenotype from genome
-    _phenotype = std::make_unique<EcoSim::Genetics::Phenotype>(
-        _genome.get(), &getGeneRegistry()
-    );
-    
-    // Set metabolism from phenotype
-    if (_phenotype->hasTrait(EcoSim::Genetics::UniversalGenes::METABOLISM_RATE)) {
-        _metabolism = _phenotype->getTrait(EcoSim::Genetics::UniversalGenes::METABOLISM_RATE) * 0.001f;
+    // Set metabolism from phenotype (Organism already created phenotype_)
+    if (phenotype_.hasTrait(EcoSim::Genetics::UniversalGenes::METABOLISM_RATE)) {
+        _metabolism = phenotype_.getTrait(EcoSim::Genetics::UniversalGenes::METABOLISM_RATE) * 0.001f;
     } else {
         _metabolism = 0.001f;
     }
     
-    // Set maxSize from MAX_SIZE gene
-    if (_phenotype->hasTrait(EcoSim::Genetics::UniversalGenes::MAX_SIZE)) {
-        maxSize_ = _phenotype->getTrait(EcoSim::Genetics::UniversalGenes::MAX_SIZE);
+    // Classify archetype from genome (after phenotype is ready)
+    _archetype = EcoSim::Genetics::CreatureTaxonomy::classifyArchetype(genome_);
+    if (_archetype) {
+        _archetype->incrementPopulation();
     }
     
-    // Classify archetype from genome (after phenotype is ready)
-    // Note: Population increment happens here, decrement in destructor
-    if (_genome) {
-        _archetype = EcoSim::Genetics::CreatureTaxonomy::classifyArchetype(*_genome);
-            if (_archetype) {
-                _archetype->incrementPopulation();
-            }
-        }
-        
-        _character = generateChar();
-        _name = generateName();
-        
-        // Initialize health to max health (phenotype must be ready)
-        _health = getMaxHealth();
-        
-        // Initialize phenotype context
-        EcoSim::Genetics::EnvironmentState defaultEnv;
-        updatePhenotypeContext(defaultEnv);
-    }
+    _character = generateChar();
+    _name = generateName();
+    
+    // Initialize health to max health (phenotype must be ready)
+    health_ = getMaxHealth();
+    
+    // Initialize phenotype context
+    EcoSim::Genetics::EnvironmentState defaultEnv;
+    updatePhenotypeContext(defaultEnv);
+}
 
 /**
  * Constructor with new genetics genome and initial hunger/thirst values.
  */
 Creature::Creature(int x, int y, float hunger, float thirst,
                    std::unique_ptr<EcoSim::Genetics::Genome> genome)
-    : _worldX(static_cast<float>(x)),
+    : GameObject(),
+      Organism(x, y, std::move(*genome), getGeneRegistry()),
+      _worldX(static_cast<float>(x)),
       _worldY(static_cast<float>(y)),
-      _age(0),
-      _id(s_nextCreatureId++),
       _direction(Direction::none),
       _profile(Profile::migrate),
       _motivation(Motivation::Content),
       _action(Action::Idle),
-      _health(0.0f),  // Will be set to maxHealth after phenotype init
       _inCombat(false),
       _isFleeing(false),
       _targetId(-1),
@@ -2212,45 +2095,28 @@ Creature::Creature(int x, int y, float hunger, float thirst,
       _thirst(thirst),
       _fatigue(INIT_FATIGUE),
       _mate(0.0f),
-      _metabolism(0.001f),  // Default, will be updated from phenotype
+      _metabolism(0.001f),
       _speed(1),
-      currentSize_(0.1f),    // Small juvenile starting size
-      maxSize_(1.0f),        // Default, will be updated from phenotype
-      mature_(false),        // Not yet mature
-      _genome(std::move(genome)),
       _archetype(nullptr) {
     
-    // Initialize phenotype from genome
-    _phenotype = std::make_unique<EcoSim::Genetics::Phenotype>(
-        _genome.get(), &getGeneRegistry()
-    );
-    
-    // Set metabolism from phenotype
-    if (_phenotype->hasTrait(EcoSim::Genetics::UniversalGenes::METABOLISM_RATE)) {
-        _metabolism = _phenotype->getTrait(EcoSim::Genetics::UniversalGenes::METABOLISM_RATE) * 0.001f;
+    // Set metabolism from phenotype (Organism already created phenotype_)
+    if (phenotype_.hasTrait(EcoSim::Genetics::UniversalGenes::METABOLISM_RATE)) {
+        _metabolism = phenotype_.getTrait(EcoSim::Genetics::UniversalGenes::METABOLISM_RATE) * 0.001f;
     } else {
         _metabolism = 0.001f;
     }
     
-    // Set maxSize from MAX_SIZE gene
-    if (_phenotype->hasTrait(EcoSim::Genetics::UniversalGenes::MAX_SIZE)) {
-        maxSize_ = _phenotype->getTrait(EcoSim::Genetics::UniversalGenes::MAX_SIZE);
-    }
-    
     // Classify archetype from genome (after phenotype is ready)
-    // Note: Population increment happens here, decrement in destructor
-    if (_genome) {
-        _archetype = EcoSim::Genetics::CreatureTaxonomy::classifyArchetype(*_genome);
-        if (_archetype) {
-            _archetype->incrementPopulation();
-        }
+    _archetype = EcoSim::Genetics::CreatureTaxonomy::classifyArchetype(genome_);
+    if (_archetype) {
+        _archetype->incrementPopulation();
     }
     
     _character = generateChar();
     _name = generateName();
     
     // Initialize health to max health (phenotype must be ready)
-    _health = getMaxHealth();
+    health_ = getMaxHealth();
     
     // Initialize phenotype context
     EcoSim::Genetics::EnvironmentState defaultEnv;
@@ -2396,7 +2262,7 @@ EcoSim::Genetics::BehaviorResult Creature::updateWithBehaviors(EcoSim::Genetics:
     
     _hunger -= change;
     _thirst -= change;
-    _age++;
+    age_++;
     
     return result;
 }

@@ -24,14 +24,13 @@
 #include "world/ScentLayer.hpp"
 
 // New genetics system includes
+#include "genetics/organisms/Organism.hpp"
 #include "genetics/core/Genome.hpp"
 #include "genetics/core/GeneRegistry.hpp"
 #include "genetics/expression/Phenotype.hpp"
 #include "genetics/expression/EnvironmentState.hpp"
 #include "genetics/defaults/UniversalGenes.hpp"  // For DietType
-#include "genetics/interfaces/ILifecycle.hpp"
 #include "genetics/interfaces/IGeneticOrganism.hpp"
-#include "genetics/interfaces/IReproducible.hpp"
 
 // Creature-Plant interaction includes
 #include "genetics/interactions/FeedingInteraction.hpp"
@@ -98,10 +97,22 @@ enum class WoundState { Healthy, Injured, Wounded, Critical, Dead };
 //  Deprecated - use Motivation instead
 enum class Profile { thirsty, hungry, breed, sleep, migrate };
 
+/**
+ * @brief Creature organism that extends the Organism base class
+ *
+ * Creatures inherit shared functionality (position, lifecycle, growth, genetics)
+ * from Organism and add creature-specific behaviors like movement, hunting,
+ * mating, and complex decision-making through the behavior system.
+ *
+ * Key differences from plants:
+ * - Creatures move (have precise float world coordinates)
+ * - Creatures have needs (hunger, thirst, fatigue, mate drive)
+ * - Creatures reproduce sexually
+ * - Creatures have complex behaviors via BehaviorController
+ */
 class Creature: public GameObject,
-                public EcoSim::Genetics::ILifecycle,
-                public EcoSim::Genetics::IGeneticOrganism,
-                public EcoSim::Genetics::IReproducible {
+                public EcoSim::Genetics::Organism,
+                public EcoSim::Genetics::IGeneticOrganism {
   public:
     //============================================================================
     //  Public Constants (for balance analysis and external tools)
@@ -151,46 +162,34 @@ class Creature: public GameObject,
     const static float DEFAULT_LEG_LENGTH;    // Default leg length for creatures without gene
     const static float DEFAULT_BODY_MASS;     // Default body mass for creatures without gene
     
-    //  State Variables
-    //  Float-based world coordinates
-    float     _worldX, _worldY;   // Precise position in world coordinates
-    unsigned  _age;
-    int       _id;  // Unique creature ID for logging
+    //============================================================================
+    //  Creature-specific State Variables
+    //============================================================================
+    //  Float-based world coordinates (precise position)
+    float     _worldX, _worldY;
     Direction _direction;
     Profile   _profile;          // Deprecated - use _motivation instead
     Motivation _motivation = Motivation::Content;  // Current motivation/drive
     Action    _action = Action::Idle;              // Current action being performed
     
-    //  Health & Combat System
-    float     _health = 10.0f;     // Current health (safe default, actual set by constructors)
+    //  Combat System (extends Organism's health)
     bool      _inCombat = false;   // Currently in combat
     bool      _isFleeing = false;  // Currently fleeing from threat
     int       _targetId = -1;      // ID of combat/pursuit target (-1 = none)
     int       _combatCooldown = 0; // Ticks until can attack again
 
-    //  Will Variables
+    //  Will Variables (creature-specific needs)
     float _hunger, _thirst, _fatigue, _mate;
 
     //  How quickly the creature burns through food
     float     _metabolism = 0.001f;
     unsigned  _speed      = 1;
-    
-    //============================================================================
-    //  Growth State
-    //============================================================================
-    float currentSize_;    // Current physical size (0.0 to maxSize_)
-    float maxSize_;        // Maximum size from MAX_SIZE gene
-    bool mature_;          // Whether creature has reached maturity (50% of max size)
 
     //============================================================================
-    //  Genetics System
+    //  Genetics System (static registry shared by all creatures)
     //============================================================================
     // Shared gene registry for all creatures (singleton-like pattern)
     static std::shared_ptr<EcoSim::Genetics::GeneRegistry> s_geneRegistry;
-    
-    // Primary genetics objects
-    std::unique_ptr<EcoSim::Genetics::Genome> _genome;
-    std::unique_ptr<EcoSim::Genetics::Phenotype> _phenotype;
     
     //============================================================================
     //  Archetype Identity
@@ -252,7 +251,7 @@ class Creature: public GameObject,
     float getInternalHydration() const { return _thirst; }
     float getInternalFatigueLevel() const { return _fatigue; }
     float getInternalMatingUrge() const { return _mate; }
-    float getInternalHealthValue() const { return _health; }
+    float getInternalHealthValue() const { return health_; }
     bool getInternalCombatFlag() const { return _inCombat; }
     bool getInternalFleeingFlag() const { return _isFleeing; }
     int getInternalTargetCreatureId() const { return _targetId; }
@@ -326,25 +325,135 @@ class Creature: public GameObject,
     static EcoSim::Genetics::GeneRegistry& getGeneRegistry();
   
     //============================================================================
+    //  IPositionable overrides - Creatures have precise float movement
+    //============================================================================
+    
+    /**
+     * @brief Get world X coordinate (float precision)
+     * @return X position in world coordinates
+     *
+     * Creatures have precise float positions for smooth movement.
+     */
+    float getWorldX() const override { return _worldX; }
+    
+    /**
+     * @brief Get world Y coordinate (float precision)
+     * @return Y position in world coordinates
+     */
+    float getWorldY() const override { return _worldY; }
+    
+    /**
+     * @brief Set world position
+     * @param x New X position
+     * @param y New Y position
+     *
+     * Updates both world coordinates and tile coordinates.
+     */
+    void setWorldPosition(float x, float y) override;
+    
+    //============================================================================
+    //  ILifecycle overrides - Gene-dependent lifespan
+    //============================================================================
+    
+    /**
+     * @brief Get maximum lifespan based on genome
+     * @return Maximum age before natural death
+     */
+    unsigned int getMaxLifespan() const override;
+    
+    /**
+     * @brief Check if creature is alive
+     * @return True if alive (considers hunger, thirst, health, age)
+     */
+    bool isAlive() const override;
+    
+    //============================================================================
+    //  IGeneticOrganism overrides - Satisfies both IGenetic and IGeneticOrganism
+    //============================================================================
+    
+    /// Get const reference to genome (satisfies both IGenetic and IGeneticOrganism)
+    const EcoSim::Genetics::Genome& getGenome() const override { return Organism::getGenome(); }
+    
+    /// Get mutable reference to genome
+    EcoSim::Genetics::Genome& getGenomeMutable() override { return Organism::getGenomeMutable(); }
+    
+    /// Get const reference to phenotype
+    const EcoSim::Genetics::Phenotype& getPhenotype() const override { return Organism::getPhenotype(); }
+    
+    /// Recalculate expressed traits from genome
+    void updatePhenotype() override;
+    
+    /// Get tile X coordinate (satisfies both IPositionable and IGeneticOrganism)
+    int getX() const override { return Organism::getX(); }
+    
+    /// Get tile Y coordinate
+    int getY() const override { return Organism::getY(); }
+    
+    /// Get unique identifier
+    int getId() const override { return Organism::getId(); }
+    
+    //============================================================================
+    //  IReproducible overrides - Sexual reproduction
+    //============================================================================
+    
+    /**
+     * @brief Check if creature can reproduce
+     * @return true if mature, healthy, and has sufficient resources
+     */
+    bool canReproduce() const override;
+    
+    /**
+     * @brief Get reproductive urge (normalized 0.0-1.0)
+     * @return Mating drive based on _mate internal state
+     */
+    float getReproductiveUrge() const override;
+    
+    /**
+     * @brief Get energy cost of reproduction
+     * @return BREED_COST adjusted by genetics
+     */
+    float getReproductionEnergyCost() const override;
+    
+    /**
+     * @brief Get reproduction mode
+     * @return Always SEXUAL for creatures
+     */
+    EcoSim::Genetics::ReproductionMode getReproductionMode() const override;
+    
+    /**
+     * @brief Check compatibility with another organism for mating
+     * @param other The other organism
+     * @return true if compatible based on species/archetype
+     */
+    bool isCompatibleWith(const EcoSim::Genetics::IGeneticOrganism& other) const override;
+    
+    /**
+     * @brief Reproduce to create offspring
+     * @param partner Partner for sexual reproduction (required for creatures)
+     * @return Offspring as IGeneticOrganism pointer, or nullptr if reproduction fails
+     */
+    std::unique_ptr<EcoSim::Genetics::IGeneticOrganism> reproduce(
+        const EcoSim::Genetics::IGeneticOrganism* partner = nullptr) override;
+    
+    //============================================================================
+    //  Organism overrides - Growth system
+    //============================================================================
+    
+    /**
+     * @brief Get maximum size from phenotype
+     * @return Maximum size the creature can reach
+     */
+    float getMaxSize() const override { return maxSize_; }
+    
+    /**
+     * @brief Perform growth for this tick
+     * Growth depends on nutrition and age factors.
+     */
+    void grow() override;
+    
+    //============================================================================
     //  Genetics System - Instance Methods
     //============================================================================
-    /**
-     * @brief Get the genome (IGeneticOrganism interface).
-     * @return Reference to the Genome
-     */
-    const EcoSim::Genetics::Genome& getGenome() const override;
-    
-    /**
-     * @brief Get the genome (mutable, IGeneticOrganism interface).
-     * @return Reference to the Genome
-     */
-    EcoSim::Genetics::Genome& getGenomeMutable() override;
-    
-    /**
-     * @brief Get the phenotype (IGeneticOrganism interface).
-     * @return Reference to the Phenotype
-     */
-    const EcoSim::Genetics::Phenotype& getPhenotype() const override;
     
     /**
      * @brief Update phenotype context with current environment and organism state.
@@ -352,12 +461,6 @@ class Creature: public GameObject,
      * @param env Current environment state
      */
     void updatePhenotypeContext(const EcoSim::Genetics::EnvironmentState& env);
-    
-    /**
-     * @brief Recalculate phenotype from genome (IGeneticOrganism interface).
-     *        Simple wrapper that calls updatePhenotypeContext with default environment.
-     */
-    void updatePhenotype() override;
     
     /**
      * @brief Get the expressed value of a gene from the phenotype.
@@ -384,13 +487,6 @@ class Creature: public GameObject,
     //  Float Position Setters
     //============================================================================
     /**
-     * @brief Set precise world coordinates.
-     * @param x Float x-coordinate in world space
-     * @param y Float y-coordinate in world space
-     */
-    void setWorldPosition(float x, float y);
-    
-    /**
      * @brief Set precise world X coordinate.
      * @param x Float x-coordinate in world space
      */
@@ -406,24 +502,20 @@ class Creature: public GameObject,
     //  Getters
     //============================================================================
     float     getTMate      () const;
-    int       getId         () const override;
     
     //============================================================================
-    //  ILifecycle Interface Implementation
+    //  ILifecycle Interface Getters (use Organism's age_)
     //============================================================================
-    unsigned int getAge() const override;
-    unsigned int getMaxLifespan() const override;
+    unsigned int getAge() const override { return Organism::getAge(); }
     float getAgeNormalized() const override;
-    bool isAlive() const override;
     void age(unsigned int ticks = 1) override;
+    
     float     getHunger     () const;
     float     getThirst     () const;
     float     getFatigue    () const;
     float     getMate       () const;
     float     getMetabolism () const;
     unsigned  getSpeed      () const;
-    int       getX          () const override;
-    int       getY          () const override;
     Direction   getDirection  () const;
     Profile     getProfile    () const;  // Deprecated - use getMotivation()
     Motivation  getMotivation () const;
@@ -432,18 +524,6 @@ class Creature: public GameObject,
     //============================================================================
     //  Float Position Getters
     //============================================================================
-    /**
-     * @brief Get precise world X coordinate.
-     * @return Float x-coordinate in world space
-     */
-    float getWorldX() const;
-    
-    /**
-     * @brief Get precise world Y coordinate.
-     * @return Float y-coordinate in world space
-     */
-    float getWorldY() const;
-    
     /**
      * @brief Get tile X coordinate (integer, for rendering/collision).
      *        Derives from world coordinates via truncation.
@@ -466,56 +546,43 @@ class Creature: public GameObject,
     float getMovementSpeed() const;
     
     //============================================================================
-    //  Growth State Getters
+    //  Growth State Getters (use Organism's members)
     //============================================================================
     /**
      * @brief Get current physical size.
      * @return Current size (0.0 to maxSize_)
      */
-    float getCurrentSize() const { return currentSize_; }
-    
-    /**
-     * @brief Get maximum size from MAX_SIZE gene.
-     * @return Maximum achievable size
-     */
-    float getMaxSize() const { return maxSize_; }
+    float getCurrentSize() const { return Organism::getCurrentSize(); }
     
     /**
      * @brief Check if creature has reached maturity.
      * @return True if creature has reached 50% of max size
      */
-    bool isMature() const { return mature_; }
+    bool isMature() const { return Organism::isMature(); }
     
     /**
      * @brief Get ratio of current size to max size.
      * @return Size ratio (0.0 to 1.0)
      */
-    float getSizeRatio() const { return maxSize_ > 0.0f ? currentSize_ / maxSize_ : 0.0f; }
+    float getSizeRatio() const { return Organism::getSizeRatio(); }
     
     /**
      * @brief Set current size (for deserialization).
      * @param size New current size value
      */
-    void setCurrentSize(float size) { currentSize_ = size; mature_ = (currentSize_ >= maxSize_ * 0.5f); }
+    void setCurrentSize(float s) { currentSize_ = s; }
     
     /**
      * @brief Set maximum size (for deserialization).
      * @param size New maximum size value
      */
-    void setMaxSize(float size) { maxSize_ = size; }
+    void setMaxSize(float s) { maxSize_ = s; }
     
     /**
      * @brief Set maturity state (for deserialization).
      * @param mature New maturity state
      */
-    void setMature(bool mature) { mature_ = mature; }
-    
-    /**
-     * @brief Process growth for one tick.
-     * Growth rate depends on nutrition and age factors.
-     * Creatures mature at 50% of max size.
-     */
-    void grow();
+    void setMature(bool m) { mature_ = m; }
     
     /**
      * @brief Get maximum health based on genetics.
@@ -528,7 +595,7 @@ class Creature: public GameObject,
      * @brief Get current health.
      * @return Current health value
      */
-    float getHealth() const;
+    float getHealth() const { return Organism::getHealth(); }
     
     /**
      * @brief Get health as percentage (0.0 to 1.0).
@@ -558,7 +625,7 @@ class Creature: public GameObject,
      * @brief Apply damage to creature's health.
      * @param amount Damage to apply (positive value)
      *
-     * - Reduces _health directly
+     * - Reduces health_ directly
      * - Floors health at 0 (never negative)
      * - Zero/negative amounts are no-ops
      */
@@ -735,51 +802,7 @@ class Creature: public GameObject,
     //  Breeding
     //============================================================================
     float     checkFitness  (const Creature &c2) const;
-    
-    //============================================================================
-    //  IReproducible Interface
-    //============================================================================
-    /**
-     * @brief Check if creature can reproduce
-     * @return true if mature, healthy, and has sufficient resources
-     */
-    bool canReproduce() const override;
-    
-    /**
-     * @brief Get reproductive urge (normalized 0.0-1.0)
-     * @return Mating drive based on _mate internal state
-     */
-    float getReproductiveUrge() const override;
-    
-    /**
-     * @brief Get energy cost of reproduction
-     * @return BREED_COST adjusted by genetics
-     */
-    float getReproductionEnergyCost() const override;
-    
-    /**
-     * @brief Get reproduction mode
-     * @return Always SEXUAL for creatures
-     */
-    EcoSim::Genetics::ReproductionMode getReproductionMode() const override;
-    
-    /**
-     * @brief Check compatibility with another organism for mating
-     * @param other The other organism
-     * @return true if compatible based on species/archetype
-     */
-    bool isCompatibleWith(const EcoSim::Genetics::IGeneticOrganism& other) const override;
-    
-    /**
-     * @brief Reproduce to create offspring
-     * @param partner Partner for sexual reproduction (required for creatures)
-     * @return Offspring as IGeneticOrganism pointer, or nullptr if reproduction fails
-     *
-     * @todo Return concrete Creature type once Creature/Plant are unified into Organism
-     */
-    std::unique_ptr<EcoSim::Genetics::IGeneticOrganism> reproduce(
-        const EcoSim::Genetics::IGeneticOrganism* partner = nullptr) override;
-    
+
     //============================================================================
     //  Sensory System
     //============================================================================
