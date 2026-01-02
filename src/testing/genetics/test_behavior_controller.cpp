@@ -14,7 +14,7 @@
 #include "genetics/behaviors/BehaviorController.hpp"
 #include "genetics/behaviors/IBehavior.hpp"
 #include "genetics/behaviors/BehaviorContext.hpp"
-#include "genetics/interfaces/IGeneticOrganism.hpp"
+#include "genetics/organisms/Organism.hpp"
 #include "genetics/core/Genome.hpp"
 #include "genetics/expression/Phenotype.hpp"
 #include <memory>
@@ -39,22 +39,22 @@ public:
     
     std::string getId() const override { return id_; }
     
-    bool isApplicable(const IGeneticOrganism& /*organism*/,
+    bool isApplicable(const Organism& /*organism*/,
                       const BehaviorContext& /*ctx*/) const override {
         return applicable_;
     }
     
-    float getPriority(const IGeneticOrganism& /*organism*/) const override {
+    float getPriority(const Organism& /*organism*/) const override {
         return priority_;
     }
     
-    BehaviorResult execute(IGeneticOrganism& /*organism*/,
+    BehaviorResult execute(Organism& /*organism*/,
                           BehaviorContext& /*ctx*/) override {
         executionCount_++;
         return BehaviorResult{true, true, 1.0f, "MockBehavior executed: " + id_};
     }
     
-    float getEnergyCost(const IGeneticOrganism& /*organism*/) const override {
+    float getEnergyCost(const Organism& /*organism*/) const override {
         return 1.0f;
     }
     
@@ -72,18 +72,40 @@ private:
 /**
  * @brief Minimal mock organism for testing
  */
-class MockOrganism : public IGeneticOrganism {
+class MockOrganism : public Organism {
 public:
-    MockOrganism() : genome_(), phenotype_(nullptr, nullptr) {}
+    MockOrganism()
+        : Organism(0, 0, Genome(), registry_)
+        , phenotype_(&getGenomeMutable(), &registry_)
+    {}
     ~MockOrganism() override = default;
     
-    const Genome& getGenome() const override { return genome_; }
-    Genome& getGenomeMutable() override { return genome_; }
+    // IGenetic
     const Phenotype& getPhenotype() const override { return phenotype_; }
     void updatePhenotype() override {}
+
+    // IPositionable - world coordinates
+    float getWorldX() const override { return 0.0f; }
+    float getWorldY() const override { return 0.0f; }
+    void setWorldPosition(float, float) override {}
+    
+    // ILifecycle
+    unsigned int getMaxLifespan() const override { return 10000; }
+    void grow() override {}
+    
+    // IReproducible
+    bool canReproduce() const override { return false; }
+    float getReproductiveUrge() const override { return 0.0f; }
+    float getReproductionEnergyCost() const override { return 10.0f; }
+    ReproductionMode getReproductionMode() const override { return ReproductionMode::SEXUAL; }
+    bool isCompatibleWith(const Organism&) const override { return false; }
+    std::unique_ptr<Organism> reproduce(const Organism* = nullptr) override { return nullptr; }
+    
+    // Organism abstract methods
+    float getMaxSize() const override { return 1.0f; }
     
 private:
-    Genome genome_;
+    static inline GeneRegistry registry_;
     Phenotype phenotype_;
 };
 

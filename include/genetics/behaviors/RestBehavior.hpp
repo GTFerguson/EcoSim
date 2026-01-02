@@ -2,7 +2,6 @@
 
 #include "genetics/behaviors/IBehavior.hpp"
 #include "genetics/behaviors/BehaviorContext.hpp"
-#include "genetics/interfaces/IGeneticOrganism.hpp"
 #include <string>
 
 namespace EcoSim {
@@ -61,7 +60,7 @@ public:
      * @param ctx Current behavior context
      * @return true if organism is tired and should rest
      */
-    bool isApplicable(const IGeneticOrganism& organism,
+    bool isApplicable(const Organism& organism,
                       const BehaviorContext& ctx) const override;
     
     /**
@@ -75,7 +74,7 @@ public:
      * @param organism The organism to evaluate
      * @return Priority value (50-75)
      */
-    float getPriority(const IGeneticOrganism& organism) const override;
+    float getPriority(const Organism& organism) const override;
     
     /**
      * @brief Execute rest behavior
@@ -89,7 +88,7 @@ public:
      * @param ctx Behavior context
      * @return Result with execution status and energy cost
      */
-    BehaviorResult execute(IGeneticOrganism& organism,
+    BehaviorResult execute(Organism& organism,
                           BehaviorContext& ctx) override;
     
     /**
@@ -97,7 +96,7 @@ public:
      * @param organism The organism that would execute
      * @return Energy units consumed (low - resting saves energy)
      */
-    float getEnergyCost(const IGeneticOrganism& organism) const override;
+    float getEnergyCost(const Organism& organism) const override;
 
 private:
     /**
@@ -105,7 +104,7 @@ private:
      * @param organism The organism to query
      * @return Fatigue level (0 = rested, higher = more tired)
      */
-    float getFatigueLevel(const IGeneticOrganism& organism) const;
+    float getFatigueLevel(const Organism& organism) const;
     
     /**
      * @brief Get fatigue threshold from phenotype
@@ -115,7 +114,7 @@ private:
      * @param organism The organism to query
      * @return Threshold value (typically around 3.0)
      */
-    float getFatigueThreshold(const IGeneticOrganism& organism) const;
+    float getFatigueThreshold(const Organism& organism) const;
     
     /**
      * @brief Get fatigue recovery rate from phenotype
@@ -126,14 +125,14 @@ private:
      * @param organism The organism to query
      * @return Recovery rate per tick
      */
-    float getRecoveryRate(const IGeneticOrganism& organism) const;
+    float getRecoveryRate(const Organism& organism) const;
     
     /**
      * @brief Check if organism is tired (fatigue above threshold)
      * @param organism The organism to check
      * @return true if fatigue > threshold
      */
-    bool isTired(const IGeneticOrganism& organism) const;
+    bool isTired(const Organism& organism) const;
     
     /// Default fatigue threshold (need rest above this)
     static constexpr float DEFAULT_FATIGUE_THRESHOLD = 3.0f;

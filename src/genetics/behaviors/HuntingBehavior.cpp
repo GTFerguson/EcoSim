@@ -5,7 +5,7 @@
 #include "genetics/expression/Phenotype.hpp"
 #include "genetics/expression/PhenotypeUtils.hpp"
 #include "genetics/expression/OrganismState.hpp"
-#include "genetics/interfaces/IGeneticOrganism.hpp"
+#include "genetics/organisms/Organism.hpp"
 #include "genetics/defaults/UniversalGenes.hpp"
 #include "genetics/core/Genome.hpp"
 #include <cmath>
@@ -27,7 +27,7 @@ std::string HuntingBehavior::getId() const {
     return "hunting";
 }
 
-bool HuntingBehavior::isApplicable(const IGeneticOrganism& organism,
+bool HuntingBehavior::isApplicable(const Organism& organism,
                                     const BehaviorContext& ctx) const {
     if (!canHunt(organism)) {
         return false;
@@ -49,7 +49,7 @@ bool HuntingBehavior::isApplicable(const IGeneticOrganism& organism,
     return true;
 }
 
-float HuntingBehavior::getPriority(const IGeneticOrganism& organism) const {
+float HuntingBehavior::getPriority(const Organism& organism) const {
     float hunger = getHungerLevel(organism);
     float threshold = getHungerThreshold(organism);
     
@@ -66,7 +66,7 @@ float HuntingBehavior::getPriority(const IGeneticOrganism& organism) const {
     return priority;
 }
 
-BehaviorResult HuntingBehavior::execute(IGeneticOrganism& organism,
+BehaviorResult HuntingBehavior::execute(Organism& organism,
                                          BehaviorContext& ctx) {
     BehaviorResult result;
     result.executed = true;
@@ -81,7 +81,7 @@ BehaviorResult HuntingBehavior::execute(IGeneticOrganism& organism,
         return result;
     }
     
-    IGeneticOrganism* prey = findPrey(organism, ctx);
+    Organism* prey = findPrey(organism, ctx);
     
     if (!prey) {
         result.debugInfo = "No prey found in range";
@@ -123,25 +123,25 @@ BehaviorResult HuntingBehavior::execute(IGeneticOrganism& organism,
     return result;
 }
 
-float HuntingBehavior::getEnergyCost(const IGeneticOrganism& organism) const {
+float HuntingBehavior::getEnergyCost(const Organism& organism) const {
     return HUNT_COST;
 }
 
-bool HuntingBehavior::canHunt(const IGeneticOrganism& organism) const {
+bool HuntingBehavior::canHunt(const Organism& organism) const {
     const Phenotype& phenotype = organism.getPhenotype();
     float huntInstinct = getTraitSafe(phenotype, UniversalGenes::HUNT_INSTINCT, 0.0f);
     
     return huntInstinct > HUNT_INSTINCT_THRESHOLD;
 }
 
-bool HuntingBehavior::canChase(const IGeneticOrganism& organism) const {
+bool HuntingBehavior::canChase(const Organism& organism) const {
     const Phenotype& phenotype = organism.getPhenotype();
     float locomotion = getTraitSafe(phenotype, UniversalGenes::LOCOMOTION, 0.0f);
     
     return locomotion > LOCOMOTION_THRESHOLD;
 }
 
-bool HuntingBehavior::isSatiated(const IGeneticOrganism& organism, const BehaviorContext& ctx) const {
+bool HuntingBehavior::isSatiated(const Organism& organism, const BehaviorContext& ctx) const {
     // Check organism state from context (primary source of truth)
     if (ctx.organismState) {
         // energy_level ranges 0.0 (starving) to 1.0 (full)
@@ -164,8 +164,8 @@ bool HuntingBehavior::isOnCooldown(unsigned int organismId, unsigned int current
     return ticksSinceLastHunt < HUNT_COOLDOWN;
 }
 
-float HuntingBehavior::calculateEscapeChance(const IGeneticOrganism& predator,
-                                              const IGeneticOrganism& prey) const {
+float HuntingBehavior::calculateEscapeChance(const Organism& predator,
+                                              const Organism& prey) const {
     const Phenotype& preyPhenotype = prey.getPhenotype();
     const Phenotype& predatorPhenotype = predator.getPhenotype();
     
@@ -181,8 +181,8 @@ float HuntingBehavior::calculateEscapeChance(const IGeneticOrganism& predator,
     return std::max(0.0f, std::min(1.0f, escapeChance));
 }
 
-bool HuntingBehavior::attemptEscape(const IGeneticOrganism& predator,
-                                     const IGeneticOrganism& prey) const {
+bool HuntingBehavior::attemptEscape(const Organism& predator,
+                                     const Organism& prey) const {
     float escapeChance = calculateEscapeChance(predator, prey);
     
     std::uniform_real_distribution<float> dist(0.0f, 1.0f);
@@ -191,7 +191,7 @@ bool HuntingBehavior::attemptEscape(const IGeneticOrganism& predator,
     return roll < escapeChance;
 }
 
-IGeneticOrganism* HuntingBehavior::findPrey(const IGeneticOrganism& hunter,
+Organism* HuntingBehavior::findPrey(const Organism& hunter,
                                             const BehaviorContext& ctx) const {
     return nullptr;
 }
@@ -213,7 +213,7 @@ void HuntingBehavior::cleanupStaleEntries(unsigned int currentTick) {
     }
 }
 
-float HuntingBehavior::getHungerLevel(const IGeneticOrganism& organism) const {
+float HuntingBehavior::getHungerLevel(const Organism& organism) const {
     const Phenotype& phenotype = organism.getPhenotype();
     
     float maxHunger = getTraitSafe(phenotype, UniversalGenes::MAX_SIZE, 0.0f);
@@ -221,7 +221,7 @@ float HuntingBehavior::getHungerLevel(const IGeneticOrganism& organism) const {
     return maxHunger * 0.3f;
 }
 
-float HuntingBehavior::getHungerThreshold(const IGeneticOrganism& organism) const {
+float HuntingBehavior::getHungerThreshold(const Organism& organism) const {
     const Phenotype& phenotype = organism.getPhenotype();
     
     if (phenotype.hasTrait(UniversalGenes::HUNGER_THRESHOLD)) {
@@ -231,7 +231,7 @@ float HuntingBehavior::getHungerThreshold(const IGeneticOrganism& organism) cons
     return DEFAULT_HUNGER_THRESHOLD;
 }
 
-unsigned int HuntingBehavior::getOrganismId(const IGeneticOrganism& organism) const {
+unsigned int HuntingBehavior::getOrganismId(const Organism& organism) const {
     const Genome& genome = organism.getGenome();
     return static_cast<unsigned int>(std::hash<const Genome*>{}(&genome));
 }

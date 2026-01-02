@@ -30,7 +30,6 @@
 #include "genetics/expression/Phenotype.hpp"
 #include "genetics/expression/EnvironmentState.hpp"
 #include "genetics/defaults/UniversalGenes.hpp"  // For DietType
-#include "genetics/interfaces/IGeneticOrganism.hpp"
 
 // Creature-Plant interaction includes
 #include "genetics/interactions/FeedingInteraction.hpp"
@@ -111,8 +110,7 @@ enum class Profile { thirsty, hungry, breed, sleep, migrate };
  * - Creatures have complex behaviors via BehaviorController
  */
 class Creature: public GameObject,
-                public EcoSim::Genetics::Organism,
-                public EcoSim::Genetics::IGeneticOrganism {
+                public EcoSim::Genetics::Organism {
   public:
     //============================================================================
     //  Public Constants (for balance analysis and external tools)
@@ -368,29 +366,11 @@ class Creature: public GameObject,
     bool isAlive() const override;
     
     //============================================================================
-    //  IGeneticOrganism overrides - Satisfies both IGenetic and IGeneticOrganism
+    //  IGenetic overrides
     //============================================================================
-    
-    /// Get const reference to genome (satisfies both IGenetic and IGeneticOrganism)
-    const EcoSim::Genetics::Genome& getGenome() const override { return Organism::getGenome(); }
-    
-    /// Get mutable reference to genome
-    EcoSim::Genetics::Genome& getGenomeMutable() override { return Organism::getGenomeMutable(); }
-    
-    /// Get const reference to phenotype
-    const EcoSim::Genetics::Phenotype& getPhenotype() const override { return Organism::getPhenotype(); }
     
     /// Recalculate expressed traits from genome
     void updatePhenotype() override;
-    
-    /// Get tile X coordinate (satisfies both IPositionable and IGeneticOrganism)
-    int getX() const override { return Organism::getX(); }
-    
-    /// Get tile Y coordinate
-    int getY() const override { return Organism::getY(); }
-    
-    /// Get unique identifier
-    int getId() const override { return Organism::getId(); }
     
     //============================================================================
     //  IReproducible overrides - Sexual reproduction
@@ -425,15 +405,15 @@ class Creature: public GameObject,
      * @param other The other organism
      * @return true if compatible based on species/archetype
      */
-    bool isCompatibleWith(const EcoSim::Genetics::IGeneticOrganism& other) const override;
+    bool isCompatibleWith(const EcoSim::Genetics::Organism& other) const override;
     
     /**
      * @brief Reproduce to create offspring
      * @param partner Partner for sexual reproduction (required for creatures)
-     * @return Offspring as IGeneticOrganism pointer, or nullptr if reproduction fails
+     * @return Offspring as Organism pointer, or nullptr if reproduction fails
      */
-    std::unique_ptr<EcoSim::Genetics::IGeneticOrganism> reproduce(
-        const EcoSim::Genetics::IGeneticOrganism* partner = nullptr) override;
+    std::unique_ptr<EcoSim::Genetics::Organism> reproduce(
+        const EcoSim::Genetics::Organism* partner = nullptr) override;
     
     //============================================================================
     //  Organism overrides - Growth system

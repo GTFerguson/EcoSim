@@ -2,14 +2,14 @@
  * @file PerceptionSystem.cpp
  * @brief Implementation of organism-agnostic perception system
  *
- * All methods use IGeneticOrganism& interface and phenotype traits.
+ * All methods use Organism& interface and phenotype traits.
  * NO type-specific code (Plant, Creature, DietType, etc.)
  *
  * @see include/genetics/systems/PerceptionSystem.hpp
  */
 
 #include "genetics/systems/PerceptionSystem.hpp"
-#include "genetics/interfaces/IGeneticOrganism.hpp"
+#include "genetics/organisms/Organism.hpp"
 #include "genetics/expression/Phenotype.hpp"
 #include "genetics/expression/PhenotypeUtils.hpp"
 #include "world/ScentLayer.hpp"
@@ -27,7 +27,7 @@ using PhenotypeUtils::getTraitSafe;
 // =============================================================================
 
 std::array<float, 8> PerceptionSystem::buildScentSignature(
-    const IGeneticOrganism& organism) const
+    const Organism& organism) const
 {
     const Phenotype& phenotype = organism.getPhenotype();
     
@@ -65,7 +65,7 @@ std::array<float, 8> PerceptionSystem::buildScentSignature(
 // =============================================================================
 
 void PerceptionSystem::depositScent(
-    const IGeneticOrganism& organism,
+    const Organism& organism,
     int posX, int posY,
     int sourceId,
     ScentLayer& scentLayer,
@@ -109,7 +109,7 @@ void PerceptionSystem::depositScent(
 // =============================================================================
 
 std::optional<std::pair<int, int>> PerceptionSystem::detectFoodDirection(
-    const IGeneticOrganism& seeker,
+    const Organism& seeker,
     int seekerX, int seekerY,
     const ScentLayer& scentLayer) const
 {
@@ -164,7 +164,7 @@ std::optional<std::pair<int, int>> PerceptionSystem::detectFoodDirection(
 // =============================================================================
 
 std::optional<std::pair<int, int>> PerceptionSystem::detectMateDirection(
-    const IGeneticOrganism& seeker,
+    const Organism& seeker,
     int seekerX, int seekerY,
     int seekerId,
     const ScentLayer& scentLayer) const
@@ -197,7 +197,7 @@ std::optional<std::pair<int, int>> PerceptionSystem::detectMateDirection(
 
 bool PerceptionSystem::isEdibleScent(
     const std::array<float, 8>& signature,
-    const IGeneticOrganism& eater) const
+    const Organism& eater) const
 {
     const Phenotype& phenotype = eater.getPhenotype();
     
@@ -246,7 +246,7 @@ bool PerceptionSystem::isEdibleScent(
 // =============================================================================
 
 float PerceptionSystem::calculateVisualRange(
-    const IGeneticOrganism& seeker,
+    const Organism& seeker,
     float targetColorfulness) const
 {
     const Phenotype& phenotype = seeker.getPhenotype();
@@ -264,7 +264,7 @@ float PerceptionSystem::calculateVisualRange(
     return sightRange + visualBonus;
 }
 
-float PerceptionSystem::calculateScentRange(const IGeneticOrganism& seeker) const
+float PerceptionSystem::calculateScentRange(const Organism& seeker) const
 {
     const Phenotype& phenotype = seeker.getPhenotype();
     
@@ -275,7 +275,7 @@ float PerceptionSystem::calculateScentRange(const IGeneticOrganism& seeker) cons
 }
 
 float PerceptionSystem::calculateEffectiveRange(
-    const IGeneticOrganism& seeker,
+    const Organism& seeker,
     float targetColorfulness) const
 {
     // Effective range is max of visual and scent

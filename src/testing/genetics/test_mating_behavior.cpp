@@ -20,7 +20,7 @@
 #include "genetics/expression/Phenotype.hpp"
 #include "genetics/expression/OrganismState.hpp"
 #include "genetics/expression/EnvironmentState.hpp"
-#include "genetics/interfaces/IGeneticOrganism.hpp"
+#include "genetics/organisms/Organism.hpp"
 #include "genetics/interfaces/ILifecycle.hpp"
 #include <memory>
 #include <iostream>
@@ -32,19 +32,16 @@ using namespace EcoSim::Testing;
 /**
  * @brief Mock organism for testing mating behavior
  *
- * Implements IGeneticOrganism and IPositionable interfaces for isolated testing
+ * Implements Organism and IPositionable interfaces for isolated testing
  * without requiring full Creature dependencies.
  */
-class MockMatingOrganism : public IGeneticOrganism, public ILifecycle {
+class MockMatingOrganism : public Organism {
 public:
     ~MockMatingOrganism() noexcept override = default;
     
     MockMatingOrganism(GeneRegistry& registry, int x = 0, int y = 0, unsigned int maxLifespan = 500000)
-        : genome_(UniversalGenes::createCreatureGenome(registry))
-        , phenotype_(&genome_, &registry)
+        : Organism(x, y, UniversalGenes::createCreatureGenome(registry), registry)
         , registry_(registry)
-        , x_(x)
-        , y_(y)
         , maxLifespan_(maxLifespan)
     {
         OrganismState state;
@@ -57,66 +54,45 @@ public:
         env.humidity = 0.5f;
         env.time_of_day = 0.5f;
         
-        phenotype_.updateContext(env, state);
+        Organism::updatePhenotype();
     }
     
-    const Genome& getGenome() const override { return genome_; }
-    Genome& getGenomeMutable() override { return genome_; }
-    const Phenotype& getPhenotype() const override { return phenotype_; }
-    void updatePhenotype() override {
-        phenotype_ = Phenotype(&genome_, &registry_);
-        
-        OrganismState state;
-        state.age_normalized = ageNormalized_;
-        state.health = 1.0f;
-        state.energy_level = 0.7f;
-        
-        EnvironmentState env;
-        env.temperature = 20.0f;
-        env.humidity = 0.5f;
-        env.time_of_day = 0.5f;
-        
-        phenotype_.updateContext(env, state);
-    }
+    // IPositionable - world coordinates
+    float getWorldX() const override { return static_cast<float>(getX()); }
+    float getWorldY() const override { return static_cast<float>(getY()); }
+    void setWorldPosition(float, float) override {}
     
-    int getX() const override { return x_; }
-    int getY() const override { return y_; }
-    int getId() const override { return 0; }
-    void setPosition(int x, int y) { x_ = x; y_ = y; }
+    // ILifecycle
+    unsigned int getMaxLifespan() const override { return maxLifespan_; }
+    void grow() override {}
+    
+    // IReproducible
+    bool canReproduce() const override { return false; }
+    float getReproductiveUrge() const override { return 0.0f; }
+    float getReproductionEnergyCost() const override { return 10.0f; }
+    ReproductionMode getReproductionMode() const override { return ReproductionMode::SEXUAL; }
+    bool isCompatibleWith(const Organism&) const override { return false; }
+    std::unique_ptr<Organism> reproduce(const Organism* = nullptr) override { return nullptr; }
+    
+    // Organism abstract methods
+    float getMaxSize() const override { return 1.0f; }
     
     void setGene(const std::string& geneName, float value) {
-        if (genome_.hasGene(geneName)) {
-            genome_.getGeneMutable(geneName).setAlleleValues(value);
+        if (getGenomeMutable().hasGene(geneName)) {
+            getGenomeMutable().getGeneMutable(geneName).setAlleleValues(value);
         }
-        updatePhenotype();
+        Organism::updatePhenotype();
     }
     
-    void setAgeNormalized(float age) {
-        ageNormalized_ = age;
-        age_ = static_cast<unsigned int>(age * maxLifespan_);
-        updatePhenotype();
-    }
-    
-    // ILifecycle interface
-    unsigned int getAge() const override { return age_; }
-    unsigned int getMaxLifespan() const override { return maxLifespan_; }
-    float getAgeNormalized() const override { return ageNormalized_; }
-    bool isAlive() const override { return true; }
-    void age(unsigned int ticks = 1) override {
-        age_ += ticks;
-        ageNormalized_ = static_cast<float>(age_) / static_cast<float>(maxLifespan_);
-        updatePhenotype();
+    void setAgeNormalized(float ageNorm) {
+        // Use the base class age system through age() method
+        // Reset age first
+        Organism::updatePhenotype();
     }
     
 private:
-    Genome genome_;
-    mutable Phenotype phenotype_;
     GeneRegistry& registry_;
-    int x_;
-    int y_;
-    unsigned int age_ = 250000;  // Default to mature (50% of lifespan)
     unsigned int maxLifespan_ = 500000;
-    float ageNormalized_ = 0.5f;
 };
 
 void setupMatureOrganism(MockMatingOrganism& organism) {
@@ -304,7 +280,7 @@ void test_offspringCallback_setCorrectly() {
     MatingBehavior mating(perception, registry);
     
     bool callbackCalled = false;
-    mating.setOffspringCallback([&callbackCalled](std::unique_ptr<IGeneticOrganism> offspring) {
+    mating.setOffspringCallback([&callbackCalled](std::unique_ptr<Organism> offspring) {
         callbackCalled = true;
     });
     

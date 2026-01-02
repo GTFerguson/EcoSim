@@ -3,13 +3,13 @@
  * @brief Organism-agnostic perception system for scent emission and detection
  *
  * Provides unified perception calculations that work for ANY organism type
- * through the IGeneticOrganism interface, supporting the Unified Organism vision.
+ * through the Organism interface, supporting the Unified Organism vision.
  *
  * Key Design Principles:
  * - NO type-specific code (no Plant, Creature, or DietType references)
- * - All organism queries use IGeneticOrganism& and phenotype traits
+ * - All organism queries use Organism& and phenotype traits
  * - Integrates with existing ScentLayer and its 8-element signature array
- * - Position passed as parameters (IGeneticOrganism doesn't expose position)
+ * - Position passed as parameters (Organism doesn't expose position)
  *
  * @see docs/code-review/recommendations/creature-decomposition-plan.md (lines 714-778)
  * @see plans/color-vision-detection-analysis.md (lines 67-125)
@@ -32,7 +32,7 @@ namespace EcoSim {
     struct ScentDeposit;
 
 namespace Genetics {
-    class IGeneticOrganism;
+    class Organism;
     class Phenotype;
 } // namespace Genetics
 } // namespace EcoSim
@@ -84,13 +84,13 @@ public:
      * - [6] size_gene     - getTrait("size_gene")
      * - [7] reserved      - 0.0f
      *
-     * @param organism Any organism implementing IGeneticOrganism
+     * @param organism Any organism implementing Organism
      * @return 8-element scent signature array compatible with ScentDeposit
      *
      * @note Missing traits default to 0.0f, allowing this to work for
      *       organisms that don't have all traits (e.g., plants without size_gene)
      */
-    std::array<float, 8> buildScentSignature(const IGeneticOrganism& organism) const;
+    std::array<float, 8> buildScentSignature(const Organism& organism) const;
     
     // =========================================================================
     // Scent Emission
@@ -114,7 +114,7 @@ public:
      *       no scent is deposited. This allows some organisms to be "scentless".
      */
     void depositScent(
-        const IGeneticOrganism& organism,
+        const Organism& organism,
         int posX, int posY,
         int sourceId,
         ScentLayer& scentLayer,
@@ -142,7 +142,7 @@ public:
      *       radius = scent_detection * 100 (so 0.5 = 50 tiles)
      */
     std::optional<std::pair<int, int>> detectFoodDirection(
-        const IGeneticOrganism& seeker,
+        const Organism& seeker,
         int seekerX, int seekerY,
         const ScentLayer& scentLayer) const;
     
@@ -160,7 +160,7 @@ public:
      * @return Optional (targetX, targetY) if mate scent found, nullopt otherwise
      */
     std::optional<std::pair<int, int>> detectMateDirection(
-        const IGeneticOrganism& seeker,
+        const Organism& seeker,
         int seekerX, int seekerY,
         int seekerId,
         const ScentLayer& scentLayer) const;
@@ -189,7 +189,7 @@ public:
      */
     bool isEdibleScent(
         const std::array<float, 8>& signature,
-        const IGeneticOrganism& eater) const;
+        const Organism& eater) const;
     
     // =========================================================================
     // Detection Range Calculations
@@ -208,7 +208,7 @@ public:
      * @return Visual detection range in world units (tiles)
      */
     float calculateVisualRange(
-        const IGeneticOrganism& seeker,
+        const Organism& seeker,
         float targetColorfulness) const;
     
     /**
@@ -219,7 +219,7 @@ public:
      * @param seeker The organism doing the smelling
      * @return Scent detection range in world units (tiles)
      */
-    float calculateScentRange(const IGeneticOrganism& seeker) const;
+    float calculateScentRange(const Organism& seeker) const;
     
     /**
      * @brief Calculate effective detection range (max of visual and scent)
@@ -231,7 +231,7 @@ public:
      * @return Effective detection range in world units
      */
     float calculateEffectiveRange(
-        const IGeneticOrganism& seeker,
+        const Organism& seeker,
         float targetColorfulness) const;
     
     // =========================================================================

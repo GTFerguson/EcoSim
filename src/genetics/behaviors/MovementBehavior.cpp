@@ -2,7 +2,7 @@
 #include "genetics/behaviors/BehaviorContext.hpp"
 #include "genetics/expression/Phenotype.hpp"
 #include "genetics/expression/PhenotypeUtils.hpp"
-#include "genetics/interfaces/IGeneticOrganism.hpp"
+#include "genetics/organisms/Organism.hpp"
 #include "genetics/interfaces/IPositionable.hpp"
 #include "genetics/defaults/UniversalGenes.hpp"
 #include "genetics/core/RandomEngine.hpp"
@@ -18,7 +18,7 @@ std::string MovementBehavior::getId() const {
     return "movement";
 }
 
-bool MovementBehavior::isApplicable(const IGeneticOrganism& organism,
+bool MovementBehavior::isApplicable(const Organism& organism,
                                      const BehaviorContext& ctx) const {
     if (!canMove(organism)) {
         return false;
@@ -27,11 +27,11 @@ bool MovementBehavior::isApplicable(const IGeneticOrganism& organism,
     return hasTarget_ || true;
 }
 
-float MovementBehavior::getPriority(const IGeneticOrganism& organism) const {
+float MovementBehavior::getPriority(const Organism& organism) const {
     return static_cast<float>(BehaviorPriority::LOW);
 }
 
-BehaviorResult MovementBehavior::execute(IGeneticOrganism& organism,
+BehaviorResult MovementBehavior::execute(Organism& organism,
                                           BehaviorContext& ctx) {
     BehaviorResult result;
     result.executed = true;
@@ -127,7 +127,7 @@ BehaviorResult MovementBehavior::execute(IGeneticOrganism& organism,
     return result;
 }
 
-float MovementBehavior::getEnergyCost(const IGeneticOrganism& organism) const {
+float MovementBehavior::getEnergyCost(const Organism& organism) const {
     return calculateMovementCost(organism, 1.0f);
 }
 
@@ -151,7 +151,7 @@ std::pair<int, int> MovementBehavior::getTarget() const {
     return {targetX_, targetY_};
 }
 
-float MovementBehavior::getMovementSpeed(const IGeneticOrganism& organism) const {
+float MovementBehavior::getMovementSpeed(const Organism& organism) const {
     const Phenotype& phenotype = organism.getPhenotype();
     
     float locomotion = getTraitSafe(phenotype, UniversalGenes::LOCOMOTION, 0.0f);
@@ -168,7 +168,7 @@ float MovementBehavior::getMovementSpeed(const IGeneticOrganism& organism) const
     return std::max(MIN_SPEED, speed);
 }
 
-float MovementBehavior::calculateMovementCost(const IGeneticOrganism& organism, float distance) const {
+float MovementBehavior::calculateMovementCost(const Organism& organism, float distance) const {
     const Phenotype& phenotype = organism.getPhenotype();
     
     float metabolism = getTraitSafe(phenotype, UniversalGenes::METABOLISM_RATE, 0.0f);
@@ -176,14 +176,14 @@ float MovementBehavior::calculateMovementCost(const IGeneticOrganism& organism, 
     return BASE_MOVEMENT_COST * distance * metabolism;
 }
 
-bool MovementBehavior::canMove(const IGeneticOrganism& organism) const {
+bool MovementBehavior::canMove(const Organism& organism) const {
     const Phenotype& phenotype = organism.getPhenotype();
     float locomotion = getTraitSafe(phenotype, UniversalGenes::LOCOMOTION, 0.0f);
     
     return locomotion > LOCOMOTION_THRESHOLD;
 }
 
-void MovementBehavior::updatePosition(IGeneticOrganism& organism, float newX, float newY) {
+void MovementBehavior::updatePosition(Organism& organism, float newX, float newY) {
     IPositionable* positionable = dynamic_cast<IPositionable*>(&organism);
     if (positionable) {
         positionable->setWorldPosition(newX, newY);

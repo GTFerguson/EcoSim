@@ -7,7 +7,7 @@ namespace EcoSim {
 namespace Genetics {
 
 // Forward declarations
-class IGeneticOrganism;
+class Organism;
 struct BehaviorContext;
 
 /**
@@ -72,7 +72,7 @@ public:
      *   - organism is hungry
      *   - prey is detected nearby
      */
-    virtual bool isApplicable(const IGeneticOrganism& organism,
+    virtual bool isApplicable(const Organism& organism,
                               const BehaviorContext& ctx) const = 0;
     
     /**
@@ -84,7 +84,7 @@ public:
      * @param organism The organism to evaluate
      * @return Priority value (higher = more urgent)
      */
-    virtual float getPriority(const IGeneticOrganism& organism) const = 0;
+    virtual float getPriority(const Organism& organism) const = 0;
     
     /**
      * @brief Execute the behavior for one tick
@@ -96,7 +96,7 @@ public:
      * @param ctx Behavior context with world access
      * @return Result indicating what happened
      */
-    virtual BehaviorResult execute(IGeneticOrganism& organism,
+    virtual BehaviorResult execute(Organism& organism,
                                    BehaviorContext& ctx) = 0;
     
     /**
@@ -107,7 +107,7 @@ public:
      * @param organism The organism that would execute
      * @return Estimated energy units consumed
      */
-    virtual float getEnergyCost(const IGeneticOrganism& organism) const = 0;
+    virtual float getEnergyCost(const Organism& organism) const = 0;
 };
 
 /**

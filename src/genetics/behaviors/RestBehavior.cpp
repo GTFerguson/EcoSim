@@ -1,4 +1,5 @@
 #include "genetics/behaviors/RestBehavior.hpp"
+#include "genetics/organisms/Organism.hpp"
 #include "genetics/expression/Phenotype.hpp"
 #include "genetics/expression/PhenotypeUtils.hpp"
 #include "genetics/defaults/UniversalGenes.hpp"
@@ -14,12 +15,12 @@ std::string RestBehavior::getId() const {
     return "rest";
 }
 
-bool RestBehavior::isApplicable(const IGeneticOrganism& organism,
+bool RestBehavior::isApplicable(const Organism& organism,
                                  const BehaviorContext& ctx) const {
     return isTired(organism);
 }
 
-float RestBehavior::getPriority(const IGeneticOrganism& organism) const {
+float RestBehavior::getPriority(const Organism& organism) const {
     float fatigue = getFatigueLevel(organism);
     float threshold = getFatigueThreshold(organism);
     
@@ -35,7 +36,7 @@ float RestBehavior::getPriority(const IGeneticOrganism& organism) const {
     return priority;
 }
 
-BehaviorResult RestBehavior::execute(IGeneticOrganism& organism,
+BehaviorResult RestBehavior::execute(Organism& organism,
                                       BehaviorContext& ctx) {
     BehaviorResult result;
     result.executed = false;
@@ -68,11 +69,11 @@ BehaviorResult RestBehavior::execute(IGeneticOrganism& organism,
     return result;
 }
 
-float RestBehavior::getEnergyCost(const IGeneticOrganism& organism) const {
+float RestBehavior::getEnergyCost(const Organism& organism) const {
     return REST_ENERGY_COST;
 }
 
-float RestBehavior::getFatigueLevel(const IGeneticOrganism& organism) const {
+float RestBehavior::getFatigueLevel(const Organism& organism) const {
     const Phenotype& phenotype = organism.getPhenotype();
     
     float threshold = getTraitSafe(phenotype,
@@ -82,7 +83,7 @@ float RestBehavior::getFatigueLevel(const IGeneticOrganism& organism) const {
     return threshold * 1.5f;
 }
 
-float RestBehavior::getFatigueThreshold(const IGeneticOrganism& organism) const {
+float RestBehavior::getFatigueThreshold(const Organism& organism) const {
     const Phenotype& phenotype = organism.getPhenotype();
     
     if (phenotype.hasTrait(UniversalGenes::FATIGUE_THRESHOLD)) {
@@ -92,7 +93,7 @@ float RestBehavior::getFatigueThreshold(const IGeneticOrganism& organism) const 
     return DEFAULT_FATIGUE_THRESHOLD;
 }
 
-float RestBehavior::getRecoveryRate(const IGeneticOrganism& organism) const {
+float RestBehavior::getRecoveryRate(const Organism& organism) const {
     const Phenotype& phenotype = organism.getPhenotype();
     
     float metabolism = getTraitSafe(phenotype,
@@ -106,7 +107,7 @@ float RestBehavior::getRecoveryRate(const IGeneticOrganism& organism) const {
     return DEFAULT_RECOVERY_RATE * (1.0f + regeneration) * metabolism;
 }
 
-bool RestBehavior::isTired(const IGeneticOrganism& organism) const {
+bool RestBehavior::isTired(const Organism& organism) const {
     float fatigue = getFatigueLevel(organism);
     float threshold = getFatigueThreshold(organism);
     

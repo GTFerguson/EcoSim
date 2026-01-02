@@ -24,7 +24,7 @@ std::string FeedingBehavior::getId() const {
     return "feeding";
 }
 
-bool FeedingBehavior::isApplicable(const IGeneticOrganism& organism,
+bool FeedingBehavior::isApplicable(const Organism& organism,
                                     const BehaviorContext& ctx) const {
     // Check if organism can eat plants
     if (!canEatPlants(organism)) {
@@ -39,7 +39,7 @@ bool FeedingBehavior::isApplicable(const IGeneticOrganism& organism,
     return hunger < threshold;
 }
 
-float FeedingBehavior::getPriority(const IGeneticOrganism& organism) const {
+float FeedingBehavior::getPriority(const Organism& organism) const {
     float hunger = getHungerLevel(organism);
     float threshold = getHungerThreshold(organism);
     
@@ -59,7 +59,7 @@ float FeedingBehavior::getPriority(const IGeneticOrganism& organism) const {
     return priority;
 }
 
-BehaviorResult FeedingBehavior::execute(IGeneticOrganism& organism,
+BehaviorResult FeedingBehavior::execute(Organism& organism,
                                          BehaviorContext& ctx) {
     BehaviorResult result;
     result.executed = false;
@@ -94,7 +94,7 @@ BehaviorResult FeedingBehavior::execute(IGeneticOrganism& organism,
     int targetY = targetPlant->getY();
     
     // We need organism position to calculate distance
-    // Since IGeneticOrganism doesn't expose position, we'll use perception system
+    // Since Organism doesn't expose position, we'll use perception system
     // to check if the plant is within eating range based on context
     
     // Check if adjacent to target (within eating distance)
@@ -131,7 +131,7 @@ BehaviorResult FeedingBehavior::execute(IGeneticOrganism& organism,
     return result;
 }
 
-float FeedingBehavior::getEnergyCost(const IGeneticOrganism& organism) const {
+float FeedingBehavior::getEnergyCost(const Organism& organism) const {
     // Base cost modified by organism's metabolism
     const Phenotype& phenotype = organism.getPhenotype();
     float metabolism = getTraitSafe(phenotype, UniversalGenes::METABOLISM_RATE, 0.0f);
@@ -139,7 +139,7 @@ float FeedingBehavior::getEnergyCost(const IGeneticOrganism& organism) const {
     return BASE_ENERGY_COST * (0.5f + metabolism);
 }
 
-bool FeedingBehavior::canEatPlants(const IGeneticOrganism& organism) const {
+bool FeedingBehavior::canEatPlants(const Organism& organism) const {
     const Phenotype& phenotype = organism.getPhenotype();
     float plantDigestion = getTraitSafe(phenotype,
                                          UniversalGenes::PLANT_DIGESTION_EFFICIENCY, 
@@ -148,7 +148,7 @@ bool FeedingBehavior::canEatPlants(const IGeneticOrganism& organism) const {
     return plantDigestion > PLANT_DIGESTION_THRESHOLD;
 }
 
-Plant* FeedingBehavior::findNearestEdiblePlant(const IGeneticOrganism& organism,
+Plant* FeedingBehavior::findNearestEdiblePlant(const Organism& organism,
                                                 const BehaviorContext& ctx) const {
     if (!ctx.world) {
         return nullptr;
@@ -161,7 +161,7 @@ Plant* FeedingBehavior::findNearestEdiblePlant(const IGeneticOrganism& organism,
     float nearestDistance = detectionRange + 1.0f;
     
     // Search the world for plants
-    // Since we don't have organism position through IGeneticOrganism,
+    // Since we don't have organism position through Organism,
     // we'll search all tiles within world bounds
     // In a complete implementation, organism position would be provided
     
@@ -187,7 +187,7 @@ Plant* FeedingBehavior::findNearestEdiblePlant(const IGeneticOrganism& organism,
     return nullptr;
 }
 
-float FeedingBehavior::getHungerLevel(const IGeneticOrganism& organism) const {
+float FeedingBehavior::getHungerLevel(const Organism& organism) const {
     // Try to get hunger from phenotype traits
     // In a full implementation, OrganismState would track current hunger
     const Phenotype& phenotype = organism.getPhenotype();
@@ -201,7 +201,7 @@ float FeedingBehavior::getHungerLevel(const IGeneticOrganism& organism) const {
     return 0.3f;  // Default to 30% full (hungry)
 }
 
-float FeedingBehavior::getHungerThreshold(const IGeneticOrganism& organism) const {
+float FeedingBehavior::getHungerThreshold(const Organism& organism) const {
     const Phenotype& phenotype = organism.getPhenotype();
     
     // Try to get from phenotype
@@ -214,7 +214,7 @@ float FeedingBehavior::getHungerThreshold(const IGeneticOrganism& organism) cons
     return DEFAULT_HUNGER_THRESHOLD;
 }
 
-float FeedingBehavior::getDetectionRange(const IGeneticOrganism& organism) const {
+float FeedingBehavior::getDetectionRange(const Organism& organism) const {
     const Phenotype& phenotype = organism.getPhenotype();
     
     // Base sight range

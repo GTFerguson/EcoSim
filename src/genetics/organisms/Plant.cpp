@@ -373,11 +373,11 @@ ReproductionMode Plant::getReproductionMode() const {
     return ReproductionMode::ASEXUAL;
 }
 
-bool Plant::isCompatibleWith(const IGeneticOrganism& /* other */) const {
+bool Plant::isCompatibleWith(const Organism& /* other */) const {
     return false;
 }
 
-std::unique_ptr<IGeneticOrganism> Plant::reproduce(const IGeneticOrganism* /* partner */) {
+std::unique_ptr<Organism> Plant::reproduce(const Organism* /* partner */) {
     if (!canReproduce() || !registry_) {
         return nullptr;
     }

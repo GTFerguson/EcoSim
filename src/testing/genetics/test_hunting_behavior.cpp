@@ -25,7 +25,7 @@
 #include "genetics/expression/Phenotype.hpp"
 #include "genetics/expression/OrganismState.hpp"
 #include "genetics/expression/EnvironmentState.hpp"
-#include "genetics/interfaces/IGeneticOrganism.hpp"
+#include "genetics/organisms/Organism.hpp"
 #include <memory>
 #include <iostream>
 #include <cmath>
@@ -36,40 +36,15 @@ using namespace EcoSim::Testing;
 /**
  * @brief Mock organism for testing hunting behavior
  *
- * Implements IGeneticOrganism interface for isolated testing
+ * Implements Organism interface for isolated testing
  * without requiring full Creature dependencies.
  */
-class MockOrganism : public IGeneticOrganism {
+class MockOrganism : public Organism {
 public:
     MockOrganism(GeneRegistry& registry)
-        : genome_(UniversalGenes::createCreatureGenome(registry))
-        , phenotype_(&genome_, &registry)
+        : Organism(0, 0, UniversalGenes::createCreatureGenome(registry), registry)
         , registry_(registry)
     {
-        // Set up adult organism state for proper trait expression
-        // Without this, age_normalized = 0 triggers juvenile reduction (60%)
-        OrganismState state;
-        state.age_normalized = 0.5f;  // Adult: full expression
-        state.health = 1.0f;          // Full health: no penalty
-        state.energy_level = 0.5f;    // Normal energy
-        
-        EnvironmentState env;
-        env.temperature = 20.0f;
-        env.humidity = 0.5f;
-        env.time_of_day = 0.5f;
-        
-        phenotype_.updateContext(env, state);
-    }
-    
-    ~MockOrganism() override = default;
-    
-    const Genome& getGenome() const override { return genome_; }
-    Genome& getGenomeMutable() override { return genome_; }
-    const Phenotype& getPhenotype() const override { return phenotype_; }
-    void updatePhenotype() override {
-        phenotype_ = Phenotype(&genome_, &registry_);
-        
-        // Re-apply adult organism state after phenotype recreation
         OrganismState state;
         state.age_normalized = 0.5f;
         state.health = 1.0f;
@@ -80,19 +55,39 @@ public:
         env.humidity = 0.5f;
         env.time_of_day = 0.5f;
         
-        phenotype_.updateContext(env, state);
+        Organism::updatePhenotype();
     }
     
+    ~MockOrganism() noexcept override = default;
+    
+    // IPositionable - world coordinates
+    float getWorldX() const override { return static_cast<float>(getX()); }
+    float getWorldY() const override { return static_cast<float>(getY()); }
+    void setWorldPosition(float, float) override {}
+    
+    // ILifecycle
+    unsigned int getMaxLifespan() const override { return 10000; }
+    void grow() override {}
+    
+    // IReproducible
+    bool canReproduce() const override { return false; }
+    float getReproductiveUrge() const override { return 0.0f; }
+    float getReproductionEnergyCost() const override { return 10.0f; }
+    ReproductionMode getReproductionMode() const override { return ReproductionMode::SEXUAL; }
+    bool isCompatibleWith(const Organism&) const override { return false; }
+    std::unique_ptr<Organism> reproduce(const Organism* = nullptr) override { return nullptr; }
+    
+    // Organism abstract methods
+    float getMaxSize() const override { return 1.0f; }
+    
     void setGene(const std::string& geneName, float value) {
-        if (genome_.hasGene(geneName)) {
-            genome_.getGeneMutable(geneName).setAlleleValues(value);
+        if (getGenomeMutable().hasGene(geneName)) {
+            getGenomeMutable().getGeneMutable(geneName).setAlleleValues(value);
         }
-        updatePhenotype();
+        Organism::updatePhenotype();
     }
     
 private:
-    Genome genome_;
-    mutable Phenotype phenotype_;
     GeneRegistry& registry_;
 };
 

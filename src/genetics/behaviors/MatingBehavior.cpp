@@ -4,7 +4,7 @@
 #include "genetics/expression/Phenotype.hpp"
 #include "genetics/expression/PhenotypeUtils.hpp"
 #include "genetics/expression/OrganismState.hpp"
-#include "genetics/interfaces/IGeneticOrganism.hpp"
+#include "genetics/organisms/Organism.hpp"
 #include "genetics/interfaces/IPositionable.hpp"
 #include "genetics/interfaces/ILifecycle.hpp"
 #include "genetics/defaults/UniversalGenes.hpp"
@@ -29,7 +29,7 @@ std::string MatingBehavior::getId() const {
     return "mating";
 }
 
-bool MatingBehavior::isApplicable(const IGeneticOrganism& organism,
+bool MatingBehavior::isApplicable(const Organism& organism,
                                    const BehaviorContext& ctx) const {
     if (!isReadyToMate(organism)) {
         return false;
@@ -46,7 +46,7 @@ bool MatingBehavior::isApplicable(const IGeneticOrganism& organism,
     return true;
 }
 
-float MatingBehavior::getPriority(const IGeneticOrganism& organism) const {
+float MatingBehavior::getPriority(const Organism& organism) const {
     float mateValue = getMateValue(organism);
     
     float priority = BASE_PRIORITY;
@@ -57,7 +57,7 @@ float MatingBehavior::getPriority(const IGeneticOrganism& organism) const {
     return std::min(priority, BASE_PRIORITY + MAX_PRIORITY_BOOST);
 }
 
-BehaviorResult MatingBehavior::execute(IGeneticOrganism& organism,
+BehaviorResult MatingBehavior::execute(Organism& organism,
                                         BehaviorContext& ctx) {
     BehaviorResult result;
     result.executed = true;
@@ -69,7 +69,7 @@ BehaviorResult MatingBehavior::execute(IGeneticOrganism& organism,
         return result;
     }
     
-    IGeneticOrganism* mate = findMate(organism, ctx);
+    Organism* mate = findMate(organism, ctx);
     
     if (!mate) {
         result.debugInfo = "No compatible mate found in range";
@@ -110,7 +110,7 @@ BehaviorResult MatingBehavior::execute(IGeneticOrganism& organism,
     return result;
 }
 
-float MatingBehavior::getEnergyCost(const IGeneticOrganism& organism) const {
+float MatingBehavior::getEnergyCost(const Organism& organism) const {
     return BREED_COST;
 }
 
@@ -118,12 +118,12 @@ void MatingBehavior::setOffspringCallback(OffspringCallback callback) {
     offspringCallback_ = std::move(callback);
 }
 
-bool MatingBehavior::isReadyToMate(const IGeneticOrganism& organism) const {
+bool MatingBehavior::isReadyToMate(const Organism& organism) const {
     float mateValue = getMateValue(organism);
     return mateValue >= MATE_THRESHOLD;
 }
 
-float MatingBehavior::getMateValue(const IGeneticOrganism& organism) const {
+float MatingBehavior::getMateValue(const Organism& organism) const {
     const Phenotype& phenotype = organism.getPhenotype();
     
     if (phenotype.hasTrait(UniversalGenes::MATE_THRESHOLD)) {
@@ -134,8 +134,8 @@ float MatingBehavior::getMateValue(const IGeneticOrganism& organism) const {
     return 0.0f;
 }
 
-float MatingBehavior::checkFitness(const IGeneticOrganism& seeker,
-                                    const IGeneticOrganism& candidate) const {
+float MatingBehavior::checkFitness(const Organism& seeker,
+                                    const Organism& candidate) const {
     const Phenotype& seekerPhenotype = seeker.getPhenotype();
     float sightRange = getTraitSafe(seekerPhenotype, UniversalGenes::SIGHT_RANGE, 0.0f);
     
@@ -152,12 +152,12 @@ float MatingBehavior::checkFitness(const IGeneticOrganism& seeker,
     return (proximity / 2.0f) + similarity;
 }
 
-IGeneticOrganism* MatingBehavior::findMate(const IGeneticOrganism& seeker,
+Organism* MatingBehavior::findMate(const Organism& seeker,
                                            const BehaviorContext& ctx) const {
     return nullptr;
 }
 
-bool MatingBehavior::isMature(const IGeneticOrganism& organism) const {
+bool MatingBehavior::isMature(const Organism& organism) const {
     const ILifecycle* lifecycle = dynamic_cast<const ILifecycle*>(&organism);
     if (!lifecycle) {
         return true;  // Assume mature if no lifecycle info available
@@ -167,7 +167,7 @@ bool MatingBehavior::isMature(const IGeneticOrganism& organism) const {
     return ageNormalized >= MATURITY_AGE_RATIO;
 }
 
-bool MatingBehavior::hasResourcesToBread(const IGeneticOrganism& organism) const {
+bool MatingBehavior::hasResourcesToBread(const Organism& organism) const {
     const Phenotype& phenotype = organism.getPhenotype();
     
     float hunger = getTraitSafe(phenotype, UniversalGenes::HUNGER_THRESHOLD, 0.0f);
@@ -175,16 +175,16 @@ bool MatingBehavior::hasResourcesToBread(const IGeneticOrganism& organism) const
     return hunger >= MIN_HUNGER_TO_BREED;
 }
 
-float MatingBehavior::calculateGeneticSimilarity(const IGeneticOrganism& org1,
-                                                  const IGeneticOrganism& org2) const {
+float MatingBehavior::calculateGeneticSimilarity(const Organism& org1,
+                                                  const Organism& org2) const {
     const Genome& genome1 = org1.getGenome();
     const Genome& genome2 = org2.getGenome();
     
     return genome1.compare(genome2);
 }
 
-float MatingBehavior::calculateDistance(const IGeneticOrganism& org1,
-                                         const IGeneticOrganism& org2) const {
+float MatingBehavior::calculateDistance(const Organism& org1,
+                                         const Organism& org2) const {
     const auto* pos1 = dynamic_cast<const IPositionable*>(&org1);
     const auto* pos2 = dynamic_cast<const IPositionable*>(&org2);
     
@@ -197,8 +197,8 @@ float MatingBehavior::calculateDistance(const IGeneticOrganism& org1,
     return 0.0f;
 }
 
-std::unique_ptr<Genome> MatingBehavior::createOffspringGenome(const IGeneticOrganism& parent1,
-                                                               const IGeneticOrganism& parent2) const {
+std::unique_ptr<Genome> MatingBehavior::createOffspringGenome(const Organism& parent1,
+                                                               const Organism& parent2) const {
     const Genome& genome1 = parent1.getGenome();
     const Genome& genome2 = parent2.getGenome();
     
@@ -209,7 +209,7 @@ std::unique_ptr<Genome> MatingBehavior::createOffspringGenome(const IGeneticOrga
     return std::make_unique<Genome>(std::move(crossed));
 }
 
-unsigned int MatingBehavior::getOrganismId(const IGeneticOrganism& organism) const {
+unsigned int MatingBehavior::getOrganismId(const Organism& organism) const {
     const Genome& genome = organism.getGenome();
     return static_cast<unsigned int>(std::hash<const Genome*>{}(&genome));
 }

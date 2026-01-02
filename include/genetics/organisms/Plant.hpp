@@ -1,7 +1,6 @@
 #pragma once
 
 #include "genetics/organisms/Organism.hpp"
-#include "genetics/interfaces/IGeneticOrganism.hpp"
 #include "genetics/expression/EnvironmentState.hpp"
 #include "genetics/expression/EnergyBudget.hpp"
 #include "rendering/RenderTypes.hpp"
@@ -50,7 +49,7 @@ enum class DispersalStrategy {
  *   }
  * @endcode
  */
-class Plant : public Organism, public IGeneticOrganism {
+class Plant : public Organism {
 public:
     /**
      * @brief Construct a plant with a random genome
@@ -152,31 +151,6 @@ public:
     unsigned int getMaxLifespan() const override;
     
     // ========================================================================
-    // IGeneticOrganism overrides - Satisfies both IGenetic and IGeneticOrganism
-    // ========================================================================
-    
-    /// Get const reference to genome (satisfies both IGenetic and IGeneticOrganism)
-    const Genome& getGenome() const override { return Organism::getGenome(); }
-    
-    /// Get mutable reference to genome
-    Genome& getGenomeMutable() override { return Organism::getGenomeMutable(); }
-    
-    /// Get const reference to phenotype
-    const Phenotype& getPhenotype() const override { return Organism::getPhenotype(); }
-    
-    /// Recalculate expressed traits from genome
-    void updatePhenotype() override;
-    
-    /// Get tile X coordinate (satisfies both IPositionable and IGeneticOrganism)
-    int getX() const override { return Organism::getX(); }
-    
-    /// Get tile Y coordinate
-    int getY() const override { return Organism::getY(); }
-    
-    /// Get unique identifier
-    int getId() const override { return Organism::getId(); }
-    
-    // ========================================================================
     // IReproducible overrides - Asexual seed-based reproduction
     // ========================================================================
     
@@ -211,15 +185,24 @@ public:
      * @param other The other organism
      * @return Always false for plants (asexual reproduction)
      */
-    bool isCompatibleWith(const IGeneticOrganism& other) const override;
+    bool isCompatibleWith(const Organism& other) const override;
     
     /**
      * @brief Reproduce to create offspring
      * @param partner Unused for asexual plant reproduction (should be nullptr)
-     * @return Offspring as IGeneticOrganism pointer
+     * @return Offspring as Organism pointer
      */
-    std::unique_ptr<IGeneticOrganism> reproduce(
-        const IGeneticOrganism* partner = nullptr) override;
+    std::unique_ptr<Organism> reproduce(
+        const Organism* partner = nullptr) override;
+    
+    // ========================================================================
+    // IGenetic overrides
+    // ========================================================================
+    
+    /**
+     * @brief Recalculate expressed traits from genome
+     */
+    void updatePhenotype() override;
     
     // ========================================================================
     // Organism overrides - Growth system

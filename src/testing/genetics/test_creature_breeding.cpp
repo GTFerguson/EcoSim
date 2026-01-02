@@ -9,7 +9,7 @@
  * - Resource costs for breeding
  * - Genetic inheritance
  *
- * @todo These tests use dynamic_cast to convert IGeneticOrganism* to Creature*.
+ * @todo These tests use dynamic_cast to convert Organism* to Creature*.
  * This will be simplified when Creature/Plant are unified into a single Organism class.
  */
 
@@ -19,7 +19,7 @@
 #include "genetics/core/GeneRegistry.hpp"
 #include "genetics/expression/Phenotype.hpp"
 #include "genetics/defaults/UniversalGenes.hpp"
-#include "genetics/interfaces/IGeneticOrganism.hpp"
+#include "genetics/organisms/Organism.hpp"
 
 #include <cmath>
 #include <memory>

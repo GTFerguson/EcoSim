@@ -14,7 +14,7 @@
 #include "test_framework.hpp"
 #include "genetics/behaviors/MovementBehavior.hpp"
 #include "genetics/behaviors/BehaviorContext.hpp"
-#include "genetics/interfaces/IGeneticOrganism.hpp"
+#include "genetics/organisms/Organism.hpp"
 #include "genetics/interfaces/IPositionable.hpp"
 #include "genetics/core/Genome.hpp"
 #include "genetics/core/GeneRegistry.hpp"
@@ -29,74 +29,77 @@
 using namespace EcoSim::Testing;
 using namespace EcoSim::Genetics;
 
-class MockGeneticOrganism : public IGeneticOrganism, public IPositionable {
+class MockGeneticOrganism : public Organism {
 public:
     MockGeneticOrganism()
-        : registry_(std::make_shared<GeneRegistry>())
+        : Organism(10, 10, createGenome(), *getSharedRegistry())
         , worldX_(10.5f)
         , worldY_(10.5f)
     {
-        UniversalGenes::registerDefaults(*registry_);
-        genome_ = std::make_unique<Genome>(
-            UniversalGenes::createCreatureGenome(*registry_)
-        );
-        phenotype_ = std::make_unique<Phenotype>(genome_.get(), registry_.get());
-        
         EnvironmentState env;
         OrganismState state;
         state.age_normalized = 0.5f;
         state.health = 1.0f;
         state.energy_level = 0.5f;
-        phenotype_->updateContext(env, state);
+        Organism::updatePhenotype();
     }
     
-    const Genome& getGenome() const override { return *genome_; }
-    Genome& getGenomeMutable() override { return *genome_; }
-    const Phenotype& getPhenotype() const override { return *phenotype_; }
-    void updatePhenotype() override {
-        EnvironmentState env;
-        OrganismState state;
-        state.age_normalized = 0.5f;
-        state.health = 1.0f;
-        state.energy_level = 0.5f;
-        phenotype_->updateContext(env, state);
-    }
+    ~MockGeneticOrganism() noexcept override = default;
     
-    // Tile coordinates (for collision detection, NCurses rendering)
-    int getX() const override { return static_cast<int>(worldX_); }
-    int getY() const override { return static_cast<int>(worldY_); }
-    int getId() const override { return 0; }
-    
-    // Float coordinates (for actual position in world)
+    // IPositionable - world coordinates
     float getWorldX() const override { return worldX_; }
     float getWorldY() const override { return worldY_; }
     void setWorldPosition(float x, float y) override { worldX_ = x; worldY_ = y; }
+    
+    // ILifecycle
+    unsigned int getMaxLifespan() const override { return 10000; }
+    void grow() override {}
+    
+    // IReproducible
+    bool canReproduce() const override { return false; }
+    float getReproductiveUrge() const override { return 0.0f; }
+    float getReproductionEnergyCost() const override { return 10.0f; }
+    ReproductionMode getReproductionMode() const override { return ReproductionMode::SEXUAL; }
+    bool isCompatibleWith(const Organism&) const override { return false; }
+    std::unique_ptr<Organism> reproduce(const Organism* = nullptr) override { return nullptr; }
+    
+    // Organism abstract methods
+    float getMaxSize() const override { return 1.0f; }
     
     // Convenience method for tests
     void setPosition(float x, float y) { worldX_ = x; worldY_ = y; }
     
     void setLocomotion(float value) {
-        if (genome_->hasGene(UniversalGenes::LOCOMOTION)) {
-            genome_->getGeneMutable(UniversalGenes::LOCOMOTION).setAlleleValues(value);
-            phenotype_ = std::make_unique<Phenotype>(genome_.get(), registry_.get());
-            updatePhenotype();
+        if (getGenomeMutable().hasGene(UniversalGenes::LOCOMOTION)) {
+            getGenomeMutable().getGeneMutable(UniversalGenes::LOCOMOTION).setAlleleValues(value);
+            Organism::updatePhenotype();
         }
     }
     
     void setMetabolism(float value) {
-        if (genome_->hasGene(UniversalGenes::METABOLISM_RATE)) {
-            genome_->getGeneMutable(UniversalGenes::METABOLISM_RATE).setAlleleValues(value);
-            phenotype_ = std::make_unique<Phenotype>(genome_.get(), registry_.get());
-            updatePhenotype();
+        if (getGenomeMutable().hasGene(UniversalGenes::METABOLISM_RATE)) {
+            getGenomeMutable().getGeneMutable(UniversalGenes::METABOLISM_RATE).setAlleleValues(value);
+            Organism::updatePhenotype();
         }
     }
 
 private:
-    std::shared_ptr<GeneRegistry> registry_;
-    std::unique_ptr<Genome> genome_;
-    std::unique_ptr<Phenotype> phenotype_;
     float worldX_;
     float worldY_;
+    
+    static GeneRegistry* getSharedRegistry() {
+        static GeneRegistry registry;
+        static bool initialized = false;
+        if (!initialized) {
+            UniversalGenes::registerDefaults(registry);
+            initialized = true;
+        }
+        return &registry;
+    }
+    
+    static Genome createGenome() {
+        return UniversalGenes::createCreatureGenome(*getSharedRegistry());
+    }
 };
 
 void test_isApplicable_trueWhenCanMove() {

@@ -23,7 +23,7 @@
 #include "genetics/core/Genome.hpp"
 #include "genetics/expression/Phenotype.hpp"
 #include "genetics/defaults/UniversalGenes.hpp"
-#include "genetics/interfaces/IGeneticOrganism.hpp"
+#include "genetics/organisms/Organism.hpp"
 
 namespace G = EcoSim::Genetics;
 
@@ -38,61 +38,74 @@ static void setGeneValue(G::Genome& genome, const char* gene_id, float value) {
 }
 
 // ============================================================================
-// Mock IGeneticOrganism for testing
+// Mock Organism for testing
 // ============================================================================
 
-class MockOrganism : public G::IGeneticOrganism {
+class MockOrganism : public G::Organism {
 public:
-    ~MockOrganism() override = default;
-    
     MockOrganism(G::GeneRegistry& registry, float plantDigestion)
-        : registry_(registry)
-        , genome_(G::UniversalGenes::createCreatureGenome(registry))
+        : G::Organism(0, 0, createGenome(registry, plantDigestion), registry)
+        , phenotype_(&getGenomeMutable(), &registry)
     {
-        // Set plant digestion trait
-        setGeneValue(genome_, G::UniversalGenes::PLANT_DIGESTION_EFFICIENCY, plantDigestion);
-        setGeneValue(genome_, G::UniversalGenes::SIGHT_RANGE, 50.0f);
-        setGeneValue(genome_, G::UniversalGenes::COLOR_VISION, 0.5f);
-        setGeneValue(genome_, G::UniversalGenes::SCENT_DETECTION, 0.5f);
-        setGeneValue(genome_, G::UniversalGenes::HUNGER_THRESHOLD, 5.0f);  // 0.5 normalized
-        setGeneValue(genome_, G::UniversalGenes::METABOLISM_RATE, 0.5f);
-        
-        phenotype_ = std::make_unique<G::Phenotype>(&genome_, &registry_);
-        
         G::EnvironmentState env;
         G::OrganismState state;
         state.age_normalized = 0.5f;
         state.health = 1.0f;
         state.energy_level = 0.5f;
-        phenotype_->updateContext(env, state);
+        phenotype_.updateContext(env, state);
     }
     
-    const G::Genome& getGenome() const override { return genome_; }
-    G::Genome& getGenomeMutable() override { return genome_; }
-    const G::Phenotype& getPhenotype() const override { return *phenotype_; }
+    ~MockOrganism() override = default;
+    
+    // IGenetic
+    const G::Phenotype& getPhenotype() const override { return phenotype_; }
     void updatePhenotype() override {
         G::EnvironmentState env;
         G::OrganismState state;
         state.age_normalized = 0.5f;
         state.health = 1.0f;
         state.energy_level = 0.5f;
-        phenotype_->updateContext(env, state);
+        phenotype_.updateContext(env, state);
     }
     
-    // Position and ID methods (required by IGeneticOrganism)
-    int getX() const override { return 0; }
-    int getY() const override { return 0; }
-    int getId() const override { return 0; }
+    // IPositionable - world coordinates
+    float getWorldX() const override { return 0.0f; }
+    float getWorldY() const override { return 0.0f; }
+    void setWorldPosition(float, float) override {}
+    
+    // ILifecycle
+    unsigned int getMaxLifespan() const override { return 10000; }
+    void grow() override {}
+    
+    // IReproducible
+    bool canReproduce() const override { return false; }
+    float getReproductiveUrge() const override { return 0.0f; }
+    float getReproductionEnergyCost() const override { return 10.0f; }
+    G::ReproductionMode getReproductionMode() const override { return G::ReproductionMode::SEXUAL; }
+    bool isCompatibleWith(const G::Organism&) const override { return false; }
+    std::unique_ptr<G::Organism> reproduce(const G::Organism* = nullptr) override { return nullptr; }
+    
+    // Organism abstract methods
+    float getMaxSize() const override { return 1.0f; }
     
     void setPlantDigestion(float value) {
-        setGeneValue(genome_, G::UniversalGenes::PLANT_DIGESTION_EFFICIENCY, value);
+        setGeneValue(getGenomeMutable(), G::UniversalGenes::PLANT_DIGESTION_EFFICIENCY, value);
         updatePhenotype();
     }
     
 private:
-    G::GeneRegistry& registry_;
-    G::Genome genome_;
-    std::unique_ptr<G::Phenotype> phenotype_;
+    G::Phenotype phenotype_;
+    
+    static G::Genome createGenome(G::GeneRegistry& registry, float plantDigestion) {
+        G::Genome genome = G::UniversalGenes::createCreatureGenome(registry);
+        setGeneValue(genome, G::UniversalGenes::PLANT_DIGESTION_EFFICIENCY, plantDigestion);
+        setGeneValue(genome, G::UniversalGenes::SIGHT_RANGE, 50.0f);
+        setGeneValue(genome, G::UniversalGenes::COLOR_VISION, 0.5f);
+        setGeneValue(genome, G::UniversalGenes::SCENT_DETECTION, 0.5f);
+        setGeneValue(genome, G::UniversalGenes::HUNGER_THRESHOLD, 5.0f);
+        setGeneValue(genome, G::UniversalGenes::METABOLISM_RATE, 0.5f);
+        return genome;
+    }
 };
 
 // ============================================================================

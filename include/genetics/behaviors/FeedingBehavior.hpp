@@ -2,7 +2,6 @@
 
 #include "genetics/behaviors/IBehavior.hpp"
 #include "genetics/behaviors/BehaviorContext.hpp"
-#include "genetics/interfaces/IGeneticOrganism.hpp"
 #include <memory>
 #include <string>
 
@@ -69,7 +68,7 @@ public:
      * @param ctx Current behavior context
      * @return true if organism can and should eat
      */
-    bool isApplicable(const IGeneticOrganism& organism,
+    bool isApplicable(const Organism& organism,
                       const BehaviorContext& ctx) const override;
     
     /**
@@ -83,7 +82,7 @@ public:
      * @param organism The organism to evaluate
      * @return Priority value (50-75)
      */
-    float getPriority(const IGeneticOrganism& organism) const override;
+    float getPriority(const Organism& organism) const override;
     
     /**
      * @brief Execute feeding behavior
@@ -98,7 +97,7 @@ public:
      * @param ctx Behavior context with world access
      * @return Result with execution status and energy cost
      */
-    BehaviorResult execute(IGeneticOrganism& organism,
+    BehaviorResult execute(Organism& organism,
                           BehaviorContext& ctx) override;
     
     /**
@@ -106,7 +105,7 @@ public:
      * @param organism The organism that would execute
      * @return Energy units consumed (based on metabolism)
      */
-    float getEnergyCost(const IGeneticOrganism& organism) const override;
+    float getEnergyCost(const Organism& organism) const override;
 
 private:
     FeedingInteraction& feeding_;
@@ -117,7 +116,7 @@ private:
      * @param organism The organism to check
      * @return true if plant_digestion > PLANT_DIGESTION_THRESHOLD
      */
-    bool canEatPlants(const IGeneticOrganism& organism) const;
+    bool canEatPlants(const Organism& organism) const;
     
     /**
      * @brief Find the nearest edible plant within range
@@ -125,7 +124,7 @@ private:
      * @param ctx Behavior context with world access
      * @return Pointer to nearest edible plant, or nullptr if none found
      */
-    Plant* findNearestEdiblePlant(const IGeneticOrganism& organism,
+    Plant* findNearestEdiblePlant(const Organism& organism,
                                    const BehaviorContext& ctx) const;
     
     /**
@@ -137,7 +136,7 @@ private:
      * @param organism The organism to query
      * @return Hunger ratio (0-1)
      */
-    float getHungerLevel(const IGeneticOrganism& organism) const;
+    float getHungerLevel(const Organism& organism) const;
     
     /**
      * @brief Get hunger threshold from phenotype
@@ -147,14 +146,14 @@ private:
      * @param organism The organism to query
      * @return Threshold value (typically around 0.5)
      */
-    float getHungerThreshold(const IGeneticOrganism& organism) const;
+    float getHungerThreshold(const Organism& organism) const;
     
     /**
      * @brief Get detection range for finding plants
      * @param organism The organism to query
      * @return Detection range in tiles
      */
-    float getDetectionRange(const IGeneticOrganism& organism) const;
+    float getDetectionRange(const Organism& organism) const;
     
     /**
      * @brief Calculate distance between two positions

@@ -21,7 +21,7 @@
 #include "genetics/core/Genome.hpp"
 #include "genetics/expression/Phenotype.hpp"
 #include "genetics/defaults/UniversalGenes.hpp"
-#include "genetics/interfaces/IGeneticOrganism.hpp"
+#include "genetics/organisms/Organism.hpp"
 
 namespace G = EcoSim::Genetics;
 
@@ -36,60 +36,61 @@ static void setGeneValue(G::Genome& genome, const char* gene_id, float value) {
 }
 
 // ============================================================================
-// Mock IGeneticOrganism for testing
+// Mock Organism for testing
 // ============================================================================
 
-class MockRestOrganism : public G::IGeneticOrganism {
+class MockRestOrganism : public G::Organism {
 public:
     ~MockRestOrganism() override = default;
     
     MockRestOrganism(G::GeneRegistry& registry, float fatigueThreshold, float metabolism = 0.5f, float regeneration = 0.5f)
-        : registry_(registry)
-        , genome_(G::UniversalGenes::createCreatureGenome(registry))
+        : G::Organism(0, 0, G::UniversalGenes::createCreatureGenome(registry), registry)
+        , registry_(registry)
     {
-        setGeneValue(genome_, G::UniversalGenes::FATIGUE_THRESHOLD, fatigueThreshold);
-        setGeneValue(genome_, G::UniversalGenes::METABOLISM_RATE, metabolism);
-        setGeneValue(genome_, G::UniversalGenes::REGENERATION_RATE, regeneration);
-        
-        phenotype_ = std::make_unique<G::Phenotype>(&genome_, &registry_);
+        setGeneValue(getGenomeMutable(), G::UniversalGenes::FATIGUE_THRESHOLD, fatigueThreshold);
+        setGeneValue(getGenomeMutable(), G::UniversalGenes::METABOLISM_RATE, metabolism);
+        setGeneValue(getGenomeMutable(), G::UniversalGenes::REGENERATION_RATE, regeneration);
         
         G::EnvironmentState env;
         G::OrganismState state;
         state.age_normalized = 0.5f;
         state.health = 1.0f;
         state.energy_level = 0.5f;
-        phenotype_->updateContext(env, state);
+        G::Organism::updatePhenotype();
     }
     
-    const G::Genome& getGenome() const override { return genome_; }
-    G::Genome& getGenomeMutable() override { return genome_; }
-    const G::Phenotype& getPhenotype() const override { return *phenotype_; }
-    int getX() const override { return 0; }
-    int getY() const override { return 0; }
-    int getId() const override { return 0; }
-    void updatePhenotype() override {
-        G::EnvironmentState env;
-        G::OrganismState state;
-        state.age_normalized = 0.5f;
-        state.health = 1.0f;
-        state.energy_level = 0.5f;
-        phenotype_->updateContext(env, state);
-    }
+    // IPositionable - world coordinates
+    float getWorldX() const override { return static_cast<float>(getX()); }
+    float getWorldY() const override { return static_cast<float>(getY()); }
+    void setWorldPosition(float, float) override {}
+    
+    // ILifecycle
+    unsigned int getMaxLifespan() const override { return 10000; }
+    void grow() override {}
+    
+    // IReproducible
+    bool canReproduce() const override { return false; }
+    float getReproductiveUrge() const override { return 0.0f; }
+    float getReproductionEnergyCost() const override { return 10.0f; }
+    G::ReproductionMode getReproductionMode() const override { return G::ReproductionMode::SEXUAL; }
+    bool isCompatibleWith(const G::Organism&) const override { return false; }
+    std::unique_ptr<G::Organism> reproduce(const G::Organism* = nullptr) override { return nullptr; }
+    
+    // Organism abstract methods
+    float getMaxSize() const override { return 1.0f; }
     
     void setFatigueThreshold(float value) {
-        setGeneValue(genome_, G::UniversalGenes::FATIGUE_THRESHOLD, value);
-        updatePhenotype();
+        setGeneValue(getGenomeMutable(), G::UniversalGenes::FATIGUE_THRESHOLD, value);
+        G::Organism::updatePhenotype();
     }
     
     void setRegenerationRate(float value) {
-        setGeneValue(genome_, G::UniversalGenes::REGENERATION_RATE, value);
-        updatePhenotype();
+        setGeneValue(getGenomeMutable(), G::UniversalGenes::REGENERATION_RATE, value);
+        G::Organism::updatePhenotype();
     }
     
 private:
     G::GeneRegistry& registry_;
-    G::Genome genome_;
-    std::unique_ptr<G::Phenotype> phenotype_;
 };
 
 // ============================================================================

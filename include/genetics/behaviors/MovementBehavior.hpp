@@ -12,12 +12,12 @@ public:
     ~MovementBehavior() override = default;
     
     std::string getId() const override;
-    bool isApplicable(const IGeneticOrganism& organism,
+    bool isApplicable(const Organism& organism,
                       const BehaviorContext& ctx) const override;
-    float getPriority(const IGeneticOrganism& organism) const override;
-    BehaviorResult execute(IGeneticOrganism& organism,
+    float getPriority(const Organism& organism) const override;
+    BehaviorResult execute(Organism& organism,
                           BehaviorContext& ctx) override;
-    float getEnergyCost(const IGeneticOrganism& organism) const override;
+    float getEnergyCost(const Organism& organism) const override;
     
     void setTarget(int targetX, int targetY);
     void clearTarget();
@@ -33,10 +33,10 @@ private:
     static constexpr float BASE_MOVEMENT_COST = 0.01f;
     static constexpr float DIAGONAL_COST_MULTIPLIER = 1.414f;
     
-    float getMovementSpeed(const IGeneticOrganism& organism) const;
-    float calculateMovementCost(const IGeneticOrganism& organism, float distance) const;
-    bool canMove(const IGeneticOrganism& organism) const;
-    void updatePosition(IGeneticOrganism& organism, float newX, float newY);
+    float getMovementSpeed(const Organism& organism) const;
+    float calculateMovementCost(const Organism& organism, float distance) const;
+    bool canMove(const Organism& organism) const;
+    void updatePosition(Organism& organism, float newX, float newY);
 };
 
 } // namespace Genetics

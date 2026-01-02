@@ -1,6 +1,6 @@
 #include "genetics/behaviors/ZoochoryBehavior.hpp"
 #include "genetics/interactions/SeedDispersal.hpp"
-#include "genetics/interfaces/IGeneticOrganism.hpp"
+#include "genetics/organisms/Organism.hpp"
 #include "genetics/defaults/UniversalGenes.hpp"
 #include "genetics/core/Genome.hpp"
 #include "genetics/core/RandomEngine.hpp"
@@ -18,16 +18,16 @@ std::string ZoochoryBehavior::getId() const {
     return "zoochory";
 }
 
-bool ZoochoryBehavior::isApplicable(const IGeneticOrganism& organism,
+bool ZoochoryBehavior::isApplicable(const Organism& organism,
                                           const BehaviorContext& ctx) const {
     return true;
 }
 
-float ZoochoryBehavior::getPriority(const IGeneticOrganism& organism) const {
+float ZoochoryBehavior::getPriority(const Organism& organism) const {
     return static_cast<float>(BehaviorPriority::IDLE);
 }
 
-BehaviorResult ZoochoryBehavior::execute(IGeneticOrganism& organism,
+BehaviorResult ZoochoryBehavior::execute(Organism& organism,
                                                BehaviorContext& ctx) {
     BehaviorResult result;
     result.executed = true;
@@ -54,7 +54,7 @@ BehaviorResult ZoochoryBehavior::execute(IGeneticOrganism& organism,
     return result;
 }
 
-float ZoochoryBehavior::getEnergyCost(const IGeneticOrganism& organism) const {
+float ZoochoryBehavior::getEnergyCost(const Organism& organism) const {
     return 0.0f;
 }
 
@@ -194,7 +194,7 @@ std::vector<DispersalEvent> ZoochoryBehavior::processBurrDetachment(
     return events;
 }
 
-unsigned int ZoochoryBehavior::getOrganismId(const IGeneticOrganism& organism) const {
+unsigned int ZoochoryBehavior::getOrganismId(const Organism& organism) const {
     const Genome& genome = organism.getGenome();
     return static_cast<unsigned int>(std::hash<const Genome*>{}(&genome));
 }

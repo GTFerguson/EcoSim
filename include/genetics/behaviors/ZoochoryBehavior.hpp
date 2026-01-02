@@ -47,7 +47,7 @@ public:
      * @param ctx Current behavior context
      * @return true - always applicable
      */
-    bool isApplicable(const IGeneticOrganism& organism,
+    bool isApplicable(const Organism& organism,
                       const BehaviorContext& ctx) const override;
     
     /**
@@ -55,7 +55,7 @@ public:
      * @param organism The organism to evaluate
      * @return Priority value (IDLE)
      */
-    float getPriority(const IGeneticOrganism& organism) const override;
+    float getPriority(const Organism& organism) const override;
     
     /**
      * @brief Process gut seeds and burr detachment
@@ -70,7 +70,7 @@ public:
      * @param ctx Behavior context with world access
      * @return Result with dispersal events info
      */
-    BehaviorResult execute(IGeneticOrganism& organism,
+    BehaviorResult execute(Organism& organism,
                           BehaviorContext& ctx) override;
     
     /**
@@ -78,7 +78,7 @@ public:
      * @param organism The organism that would execute
      * @return 0.0f
      */
-    float getEnergyCost(const IGeneticOrganism& organism) const override;
+    float getEnergyCost(const Organism& organism) const override;
     
     /**
      * @brief Attach a burr from a plant to an organism (epizoochory)
@@ -176,7 +176,7 @@ private:
      * @param organism The organism to get ID for
      * @return Hash-based unique identifier
      */
-    unsigned int getOrganismId(const IGeneticOrganism& organism) const;
+    unsigned int getOrganismId(const Organism& organism) const;
 };
 
 } // namespace Genetics

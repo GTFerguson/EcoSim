@@ -38,7 +38,7 @@ void BehaviorController::clearBehaviors() {
     currentBehaviorId_.clear();
 }
 
-BehaviorResult BehaviorController::update(IGeneticOrganism& organism, BehaviorContext& ctx) {
+BehaviorResult BehaviorController::update(Organism& organism, BehaviorContext& ctx) {
     auto applicable = getApplicableBehaviors(organism, ctx);
     
     if (applicable.empty()) {
@@ -92,7 +92,7 @@ std::string BehaviorController::getStatusString() const {
 }
 
 std::vector<IBehavior*> BehaviorController::getApplicableBehaviors(
-    const IGeneticOrganism& organism,
+    const Organism& organism,
     const BehaviorContext& ctx) const {
     
     std::vector<IBehavior*> applicable;

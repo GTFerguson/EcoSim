@@ -13,7 +13,7 @@ class GeneRegistry;
 class Phenotype;
 class Genome;
 
-using OffspringCallback = std::function<void(std::unique_ptr<IGeneticOrganism>)>;
+using OffspringCallback = std::function<void(std::unique_ptr<Organism>)>;
 
 /**
  * @brief Mating/breeding behavior for organisms
@@ -25,7 +25,7 @@ using OffspringCallback = std::function<void(std::unique_ptr<IGeneticOrganism>)>
  * 4. Fitness evaluation - Prefer similar but not too similar mates (avoid inbreeding)
  * 5. Offspring creation - Genetic crossover with mutation
  *
- * All methods use IGeneticOrganism& interface and phenotype traits.
+ * All methods use Organism& interface and phenotype traits.
  * NO type-specific code (no direct Creature references).
  *
  * @see docs/code-review/recommendations/creature-decomposition-plan.md
@@ -58,7 +58,7 @@ public:
      * @param ctx Current behavior context
      * @return true if the organism should consider mating
      */
-    bool isApplicable(const IGeneticOrganism& organism,
+    bool isApplicable(const Organism& organism,
                       const BehaviorContext& ctx) const override;
     
     /**
@@ -70,7 +70,7 @@ public:
      * @param organism The organism to evaluate
      * @return Priority value
      */
-    float getPriority(const IGeneticOrganism& organism) const override;
+    float getPriority(const Organism& organism) const override;
     
     /**
      * @brief Execute mating for one tick
@@ -86,7 +86,7 @@ public:
      * @param ctx Behavior context with world access
      * @return Result indicating outcome
      */
-    BehaviorResult execute(IGeneticOrganism& organism,
+    BehaviorResult execute(Organism& organism,
                           BehaviorContext& ctx) override;
     
     /**
@@ -94,7 +94,7 @@ public:
      * @param organism The organism that would mate
      * @return Estimated energy units consumed (BREED_COST)
      */
-    float getEnergyCost(const IGeneticOrganism& organism) const override;
+    float getEnergyCost(const Organism& organism) const override;
     
     /**
      * @brief Set callback for offspring registration
@@ -121,14 +121,14 @@ private:
      * @param organism The organism to check
      * @return true if mate value exceeds threshold
      */
-    bool isReadyToMate(const IGeneticOrganism& organism) const;
+    bool isReadyToMate(const Organism& organism) const;
     
     /**
      * @brief Get organism's mate value (breeding desire)
      * @param organism The organism to query
      * @return Current mate value
      */
-    float getMateValue(const IGeneticOrganism& organism) const;
+    float getMateValue(const Organism& organism) const;
     
     /**
      * @brief Check fitness/compatibility between two potential mates
@@ -142,8 +142,8 @@ private:
      * @param candidate The potential mate
      * @return Fitness score (0.0 to 1.5, higher is better)
      */
-    float checkFitness(const IGeneticOrganism& seeker,
-                       const IGeneticOrganism& candidate) const;
+    float checkFitness(const Organism& seeker,
+                       const Organism& candidate) const;
     
     /**
      * @brief Find a potential mate within perception range
@@ -151,22 +151,22 @@ private:
      * @param ctx Behavior context with world access
      * @return Pointer to suitable mate, or nullptr if none found
      */
-    IGeneticOrganism* findMate(const IGeneticOrganism& seeker,
-                               const BehaviorContext& ctx) const;
+    Organism* findMate(const Organism& seeker,
+                       const BehaviorContext& ctx) const;
     
     /**
      * @brief Check if organism is mature enough to breed
      * @param organism The organism to check
      * @return true if age meets maturity threshold
      */
-    bool isMature(const IGeneticOrganism& organism) const;
+    bool isMature(const Organism& organism) const;
     
     /**
      * @brief Check if organism has sufficient resources to breed
      * @param organism The organism to check
      * @return true if hunger > MIN_HUNGER_TO_BREED
      */
-    bool hasResourcesToBread(const IGeneticOrganism& organism) const;
+    bool hasResourcesToBread(const Organism& organism) const;
     
     /**
      * @brief Calculate genetic similarity between two organisms
@@ -174,8 +174,8 @@ private:
      * @param org2 Second organism
      * @return Similarity score (0.0 to 1.0)
      */
-    float calculateGeneticSimilarity(const IGeneticOrganism& org1,
-                                     const IGeneticOrganism& org2) const;
+    float calculateGeneticSimilarity(const Organism& org1,
+                                     const Organism& org2) const;
     
     /**
      * @brief Calculate distance between two organisms
@@ -183,8 +183,8 @@ private:
      * @param org2 Second organism
      * @return Euclidean distance
      */
-    float calculateDistance(const IGeneticOrganism& org1,
-                            const IGeneticOrganism& org2) const;
+    float calculateDistance(const Organism& org1,
+                            const Organism& org2) const;
     
     /**
      * @brief Create offspring from two parent organisms
@@ -192,15 +192,15 @@ private:
      * @param parent2 Second parent
      * @return Unique pointer to new offspring genome
      */
-    std::unique_ptr<Genome> createOffspringGenome(const IGeneticOrganism& parent1,
-                                                   const IGeneticOrganism& parent2) const;
+    std::unique_ptr<Genome> createOffspringGenome(const Organism& parent1,
+                                                   const Organism& parent2) const;
     
     /**
      * @brief Get organism's unique ID for tracking
      * @param organism The organism
      * @return Unique identifier
      */
-    unsigned int getOrganismId(const IGeneticOrganism& organism) const;
+    unsigned int getOrganismId(const Organism& organism) const;
 };
 
 } // namespace Genetics

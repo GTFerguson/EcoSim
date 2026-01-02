@@ -5,13 +5,13 @@
  * Tests damage application, healing, regeneration, wound states,
  * and resistance calculations for both creatures and plants.
  *
- * The HealthSystem works through IGeneticOrganism interface using phenotype
+ * The HealthSystem works through Organism interface using phenotype
  * traits only - no type-specific code.
  */
 
 #include "test_framework.hpp"
 #include "genetics/systems/HealthSystem.hpp"
-#include "genetics/interfaces/IGeneticOrganism.hpp"
+#include "genetics/organisms/Organism.hpp"
 #include "genetics/expression/Phenotype.hpp"
 #include "genetics/core/Genome.hpp"
 #include "genetics/core/Chromosome.hpp"
@@ -29,43 +29,57 @@ using namespace EcoSim::Genetics;
 using namespace EcoSim::Testing;
 
 //================================================================================
-//  MockOrganism: Test Implementation of IGeneticOrganism
+//  MockOrganism: Test Implementation of Organism
 //================================================================================
 
 /**
  * @brief Mock organism for testing HealthSystem
  *
- * Implements IGeneticOrganism interface with configurable traits.
+ * Implements Organism interface with configurable traits.
  * Traits can be set directly for precise test control.
  */
-class HealthMockOrganism : public IGeneticOrganism {
+class HealthMockOrganism : public Organism {
 public:
-    HealthMockOrganism() : genome_(), phenotype_(&genome_, &registry_) {
+    HealthMockOrganism()
+        : Organism(0, 0, Genome(), registry_)
+        , phenotype_(&getGenomeMutable(), &registry_)
+    {
         initializeRegistry();
         // Set optimal organism state so modulation returns 100% values
         setOptimalState();
     }
 
-    const Genome& getGenome() const override {
-        return genome_;
+    // IGenetic - use inherited genome from Organism
+    void updatePhenotype() override {
+        phenotype_.invalidateCache();
     }
-
-    Genome& getGenomeMutable() override {
-        return genome_;
-    }
-
+    
     const Phenotype& getPhenotype() const override {
         return phenotype_;
     }
 
-    void updatePhenotype() override {
-        phenotype_.invalidateCache();
-    }
-
-    // Position and ID methods (required by IGeneticOrganism)
-    int getX() const override { return 0; }
-    int getY() const override { return 0; }
-    int getId() const override { return 0; }
+    // IPositionable - world coordinates
+    float getWorldX() const override { return 0.0f; }
+    float getWorldY() const override { return 0.0f; }
+    void setWorldPosition(float, float) override {}
+    
+    // ILifecycle
+    unsigned int getMaxLifespan() const override { return 10000; }
+    void grow() override {}
+    
+    // Destructor
+    ~HealthMockOrganism() override = default;
+    
+    // IReproducible
+    bool canReproduce() const override { return false; }
+    float getReproductiveUrge() const override { return 0.0f; }
+    float getReproductionEnergyCost() const override { return 10.0f; }
+    ReproductionMode getReproductionMode() const override { return ReproductionMode::SEXUAL; }
+    bool isCompatibleWith(const Organism&) const override { return false; }
+    std::unique_ptr<Organism> reproduce(const Organism* = nullptr) override { return nullptr; }
+    
+    // Organism abstract methods
+    float getMaxSize() const override { return 1.0f; }
 
     /**
      * @brief Set a trait directly on the genome for testing

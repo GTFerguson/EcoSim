@@ -2,14 +2,14 @@
  * @file HealthSystem.cpp
  * @brief Implementation of organism-agnostic health management system
  *
- * All methods use IGeneticOrganism& interface and phenotype traits.
+ * All methods use Organism& interface and phenotype traits.
  * NO type-specific code (Plant, Creature, DietType, etc.)
  *
  * @see include/genetics/systems/HealthSystem.hpp
  */
 
 #include "genetics/systems/HealthSystem.hpp"
-#include "genetics/interfaces/IGeneticOrganism.hpp"
+#include "genetics/organisms/Organism.hpp"
 #include "genetics/expression/Phenotype.hpp"
 #include "genetics/expression/PhenotypeUtils.hpp"
 #include "genetics/defaults/UniversalGenes.hpp"
@@ -27,7 +27,7 @@ using PhenotypeUtils::getTraitSafe;
 // =============================================================================
 
 float HealthSystem::calculateResistance(
-    const IGeneticOrganism& organism,
+    const Organism& organism,
     DamageType type) const
 {
     const Phenotype& phenotype = organism.getPhenotype();
@@ -66,7 +66,7 @@ float HealthSystem::calculateResistance(
 // =============================================================================
 
 DamageResult HealthSystem::applyDamage(
-    const IGeneticOrganism& organism,
+    const Organism& organism,
     float& currentHealth,
     float amount,
     DamageType type) const
@@ -99,7 +99,7 @@ DamageResult HealthSystem::applyDamage(
 // =============================================================================
 
 HealingResult HealthSystem::heal(
-    const IGeneticOrganism& organism,
+    const Organism& organism,
     float& currentHealth,
     float amount) const
 {
@@ -126,7 +126,7 @@ HealingResult HealthSystem::heal(
 }
 
 HealingResult HealthSystem::processNaturalHealing(
-    const IGeneticOrganism& organism,
+    const Organism& organism,
     float& currentHealth,
     float energySurplus) const
 {
@@ -154,7 +154,7 @@ bool HealthSystem::checkDeathCondition(float currentHealth) const
 }
 
 WoundState HealthSystem::getWoundState(
-    const IGeneticOrganism& organism,
+    const Organism& organism,
     float currentHealth) const
 {
     float healthPercent = getHealthPercent(organism, currentHealth);
@@ -173,7 +173,7 @@ WoundState HealthSystem::getWoundState(
 }
 
 float HealthSystem::getWoundSeverity(
-    const IGeneticOrganism& organism,
+    const Organism& organism,
     float currentHealth) const
 {
     float healthPercent = getHealthPercent(organism, currentHealth);
@@ -184,7 +184,7 @@ float HealthSystem::getWoundSeverity(
 // Capacity Operations
 // =============================================================================
 
-float HealthSystem::getMaxHealth(const IGeneticOrganism& organism) const
+float HealthSystem::getMaxHealth(const Organism& organism) const
 {
     const Phenotype& phenotype = organism.getPhenotype();
     
@@ -199,7 +199,7 @@ float HealthSystem::getMaxHealth(const IGeneticOrganism& organism) const
 }
 
 float HealthSystem::getHealthPercent(
-    const IGeneticOrganism& organism,
+    const Organism& organism,
     float currentHealth) const
 {
     float maxHealth = getMaxHealth(organism);
@@ -216,7 +216,7 @@ float HealthSystem::getHealthPercent(
 // =============================================================================
 
 bool HealthSystem::canRegenerate(
-    const IGeneticOrganism& organism,
+    const Organism& organism,
     float currentHealth,
     float energySurplus) const
 {
@@ -248,7 +248,7 @@ bool HealthSystem::canRegenerate(
            (regenRate > MIN_REGENERATION_THRESHOLD);
 }
 
-float HealthSystem::getHealingRate(const IGeneticOrganism& organism) const
+float HealthSystem::getHealingRate(const Organism& organism) const
 {
     const Phenotype& phenotype = organism.getPhenotype();
     

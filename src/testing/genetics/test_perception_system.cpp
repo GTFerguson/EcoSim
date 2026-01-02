@@ -5,13 +5,13 @@
  * Tests scent signature generation, scent deposition, edibility checking,
  * range calculations, and direction detection for both creatures and plants.
  *
- * The PerceptionSystem works through IGeneticOrganism interface using phenotype
+ * The PerceptionSystem works through Organism interface using phenotype
  * traits only - no type-specific code.
  */
 
 #include "test_framework.hpp"
 #include "genetics/systems/PerceptionSystem.hpp"
-#include "genetics/interfaces/IGeneticOrganism.hpp"
+#include "genetics/organisms/Organism.hpp"
 #include "genetics/expression/Phenotype.hpp"
 #include "genetics/core/Genome.hpp"
 #include "genetics/core/Chromosome.hpp"
@@ -33,74 +33,70 @@ using namespace EcoSim::Genetics;
 using namespace EcoSim::Testing;
 
 //================================================================================
-//  MockOrganism: Test Implementation of IGeneticOrganism
+//  MockOrganism: Test Implementation of Organism
 //================================================================================
 
 /**
  * @brief Mock organism for testing PerceptionSystem
  *
- * Implements IGeneticOrganism interface with configurable traits.
+ * Implements Organism interface with configurable traits.
  * Traits can be set directly for precise test control.
  */
-class MockOrganism : public IGeneticOrganism {
+class MockOrganism : public Organism {
 public:
-    MockOrganism() : genome_(), phenotype_(&genome_, &registry_) {
+    MockOrganism()
+        : Organism(0, 0, Genome(), registry_)
+    {
         initializeRegistry();
-        // Set optimal organism state so modulation returns 100% values
-        // This ensures tests get predictable trait values
         setOptimalState();
     }
     
-    ~MockOrganism() override = default;
+    ~MockOrganism() noexcept override = default;
 
-    const Genome& getGenome() const override {
-        return genome_;
-    }
-
-    Genome& getGenomeMutable() override {
-        return genome_;
-    }
-
-    const Phenotype& getPhenotype() const override {
-        return phenotype_;
-    }
-
-    void updatePhenotype() override {
-        phenotype_.invalidateCache();
-    }
+    // IPositionable - world coordinates
+    float getWorldX() const override { return static_cast<float>(getX()); }
+    float getWorldY() const override { return static_cast<float>(getY()); }
+    void setWorldPosition(float, float) override {}
+    
+    // ILifecycle
+    unsigned int getMaxLifespan() const override { return 10000; }
+    void grow() override {}
+    
+    // IReproducible
+    bool canReproduce() const override { return false; }
+    float getReproductiveUrge() const override { return 0.0f; }
+    float getReproductionEnergyCost() const override { return 10.0f; }
+    ReproductionMode getReproductionMode() const override { return ReproductionMode::SEXUAL; }
+    bool isCompatibleWith(const Organism&) const override { return false; }
+    std::unique_ptr<Organism> reproduce(const Organism* = nullptr) override { return nullptr; }
+    
+    // Organism abstract methods
+    float getMaxSize() const override { return 1.0f; }
 
     /**
      * @brief Set a trait directly on the genome for testing
-     *
-     * Creates a gene with the specified value if it doesn't exist,
-     * or updates the existing gene.
      */
     void setTrait(const std::string& name, float value) {
-        // Determine appropriate chromosome (use Metabolism for most traits)
         ChromosomeType chromType = ChromosomeType::Metabolism;
         
-        // Map traits to appropriate chromosomes
         if (name == "sight_range" || name == "color_vision" || name == "scent_detection" || name == "scent_production") {
             chromType = ChromosomeType::Sensory;
         } else if (name == "hardiness" || name == "size_gene" || name == "color_hue") {
             chromType = ChromosomeType::Morphology;
         } else if (name == "toxicity" || name == "toxin_resistance") {
-            chromType = ChromosomeType::Environmental;  // Defense-related
+            chromType = ChromosomeType::Environmental;
         }
         
-        // Check if gene already exists
-        if (genome_.hasGene(name)) {
-            // Update existing gene
-            Gene& existingGene = genome_.getGeneMutable(name);
+        Genome& genome = getGenomeMutable();
+        if (genome.hasGene(name)) {
+            Gene& existingGene = genome.getGeneMutable(name);
             existingGene.setAlleleValues(value);
         } else {
-            // Create new gene with the specified value
             GeneValue geneVal = value;
             Gene gene(name, geneVal);
-            genome_.addGene(gene, chromType);
+            genome.addGene(gene, chromType);
         }
         
-        // Also ensure gene is in registry
         if (!registry_.hasGene(name)) {
             float maxVal = (name == "nutrient_value" || name == "sight_range") ? 100.0f : 1.0f;
             GeneLimits limits(0.0f, maxVal, 0.05f);
@@ -108,12 +104,9 @@ public:
             registry_.registerGene(def);
         }
         
-        phenotype_.invalidateCache();
+        Organism::updatePhenotype();
     }
 
-    /**
-     * @brief Configure as a plant-like organism
-     */
     void configureAsPlant() {
         setTrait("nutrient_value", 50.0f);
         setTrait("fruit_appeal", 0.7f);
@@ -121,33 +114,27 @@ public:
         setTrait("hardiness", 0.3f);
         setTrait("scent_production", 0.6f);
         setTrait("color_hue", 0.3f);
-        setTrait("size_gene", 0.0f);  // Plants typically don't have this
-        setTrait("plant_digestion", 0.0f);  // Plants don't eat
+        setTrait("size_gene", 0.0f);
+        setTrait("plant_digestion", 0.0f);
         setTrait("meat_digestion", 0.0f);
     }
 
-    /**
-     * @brief Configure as a creature-like organism (herbivore)
-     */
     void configureAsHerbivore() {
         setTrait("nutrient_value", 30.0f);
-        setTrait("fruit_appeal", 0.0f);  // Creatures aren't food
+        setTrait("fruit_appeal", 0.0f);
         setTrait("toxicity", 0.0f);
         setTrait("hardiness", 0.5f);
         setTrait("scent_production", 0.4f);
         setTrait("color_hue", 0.5f);
         setTrait("size_gene", 0.5f);
-        setTrait("plant_digestion", 0.8f);  // Can digest plants
-        setTrait("meat_digestion", 0.1f);  // Can't digest meat well
+        setTrait("plant_digestion", 0.8f);
+        setTrait("meat_digestion", 0.1f);
         setTrait("toxin_resistance", 0.3f);
         setTrait("sight_range", 50.0f);
         setTrait("color_vision", 0.5f);
         setTrait("scent_detection", 0.5f);
     }
 
-    /**
-     * @brief Configure as a carnivore
-     */
     void configureAsCarnivore() {
         setTrait("nutrient_value", 60.0f);
         setTrait("fruit_appeal", 0.0f);
@@ -156,43 +143,34 @@ public:
         setTrait("scent_production", 0.3f);
         setTrait("color_hue", 0.4f);
         setTrait("size_gene", 0.7f);
-        setTrait("plant_digestion", 0.05f);  // Can't digest plants
-        setTrait("meat_digestion", 0.9f);  // Great at digesting meat
+        setTrait("plant_digestion", 0.05f);
+        setTrait("meat_digestion", 0.9f);
         setTrait("toxin_resistance", 0.4f);
         setTrait("sight_range", 60.0f);
         setTrait("color_vision", 0.3f);
         setTrait("scent_detection", 0.7f);
     }
 
-    /**
-     * @brief Set optimal organism state for predictable modulation
-     *
-     * Sets age to adult (0.5), full health (1.0), and full energy (1.0)
-     * so that trait modulation returns 100% of gene values.
-     */
     void setOptimalState() {
         EnvironmentState env;
-        env.temperature = 22.0f;  // Optimal
-        env.humidity = 0.5f;      // Optimal
-        env.time_of_day = 0.5f;   // Noon (full light)
+        env.temperature = 22.0f;
+        env.humidity = 0.5f;
+        env.time_of_day = 0.5f;
         
         OrganismState org;
-        org.age_normalized = 0.5f;  // Adult (100% expression)
-        org.health = 1.0f;          // Full health (100%)
-        org.energy_level = 1.0f;    // Full energy (100%)
+        org.age_normalized = 0.5f;
+        org.health = 1.0f;
+        org.energy_level = 1.0f;
         org.is_sleeping = false;
         org.is_pregnant = false;
         
-        phenotype_.updateContext(env, org);
+        const_cast<Phenotype&>(getPhenotype()).updateContext(env, org);
     }
 
 private:
-    Genome genome_;
-    mutable GeneRegistry registry_;
-    mutable Phenotype phenotype_;
+    static inline GeneRegistry registry_;
 
     void initializeRegistry() {
-        // Register base genes needed for testing
         registerGeneIfNeeded("nutrient_value", ChromosomeType::Metabolism, 0.0f, 100.0f);
         registerGeneIfNeeded("fruit_appeal", ChromosomeType::Metabolism, 0.0f, 1.0f);
         registerGeneIfNeeded("toxicity", ChromosomeType::Environmental, 0.0f, 1.0f);
@@ -208,7 +186,7 @@ private:
         registerGeneIfNeeded("scent_detection", ChromosomeType::Sensory, 0.0f, 1.0f);
     }
 
-    void registerGeneIfNeeded(const std::string& name, ChromosomeType chrom, 
+    void registerGeneIfNeeded(const std::string& name, ChromosomeType chrom,
                                float minVal, float maxVal) {
         if (!registry_.hasGene(name)) {
             GeneLimits limits(minVal, maxVal, 0.05f);

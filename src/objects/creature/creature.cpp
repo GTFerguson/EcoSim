@@ -567,7 +567,7 @@ void Creature::updatePhenotypeContext(const EcoSim::Genetics::EnvironmentState& 
 }
 
 /**
- * Recalculate phenotype from genome (IGeneticOrganism interface).
+ * Recalculate phenotype from genome (Organism interface).
  * Simple wrapper that calls updatePhenotypeContext with default environment.
  */
 void Creature::updatePhenotype() {
@@ -1445,7 +1445,7 @@ EcoSim::Genetics::ReproductionMode Creature::getReproductionMode() const {
  * Check compatibility with another organism for mating.
  * Uses existing checkFitness logic based on genetic similarity.
  */
-bool Creature::isCompatibleWith(const EcoSim::Genetics::IGeneticOrganism& other) const {
+bool Creature::isCompatibleWith(const EcoSim::Genetics::Organism& other) const {
     // Try to cast to Creature (only creatures can mate with creatures)
     const Creature* otherCreature = dynamic_cast<const Creature*>(&other);
     if (!otherCreature) {
@@ -1460,12 +1460,12 @@ bool Creature::isCompatibleWith(const EcoSim::Genetics::IGeneticOrganism& other)
 
 /**
  * Reproduce to create offspring.
- * Wraps existing breedCreature logic but returns IGeneticOrganism pointer.
+ * Wraps existing breedCreature logic but returns Organism pointer.
  *
  * @todo Return concrete Creature type once Creature/Plant are unified into Organism
  */
-std::unique_ptr<EcoSim::Genetics::IGeneticOrganism> Creature::reproduce(
-    const EcoSim::Genetics::IGeneticOrganism* partner) {
+std::unique_ptr<EcoSim::Genetics::Organism> Creature::reproduce(
+    const EcoSim::Genetics::Organism* partner) {
     
     // Sexual reproduction requires a partner
     if (!partner) {
@@ -1489,7 +1489,7 @@ std::unique_ptr<EcoSim::Genetics::IGeneticOrganism> Creature::reproduce(
     // Use existing breedCreature logic
     Creature offspring = breedCreature(*mateCreature);
     
-    // Return as unique_ptr<IGeneticOrganism>
+    // Return as unique_ptr<Organism>
     return std::make_unique<Creature>(std::move(offspring));
 }
 

@@ -64,7 +64,7 @@ public:
      * @param ctx The current behavior context
      * @return Result of behavior execution, or {executed=false} if none applicable
      */
-    BehaviorResult update(IGeneticOrganism& organism, BehaviorContext& ctx);
+    BehaviorResult update(Organism& organism, BehaviorContext& ctx);
     
     /**
      * @brief Get the ID of the currently executing behavior
@@ -101,7 +101,7 @@ private:
      * @return Vector of raw pointers to applicable behaviors
      */
     std::vector<IBehavior*> getApplicableBehaviors(
-        const IGeneticOrganism& organism,
+        const Organism& organism,
         const BehaviorContext& ctx) const;
 };
 

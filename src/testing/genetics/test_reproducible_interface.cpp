@@ -11,7 +11,7 @@
 #include "test_framework.hpp"
 
 #include "genetics/interfaces/IReproducible.hpp"
-#include "genetics/interfaces/IGeneticOrganism.hpp"
+#include "genetics/organisms/Organism.hpp"
 #include "genetics/core/GeneticTypes.hpp"
 #include "genetics/core/GeneRegistry.hpp"
 #include "genetics/defaults/UniversalGenes.hpp"
@@ -113,7 +113,7 @@ void testPlantReproduce() {
     // Plant asexual reproduction (no partner needed)
     auto offspring = parent.reproduce(nullptr);
     
-    // Offspring should be a valid IGeneticOrganism
+    // Offspring should be a valid Organism
     TEST_ASSERT(offspring != nullptr);
     
     // Verify offspring is a Plant via dynamic_cast

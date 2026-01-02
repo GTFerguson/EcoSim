@@ -14,7 +14,7 @@
 #include "genetics/behaviors/ZoochoryBehavior.hpp"
 #include "genetics/behaviors/BehaviorContext.hpp"
 #include "genetics/interactions/SeedDispersal.hpp"
-#include "genetics/interfaces/IGeneticOrganism.hpp"
+#include "genetics/organisms/Organism.hpp"
 #include "genetics/expression/Phenotype.hpp"
 #include "genetics/core/Genome.hpp"
 #include "genetics/core/Chromosome.hpp"
@@ -32,42 +32,43 @@ using namespace EcoSim::Genetics;
 using namespace EcoSim::Testing;
 
 //================================================================================
-//  MockOrganism: Test Implementation of IGeneticOrganism
+//  MockOrganism: Test Implementation of Organism
 //================================================================================
 
 /**
  * @brief Mock organism for testing ZoochoryBehavior
  *
- * Implements IGeneticOrganism interface with configurable traits.
+ * Implements Organism interface with configurable traits.
  * Provides stable organism ID for testing.
  */
-class ZoochoryMockOrganism : public IGeneticOrganism {
+class ZoochoryMockOrganism : public Organism {
 public:
-    ZoochoryMockOrganism() : genome_(), phenotype_(&genome_, &registry_) {
+    ZoochoryMockOrganism()
+        : Organism(0, 0, Genome(), registry_)
+    {
         initializeRegistry();
         setOptimalState();
     }
 
-    const Genome& getGenome() const override {
-        return genome_;
-    }
-
-    Genome& getGenomeMutable() override {
-        return genome_;
-    }
-
-    const Phenotype& getPhenotype() const override {
-        return phenotype_;
-    }
-
-    void updatePhenotype() override {
-        phenotype_.invalidateCache();
-    }
+    // IPositionable - world coordinates
+    float getWorldX() const override { return static_cast<float>(getX()); }
+    float getWorldY() const override { return static_cast<float>(getY()); }
+    void setWorldPosition(float, float) override {}
     
-    // Position and ID methods (required by IGeneticOrganism)
-    int getX() const override { return 0; }
-    int getY() const override { return 0; }
-    int getId() const override { return 0; }
+    // ILifecycle
+    unsigned int getMaxLifespan() const override { return 10000; }
+    void grow() override {}
+    
+    // IReproducible
+    bool canReproduce() const override { return false; }
+    float getReproductiveUrge() const override { return 0.0f; }
+    float getReproductionEnergyCost() const override { return 10.0f; }
+    ReproductionMode getReproductionMode() const override { return ReproductionMode::SEXUAL; }
+    bool isCompatibleWith(const Organism&) const override { return false; }
+    std::unique_ptr<Organism> reproduce(const Organism* = nullptr) override { return nullptr; }
+    
+    // Organism abstract methods
+    float getMaxSize() const override { return 1.0f; }
 
     /**
      * @brief Set a trait directly on the genome for testing
@@ -81,13 +82,14 @@ public:
             chromType = ChromosomeType::Morphology;
         }
         
-        if (genome_.hasGene(name)) {
-            Gene& existingGene = genome_.getGeneMutable(name);
+        Genome& genome = getGenomeMutable();
+        if (genome.hasGene(name)) {
+            Gene& existingGene = genome.getGeneMutable(name);
             existingGene.setAlleleValues(value);
         } else {
             GeneValue geneVal = value;
             Gene gene(name, geneVal);
-            genome_.addGene(gene, chromType);
+            genome.addGene(gene, chromType);
         }
         
         if (!registry_.hasGene(name)) {
@@ -97,7 +99,7 @@ public:
             registry_.registerGene(def);
         }
         
-        phenotype_.invalidateCache();
+        Organism::updatePhenotype();
     }
 
     /**
@@ -116,13 +118,11 @@ public:
         org.is_sleeping = false;
         org.is_pregnant = false;
         
-        phenotype_.updateContext(env, org);
+        const_cast<Phenotype&>(getPhenotype()).updateContext(env, org);
     }
 
 private:
-    Genome genome_;
-    mutable GeneRegistry registry_;
-    mutable Phenotype phenotype_;
+    static inline GeneRegistry registry_;
 
     void initializeRegistry() {
         registerGeneIfNeeded(UniversalGenes::HARDINESS, ChromosomeType::Morphology, 0.0f, 1.0f);
@@ -130,7 +130,7 @@ private:
         registerGeneIfNeeded(UniversalGenes::LOCOMOTION, ChromosomeType::Morphology, 0.0f, 2.0f);
     }
 
-    void registerGeneIfNeeded(const std::string& name, ChromosomeType chrom, 
+    void registerGeneIfNeeded(const std::string& name, ChromosomeType chrom,
                                float minVal, float maxVal) {
         if (!registry_.hasGene(name)) {
             GeneLimits limits(minVal, maxVal, 0.05f);

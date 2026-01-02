@@ -21,7 +21,7 @@ class Phenotype;
  * 3. Hunt cooldown tracking - Minimum ticks between hunts
  * 4. Prey escape mechanics - Use flee/pursue genes for escape chance
  *
- * All methods use IGeneticOrganism& interface and phenotype traits.
+ * All methods use Organism& interface and phenotype traits.
  * NO type-specific code (no direct Creature references).
  *
  * @see docs/code-review/recommendations/creature-decomposition-plan.md Section 4
@@ -55,7 +55,7 @@ public:
      * @param ctx Current behavior context (provides currentTick)
      * @return true if the organism should consider hunting
      */
-    bool isApplicable(const IGeneticOrganism& organism,
+    bool isApplicable(const Organism& organism,
                       const BehaviorContext& ctx) const override;
     
     /**
@@ -67,7 +67,7 @@ public:
      * @param organism The organism to evaluate
      * @return Priority value
      */
-    float getPriority(const IGeneticOrganism& organism) const override;
+    float getPriority(const Organism& organism) const override;
     
     /**
      * @brief Execute hunting for one tick
@@ -84,7 +84,7 @@ public:
      * @param ctx Behavior context with world access
      * @return Result indicating outcome
      */
-    BehaviorResult execute(IGeneticOrganism& organism,
+    BehaviorResult execute(Organism& organism,
                           BehaviorContext& ctx) override;
     
     /**
@@ -92,7 +92,7 @@ public:
      * @param organism The organism that would hunt
      * @return Estimated energy units consumed (HUNT_COST)
      */
-    float getEnergyCost(const IGeneticOrganism& organism) const override;
+    float getEnergyCost(const Organism& organism) const override;
 
 private:
     CombatInteraction& combat_;
@@ -118,14 +118,14 @@ private:
      * @param organism The organism to check
      * @return true if hunt_instinct > threshold
      */
-    bool canHunt(const IGeneticOrganism& organism) const;
+    bool canHunt(const Organism& organism) const;
     
     /**
      * @brief Check if organism has mobility for hunting
      * @param organism The organism to check
      * @return true if locomotion_speed > threshold
      */
-    bool canChase(const IGeneticOrganism& organism) const;
+    bool canChase(const Organism& organism) const;
     
     /**
      * @brief Check if organism is satiated (too full to hunt)
@@ -137,7 +137,7 @@ private:
      * @param ctx Context containing organism state
      * @return true if organism is 80%+ full
      */
-    bool isSatiated(const IGeneticOrganism& organism, const BehaviorContext& ctx) const;
+    bool isSatiated(const Organism& organism, const BehaviorContext& ctx) const;
     
     /**
      * @brief Check if organism is on hunt cooldown
@@ -161,8 +161,8 @@ private:
      * @param prey The prey organism
      * @return Escape probability (0.0 to 1.0)
      */
-    float calculateEscapeChance(const IGeneticOrganism& predator,
-                                const IGeneticOrganism& prey) const;
+    float calculateEscapeChance(const Organism& predator,
+                                const Organism& prey) const;
     
     /**
      * @brief Roll escape chance and determine if prey escapes
@@ -170,8 +170,8 @@ private:
      * @param prey The prey organism
      * @return true if prey successfully escapes
      */
-    bool attemptEscape(const IGeneticOrganism& predator,
-                       const IGeneticOrganism& prey) const;
+    bool attemptEscape(const Organism& predator,
+                       const Organism& prey) const;
     
     /**
      * @brief Find potential prey in detection range
@@ -185,8 +185,8 @@ private:
      * @param ctx Behavior context with world access
      * @return Pointer to prey organism, or nullptr if none found
      */
-    IGeneticOrganism* findPrey(const IGeneticOrganism& hunter,
-                               const BehaviorContext& ctx) const;
+    Organism* findPrey(const Organism& hunter,
+                       const BehaviorContext& ctx) const;
     
     /**
      * @brief Record hunt attempt for cooldown tracking
@@ -206,14 +206,14 @@ private:
      * @param organism The organism to query
      * @return Current hunger level (0 = starving, max = full)
      */
-    float getHungerLevel(const IGeneticOrganism& organism) const;
+    float getHungerLevel(const Organism& organism) const;
     
     /**
      * @brief Get hunger threshold from organism phenotype
      * @param organism The organism to query
      * @return Maximum hunger capacity
      */
-    float getHungerThreshold(const IGeneticOrganism& organism) const;
+    float getHungerThreshold(const Organism& organism) const;
     
     /**
      * @brief Get organism's unique ID for tracking
@@ -223,7 +223,7 @@ private:
      * @param organism The organism
      * @return Unique identifier
      */
-    unsigned int getOrganismId(const IGeneticOrganism& organism) const;
+    unsigned int getOrganismId(const Organism& organism) const;
 };
 
 } // namespace Genetics

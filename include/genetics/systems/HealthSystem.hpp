@@ -3,11 +3,11 @@
  * @brief Organism-agnostic health management system for damage, healing, and regeneration
  *
  * Provides unified health calculations that work for ANY organism type
- * through the IGeneticOrganism interface, supporting the Unified Organism vision.
+ * through the Organism interface, supporting the Unified Organism vision.
  *
  * Key Design Principles:
  * - NO type-specific code (no Plant, Creature, or DietType references)
- * - All organism queries use IGeneticOrganism& and phenotype traits
+ * - All organism queries use Organism& and phenotype traits
  * - Safe defaults for missing traits
  * - Consistent with existing Plant and Creature health behavior
  *
@@ -23,7 +23,7 @@ namespace EcoSim {
 namespace Genetics {
 
 // Forward declarations - organism-agnostic interfaces only
-class IGeneticOrganism;
+class Organism;
 class Phenotype;
 
 /**
@@ -113,7 +113,7 @@ public:
      *
      * @note currentHealth is passed by reference and modified directly
      */
-    DamageResult applyDamage(const IGeneticOrganism& organism,
+    DamageResult applyDamage(const Organism& organism,
                              float& currentHealth,
                              float amount,
                              DamageType type = DamageType::Physical) const;
@@ -132,7 +132,7 @@ public:
      * @param amount Amount to heal
      * @return HealingResult with actual healing applied and new health
      */
-    HealingResult heal(const IGeneticOrganism& organism,
+    HealingResult heal(const Organism& organism,
                        float& currentHealth,
                        float amount) const;
     
@@ -149,7 +149,7 @@ public:
      *
      * @note Regeneration may be blocked if organism lacks energy surplus
      */
-    HealingResult processNaturalHealing(const IGeneticOrganism& organism,
+    HealingResult processNaturalHealing(const Organism& organism,
                                         float& currentHealth,
                                         float energySurplus = 1.0f) const;
     
@@ -179,7 +179,7 @@ public:
      * @param currentHealth Current health value
      * @return WoundState category
      */
-    WoundState getWoundState(const IGeneticOrganism& organism,
+    WoundState getWoundState(const Organism& organism,
                              float currentHealth) const;
     
     /**
@@ -189,7 +189,7 @@ public:
      * @param currentHealth Current health value
      * @return 0.0 = fully healthy, 1.0 = dead
      */
-    float getWoundSeverity(const IGeneticOrganism& organism,
+    float getWoundSeverity(const Organism& organism,
                            float currentHealth) const;
     
     // =========================================================================
@@ -206,7 +206,7 @@ public:
      * @param organism The organism to query
      * @return Maximum health value
      */
-    float getMaxHealth(const IGeneticOrganism& organism) const;
+    float getMaxHealth(const Organism& organism) const;
     
     /**
      * @brief Get health as percentage (0.0 to 1.0)
@@ -215,7 +215,7 @@ public:
      * @param currentHealth Current health value
      * @return Health percentage (clamped to 0.0-1.0)
      */
-    float getHealthPercent(const IGeneticOrganism& organism,
+    float getHealthPercent(const Organism& organism,
                            float currentHealth) const;
     
     // =========================================================================
@@ -235,7 +235,7 @@ public:
      * @param energySurplus Available energy (1.0 = sufficient by default)
      * @return true if regeneration is possible
      */
-    bool canRegenerate(const IGeneticOrganism& organism,
+    bool canRegenerate(const Organism& organism,
                        float currentHealth,
                        float energySurplus = 1.0f) const;
     
@@ -250,7 +250,7 @@ public:
      * @param organism The organism to query
      * @return Healing amount per tick
      */
-    float getHealingRate(const IGeneticOrganism& organism) const;
+    float getHealingRate(const Organism& organism) const;
 
 private:
     // =========================================================================
@@ -294,7 +294,7 @@ private:
      * @param type The damage type
      * @return Resistance multiplier (0.0 = no resistance, 1.0 = immune)
      */
-    float calculateResistance(const IGeneticOrganism& organism,
+    float calculateResistance(const Organism& organism,
                               DamageType type) const;
     
     /**
