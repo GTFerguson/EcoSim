@@ -870,7 +870,7 @@ void ImGuiOverlay::renderCreatureInspectorWindow(const Creature* creature) {
         ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.9f, 1.0f), "%s", creature->getScientificName().c_str());
         
         // ID and Age
-        ImGui::Text("ID: #%d  Age: %d/%d", creature->getId(),
+        ImGui::Text("ID: #%d  Age: %d/%d", creature->getCreatureId(),
                     creature->getAge(), creature->getLifespan());
         ImGui::Separator();
         
