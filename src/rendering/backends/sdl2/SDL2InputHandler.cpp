@@ -290,7 +290,10 @@ void SDL2InputHandler::initializeDefaultMappings() {
     // SDL2-specific overrides: ESCAPE opens pause menu instead of quitting directly
     _keyActionMap[KeyCode::KEY_ESCAPE] = InputAction::TOGGLE_PAUSE_MENU;
     
-    // SDL2-specific: MINUS also works for zoom out
+    // SDL2-specific zoom mappings:
+    // On Mac/most keyboards, "+" requires Shift+"=" but SDLK_PLUS is the numpad plus.
+    // The unshifted "=" key (SDLK_EQUALS) should also trigger zoom in for usability.
+    _keyActionMap[KeyCode::KEY_EQUALS] = InputAction::ZOOM_IN;
     _keyActionMap[KeyCode::KEY_MINUS] = InputAction::ZOOM_OUT;
 }
 
