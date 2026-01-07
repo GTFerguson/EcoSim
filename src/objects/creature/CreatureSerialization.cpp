@@ -194,6 +194,7 @@ nlohmann::json toJson(const Creature& creature) {
     
     // Identity
     j["id"] = creature.getId();
+    j["creatureId"] = creature.getCreatureId();  // Creature-specific sequential ID
     j["archetypeLabel"] = creature.getArchetypeLabel();
     j["scientificName"] = creature.getScientificName();
     
@@ -348,10 +349,9 @@ Creature fromJson(const nlohmann::json& j, int mapWidth, int mapHeight) {
     }
     
     // Restore the saved creature ID (overwrite the auto-generated one)
-    // This preserves creature identity across save/load cycles
-    // Note: This requires a friend declaration or we need to call resetIdCounter after loading all creatures
-    // For now, the creature ID is auto-generated in the constructor
-    // The calling code should handle ID restoration via resetIdCounter after loading
+    if (j.contains("creatureId")) {
+        creature.setCreatureId(j.at("creatureId").get<int>());
+    }
     
     // Archetype is reclassified from genome in constructor
     // Phenotype is regenerated from genome in constructor

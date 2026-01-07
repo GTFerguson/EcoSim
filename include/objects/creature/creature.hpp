@@ -161,6 +161,12 @@ class Creature: public GameObject,
     const static float DEFAULT_BODY_MASS;     // Default body mass for creatures without gene
     
     //============================================================================
+    //  Creature-specific ID Counter
+    //============================================================================
+    static int nextCreatureId_;  // Creature-specific sequential counter
+    int creatureId_;             // This creature's sequential ID (0, 1, 2...)
+    
+    //============================================================================
     //  Creature-specific State Variables
     //============================================================================
     //  Float-based world coordinates (precise position)
@@ -321,6 +327,28 @@ class Creature: public GameObject,
      * @return Reference to the shared GeneRegistry
      */
     static EcoSim::Genetics::GeneRegistry& getGeneRegistry();
+    
+    /**
+     * @brief Get creature-specific sequential ID.
+     *        Unlike getId() which is shared by all organisms, this ID
+     *        is sequential only among creatures (0, 1, 2...).
+     * @return Creature-specific ID
+     */
+    int getCreatureId() const { return creatureId_; }
+    
+    /**
+     * @brief Set creature-specific ID (for deserialization only).
+     *        WARNING: Only use when loading saved games.
+     * @param id The creature ID to set
+     */
+    void setCreatureId(int id) { creatureId_ = id; }
+    
+    /**
+     * @brief Reset the creature-specific ID counter.
+     *        Used when starting a new game or after loading saves.
+     * @param next The next creature ID to assign (default 0)
+     */
+    static void resetCreatureIdCounter(int next = 0) { nextCreatureId_ = next; }
   
     //============================================================================
     //  IPositionable overrides - Creatures have precise float movement

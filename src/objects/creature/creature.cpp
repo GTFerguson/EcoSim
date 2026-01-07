@@ -67,6 +67,11 @@ static const DietInfo& getDietInfo(EcoSim::Genetics::DietType diet) {
 std::shared_ptr<EcoSim::Genetics::GeneRegistry> Creature::s_geneRegistry = nullptr;
 
 //================================================================================
+//  Static Member Initialization - Creature-specific ID Counter
+//================================================================================
+int Creature::nextCreatureId_ = 0;
+
+//================================================================================
 //  Static Member Initialization - Logging
 //================================================================================
 static int s_nextCreatureId = 1;
@@ -163,7 +168,8 @@ Creature::Creature(const Creature& other)
       _speed(other._speed),
       _archetype(other._archetype),
       _attachedBurrs(other._attachedBurrs),
-      _gutSeeds(other._gutSeeds) {
+      _gutSeeds(other._gutSeeds),
+      creatureId_(nextCreatureId_++) {
     // Copy Organism state that isn't set in constructor
     age_ = other.age_;
     health_ = other.health_;
@@ -204,7 +210,8 @@ Creature::Creature(Creature&& other) noexcept
       _archetype(other._archetype),
       _attachedBurrs(std::move(other._attachedBurrs)),
       _gutSeeds(std::move(other._gutSeeds)),
-      _behaviorController(std::move(other._behaviorController))
+      _behaviorController(std::move(other._behaviorController)),
+      creatureId_(other.creatureId_)
 {
     // Transfer archetype without incrementing - just null out source
     other._archetype = nullptr;
@@ -2048,7 +2055,8 @@ Creature::Creature(int x, int y, std::unique_ptr<EcoSim::Genetics::Genome> genom
       _mate(0.0f),
       _metabolism(0.001f),
       _speed(1),
-      _archetype(nullptr) {
+      _archetype(nullptr),
+      creatureId_(nextCreatureId_++) {
     
     // Set metabolism from phenotype (Organism already created phenotype_)
     if (phenotype_.hasTrait(EcoSim::Genetics::UniversalGenes::METABOLISM_RATE)) {
@@ -2097,7 +2105,8 @@ Creature::Creature(int x, int y, float hunger, float thirst,
       _mate(0.0f),
       _metabolism(0.001f),
       _speed(1),
-      _archetype(nullptr) {
+      _archetype(nullptr),
+      creatureId_(nextCreatureId_++) {
     
     // Set metabolism from phenotype (Organism already created phenotype_)
     if (phenotype_.hasTrait(EcoSim::Genetics::UniversalGenes::METABOLISM_RATE)) {

@@ -873,6 +873,9 @@ void handleNewWorld(World& w, vector<Creature>& creatures,
                     FileHandling& file, int& xOrigin, int& yOrigin) {
   IRenderer& renderer = RenderSystem::getInstance().getRenderer();
   
+  // Reset creature-specific ID counter for new games
+  Creature::resetCreatureIdCounter(0);
+  
   file.saveStatsHeader();
   renderer.renderMessage("CREATING NEW WORLD");
   renderer.endFrame();
@@ -1152,16 +1155,22 @@ void runGameLoop(World& w, vector<Creature>& creatures,
         tickCount = static_cast<int>(loadedTick);
         std::cout << "[Load] Loaded game from '" << filename << ".json'" << std::endl;
         
-        // Reset creature ID counter to avoid ID conflicts with new creatures
-        // Find the maximum ID among loaded creatures and set counter to max+1
+        // Reset creature ID counters to avoid ID conflicts with new creatures
+        // Find the maximum IDs among loaded creatures and set counters to max+1
         int maxId = 0;
+        int maxCreatureId = 0;
         for (const auto& creature : creatures) {
           if (creature.getId() > maxId) {
             maxId = creature.getId();
           }
+          if (creature.getCreatureId() > maxCreatureId) {
+            maxCreatureId = creature.getCreatureId();
+          }
         }
         Creature::resetIdCounter(maxId + 1);
-        std::cout << "[Load] Reset creature ID counter to " << (maxId + 1) << std::endl;
+        Creature::resetCreatureIdCounter(maxCreatureId + 1);
+        std::cout << "[Load] Reset organism ID counter to " << (maxId + 1) << std::endl;
+        std::cout << "[Load] Reset creature ID counter to " << (maxCreatureId + 1) << std::endl;
       } else {
         std::cerr << "[Load] Failed to load game" << std::endl;
       }
@@ -1419,15 +1428,21 @@ int main() {
     if (success) {
       std::cout << "[Load] Loaded game from '" << filename << ".json'" << std::endl;
       
-      // Reset creature ID counter to avoid ID conflicts with new creatures
+      // Reset creature ID counters to avoid ID conflicts with new creatures
       int maxId = 0;
+      int maxCreatureId = 0;
       for (const auto& creature : creatures) {
         if (creature.getId() > maxId) {
           maxId = creature.getId();
         }
+        if (creature.getCreatureId() > maxCreatureId) {
+          maxCreatureId = creature.getCreatureId();
+        }
       }
       Creature::resetIdCounter(maxId + 1);
-      std::cout << "[Load] Reset creature ID counter to " << (maxId + 1) << std::endl;
+      Creature::resetCreatureIdCounter(maxCreatureId + 1);
+      std::cout << "[Load] Reset organism ID counter to " << (maxId + 1) << std::endl;
+      std::cout << "[Load] Reset creature ID counter to " << (maxCreatureId + 1) << std::endl;
     } else {
       std::cerr << "[Load] Failed to load game - creating new world instead" << std::endl;
       handleNewWorld(w, creatures, file, xOrigin, yOrigin);
