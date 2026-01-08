@@ -76,3 +76,31 @@ add_test(
     COMMAND GeneticsTest
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 )
+
+# ==============================================================================
+# WorldGenTest - Standalone test for climate-based world generation
+# ==============================================================================
+# This is a standalone executable for testing and iterating on world generation
+# parameters. Outputs PNG visualizations to output/worldgen/
+add_executable(WorldGenTest
+    test_world_generation.cpp
+)
+
+target_include_directories(WorldGenTest PRIVATE
+    ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/external
+)
+
+target_link_libraries(WorldGenTest PRIVATE
+    ecosim_world
+    ecosim_core
+)
+
+add_compiler_warnings(WorldGenTest)
+
+# Register as a test (optional, since it's mainly for visual inspection)
+add_test(
+    NAME WorldGenTest
+    COMMAND WorldGenTest 12345 200 200
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+)

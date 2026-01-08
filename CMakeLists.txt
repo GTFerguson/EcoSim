@@ -81,6 +81,7 @@ add_library(ecosim_world STATIC
 )
 target_include_directories(ecosim_world PUBLIC
     ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/external
 )
 target_link_libraries(ecosim_world PUBLIC ecosim_genetics)
 add_compiler_warnings(ecosim_world)
