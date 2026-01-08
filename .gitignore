@@ -34,7 +34,6 @@ err_*
 
 # Documentation (exclude work-in-progress directories)
 docs/code-review/
-docs/future/
 
 # Plans (local development notes)
 plans/
