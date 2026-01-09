@@ -300,6 +300,11 @@ CreatureTemplate CreatureFactory::createApexPredatorTemplate() {
     tmpl.geneRanges[UniversalGenes::SIGHT_RANGE] = {80.0f, 120.0f};
     tmpl.geneRanges[UniversalGenes::SCENT_DETECTION] = {0.60f, 0.75f};
     
+    // Temperature tolerance (temperate baseline)
+    tmpl.geneRanges[UniversalGenes::TEMP_TOLERANCE_LOW] = {-5.0f, 0.0f};
+    tmpl.geneRanges[UniversalGenes::TEMP_TOLERANCE_HIGH] = {30.0f, 35.0f};
+    tmpl.geneRanges[UniversalGenes::FUR_DENSITY] = {0.40f, 0.50f};
+    
     tmpl.renderCharacter = 'A';
     
     return tmpl;
@@ -347,6 +352,11 @@ CreatureTemplate CreatureFactory::createPackHunterTemplate() {
     tmpl.geneRanges[UniversalGenes::SIGHT_RANGE] = {70.0f, 100.0f};
     tmpl.geneRanges[UniversalGenes::SCENT_DETECTION] = {0.80f, 0.90f};  // Good scent tracking
     tmpl.geneRanges[UniversalGenes::OLFACTORY_ACUITY] = {0.80f, 0.90f};
+    
+    // Temperature tolerance (temperate baseline)
+    tmpl.geneRanges[UniversalGenes::TEMP_TOLERANCE_LOW] = {-5.0f, 0.0f};
+    tmpl.geneRanges[UniversalGenes::TEMP_TOLERANCE_HIGH] = {30.0f, 35.0f};
+    tmpl.geneRanges[UniversalGenes::FUR_DENSITY] = {0.40f, 0.50f};
     
     tmpl.renderCharacter = 'P';
     
@@ -398,6 +408,11 @@ CreatureTemplate CreatureFactory::createAmbushPredatorTemplate() {
     tmpl.geneRanges[UniversalGenes::SIGHT_RANGE] = {60.0f, 90.0f};
     tmpl.geneRanges[UniversalGenes::SCENT_DETECTION] = {0.70f, 0.80f};
     
+    // Temperature tolerance (temperate baseline)
+    tmpl.geneRanges[UniversalGenes::TEMP_TOLERANCE_LOW] = {-5.0f, 0.0f};
+    tmpl.geneRanges[UniversalGenes::TEMP_TOLERANCE_HIGH] = {30.0f, 35.0f};
+    tmpl.geneRanges[UniversalGenes::FUR_DENSITY] = {0.40f, 0.50f};
+    
     tmpl.renderCharacter = 'I';
     
     return tmpl;
@@ -444,6 +459,11 @@ CreatureTemplate CreatureFactory::createPursuitHunterTemplate() {
     tmpl.geneRanges[UniversalGenes::HUNT_INSTINCT] = {0.85f, 0.95f};
     tmpl.geneRanges[UniversalGenes::SIGHT_RANGE] = {100.0f, 150.0f};  // Excellent vision
     tmpl.geneRanges[UniversalGenes::SCENT_DETECTION] = {0.55f, 0.65f};
+    
+    // Temperature tolerance (temperate baseline)
+    tmpl.geneRanges[UniversalGenes::TEMP_TOLERANCE_LOW] = {-5.0f, 0.0f};
+    tmpl.geneRanges[UniversalGenes::TEMP_TOLERANCE_HIGH] = {30.0f, 35.0f};
+    tmpl.geneRanges[UniversalGenes::FUR_DENSITY] = {0.40f, 0.50f};
     
     tmpl.renderCharacter = 'V';
     
@@ -497,6 +517,11 @@ CreatureTemplate CreatureFactory::createTankHerbivoreTemplate() {
     tmpl.geneRanges[UniversalGenes::SIGHT_RANGE] = {50.0f, 80.0f};
     tmpl.geneRanges[UniversalGenes::FLEE_THRESHOLD] = {5.0f, 10.0f};
     
+    // Temperature tolerance (temperate baseline)
+    tmpl.geneRanges[UniversalGenes::TEMP_TOLERANCE_LOW] = {-5.0f, 0.0f};
+    tmpl.geneRanges[UniversalGenes::TEMP_TOLERANCE_HIGH] = {30.0f, 35.0f};
+    tmpl.geneRanges[UniversalGenes::FUR_DENSITY] = {0.40f, 0.50f};
+    
     tmpl.renderCharacter = 'T';
     
     return tmpl;
@@ -545,6 +570,11 @@ CreatureTemplate CreatureFactory::createArmoredGrazerTemplate() {
     tmpl.geneRanges[UniversalGenes::SIGHT_RANGE] = {40.0f, 60.0f};
     tmpl.geneRanges[UniversalGenes::FLEE_THRESHOLD] = {2.0f, 5.0f};
     
+    // Temperature tolerance (temperate baseline)
+    tmpl.geneRanges[UniversalGenes::TEMP_TOLERANCE_LOW] = {-5.0f, 0.0f};
+    tmpl.geneRanges[UniversalGenes::TEMP_TOLERANCE_HIGH] = {30.0f, 35.0f};
+    tmpl.geneRanges[UniversalGenes::FUR_DENSITY] = {0.40f, 0.50f};
+    
     tmpl.renderCharacter = 'K';
     
     return tmpl;
@@ -591,6 +621,11 @@ CreatureTemplate CreatureFactory::createFleetRunnerTemplate() {
     tmpl.geneRanges[UniversalGenes::HUNT_INSTINCT] = {0.02f, 0.10f};
     tmpl.geneRanges[UniversalGenes::SIGHT_RANGE] = {100.0f, 140.0f};  // Excellent vision
     tmpl.geneRanges[UniversalGenes::FLEE_THRESHOLD] = {12.0f, 18.0f};  // Detects threats far away
+    
+    // Temperature tolerance (temperate baseline)
+    tmpl.geneRanges[UniversalGenes::TEMP_TOLERANCE_LOW] = {-5.0f, 0.0f};
+    tmpl.geneRanges[UniversalGenes::TEMP_TOLERANCE_HIGH] = {30.0f, 35.0f};
+    tmpl.geneRanges[UniversalGenes::FUR_DENSITY] = {0.40f, 0.50f};
     
     tmpl.renderCharacter = 'R';
     
@@ -639,6 +674,11 @@ CreatureTemplate CreatureFactory::createSpikyDefenderTemplate() {
     tmpl.geneRanges[UniversalGenes::HUNT_INSTINCT] = {0.02f, 0.10f};
     tmpl.geneRanges[UniversalGenes::SIGHT_RANGE] = {50.0f, 80.0f};
     tmpl.geneRanges[UniversalGenes::FLEE_THRESHOLD] = {6.0f, 10.0f};
+    
+    // Temperature tolerance (temperate baseline)
+    tmpl.geneRanges[UniversalGenes::TEMP_TOLERANCE_LOW] = {-5.0f, 0.0f};
+    tmpl.geneRanges[UniversalGenes::TEMP_TOLERANCE_HIGH] = {30.0f, 35.0f};
+    tmpl.geneRanges[UniversalGenes::FUR_DENSITY] = {0.40f, 0.50f};
     
     tmpl.renderCharacter = 'S';
     
@@ -704,6 +744,11 @@ CreatureTemplate CreatureFactory::createCanopyForagerTemplate() {
     tmpl.geneRanges[UniversalGenes::SCENT_SIGNATURE_VARIANCE] = {0.25f, 0.40f};
     tmpl.geneRanges[UniversalGenes::SCENT_MASKING] = {0.20f, 0.35f};
     
+    // Temperature tolerance (temperate baseline)
+    tmpl.geneRanges[UniversalGenes::TEMP_TOLERANCE_LOW] = {-5.0f, 0.0f};
+    tmpl.geneRanges[UniversalGenes::TEMP_TOLERANCE_HIGH] = {30.0f, 35.0f};
+    tmpl.geneRanges[UniversalGenes::FUR_DENSITY] = {0.40f, 0.50f};
+    
     tmpl.renderCharacter = 'C';
     
     return tmpl;
@@ -758,6 +803,11 @@ CreatureTemplate CreatureFactory::createCarrionStalkerTemplate() {
     tmpl.geneRanges[UniversalGenes::SIGHT_RANGE] = {70.0f, 100.0f};
     tmpl.geneRanges[UniversalGenes::FLEE_THRESHOLD] = {8.0f, 12.0f};
     
+    // Temperature tolerance (temperate baseline)
+    tmpl.geneRanges[UniversalGenes::TEMP_TOLERANCE_LOW] = {-5.0f, 0.0f};
+    tmpl.geneRanges[UniversalGenes::TEMP_TOLERANCE_HIGH] = {30.0f, 35.0f};
+    tmpl.geneRanges[UniversalGenes::FUR_DENSITY] = {0.40f, 0.50f};
+    
     tmpl.renderCharacter = 'N';
     
     return tmpl;
@@ -808,6 +858,11 @@ CreatureTemplate CreatureFactory::createOmnivoreGeneralistTemplate() {
     tmpl.geneRanges[UniversalGenes::SCENT_DETECTION] = {0.55f, 0.65f};
     tmpl.geneRanges[UniversalGenes::SIGHT_RANGE] = {60.0f, 90.0f};
     tmpl.geneRanges[UniversalGenes::FLEE_THRESHOLD] = {5.0f, 9.0f};
+    
+    // Temperature tolerance (temperate baseline)
+    tmpl.geneRanges[UniversalGenes::TEMP_TOLERANCE_LOW] = {-5.0f, 0.0f};
+    tmpl.geneRanges[UniversalGenes::TEMP_TOLERANCE_HIGH] = {30.0f, 35.0f};
+    tmpl.geneRanges[UniversalGenes::FUR_DENSITY] = {0.40f, 0.50f};
     
     tmpl.renderCharacter = 'O';
     

@@ -30,6 +30,10 @@
 #include "../include/genetics/defaults/UniversalGenes.hpp"
 #include "../include/genetics/organisms/PlantFactory.hpp"
 #include "../include/genetics/organisms/CreatureFactory.hpp"
+#include "../include/genetics/organisms/BiomeVariantExamples.hpp"
+
+// World systems
+#include "../include/world/ClimateWorldGenerator.hpp"
 
 // Logging system for diagnostics
 #include "../include/logging/Logger.hpp"
@@ -255,14 +259,15 @@ void renderHUDDisplay(const Calendar& calendar,
 //================================================================================
 /**
  *	This controls the behaviour of each individual creature.
+ *  Returns true if the creature died this turn (for deferred removal).
  *
  *	@param w        A reference to the world map.
  *	@param gs       General data stored on the simuation.
  *	@param c	      A vector containing all of the creatures.
  *	@param cIndex	  Current creature acting.
- *	@return		      If food was successfully found.
+ *	@return		      True if creature died and should be removed.
  */
-void takeTurn (World &w, GeneralStats &gs, vector<Creature> &c, 
+bool takeTurn (World &w, GeneralStats &gs, vector<Creature> &c,
                const unsigned int &cIndex) {
   Creature *activeC = &c.at(cIndex);
 
@@ -275,7 +280,12 @@ void takeTurn (World &w, GeneralStats &gs, vector<Creature> &c,
       case 2: gs.deaths.starved++;    deathCause = "starvation";  break;
       case 3: gs.deaths.dehydrated++; deathCause = "dehydration"; break;
       case 4: gs.deaths.discomfort++; deathCause = "discomfort";  break;
-      default: deathCause = "unknown"; break;
+      case 5: gs.deaths.predator++;   deathCause = "combat";      break;
+      default:
+        std::cerr << "[ERROR] Unknown death code: " << dc << " for creature "
+                  << activeC->getId() << std::endl;
+        deathCause = "unknown";
+        break;
     }
     
     // Log the death event
@@ -298,11 +308,22 @@ void takeTurn (World &w, GeneralStats &gs, vector<Creature> &c,
       w.addCorpse(activeC->getWorldX(), activeC->getWorldY(), creatureSize, activeC->generateName(), bodyCondition);
     }
 
-    c.erase(c.begin() + cIndex);
+    // Mark creature as dead by setting health below zero.
+    // This ensures deathCheck() returns non-zero and isAlive() returns false.
+    // Actual removal is deferred to end of tick to prevent spatial index
+    // pointer invalidation.
+    activeC->setHealth(-1.0f);
+    return true;  // Creature died
 
   //  If not dead update and take action
   } else {
-    activeC->update ();
+    activeC->update();
+    
+    // Update creature phenotype with location-specific environment data
+    auto localEnv = w.environment().getEnvironmentStateAt(
+        static_cast<int>(activeC->getWorldX()),
+        static_cast<int>(activeC->getWorldY()));
+    activeC->updatePhenotypeContext(localEnv);
 
     switch(activeC->getMotivation()) {
       case Motivation::Hungry:
@@ -321,6 +342,7 @@ void takeTurn (World &w, GeneralStats &gs, vector<Creature> &c,
         activeC->tiredBehavior(w, c, cIndex);
         break;
     }
+    return false;  // Creature survived
   }
 }
 
@@ -354,11 +376,23 @@ void advanceSimulation (World &w, vector<Creature> &c, GeneralStats &gs) {
     }
   }
   
-  //  Iterate in reverse to safely handle creature removal during iteration
-  //  When a creature is erased, only indices after it shift, so iterating
-  //  backwards ensures we don't skip any creatures
-  for (int i = static_cast<int>(c.size()) - 1; i >= 0; i--)
-    takeTurn (w, gs, c, i);
+  // DEFERRED REMOVAL: Process all creature turns first, then remove dead ones
+  // This prevents spatial index pointer invalidation during the tick.
+  // When creatures die, they're marked dead via die() but not removed until
+  // the end of the tick, keeping all vector pointers stable.
+  for (size_t i = 0; i < c.size(); ++i) {
+    // Skip already-dead creatures (could have been killed by another creature this tick)
+    if (!c[i].isAlive()) continue;
+    takeTurn(w, gs, c, static_cast<unsigned int>(i));
+  }
+  
+  // Remove all dead creatures at the end of the tick (stable erase)
+  // Use erase-remove idiom for efficient O(n) removal
+  c.erase(
+    std::remove_if(c.begin(), c.end(),
+      [](const Creature& creature) { return !creature.isAlive(); }),
+    c.end()
+  );
 
   gs.population = c.size ();
 }
@@ -431,6 +465,190 @@ void populateWorld (World &w, vector<Creature> &c, unsigned amount) {
   }
   
   std::cout << "[World] Successfully added " << c.size() << " creatures" << std::endl;
+}
+
+/**
+ * Populates the world with creatures appropriate to each biome using the
+ * BiomeVariantFactory. Creatures are spawned in biomes where they can survive.
+ *
+ * Biome-creature mapping:
+ * - Tundra/Taiga: Arctic wolves, woolly mammoths
+ * - Desert/Steppe: Desert fennecs, desert camels
+ * - Tropical/Savanna: Tropical jaguars, jungle elephants
+ * - Temperate/Forest: Standard archetypes (pack hunters, tank herbivores, etc.)
+ *
+ * @param w       Reference to the world
+ * @param c       Vector of creatures to populate
+ * @param amount  Target total number of creatures
+ */
+void populateWorldByBiome(World& w, vector<Creature>& c, unsigned amount) {
+  using namespace EcoSim;
+  using namespace EcoSim::Genetics;
+  
+  auto registry = std::make_shared<GeneRegistry>();
+  BiomeVariantFactory biomeFactory(registry);
+  CreatureFactory standardFactory(registry);
+  standardFactory.registerDefaultTemplates();
+  
+  std::cout << "[World] Populating by biome with " << amount << " creatures:" << std::endl;
+  
+  // Collect valid spawn positions for each biome category
+  std::vector<std::pair<int, int>> tundraPositions;
+  std::vector<std::pair<int, int>> desertPositions;
+  std::vector<std::pair<int, int>> tropicalPositions;
+  std::vector<std::pair<int, int>> temperatePositions;
+  
+  // Scan the world grid to categorize spawn positions by biome
+  const auto& grid = w.grid();
+  for (unsigned x = 0; x < grid.width(); ++x) {
+    for (unsigned y = 0; y < grid.height(); ++y) {
+      if (!grid(x, y).isPassable()) continue;
+      
+      // Get biome from environment system
+      int biomeInt = w.environment().getBiome(static_cast<int>(x), static_cast<int>(y));
+      Biome biome = static_cast<Biome>(biomeInt);
+      
+      switch (biome) {
+        // Cold biomes
+        case Biome::ICE_SHEET:
+        case Biome::TUNDRA:
+        case Biome::TAIGA:
+        case Biome::BOREAL_FOREST:
+        case Biome::ALPINE_TUNDRA:
+        case Biome::GLACIER:
+          tundraPositions.push_back({x, y});
+          break;
+          
+        // Hot dry biomes
+        case Biome::DESERT_HOT:
+        case Biome::DESERT_COLD:
+        case Biome::STEPPE:
+        case Biome::SHRUBLAND:
+          desertPositions.push_back({x, y});
+          break;
+          
+        // Tropical biomes
+        case Biome::TROPICAL_RAINFOREST:
+        case Biome::TROPICAL_SEASONAL_FOREST:
+        case Biome::SAVANNA:
+          tropicalPositions.push_back({x, y});
+          break;
+          
+        // Temperate biomes
+        case Biome::TEMPERATE_RAINFOREST:
+        case Biome::TEMPERATE_FOREST:
+        case Biome::TEMPERATE_GRASSLAND:
+        case Biome::ALPINE_MEADOW:
+        default:
+          temperatePositions.push_back({x, y});
+          break;
+      }
+    }
+  }
+  
+  // Calculate population distribution based on available biome area
+  unsigned totalPositions = static_cast<unsigned>(
+    tundraPositions.size() + desertPositions.size() +
+    tropicalPositions.size() + temperatePositions.size());
+  
+  if (totalPositions == 0) {
+    std::cerr << "[World] No valid spawn positions found!" << std::endl;
+    return;
+  }
+  
+  // Distribute creatures proportionally to biome area, but maintain minimum counts
+  auto calculateBiomeCount = [&](size_t biomePositions) -> unsigned {
+    if (biomePositions == 0) return 0;
+    float proportion = static_cast<float>(biomePositions) / static_cast<float>(totalPositions);
+    return std::max(2u, static_cast<unsigned>(amount * proportion));
+  };
+  
+  unsigned tundraCount = calculateBiomeCount(tundraPositions.size());
+  unsigned desertCount = calculateBiomeCount(desertPositions.size());
+  unsigned tropicalCount = calculateBiomeCount(tropicalPositions.size());
+  unsigned temperateCount = calculateBiomeCount(temperatePositions.size());
+  
+  // Normalize to match requested amount
+  unsigned totalAllocated = tundraCount + desertCount + tropicalCount + temperateCount;
+  if (totalAllocated > amount && temperateCount > 10) {
+    temperateCount = amount - tundraCount - desertCount - tropicalCount;
+  }
+  
+  std::cout << "  Biome distribution:" << std::endl;
+  std::cout << "    Tundra: " << tundraCount << " creatures (" << tundraPositions.size() << " tiles)" << std::endl;
+  std::cout << "    Desert: " << desertCount << " creatures (" << desertPositions.size() << " tiles)" << std::endl;
+  std::cout << "    Tropical: " << tropicalCount << " creatures (" << tropicalPositions.size() << " tiles)" << std::endl;
+  std::cout << "    Temperate: " << temperateCount << " creatures (" << temperatePositions.size() << " tiles)" << std::endl;
+  
+  RandomGenerator& rng = RandomGenerator::instance();
+  
+  // Helper to spawn creatures in a biome
+  auto spawnInBiome = [&](
+      std::vector<std::pair<int, int>>& positions,
+      unsigned count,
+      std::function<Creature(int, int)> createHerbivore,
+      std::function<Creature(int, int)> createCarnivore) {
+    
+    if (positions.empty() || count == 0) return;
+    
+    std::uniform_int_distribution<size_t> posDist(0, positions.size() - 1);
+    
+    // 70% herbivores, 30% carnivores for balance
+    unsigned herbivoreCount = static_cast<unsigned>(count * 0.70f);
+    unsigned carnivoreCount = count - herbivoreCount;
+    
+    for (unsigned i = 0; i < herbivoreCount && !positions.empty(); ++i) {
+      size_t idx = rng.generate(posDist);
+      auto [x, y] = positions[idx];
+      Creature creature = createHerbivore(x, y);
+      creature.setXY(x, y);
+      creature.setWorldPosition(static_cast<float>(x) + 0.5f, static_cast<float>(y) + 0.5f);
+      c.push_back(std::move(creature));
+    }
+    
+    for (unsigned i = 0; i < carnivoreCount && !positions.empty(); ++i) {
+      size_t idx = rng.generate(posDist);
+      auto [x, y] = positions[idx];
+      Creature creature = createCarnivore(x, y);
+      creature.setXY(x, y);
+      creature.setWorldPosition(static_cast<float>(x) + 0.5f, static_cast<float>(y) + 0.5f);
+      c.push_back(std::move(creature));
+    }
+  };
+  
+  // Spawn tundra creatures
+  spawnInBiome(tundraPositions, tundraCount,
+    [&](int x, int y) { return biomeFactory.createWoollyMammoth(x, y); },
+    [&](int x, int y) { return biomeFactory.createArcticWolf(x, y); });
+  
+  // Spawn desert creatures
+  spawnInBiome(desertPositions, desertCount,
+    [&](int x, int y) { return biomeFactory.createDesertCamel(x, y); },
+    [&](int x, int y) { return biomeFactory.createDesertFennec(x, y); });
+  
+  // Spawn tropical creatures
+  spawnInBiome(tropicalPositions, tropicalCount,
+    [&](int x, int y) { return biomeFactory.createJungleElephant(x, y); },
+    [&](int x, int y) { return biomeFactory.createTropicalJaguar(x, y); });
+  
+  // Spawn temperate creatures using standard archetypes
+  if (!temperatePositions.empty() && temperateCount > 0) {
+    std::uniform_int_distribution<size_t> posDist(0, temperatePositions.size() - 1);
+    
+    // Use ecosystem mix for temperate zones - diverse population
+    std::vector<Creature> tempCreatures = standardFactory.createEcosystemMix(
+        temperateCount, MAP_COLS, MAP_ROWS);
+    
+    for (auto& creature : tempCreatures) {
+      size_t idx = rng.generate(posDist);
+      auto [x, y] = temperatePositions[idx];
+      creature.setXY(x, y);
+      creature.setWorldPosition(static_cast<float>(x) + 0.5f, static_cast<float>(y) + 0.5f);
+      c.push_back(std::move(creature));
+    }
+  }
+  
+  std::cout << "[World] Successfully spawned " << c.size() << " biome-adapted creatures" << std::endl;
 }
 
 //================================================================================
@@ -802,6 +1020,12 @@ void runWorldEditor(World& w, vector<Creature>& creatures,
                     int& xOrigin, int& yOrigin) {
   IRenderer& renderer = RenderSystem::getInstance().getRenderer();
   
+  // Zoom out to minimum level so user can see the entire world map
+  // This allows users to evaluate the generated terrain before accepting it
+  while (renderer.getZoomLevel() > 4) {
+    renderer.zoomOut();
+  }
+  
   bool inWorldEdit = true;
   unsigned trnSelector = 0;
   
@@ -937,7 +1161,8 @@ void handleNewWorld(World& w, vector<Creature>& creatures,
   std::cout << "[World] Plant establishment complete." << std::endl;
   
   // Add Creatures AFTER plants have matured
-  populateWorld(w, creatures, INITIAL_POPULATION);
+  // Use biome-based spawning to place creatures in appropriate biomes
+  populateWorldByBiome(w, creatures, INITIAL_POPULATION);
 }
 
 /**
