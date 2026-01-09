@@ -14,7 +14,15 @@
 #include <unordered_set>
 #include "creature.hpp"
 
+// Forward declarations
 class Creature;
+
+namespace EcoSim {
+    class EnvironmentSystem;
+    namespace Genetics {
+        class Phenotype;
+    }
+}
 
 // CREATURE-018 fix: Convert macros to type-safe constexpr constants
 // These are now properly scoped and type-safe
@@ -39,6 +47,57 @@ struct CoordHash {
 
 // Type alias for coordinate set with O(1) lookup
 using CoordSet = std::unordered_set<std::pair<int, int>, CoordHash>;
+
+/**
+ * @brief Context for environmental pathfinding calculations
+ *
+ * Pre-computed creature data and environment access for efficient
+ * per-tile cost calculation during A* search. Using a context struct
+ * avoids changing existing function signatures significantly.
+ */
+struct PathfindingContext {
+    /// Creature's effective minimum tolerable temperature (with adaptations)
+    float effectiveTolMin = -30.0f;
+    
+    /// Creature's effective maximum tolerable temperature (with adaptations)
+    float effectiveTolMax = 60.0f;
+    
+    /// Creature's environmental sensitivity gene value [0.0, 2.0]
+    float environmentalSensitivity = 1.0f;
+    
+    /// Environment system for temperature queries (non-owning, may be null)
+    const EcoSim::EnvironmentSystem* envSystem = nullptr;
+    
+    /// Danger weight factor for cost calculation
+    static constexpr float DANGER_WEIGHT_FACTOR = 10.0f;
+    
+    /**
+     * @brief Calculate total movement cost including environmental factors
+     * @param baseCost Base movement cost (NORM_COST or DIAG_COST)
+     * @param x Target tile X coordinate
+     * @param y Target tile Y coordinate
+     * @return Total cost with environmental danger penalty applied
+     */
+    float calculateTileCost(float baseCost, int x, int y) const;
+    
+    /**
+     * @brief Create context from creature phenotype
+     * @param phenotype The creature's expressed traits
+     * @param envSystem Environment system for temperature queries (may be null)
+     * @return Populated PathfindingContext ready for use
+     */
+    static PathfindingContext fromCreature(
+        const EcoSim::Genetics::Phenotype& phenotype,
+        const EcoSim::EnvironmentSystem* envSystem);
+        
+    /**
+     * @brief Create default context (no environmental awareness)
+     * @return Context with environmental costs disabled
+     */
+    static PathfindingContext noEnvironment() {
+        return PathfindingContext{};
+    }
+};
 
 //  Node for A* Search
 class Node {
@@ -152,7 +211,8 @@ class Navigator {
                                  const int &rows,
                                  const int &cols,
                                  const int &endX,
-                                 const int &endY);
+                                 const int &endY,
+                                 const PathfindingContext* ctx = nullptr);
     static void movementCost    (Creature &c, const int &x,const int &y);
 
 
@@ -164,7 +224,8 @@ class Navigator {
                                  const int &rows,
                                  const int &cols,
                                  const int &endX,
-                                 const int &endY);
+                                 const int &endY,
+                                 const PathfindingContext* ctx = nullptr);
     static void wander          (Creature &c, const std::vector<std::vector<Tile>> &map,
                                  const unsigned rows, const unsigned cols);
     static void moveTowards     (Creature &c,

@@ -6,9 +6,18 @@
  *            Implements A* search algorithm for intelligent navigation around obstacles,
  *            plus helper methods for wandering, moving towards/away from targets, and
  *            boundary checking.
+ *
+ *            Phase 3 Enhancement: Environmental sensitivity in pathfinding.
+ *            Creatures with high ENVIRONMENTAL_SENSITIVITY gene will avoid hostile
+ *            biomes (temperatures outside their tolerance), while low-sensitivity
+ *            creatures prioritize direct paths.
  */
 
 #include "../../../include/objects/creature/navigator.hpp"
+#include "genetics/expression/Phenotype.hpp"
+#include "genetics/expression/EnvironmentalStress.hpp"
+#include "genetics/defaults/UniversalGenes.hpp"
+#include "world/EnvironmentSystem.hpp"
 
 //  Adjusts movement cost for diagonal
 const float Navigator::DIAG_ADJUST = 1.4f;
@@ -18,6 +27,65 @@ static std::random_device s_rd;
 static std::mt19937 s_wanderGen(s_rd());
 
 using namespace std;
+using namespace EcoSim::Genetics;
+
+//================================================================================
+//  PathfindingContext Implementation
+//================================================================================
+
+PathfindingContext PathfindingContext::fromCreature(
+    const EcoSim::Genetics::Phenotype& phenotype,
+    const EcoSim::EnvironmentSystem* envSystem
+) {
+    // Extract thermal adaptations from phenotype genes
+    ThermalAdaptations adaptations =
+        EnvironmentalStressCalculator::extractThermalAdaptations(phenotype);
+    
+    // Get base tolerance values from genes using getTrait() API
+    float baseTolMin = phenotype.getTrait("TEMPERATURE_TOLERANCE_MIN");
+    float baseTolMax = phenotype.getTrait("TEMPERATURE_TOLERANCE_MAX");
+    
+    // Calculate effective tolerance range with adaptations applied
+    EffectiveToleranceRange range =
+        EnvironmentalStressCalculator::calculateEffectiveTempRange(
+            baseTolMin, baseTolMax, adaptations
+        );
+    
+    // Get environmental sensitivity from gene (determines how much creature avoids danger)
+    float sensitivity = phenotype.getTrait(UniversalGenes::ENVIRONMENTAL_SENSITIVITY);
+    
+    return PathfindingContext{
+        range.tempMin,
+        range.tempMax,
+        sensitivity,
+        envSystem
+    };
+}
+
+float PathfindingContext::calculateTileCost(float baseCost, int x, int y) const {
+    // If no environment system or sensitivity is negligible, use base cost only
+    if (!envSystem || environmentalSensitivity < 0.01f) {
+        return baseCost;
+    }
+    
+    // Get temperature at the tile
+    float temp = envSystem->getTemperature(x, y);
+    
+    // Calculate how many degrees outside tolerance the temperature is
+    float degreesOutside = 0.0f;
+    if (temp < effectiveTolMin) {
+        degreesOutside = effectiveTolMin - temp;
+    } else if (temp > effectiveTolMax) {
+        degreesOutside = temp - effectiveTolMax;
+    }
+    // If temp is within tolerance, degreesOutside remains 0
+    
+    // Apply formula: cost = baseCost + (degreesOutside/10) * sensitivity * DANGER_WEIGHT_FACTOR
+    // This makes tiles 10°C outside tolerance cost an extra sensitivity*10 movement units
+    float environmentalCost = (degreesOutside / 10.0f) * environmentalSensitivity * DANGER_WEIGHT_FACTOR;
+    
+    return baseCost + environmentalCost;
+}
 
 //================================================================================
 //  Helper methods
@@ -94,6 +162,10 @@ bool Navigator::boundaryCheck (const int &x,    const int &y,
  *  These Tiles can then be turned into Nodes, validated, then
  *  added to the openSet.
  *
+ *  Phase 3 Enhancement: When a PathfindingContext is provided, tile costs
+ *  are modified based on environmental danger (temperature outside tolerance).
+ *  This causes creatures with high ENVIRONMENTAL_SENSITIVITY to prefer safe routes.
+ *
  *  @param map          A reference to the world map
  *  @param curNode      The current node being expanded.
  *  @param openSet      The open set for A* search.
@@ -103,6 +175,8 @@ bool Navigator::boundaryCheck (const int &x,    const int &y,
  *  @param cols         Number of columns in map.
  *  @param endX         X position of end tile.
  *  @param endY         Y position of end tile.
+ *  @param ctx          Optional PathfindingContext for environmental cost calculation.
+ *                      If nullptr, uses base costs only (backward compatible).
  */
 void Navigator::checkNeighbours (const vector<vector<Tile>> &map,
                                  const Node &curNode,
@@ -112,8 +186,10 @@ void Navigator::checkNeighbours (const vector<vector<Tile>> &map,
                                  const int &rows,
                                  const int &cols,
                                  const int &endX,
-                                 const int &endY) {
-  int curX, curY, gCost;
+                                 const int &endY,
+                                 const PathfindingContext* ctx) {
+  int curX, curY;
+  float gCost;  // Changed to float to support environmental costs
   Tile curTile;
   //  Diagonals
   for (int xMod = -1; xMod < 2; xMod += 2) {
@@ -122,10 +198,13 @@ void Navigator::checkNeighbours (const vector<vector<Tile>> &map,
       curY = curNode.getY() + yMod;
 
       if (boundaryCheck (curX, curY, rows, cols)) {
-        gCost   = curNode.getG() + DIAG_COST;
+        // Base diagonal cost
+        float baseCost = static_cast<float>(DIAG_COST);
+        // Apply environmental cost if context provided
+        gCost = curNode.getG() + (ctx ? ctx->calculateTileCost(baseCost, curX, curY) : baseCost);
         curTile = map.at(curX).at(curY);
         validateNode  (openSet, openCoords, closedCoords, curTile, &curNode,
-                       gCost, curX, curY, endX, endY);
+                       static_cast<int>(gCost), curX, curY, endX, endY);
       }
     }
   }
@@ -136,10 +215,13 @@ void Navigator::checkNeighbours (const vector<vector<Tile>> &map,
     curY = curNode.getY() + yMod;
 
     if (boundaryCheck (curX, curY, rows, cols)) {
-      gCost   = curNode.getG() + NORM_COST;
+      // Base orthogonal cost
+      float baseCost = static_cast<float>(NORM_COST);
+      // Apply environmental cost if context provided
+      gCost = curNode.getG() + (ctx ? ctx->calculateTileCost(baseCost, curX, curY) : baseCost);
       curTile = map.at(curX).at(curY);
       validateNode  (openSet, openCoords, closedCoords, curTile, &curNode,
-                     gCost, curX, curY, endX, endY);
+                     static_cast<int>(gCost), curX, curY, endX, endY);
     }
   }
 
@@ -149,10 +231,13 @@ void Navigator::checkNeighbours (const vector<vector<Tile>> &map,
     curY = curNode.getY();
 
     if (boundaryCheck (curX, curY, rows, cols)) {
-      gCost   = curNode.getG() + NORM_COST;
+      // Base orthogonal cost
+      float baseCost = static_cast<float>(NORM_COST);
+      // Apply environmental cost if context provided
+      gCost = curNode.getG() + (ctx ? ctx->calculateTileCost(baseCost, curX, curY) : baseCost);
       curTile = map.at(curX).at(curY);
       validateNode  (openSet, openCoords, closedCoords, curTile, &curNode,
-               gCost, curX, curY, endX, endY);
+               static_cast<int>(gCost), curX, curY, endX, endY);
     }
   }
 }
@@ -187,7 +272,8 @@ bool Navigator::astarSearch (Creature &c,
                              const int &rows,
                              const int &cols,
                              const int &endX,
-                             const int &endY) {
+                             const int &endY,
+                             const PathfindingContext* ctx) {
   int timeOut = 0;
   //  Sets of tiles already evaluated
   set<Node, nodeCompare> closedSet;
@@ -235,7 +321,8 @@ bool Navigator::astarSearch (Creature &c,
       openCoords.erase({nodeX, nodeY});
       //  Find the inserted node in closedSet to pass to checkNeighbours
       auto closedIter = closedSet.find(currentNode);
-      checkNeighbours (map, *closedIter, openSet, openCoords, closedCoords, rows, cols, endX, endY);
+      // Pass PathfindingContext to enable environmental cost calculation
+      checkNeighbours (map, *closedIter, openSet, openCoords, closedCoords, rows, cols, endX, endY, ctx);
       timeOut++;
     }
 
