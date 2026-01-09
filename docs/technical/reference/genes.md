@@ -1,7 +1,7 @@
 ---
 title: Gene Reference - Complete Gene Catalog
 created: 2025-12-24
-updated: 2025-12-28
+updated: 2026-01-09
 status: complete
 audience: developer
 type: reference
@@ -10,9 +10,9 @@ tags: [genetics, genes, reference, catalog, modulation]
 
 # Gene Reference - Complete Gene Catalog
 
-**Version:** 3.1 (Trait Modulation Policies)
-**Date:** 2025-12-28
-**Total Genes:** 88 active (89 total, 1 deprecated)
+**Version:** 3.2 (Environmental Sensitivity)
+**Date:** 2026-01-09
+**Total Genes:** 89 active (90 total, 1 deprecated)
 **Test Coverage:** 97 tests passing
 
 ---
@@ -101,7 +101,7 @@ Genes that all organisms express at moderate to high levels.
 
 ---
 
-## 2. MOBILITY GENES (5 genes)
+## 2. MOBILITY GENES (6 genes)
 
 Genes for movement and navigation. High expression in creatures, dormant (0.1) in plants.
 
@@ -155,6 +155,22 @@ Genes for movement and navigation. High expression in creatures, dormant (0.1) i
 - **Description:** Prey/mate seeking aggressiveness
 - **Effects:** Hunting success, mate finding
 - **Cost:** Low (0.3/day)
+
+### 2.6 `environmental_sensitivity`
+- **Chromosome:** Behavior
+- **Range:** [0.0, 2.0]
+- **Creep:** 0.1
+- **Dominance:** Incomplete
+- **Source:** UniversalGenes, world-organism-integration.md
+- **Description:** Awareness and response to environmental dangers
+- **Effects:** Weighs danger in pathfinding calculations (tile environmental stress × sensitivity)
+- **Behavior:**
+  - 0.0 = Ignores environmental stress during pathfinding (short-term optimal but may enter lethal zones)
+  - 1.0 = Standard weighting (balanced survival/efficiency)
+  - 2.0 = Extreme caution (strongly avoids stressful tiles, longer paths)
+- **Cost:** Low (0.2/day) - cognitive processing
+- **Trade-off:** Higher sensitivity = safer paths but potentially longer travel times
+- **Note:** Used by pathfinding system to calculate danger scores: `dangerScore = tileStress * sensitivity`
 
 ---
 
@@ -866,7 +882,7 @@ Combat behavioral traits.
 | Category | Count | Primary Users | Expression in Others |
 |----------|-------|---------------|---------------------|
 | **Universal** | 7 | All | High (0.5-0.9) |
-| **Mobility** | 5 | Creatures | Dormant in plants (0.0-0.1) |
+| **Mobility** | 6 | Creatures | Dormant in plants (0.0-0.1) |
 | **Autotrophy** | 5 | Plants | Dormant in creatures (0.0-0.1) |
 | **Heterotrophy (original)** | 6 | Creatures | Dormant in plants |
 | **Heterotrophy (coevolution)** | 7 | Creatures | Some in carnivorous plants |
@@ -881,8 +897,8 @@ Combat behavioral traits.
 | **Plant Defense** | 6 | Plants | Low in creatures |
 | **Reproduction** | 6 | All | Varies by strategy |
 | **Seed Propagation** | 5 | Plants | Low in creatures |
-| **TOTAL** | **89** | - | - |
-| **Active** | 88 | - | - |
+| **TOTAL** | **90** | - | - |
+| **Active** | 89 | - | - |
 | **Deprecated** | 1 (`diet_type`) | - | - |
 
 ---
@@ -945,7 +961,7 @@ Physical anatomy that doesn't change with organism state:
 `hunger_threshold`, `thirst_threshold`, `fatigue_threshold`, `mate_threshold`, `flee_threshold`, `pursue_threshold`, `retreat_threshold`
 
 **Environmental Tolerances:**
-`temp_tolerance_low`, `temp_tolerance_high`
+`temp_tolerance_low`, `temp_tolerance_high`, `environmental_sensitivity`
 
 **Behavioral Traits:**
 `offspring_count`, `spread_distance`, `comfort_increase`, `comfort_decrease`, `wound_tolerance`, `bleeding_resistance`, `sweetness_preference`, `caching_instinct`, `spatial_memory`, `grooming_frequency`, `pain_sensitivity`, `scent_signature_variance`, `scent_masking`, `thorn_density`

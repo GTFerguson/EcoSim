@@ -51,7 +51,9 @@ Detailed documentation for individual subsystems.
 | Document | Description | Status |
 |----------|-------------|--------|
 | [[systems/scent-system]] | Olfactory communication | ✅ Available |
-| [[systems/world-system]] | World environment management | ✅ Available |
+| [[systems/world-system]] | World environment and climate | ✅ Available |
+| [[systems/environmental-stress]] | Fitness gradients and survival | ✅ Available |
+| [[systems/behavior-system]] | State machine AI | ✅ Available |
 | [[systems/spatial-index]] | O(1) creature queries | ✅ Available |
 | [[design/resource-allocation]] | Energy budget framework | ✅ Available |
 | [[systems/energy-budget]] | Energy system details | 🚧 Coming |
@@ -63,6 +65,8 @@ Design rationale explaining the philosophy behind implementation decisions.
 
 | Document | Description | Status |
 |----------|-------------|--------|
+| [[design/world-generation]] | Climate-based world generation | ✅ Available |
+| [[design/world-organism-integration]] | Environment ↔ organism interaction | ✅ Available |
 | [[design/coevolution]] | Creature-plant interactions | ✅ Available |
 | [[design/organism]] | Organism interface architecture | ✅ Available |
 | [[design/prefab]] | Plant factory architecture | ✅ Available |
@@ -81,6 +85,9 @@ Design rationale explaining the philosophy behind implementation decisions.
 | Look up a class API | [[reference/api/core-classes]] |
 | Find gene properties | [[reference/genes]] |
 | Understand energy costs | [[design/resource-allocation]] |
+| Understand world generation | [[design/world-generation]] |
+| Learn about environmental stress | [[systems/environmental-stress]] |
+| See how environment affects organisms | [[design/world-organism-integration]] |
 | See future roadmap | [[../future/genetics-phase3-roadmap]] |
 | Understand design choices | [[design/coevolution]] |
 
@@ -108,6 +115,14 @@ For developers integrating genetics into the simulation:
 2. [[reference/api/core-classes]] (browse) - Find relevant APIs
 3. [[../future/genetics-phase3-roadmap]] (10 min) - Future roadmap
 
+### Path 4: World Systems
+
+For developers working with world generation and environment:
+1. [[design/world-generation]] (20 min) - Climate-based generation design
+2. [[systems/world-system]] (30 min) - World system implementation
+3. [[systems/environmental-stress]] (20 min) - Fitness gradients
+4. [[design/world-organism-integration]] (30 min) - Environment ↔ organism
+
 ## 🔧 Source Code Reference
 
 ```
@@ -119,7 +134,16 @@ include/genetics/
 ├── organisms/      # Plant, factories
 └── interactions/   # Feeding, dispersal, coevolution
 
+include/world/
+├── BiomeTypes.hpp          # 22 biome definitions
+├── ClimateWorldGenerator.hpp # Climate-based generation
+├── EnvironmentSystem.hpp   # Environment queries
+├── WorldGrid.hpp           # Tile management
+├── SeasonManager.hpp       # Seasonal cycles
+└── SpatialIndex.hpp        # O(1) entity queries
+
 src/genetics/       # Implementations mirror include/
+src/world/          # World system implementations
 ```
 
 ## ℹ️ Document Status Legend
@@ -133,5 +157,5 @@ src/genetics/       # Implementations mirror include/
 
 ---
 
-**Last Updated:** 2026-01-01
-**Documentation Version:** 3.0 (Complete)
+**Last Updated:** 2026-01-09
+**Documentation Version:** 4.0 (World Systems Integration)

@@ -1,8 +1,8 @@
 ---
 title: World Generation System Design
 created: 2026-01-08
-updated: 2026-01-08
-status: design
+updated: 2026-01-09
+status: implemented
 tags: [world, generation, biomes, climate, design]
 ---
 
@@ -10,7 +10,17 @@ tags: [world, generation, biomes, climate, design]
 
 ## Overview
 
-This document describes a comprehensive world generation system that replaces the current elevation-only approach with a climate-based biome system. The new system generates believable, geographically coherent worlds where terrain, climate, and biomes interact realistically.
+This document describes the climate-based world generation system implemented in [`ClimateWorldGenerator`](../../../include/world/ClimateWorldGenerator.hpp:1). The system replaces the original elevation-only approach with a climate-based biome system using the Whittaker classification. It generates believable, geographically coherent worlds where terrain, climate, and biomes interact realistically.
+
+> [!NOTE]
+> **Implementation Status:** ✅ Implemented
+> - ClimateWorldGenerator: Complete
+> - 22 Whittaker biomes: Complete
+> - Biome blending (ecotones): Complete
+> - River generation: Complete
+> - Lake formation: Complete
+> - Tectonic plate ridges: Complete
+> - Inland sea removal: Complete
 
 ## Current System Analysis
 
