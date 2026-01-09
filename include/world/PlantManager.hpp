@@ -21,6 +21,9 @@
 
 namespace EcoSim {
 
+// Forward declaration
+class EnvironmentSystem;
+
 /**
  * @class PlantManager
  * @brief Manages plant creation, lifecycle, and seed dispersal
@@ -45,6 +48,16 @@ public:
      * @param scents Reference to the scent layer for plant odors
      */
     PlantManager(WorldGrid& grid, ScentLayer& scents);
+    
+    /**
+     * @brief Set the environment system for per-tile environment queries
+     * @param envSystem Pointer to the environment system (non-owning)
+     *
+     * When set, plants will receive location-specific environmental data
+     * (temperature, moisture, light) based on the climate map. If not set
+     * or nullptr, falls back to the global _currentEnvironment.
+     */
+    void setEnvironmentSystem(const EnvironmentSystem* envSystem);
     
     //==========================================================================
     // Initialization
@@ -159,10 +172,11 @@ public:
 private:
     WorldGrid& _grid;
     ScentLayer& _scents;
+    const EnvironmentSystem* _environmentSystem = nullptr;
     
     std::shared_ptr<Genetics::GeneRegistry> _plantRegistry;
     std::unique_ptr<Genetics::PlantFactory> _plantFactory;
-    Genetics::EnvironmentState _currentEnvironment;
+    Genetics::EnvironmentState _currentEnvironment;  // Fallback when no environment system
     Genetics::SeedDispersal _seedDispersal;
     
     std::mt19937 _rng;

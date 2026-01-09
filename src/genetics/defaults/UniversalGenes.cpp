@@ -80,6 +80,7 @@ void UniversalGenes::initializeCategories() {
     s_geneCategories[SPATIAL_MEMORY] = GeneCategory::Behavior;
     s_geneCategories[GROOMING_FREQUENCY] = GeneCategory::Behavior;
     s_geneCategories[PAIN_SENSITIVITY] = GeneCategory::Behavior;
+    s_geneCategories[ENVIRONMENTAL_SENSITIVITY] = GeneCategory::Behavior;
     
     // Health/Healing genes
     s_geneCategories[REGENERATION_RATE] = GeneCategory::Morphology;
@@ -738,6 +739,18 @@ void UniversalGenes::registerBehaviorGenes(GeneRegistry& registry) {
     pain.setMaintenanceCost(0.02f);
     pain.setCostScaling(1.0f);
     registry.tryRegisterGene(std::move(pain));
+    
+    // Environmental Sensitivity - weighs environmental danger in pathfinding
+    // [0.0, 2.0], creep 0.1
+    // 0.0 = risk-taker (ignores danger), 1.0 = balanced, 2.0 = risk-averse
+    // Cost: 0.02 - minimal neural overhead for environmental awareness
+    GeneDefinition envSensitivity(ENVIRONMENTAL_SENSITIVITY, ChromosomeType::Behavior,
+        GeneLimits(0.0f, 2.0f, 0.1f), DominanceType::Incomplete);
+    envSensitivity.addEffect(EffectBinding("behavior", "environmental_sensitivity", EffectType::Direct, 1.0f));
+    envSensitivity.setMaintenanceCost(0.02f);
+    envSensitivity.setCostScaling(1.0f);
+    envSensitivity.setModulationPolicy(TraitModulationPolicy::NEVER);
+    registry.tryRegisterGene(std::move(envSensitivity));
 }
 
 void UniversalGenes::registerSeedInteractionGenes(GeneRegistry& registry) {
@@ -1540,6 +1553,11 @@ Genome UniversalGenes::createCreatureGenome(const GeneRegistry& registry) {
         Gene gene(PAIN_SENSITIVITY, a, a);
         genome.addGene(gene, ChromosomeType::Behavior);
     }
+    if (registry.hasGene(ENVIRONMENTAL_SENSITIVITY)) {
+        Allele a(1.0f, 1.0f);  // Balanced sensitivity by default
+        Gene gene(ENVIRONMENTAL_SENSITIVITY, a, a);
+        genome.addGene(gene, ChromosomeType::Behavior);
+    }
     
     // ========== OLFACTORY SYSTEM GENES - Active in creatures (Phase 1) ==========
     if (registry.hasGene(SCENT_PRODUCTION)) {
@@ -2030,6 +2048,11 @@ Genome UniversalGenes::createPlantGenome(const GeneRegistry& registry) {
     if (registry.hasGene(PAIN_SENSITIVITY)) {
         Allele a(0.2f, 0.3f);  // Some damage sensing
         Gene gene(PAIN_SENSITIVITY, a, a);
+        genome.addGene(gene, ChromosomeType::Behavior);
+    }
+    if (registry.hasGene(ENVIRONMENTAL_SENSITIVITY)) {
+        Allele a(0.0f, 0.1f);  // Dormant - plants don't pathfind
+        Gene gene(ENVIRONMENTAL_SENSITIVITY, a, a);
         genome.addGene(gene, ChromosomeType::Behavior);
     }
     

@@ -267,6 +267,12 @@ public:
     /// Pain sensitivity/tolerance level [0.0, 1.0], creep 0.05
     static constexpr const char* PAIN_SENSITIVITY = "pain_sensitivity";
     
+    /// Environmental pathfinding sensitivity [0.0, 2.0], creep 0.1
+    /// 0.0 = risk-taker, ignores environmental danger in pathfinding
+    /// 1.0 = balanced, moderate danger avoidance
+    /// 2.0 = risk-averse, strongly avoids hostile biomes
+    static constexpr const char* ENVIRONMENTAL_SENSITIVITY = "environmental_sensitivity";
+    
     // ========== HEALTH/HEALING GENES (3) - Phase 1b Combat ==========
     // Health management and wound recovery
     

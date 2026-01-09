@@ -218,6 +218,16 @@ public:
      * @return Reference to internal EnergyBudget instance
      */
     const EnergyBudget& getEnergyBudget() const;
+    
+    /**
+     * @brief Get the current environment state
+     * @return Reference to the stored environment state
+     *
+     * This provides access to the environment state that was passed to
+     * updateContext(), allowing external systems (like stress calculation)
+     * to access environmental parameters.
+     */
+    const EnvironmentState& getEnvironment() const { return environment_; }
 
 private:
     const Genome* genome_ = nullptr;

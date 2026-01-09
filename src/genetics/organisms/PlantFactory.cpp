@@ -167,6 +167,7 @@ SpeciesTemplate PlantFactory::createBerryBushTemplate() {
     tmpl.geneRanges[PlantGenes::LIGHT_NEED] = {0.5f, 0.7f};
     tmpl.geneRanges[UniversalGenes::TEMP_TOLERANCE_LOW] = {5.0f, 10.0f};
     tmpl.geneRanges[UniversalGenes::TEMP_TOLERANCE_HIGH] = {30.0f, 40.0f};
+    tmpl.geneRanges[UniversalGenes::WATER_STORAGE] = {0.45f, 0.55f};       // Moderate drought tolerance
     
     // Rendering
     tmpl.entityType = EntityType::PLANT_BERRY_BUSH;
@@ -217,6 +218,7 @@ SpeciesTemplate PlantFactory::createOakTreeTemplate() {
     tmpl.geneRanges[PlantGenes::LIGHT_NEED] = {0.6f, 0.8f};
     tmpl.geneRanges[UniversalGenes::TEMP_TOLERANCE_LOW] = {-10.0f, 0.0f};
     tmpl.geneRanges[UniversalGenes::TEMP_TOLERANCE_HIGH] = {35.0f, 45.0f};
+    tmpl.geneRanges[UniversalGenes::WATER_STORAGE] = {0.55f, 0.70f};        // Good drought tolerance (deep roots)
     
     // Rendering
     tmpl.entityType = EntityType::PLANT_OAK_TREE;
@@ -267,6 +269,7 @@ SpeciesTemplate PlantFactory::createGrassTemplate() {
     tmpl.geneRanges[PlantGenes::LIGHT_NEED] = {0.7f, 0.9f};                 // Full sun
     tmpl.geneRanges[UniversalGenes::TEMP_TOLERANCE_LOW] = {-5.0f, 5.0f};
     tmpl.geneRanges[UniversalGenes::TEMP_TOLERANCE_HIGH] = {35.0f, 50.0f};  // Heat tolerant
+    tmpl.geneRanges[UniversalGenes::WATER_STORAGE] = {0.35f, 0.50f};        // Lower water storage (shallow roots)
     
     // Rendering
     tmpl.entityType = EntityType::PLANT_GRASS;
@@ -317,6 +320,7 @@ SpeciesTemplate PlantFactory::createThornBushTemplate() {
     tmpl.geneRanges[PlantGenes::LIGHT_NEED] = {0.4f, 0.6f};
     tmpl.geneRanges[UniversalGenes::TEMP_TOLERANCE_LOW] = {0.0f, 10.0f};
     tmpl.geneRanges[UniversalGenes::TEMP_TOLERANCE_HIGH] = {35.0f, 45.0f};
+    tmpl.geneRanges[UniversalGenes::WATER_STORAGE] = {0.60f, 0.75f};        // Good drought tolerance (thorny desert shrub)
     
     // Rendering
     tmpl.entityType = EntityType::PLANT_THORN_BUSH;

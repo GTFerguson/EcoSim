@@ -12,6 +12,7 @@
 #include "genetics/defaults/PlantGenes.hpp"
 #include "genetics/defaults/UniversalGenes.hpp"
 #include "genetics/expression/OrganismState.hpp"
+#include "genetics/expression/EnvironmentalStress.hpp"
 #include "genetics/core/RandomEngine.hpp"
 #include "genetics/core/GeneRegistry.hpp"
 #include "logging/Logger.hpp"
@@ -301,17 +302,34 @@ void Plant::grow(const EnvironmentState& env) {
     float growthRate = getGrowthRate();
     float lightNeed = getLightNeed();
     float waterNeed = getWaterNeed();
-    bool canSurviveTemp = canSurviveTemperature(env.temperature);
     
-    // Handle temperature stress damage
-    float tempDamage = PlantEnergyCalculator::calculateTemperatureStressDamage(canSurviveTemp);
-    if (tempDamage > 0.0f) {
-        takeDamage(tempDamage);
+    // Get temperature tolerance from genes
+    float tempLow = getGeneValueFromGenome(UniversalGenes::TEMP_TOLERANCE_LOW, 5.0f);
+    float tempHigh = getGeneValueFromGenome(UniversalGenes::TEMP_TOLERANCE_HIGH, 35.0f);
+    
+    // Get water storage gene for drought resistance
+    float waterStorage = getGeneValueFromGenome(UniversalGenes::WATER_STORAGE, 0.0f);
+    
+    // Calculate combined environmental stress using the stress calculator
+    CombinedPlantStress stress = EnvironmentalStressCalculator::calculatePlantStress(
+        env, tempLow, tempHigh, waterNeed, waterStorage);
+    
+    // Apply environmental damage if any (temperature or moisture stress)
+    // Gradual damage based on stress levels - not instant death
+    float totalDamage = stress.combinedHealthDamage;
+    if (totalDamage > 0.0f) {
+        // Damage is already per-tick rate, scaled by max health (1.0)
+        takeDamage(totalDamage);
     }
     
-    // Calculate effective growth using PlantEnergyCalculator
+    // Calculate base growth using PlantEnergyCalculator for light/water factors
+    bool canSurviveTemp = stress.temperature.severity != StressLevel::Lethal;
     float effectiveGrowth = PlantEnergyCalculator::calculatePhotosynthesisGrowth(
         env, lightNeed, waterNeed, growthRate, canSurviveTemp);
+    
+    // Apply combined growth modifier from stress system
+    // This reduces growth when stressed by temperature or drought
+    effectiveGrowth *= stress.combinedGrowthModifier;
     
     setCurrentSize(std::min(currentSize_ + effectiveGrowth, maxSize));
     

@@ -4,6 +4,7 @@
  */
 
 #include "../../include/world/PlantManager.hpp"
+#include "../../include/world/EnvironmentSystem.hpp"
 
 namespace EcoSim {
 
@@ -16,7 +17,17 @@ using namespace Genetics;
 PlantManager::PlantManager(WorldGrid& grid, ScentLayer& scents)
     : _grid(grid)
     , _scents(scents)
+    , _environmentSystem(nullptr)
     , _rng(std::random_device{}()) {
+}
+
+void PlantManager::setEnvironmentSystem(const EnvironmentSystem* envSystem) {
+    _environmentSystem = envSystem;
+    if (_environmentSystem && _environmentSystem->hasClimateData()) {
+        std::cout << "[PlantManager] Connected to EnvironmentSystem with climate data" << std::endl;
+    } else if (_environmentSystem) {
+        std::cout << "[PlantManager] Connected to EnvironmentSystem (no climate data)" << std::endl;
+    }
 }
 
 //==============================================================================
@@ -146,8 +157,17 @@ void PlantManager::tick(unsigned currentTick) {
         for (unsigned y = 0; y < rows; y++) {
             Tile& tile = _grid(x, y);
             
-            // Update plants with current environment
-            tile.updatePlants(_currentEnvironment);
+            // Get per-tile environment if available, otherwise use global fallback
+            EnvironmentState tileEnv;
+            if (_environmentSystem) {
+                tileEnv = _environmentSystem->getEnvironmentStateAt(
+                    static_cast<int>(x), static_cast<int>(y));
+            } else {
+                tileEnv = _currentEnvironment;
+            }
+            
+            // Update plants with location-specific environment
+            tile.updatePlants(tileEnv);
             
             // Remove dead plants
             tile.removeDeadPlants();
@@ -193,7 +213,7 @@ void PlantManager::tick(unsigned currentTick) {
                     }
                     
                     if (dist(_rng) < dispersalChance) {
-                        DispersalEvent event = _seedDispersal.disperse(*plant, &_currentEnvironment);
+                        DispersalEvent event = _seedDispersal.disperse(*plant, &tileEnv);
                         dispersalEvents.push_back({event, plant});
                     }
                     
