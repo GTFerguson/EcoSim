@@ -800,11 +800,43 @@ void Creature::update () {
     _fatigue  += _metabolism;
   }
 
+  // Calculate environmental stress based on current temperature tolerance
+  // Extract thermal adaptations from phenotype
+  using namespace EcoSim::Genetics;
+  ThermalAdaptations adaptations = EnvironmentalStressCalculator::extractThermalAdaptations(phenotype_);
+  
+  // Get temperature tolerance range from phenotype
+  float tempLow = 10.0f;  // Default cold tolerance
+  float tempHigh = 30.0f; // Default heat tolerance
+  if (phenotype_.hasTrait(UniversalGenes::TEMP_TOLERANCE_LOW)) {
+    tempLow = phenotype_.getTrait(UniversalGenes::TEMP_TOLERANCE_LOW);
+  }
+  if (phenotype_.hasTrait(UniversalGenes::TEMP_TOLERANCE_HIGH)) {
+    tempHigh = phenotype_.getTrait(UniversalGenes::TEMP_TOLERANCE_HIGH);
+  }
+  
+  // Get current environment temperature from phenotype's stored environment
+  // Default to comfortable temperature if environment hasn't been set
+  float currentTemp = phenotype_.getEnvironment().temperature;
+  
+  // Calculate stress based on current temperature and creature adaptations
+  _currentEnvironmentalStress = EnvironmentalStressCalculator::calculateTemperatureStress(
+      currentTemp, tempLow, tempHigh, adaptations);
+  
+  // Apply energy drain multiplier from environmental stress
+  change *= _currentEnvironmentalStress.energyDrainMultiplier;
+
   // Track energy before changes for starvation logging
   float hungerBefore = _hunger;
   
   _hunger -= change;
   _thirst -= change;
+  
+  // Apply environmental health damage if creature is outside safe temperature range
+  if (_currentEnvironmentalStress.healthDamageRate > 0.0f) {
+    float damage = _currentEnvironmentalStress.healthDamageRate * getMaxHealth();
+    takeDamage(damage);
+  }
   
   // Log when creature enters critical starvation zone (approaching death)
   if (hungerBefore > STARVATION_POINT && _hunger <= STARVATION_POINT + 0.5f) {
@@ -2269,8 +2301,38 @@ EcoSim::Genetics::BehaviorResult Creature::updateWithBehaviors(EcoSim::Genetics:
         _fatigue += _metabolism;
     }
     
+    // Calculate environmental stress based on current temperature tolerance
+    ThermalAdaptations adaptations = EnvironmentalStressCalculator::extractThermalAdaptations(phenotype_);
+    
+    // Get temperature tolerance range from phenotype
+    float tempLow = 10.0f;  // Default cold tolerance
+    float tempHigh = 30.0f; // Default heat tolerance
+    if (phenotype_.hasTrait(UniversalGenes::TEMP_TOLERANCE_LOW)) {
+        tempLow = phenotype_.getTrait(UniversalGenes::TEMP_TOLERANCE_LOW);
+    }
+    if (phenotype_.hasTrait(UniversalGenes::TEMP_TOLERANCE_HIGH)) {
+        tempHigh = phenotype_.getTrait(UniversalGenes::TEMP_TOLERANCE_HIGH);
+    }
+    
+    // Get current environment temperature from phenotype's stored environment
+    float currentTemp = phenotype_.getEnvironment().temperature;
+    
+    // Calculate stress based on current temperature and creature adaptations
+    _currentEnvironmentalStress = EnvironmentalStressCalculator::calculateTemperatureStress(
+        currentTemp, tempLow, tempHigh, adaptations);
+    
+    // Apply energy drain multiplier from environmental stress
+    change *= _currentEnvironmentalStress.energyDrainMultiplier;
+    
     _hunger -= change;
     _thirst -= change;
+    
+    // Apply environmental health damage if creature is outside safe temperature range
+    if (_currentEnvironmentalStress.healthDamageRate > 0.0f) {
+        float damage = _currentEnvironmentalStress.healthDamageRate * getMaxHealth();
+        takeDamage(damage);
+    }
+    
     age_++;
     
     return result;

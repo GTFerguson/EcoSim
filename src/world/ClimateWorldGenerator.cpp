@@ -1476,9 +1476,11 @@ void ClimateWorldGenerator::applyToGrid(WorldGrid& grid) {
             const TileClimate& climate = _climateMap[x][y];
             const BiomeProperties& props = getBiomeProperties(climate.biome());
             
-            // Determine passability
+            // Determine passability and terrain type
             bool passable = true;
             bool isWater = false;
+            TerrainType terrainType = props.terrainType;
+            char displayChar = props.displayChar;
             
             if (climate.biome() == Biome::OCEAN_DEEP ||
                 climate.biome() == Biome::OCEAN_SHALLOW ||
@@ -1488,9 +1490,18 @@ void ClimateWorldGenerator::applyToGrid(WorldGrid& grid) {
             } else if (climate.biome() == Biome::FRESHWATER) {
                 passable = true;  // Shallow enough to wade
                 isWater = true;
-            } else if (climate.feature == TerrainFeature::RIVER ||
-                       climate.feature == TerrainFeature::LAKE) {
+            } else if (climate.feature == TerrainFeature::RIVER) {
+                // Rivers are passable water with distinct terrain type
                 isWater = true;
+                passable = true;
+                terrainType = TerrainType::SHALLOW_WATER;
+                displayChar = '~';
+            } else if (climate.feature == TerrainFeature::LAKE) {
+                // Lakes are passable water bodies
+                isWater = true;
+                passable = true;
+                terrainType = TerrainType::WATER;
+                displayChar = '~';
             } else if (climate.biome() == Biome::GLACIER ||
                        climate.biome() == Biome::MOUNTAIN_BARE) {
                 passable = false;
@@ -1499,8 +1510,8 @@ void ClimateWorldGenerator::applyToGrid(WorldGrid& grid) {
             // Get color pair based on biome
             int colorPair = getColorPairForBiome(climate.biome(), climate.feature);
             
-            // Create tile
-            Tile tile(100, props.displayChar, colorPair, passable, isWater, props.terrainType);
+            // Create tile with appropriate terrain type
+            Tile tile(100, displayChar, colorPair, passable, isWater, terrainType);
             tile.setElevation(static_cast<unsigned int>(climate.elevation * 255));
             
             grid(x, y) = tile;

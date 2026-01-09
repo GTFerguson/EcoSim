@@ -44,6 +44,9 @@
 #include "genetics/systems/PerceptionSystem.hpp"
 #include "genetics/interactions/CombatInteraction.hpp"
 
+// Environmental stress system
+#include "genetics/expression/EnvironmentalStress.hpp"
+
 // JSON serialization
 #include <nlohmann/json.hpp>
 
@@ -181,6 +184,9 @@ class Creature: public GameObject,
     bool      _isFleeing = false;  // Currently fleeing from threat
     int       _targetId = -1;      // ID of combat/pursuit target (-1 = none)
     int       _combatCooldown = 0; // Ticks until can attack again
+    
+    //  Environmental Stress System
+    EcoSim::Genetics::TemperatureStress _currentEnvironmentalStress;  // Current stress state (for UI/debugging)
 
     //  Will Variables (creature-specific needs)
     float _hunger, _thirst, _fatigue, _mate;
@@ -695,6 +701,14 @@ class Creature: public GameObject,
      * @return Cooldown ticks remaining
      */
     int getCombatCooldown() const;
+    
+    /**
+     * @brief Get current environmental stress state.
+     * @return Reference to current temperature stress for UI/debugging
+     */
+    const EcoSim::Genetics::TemperatureStress& getEnvironmentalStress() const {
+        return _currentEnvironmentalStress;
+    }
     
     /**
      * @brief Get creature archetype label (e.g., "Herbivore", "Predator").
