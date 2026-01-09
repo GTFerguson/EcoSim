@@ -1,11 +1,11 @@
 ---
 title: World System Architecture
 created: 2025-12-30
-updated: 2025-12-30
+updated: 2026-01-09
 status: complete
 audience: developer
 type: reference
-tags: [world, architecture, systems, terrain]
+tags: [world, architecture, systems, terrain, climate, biomes]
 ---
 
 # World System Architecture
@@ -17,7 +17,9 @@ tags: [world, architecture, systems, terrain]
 
 ## Overview
 
-The World system manages all aspects of the simulation environment: terrain, tiles, plants, corpses, seasons, and environmental queries. Rather than implementing everything in a monolithic class, World serves as a **coordinator** that delegates to focused subsystems.
+The World system manages all aspects of the simulation environment: terrain generation, climate simulation, biome assignment, tiles, plants, corpses, seasons, and environmental queries. Rather than implementing everything in a monolithic class, World serves as a **coordinator** that delegates to focused subsystems.
+
+The world generation system uses a **climate-based approach** with 22 Whittaker biomes determined by temperature and moisture. This creates geographically coherent worlds where biomes emerge naturally from climate simulation rather than arbitrary elevation bands.
 
 **Header:** [`include/world/world.hpp`](../../../include/world/world.hpp:1)
 
@@ -171,9 +173,9 @@ if (world.grid().isValidPosition(row, col)) {
 
 ---
 
-## WorldGenerator
+## WorldGenerator (Legacy)
 
-Generates terrain using Simplex noise algorithms.
+The original terrain generator using elevation-only Simplex noise. Still available but superseded by ClimateWorldGenerator for new worlds.
 
 **Header:** [`include/world/WorldGenerator.hpp`](../../../include/world/WorldGenerator.hpp:1)
 
@@ -197,33 +199,213 @@ struct OctaveGen {
 class WorldGenerator {
 public:
     WorldGenerator(WorldGrid& grid, const MapGen& mapGen, const OctaveGen& octaveGen);
-    
-    // Generation
     void generate();
     void regenerate();
-    
-    // Configuration
-    const MapGen& getMapGen() const;
-    const OctaveGen& getOctaveGen() const;
-    void setMapGen(const MapGen& mg);
-    void setOctaveGen(const OctaveGen& og);
-    
-    // Individual parameter accessors
-    double getSeed() const;
-    void setSeed(double seed);
-    // ... other parameter getters/setters
+    // Configuration accessors...
 };
 
 } // namespace EcoSim
 ```
 
-### Generation Process
+---
 
-1. Initialize Simplex noise with seed
-2. Sample noise at each tile position
-3. Apply frequency and octave settings
-4. Map noise values to terrain types via thresholds
-5. Assign tile properties based on terrain
+## ClimateWorldGenerator
+
+**The primary world generation system** using climate-based biome determination.
+
+**Header:** [`include/world/ClimateWorldGenerator.hpp`](../../../include/world/ClimateWorldGenerator.hpp:1)
+
+### Generation Pipeline
+
+The climate generator uses a multi-pass approach:
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    Generation Pipeline                               │
+├─────────────────────────────────────────────────────────────────────┤
+│  Phase 1: Continental Shape                                         │
+│  └── Low-frequency Simplex noise → Land/Ocean mask                  │
+│                                                                      │
+│  Phase 2: Elevation Detail                                          │
+│  └── Ridged multifractal noise → Mountain ranges                    │
+│  └── Tectonic plate ridges → Realistic mountain chains              │
+│                                                                      │
+│  Phase 3: Climate Calculation                                       │
+│  └── Temperature = f(latitude, elevation)                           │
+│  └── Moisture = f(coast distance, wind, rain shadow)                │
+│                                                                      │
+│  Phase 4: Biome Determination                                       │
+│  └── Whittaker diagram lookup (temperature × moisture)              │
+│  └── Biome blending for smooth ecotones                             │
+│                                                                      │
+│  Phase 5: Water Features                                            │
+│  └── River tracing (downhill flow)                                  │
+│  └── Lake formation (terrain depressions)                           │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### 22 Whittaker Biomes
+
+Biomes are determined by temperature and moisture following the Whittaker classification:
+
+| Category | Biomes |
+|----------|--------|
+| **Aquatic** | Ocean Deep, Ocean Shallow, Ocean Coast, Freshwater |
+| **Cold** | Ice Sheet, Tundra, Taiga |
+| **Temperate** | Boreal Forest, Temperate Rainforest, Temperate Forest, Temperate Grassland |
+| **Warm** | Tropical Rainforest, Tropical Seasonal Forest, Savanna |
+| **Dry** | Hot Desert, Cold Desert, Steppe, Shrubland |
+| **Alpine** | Alpine Meadow, Alpine Tundra, Mountain Bare, Glacier |
+
+### Core Data Structures
+
+```cpp
+namespace EcoSim {
+
+// Per-tile climate data
+struct TileClimate {
+    float elevation;      // 0.0 - 1.0 normalized
+    float temperature;    // Celsius (-40 to +50)
+    float moisture;       // 0.0 - 1.0 precipitation index
+    float waterLevel;     // For rivers/lakes
+    
+    BiomeBlend biomeBlend;  // Weighted blend for ecotones
+    TerrainFeature feature; // River, lake, beach, etc.
+    
+    Biome biome() const;    // Primary biome
+    bool isLand() const;
+    bool hasWater() const;
+    float getVegetationDensity() const;
+    float getMovementCost() const;
+};
+
+// Biome blending for smooth transitions
+struct BiomeBlend {
+    BiomeWeight contributions[4];  // Up to 4 biomes
+    int count;
+    
+    Biome primary() const;
+    float getBlendedVegetationDensity() const;
+    float getBlendedMovementCost() const;
+};
+
+// Properties for each biome
+struct BiomeProperties {
+    const char* name;
+    float temperatureModifier;
+    float evaporationRate;
+    float vegetationDensity;
+    float movementCost;
+    bool supportsPlants;
+    bool supportsTrees;
+    TerrainType terrainType;  // For rendering
+};
+
+} // namespace EcoSim
+```
+
+### Configuration
+
+```cpp
+struct ClimateGeneratorConfig {
+    // Dimensions
+    unsigned int width = 500;
+    unsigned int height = 500;
+    
+    // Terrain shape
+    float seaLevel = 0.30f;
+    bool isIsland = true;
+    
+    // Climate parameters
+    float equatorPosition = 0.5f;
+    float temperatureRange = 70.0f;
+    float baseTemperature = 15.0f;
+    float lapseRate = 6.5f;  // °C per 1000m
+    
+    // Moisture parameters
+    float coastalMoistureDecay = 50.0f;
+    int rainShadowDistance = 100;
+    
+    // Water features
+    bool generateRivers = true;
+    int maxRivers = 20;
+    bool generateLakes = true;
+    
+    // Random seed
+    unsigned int seed = 0;
+};
+```
+
+### Usage Example
+
+```cpp
+// Create generator with configuration
+ClimateGeneratorConfig config;
+config.width = 500;
+config.height = 500;
+config.seed = 12345;
+config.generateRivers = true;
+
+ClimateWorldGenerator generator(config);
+
+// Generate world
+WorldGrid grid;
+generator.generate(grid);
+
+// Access climate data
+const TileClimate& climate = generator.getClimate(x, y);
+float temp = climate.temperature;
+Biome biome = climate.biome();
+
+// Get biome properties
+const BiomeProperties& props = ClimateWorldGenerator::getBiomeProperties(biome);
+bool canGrowTrees = props.supportsTrees;
+```
+
+### Climate Calculation Details
+
+**Temperature:**
+- Base temperature at equator, sea level: 15°C
+- Latitude effect: ±35°C from equator to poles
+- Elevation effect: -6.5°C per 1000m (lapse rate)
+- Local noise variation: ±5°C
+
+**Moisture:**
+- Exponential decay from coastlines
+- Rain shadow behind mountains (westerly winds)
+- Local noise variation for variety
+
+### Biome Lookup Table
+
+The Whittaker diagram maps (temperature, moisture) to biomes:
+
+```
+              Moisture →
+          Arid    Dry    Moderate   Wet    Saturated
+        ┌───────┬───────┬─────────┬───────┬──────────┐
+ Frozen │ Ice   │ Ice   │ Tundra  │Tundra │ Glacier  │
+        ├───────┼───────┼─────────┼───────┼──────────┤
+ Cold   │CldDsrt│Tundra │ Taiga   │ Taiga │ Boreal   │
+        ├───────┼───────┼─────────┼───────┼──────────┤
+ Cool   │Steppe │Shrub  │TempForst│TempFst│TempRain  │
+ Temp   ├───────┼───────┼─────────┼───────┼──────────┤
+        │Steppe │TempGrs│TempForst│TempFst│TempRain  │
+        ├───────┼───────┼─────────┼───────┼──────────┤
+ Warm   │HotDsrt│Savanna│ Savanna │TropSea│TropRain  │
+        ├───────┼───────┼─────────┼───────┼──────────┤
+ Hot    │HotDsrt│HotDsrt│ Savanna │TropSea│TropRain  │
+        └───────┴───────┴─────────┴───────┴──────────┘
+```
+
+### River Generation
+
+Rivers flow from high-moisture mountain sources downhill:
+
+1. Find river sources (high elevation + high moisture)
+2. Trace downhill path using steepest descent
+3. Accumulate flow from tributaries
+4. Form lakes at terrain depressions
+5. Continue until reaching ocean or evaporating
 
 ---
 
@@ -583,7 +765,15 @@ This violated the Single Responsibility Principle and made testing difficult.
 - [[spatial-index]] - Detailed spatial index documentation
 - [[scent-system]] - Scent layer communication
 - [[behavior-system]] - Uses World for environment queries
+- [[environmental-stress]] - Environmental fitness gradients
+
+**Design:**
+- [[../design/world-generation]] - Climate-based generation design rationale
+- [[../design/world-organism-integration]] - Organism-environment interaction design
 
 **Reference:**
 - [[../reference/api/organisms]] - Plant implementation details
 - [[../reference/api/core-classes]] - Core genetics classes
+
+**Tests:**
+- [`test_world_organism_integration.cpp`](../../../src/testing/world/test_world_organism_integration.cpp:1) - Integration tests
