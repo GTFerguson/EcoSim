@@ -27,6 +27,7 @@
 #include "../../include/genetics/defaults/UniversalGenes.hpp"
 #include "../../include/genetics/organisms/PlantFactory.hpp"
 #include "../../include/genetics/organisms/CreatureFactory.hpp"
+#include "../../include/genetics/expression/EnvironmentState.hpp"
 
 #include <iostream>
 #include <random>
@@ -129,6 +130,12 @@ void takeTurnWithLogging(World& w, GeneralStats& gs, vector<Creature>& c,
         c.erase(c.begin() + cIndex);
     } else {
         activeC->update();
+        
+        // Update creature phenotype with location-specific environment data
+        auto localEnv = w.environment().getEnvironmentStateAt(
+            static_cast<int>(activeC->getWorldX()),
+            static_cast<int>(activeC->getWorldY()));
+        activeC->updatePhenotypeContext(localEnv);
         
         switch(activeC->getMotivation()) {
             case Motivation::Content:   activeC->contentBehavior(w, c, cIndex); break;

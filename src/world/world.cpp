@@ -27,11 +27,24 @@ World::World(const MapGen& mapGen, const OctaveGen& octaveGen)
     set2Dgrid();
     simplexGen();
     
+    // Create and generate climate data
+    EcoSim::ClimateGeneratorConfig climateConfig;
+    climateConfig.width = mapGen.cols;
+    climateConfig.height = mapGen.rows;
+    climateConfig.seed = static_cast<unsigned int>(mapGen.seed);
+    climateConfig.isIsland = mapGen.isIsland;
+    _climateGenerator = std::make_unique<EcoSim::ClimateWorldGenerator>(climateConfig);
+    _climateGenerator->generate(_grid);  // Generates climate data for the grid
+    
     // Initialize the environment system (must happen after grid is ready)
     _environmentSystem = std::make_unique<EcoSim::EnvironmentSystem>(*_seasonManager, _grid);
     
-    // Initialize the plant manager
+    // Connect climate data to environment system for per-tile queries
+    _environmentSystem->setClimateMap(&_climateGenerator->getClimateMap());
+    
+    // Initialize the plant manager and connect to environment system
     _plantManager = std::make_unique<EcoSim::PlantManager>(_grid, _scentLayer);
+    _plantManager->setEnvironmentSystem(_environmentSystem.get());
 }
 
 //================================================================================

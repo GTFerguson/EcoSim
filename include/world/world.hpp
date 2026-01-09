@@ -23,6 +23,7 @@
 
 #include "WorldGrid.hpp"
 #include "WorldGenerator.hpp"
+#include "ClimateWorldGenerator.hpp"
 #include "ScentLayer.hpp"
 #include "SpatialIndex.hpp"
 #include "CorpseManager.hpp"
@@ -246,6 +247,7 @@ private:
     //============================================================================
     EcoSim::WorldGrid _grid;
     std::unique_ptr<EcoSim::WorldGenerator> _generator;
+    std::unique_ptr<EcoSim::ClimateWorldGenerator> _climateGenerator;
     EcoSim::ScentLayer _scentLayer;
     
     //============================================================================

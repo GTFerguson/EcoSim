@@ -158,12 +158,12 @@ void testGeneRegistryRegistration() {
     G::GeneRegistry registry;
     G::UniversalGenes::registerDefaults(registry);
     
-    // UniversalGenes now registers 89 genes across all categories:
+    // UniversalGenes now registers 90 genes across all categories:
     // Universal(7) + Mobility(5) + Autotrophy(5) + Heterotrophy(6) + CoevolutionHeterotrophy(7)
-    // + Morphology(9) + Behavior(5) + SeedInteraction(2) + PlantDefense(6) + Reproduction(6)
+    // + Morphology(9) + Behavior(6) + SeedInteraction(2) + PlantDefense(6) + Reproduction(6)
     // + SeedPropagation(5) + Olfactory(4) + HealthHealing(3) + WeaponShape(13) + CombatDefense(2)
-    // + CombatBehavior(4) = 89 genes total
-    TEST_ASSERT_EQ(89u, registry.size());
+    // + CombatBehavior(4) = 90 genes total (Behavior includes ENVIRONMENTAL_SENSITIVITY)
+    TEST_ASSERT_EQ(90u, registry.size());
     TEST_ASSERT(registry.hasGene(G::UniversalGenes::LIFESPAN));
     TEST_ASSERT(registry.hasGene(G::UniversalGenes::SIGHT_RANGE));
     TEST_ASSERT(registry.hasGene(G::UniversalGenes::DIET_TYPE));

@@ -87,6 +87,18 @@ extern void runPlantManagerTests();
 // IReproducible interface test runner
 extern void runReproducibleInterfaceTests();
 
+// Environmental Stress test runner
+extern void runEnvironmentalStressTests();
+
+// Pathfinding Sensitivity test runner (gene-controlled pathfinding)
+extern void runPathfindingSensitivityTests();
+
+// Biome Variant test runner (thermal adaptations, biome-specific organisms)
+extern void runBiomeVariantTests();
+
+// World-Organism Integration test runner (extended integration testing)
+extern void runWorldOrganismIntegrationTests();
+
 int main() {
     auto start = std::chrono::high_resolution_clock::now();
     
@@ -260,6 +272,26 @@ int main() {
     // IReproducible Interface Tests
     std::cout << "=== IReproducible Interface Tests ===" << std::endl;
     runReproducibleInterfaceTests();
+    std::cout << std::endl;
+    
+    // Environmental Stress Tests (thermal adaptations, stress calculations)
+    std::cout << "=== Environmental Stress System Tests ===" << std::endl;
+    runEnvironmentalStressTests();
+    std::cout << std::endl;
+    
+    // Pathfinding Sensitivity Tests (gene-controlled environmental pathfinding)
+    std::cout << "=== Pathfinding Sensitivity Tests ===" << std::endl;
+    runPathfindingSensitivityTests();
+    std::cout << std::endl;
+    
+    // Biome Variant Tests (thermal genes, biome-specific organisms)
+    std::cout << "=== Biome Variant Tests ===" << std::endl;
+    runBiomeVariantTests();
+    std::cout << std::endl;
+    
+    // World-Organism Integration Tests (extended integration testing)
+    std::cout << "=== World-Organism Integration Tests ===" << std::endl;
+    runWorldOrganismIntegrationTests();
     std::cout << std::endl;
     
     auto end = std::chrono::high_resolution_clock::now();

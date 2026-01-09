@@ -44,6 +44,10 @@ set(GENETICS_TEST_SOURCES
     genetics/test_modulation_policy.cpp
     genetics/test_serialization.cpp
     genetics/test_reproducible_interface.cpp
+    genetics/test_environmental_stress.cpp
+    genetics/test_pathfinding_sensitivity.cpp
+    genetics/test_biome_variants.cpp
+    world/test_world_organism_integration.cpp
     world/test_spatial_index.cpp
     world/test_world_grid.cpp
     world/test_world_generator.cpp
