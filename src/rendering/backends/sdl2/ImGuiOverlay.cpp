@@ -234,9 +234,9 @@ void ImGuiOverlay::render(const HUDData& hudData, const World* world,
         if (_showCreatureInspector && creatures && _selectedCreatureId >= 0) {
             const Creature* selectedCreature = nullptr;
             
-            // Find creature by unique ID (not vector index)
+            // Find creature by creature-specific ID (not vector index or organism ID)
             for (const auto& c : *creatures) {
-                if (c.getId() == _selectedCreatureId) {
+                if (c.getCreatureId() == _selectedCreatureId) {
                     selectedCreature = &c;
                     break;
                 }
@@ -634,7 +634,7 @@ void ImGuiOverlay::renderCreatureListWindow(const std::vector<Creature>* creatur
     // Calculate right-side position dynamically based on window size
     ImGuiIO& io = ImGui::GetIO();
     const float rightMargin = 10.0f;
-    const float windowWidth = 200.0f;
+    const float windowWidth = 380.0f;
     float xPos = io.DisplaySize.x - windowWidth - rightMargin;
     
     ImGui::SetNextWindowPos(ImVec2(xPos, 30), ImGuiCond_FirstUseEver);
@@ -742,7 +742,7 @@ void ImGuiOverlay::renderCreatureListWindow(const std::vector<Creature>* creatur
             
             for (size_t idx : sortedIndices) {
                 const Creature& creature = (*creatures)[idx];
-                int creatureId = creature.getId();
+                int creatureId = creature.getCreatureId();
                 
                 // Filter check - allow filtering by creature ID or position
                 if (std::strlen(_creatureFilterText) > 0) {
@@ -843,14 +843,17 @@ void ImGuiOverlay::renderCreatureListWindow(const std::vector<Creature>* creatur
 //==============================================================================
 
 void ImGuiOverlay::renderCreatureInspectorWindow(const Creature* creature) {
-    // Calculate right-side position dynamically based on window size
+    // Calculate bottom-right position dynamically based on window size
     ImGuiIO& io = ImGui::GetIO();
     const float rightMargin = 10.0f;
-    const float windowWidth = 550.0f;
+    const float bottomMargin = 10.0f;
+    const float windowWidth = 380.0f;
+    const float windowHeight = 600.0f;
     float xPos = io.DisplaySize.x - windowWidth - rightMargin;
+    float yPos = io.DisplaySize.y - windowHeight - bottomMargin;
     
-    ImGui::SetNextWindowPos(ImVec2(xPos, 30), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(windowWidth, 600), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowPos(ImVec2(xPos, yPos), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(windowWidth, windowHeight), ImGuiCond_FirstUseEver);
     
     if (ImGui::Begin("Creature Inspector", &_showCreatureInspector, ImGuiWindowFlags_NoCollapse)) {
         if (!creature) {
