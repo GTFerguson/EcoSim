@@ -6,6 +6,7 @@
 
 #include "WorldGrid.hpp"
 #include "ScentLayer.hpp"
+#include "ClimateWorldGenerator.hpp"
 #include "../genetics/core/GeneRegistry.hpp"
 #include "../genetics/organisms/Plant.hpp"
 #include "../genetics/organisms/PlantFactory.hpp"
@@ -18,11 +19,16 @@
 #include <random>
 #include <vector>
 #include <iostream>
+#include <functional>
 
 namespace EcoSim {
 
-// Forward declaration
+// Forward declarations
 class EnvironmentSystem;
+
+namespace Genetics {
+    class BiomeVariantFactory;
+}
 
 /**
  * @class PlantManager
@@ -48,6 +54,11 @@ public:
      * @param scents Reference to the scent layer for plant odors
      */
     PlantManager(WorldGrid& grid, ScentLayer& scents);
+    
+    /**
+     * @brief Destructor - defined in .cpp for unique_ptr with forward-declared type
+     */
+    ~PlantManager();
     
     /**
      * @brief Set the environment system for per-tile environment queries
@@ -100,6 +111,32 @@ public:
      * @return true if plant was added successfully
      */
     bool addPlant(int x, int y, const std::string& species);
+    
+    /**
+     * @brief Add plants based on biome types throughout the world
+     * @param rate Percentage chance (1-100) of plant placement per eligible tile
+     *
+     * Uses BiomeVariantFactory to create biome-appropriate plants:
+     * - Tundra/Taiga/Ice: Tundra moss (cold-adapted ground cover)
+     * - Desert/Steppe: Desert cactus (heat-tolerant succulents)
+     * - Tropical/Savanna: Rainforest vine (lush fruit-bearers)
+     * - Temperate/Forest: Mixed berry_bush, oak_tree, grass, thorn_bush
+     *
+     * Water biomes (ocean, freshwater, rivers, lakes) are skipped.
+     * Requires EnvironmentSystem to be connected for biome data.
+     */
+    void addPlantsByBiome(unsigned rate);
+    
+    /**
+     * @brief Add a biome-appropriate plant at a specific location
+     * @param x X coordinate
+     * @param y Y coordinate
+     * @return true if plant was added successfully
+     *
+     * Queries the biome at the location and creates an appropriate plant variant.
+     * Requires EnvironmentSystem to be connected for biome data.
+     */
+    bool addBiomePlant(int x, int y);
     
     //==========================================================================
     // Lifecycle
@@ -176,10 +213,18 @@ private:
     
     std::shared_ptr<Genetics::GeneRegistry> _plantRegistry;
     std::unique_ptr<Genetics::PlantFactory> _plantFactory;
+    std::unique_ptr<Genetics::BiomeVariantFactory> _biomeFactory;
     Genetics::EnvironmentState _currentEnvironment;  // Fallback when no environment system
     Genetics::SeedDispersal _seedDispersal;
     
     std::mt19937 _rng;
+    
+    /**
+     * @brief Helper to select plant species based on biome
+     * @param biome The biome at the target location
+     * @return Function that creates the appropriate plant at given coordinates
+     */
+    std::function<Genetics::Plant(int, int)> selectPlantForBiome(Biome biome);
 };
 
 } // namespace EcoSim

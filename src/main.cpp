@@ -499,7 +499,9 @@ void populateWorldByBiome(World& w, vector<Creature>& c, unsigned amount) {
   std::vector<std::pair<int, int>> temperatePositions;
   
   // Scan the world grid to categorize spawn positions by biome
+  // Water biomes are explicitly skipped - creatures can't spawn in water
   const auto& grid = w.grid();
+  unsigned skippedWater = 0;
   for (unsigned x = 0; x < grid.width(); ++x) {
     for (unsigned y = 0; y < grid.height(); ++y) {
       if (!grid(x, y).isPassable()) continue;
@@ -509,6 +511,14 @@ void populateWorldByBiome(World& w, vector<Creature>& c, unsigned amount) {
       Biome biome = static_cast<Biome>(biomeInt);
       
       switch (biome) {
+        // Water biomes - creatures cannot spawn here (even if tile is passable)
+        case Biome::OCEAN_DEEP:
+        case Biome::OCEAN_SHALLOW:
+        case Biome::OCEAN_COAST:
+        case Biome::FRESHWATER:
+          ++skippedWater;
+          continue;  // Skip water biomes entirely
+        
         // Cold biomes
         case Biome::ICE_SHEET:
         case Biome::TUNDRA:
@@ -534,11 +544,12 @@ void populateWorldByBiome(World& w, vector<Creature>& c, unsigned amount) {
           tropicalPositions.push_back({x, y});
           break;
           
-        // Temperate biomes
+        // Temperate biomes (including mountain bare as fallback)
         case Biome::TEMPERATE_RAINFOREST:
         case Biome::TEMPERATE_FOREST:
         case Biome::TEMPERATE_GRASSLAND:
         case Biome::ALPINE_MEADOW:
+        case Biome::MOUNTAIN_BARE:
         default:
           temperatePositions.push_back({x, y});
           break;
@@ -1082,20 +1093,22 @@ void runWorldEditor(World& w, vector<Creature>& creatures,
 /**
  *  Initializes the genetics system and adds genetics-based plants.
  *  Uses the PlantManager component for plant lifecycle management.
+ *
+ *  Plants are now spawned based on biome type:
+ *  - Tundra/Taiga: Tundra moss (cold-adapted)
+ *  - Desert/Steppe: Desert cactus (heat-tolerant)
+ *  - Tropical/Savanna: Rainforest vine (lush fruit-bearers)
+ *  - Temperate: Mixed berry_bush, oak_tree, grass, thorn_bush
+ *  - Water biomes: No plants (ocean, lakes, rivers)
  */
 void addGeneticsPlants(World& w) {
   // Initialize the plant manager
   w.plants().initialize();
   
-  // Add genetics-based plants by species and elevation range
-  w.plants().addPlants(GRASS_MIN_ALTITUDE, GRASS_MAX_ALTITUDE,
-                       GRASS_SPAWN_RATE, "grass");
-  w.plants().addPlants(BERRY_MIN_ALTITUDE, BERRY_MAX_ALTITUDE,
-                       BERRY_SPAWN_RATE, "berry_bush");
-  w.plants().addPlants(OAK_MIN_ALTITUDE, OAK_MAX_ALTITUDE,
-                       OAK_SPAWN_RATE, "oak_tree");
-  w.plants().addPlants(THORN_MIN_ALTITUDE, THORN_MAX_ALTITUDE,
-                       THORN_SPAWN_RATE, "thorn_bush");
+  // Use biome-based plant spawning for realistic distribution
+  // Rate of 5% per eligible tile gives good coverage without overcrowding
+  const unsigned BIOME_PLANT_RATE = 5;
+  w.plants().addPlantsByBiome(BIOME_PLANT_RATE);
 }
 
 /**

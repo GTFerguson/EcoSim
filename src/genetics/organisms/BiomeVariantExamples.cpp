@@ -14,17 +14,31 @@ namespace EcoSim {
 namespace Genetics {
 
 // ============================================================================
-// Constructor
+// Constructors
 // ============================================================================
 
 BiomeVariantFactory::BiomeVariantFactory(std::shared_ptr<GeneRegistry> registry)
     : registry_(std::move(registry))
-    , creatureFactory_(registry_)
-    , plantFactory_(registry_)
+    , ownedCreatureFactory_(std::make_unique<CreatureFactory>(registry_))
+    , ownedPlantFactory_(std::make_unique<PlantFactory>(registry_))
+    , creatureFactory_(ownedCreatureFactory_.get())
+    , plantFactory_(ownedPlantFactory_.get())
 {
     // Register default templates so we can create base archetypes
-    creatureFactory_.registerDefaultTemplates();
-    plantFactory_.registerDefaultTemplates();
+    creatureFactory_->registerDefaultTemplates();
+    plantFactory_->registerDefaultTemplates();
+}
+
+BiomeVariantFactory::BiomeVariantFactory(std::shared_ptr<GeneRegistry> registry,
+                                         CreatureFactory* creatureFactory,
+                                         PlantFactory* plantFactory)
+    : registry_(std::move(registry))
+    , ownedCreatureFactory_(nullptr)
+    , ownedPlantFactory_(nullptr)
+    , creatureFactory_(creatureFactory)
+    , plantFactory_(plantFactory)
+{
+    // Use existing factories - no template registration needed as they should already be set up
 }
 
 // ============================================================================
@@ -76,7 +90,7 @@ void BiomeVariantFactory::applyThermalOverrides(Plant& plant, float waterStorage
 
 Creature BiomeVariantFactory::createArcticWolf(int x, int y) {
     // Start with Pack Hunter archetype (coordinated group hunters)
-    Creature wolf = creatureFactory_.createPackHunter(x, y);
+    Creature wolf = creatureFactory_->createPackHunter(x, y);
 
     // Apply arctic thermal adaptations
     // Very high insulation for -40°C survival
@@ -93,7 +107,7 @@ Creature BiomeVariantFactory::createArcticWolf(int x, int y) {
 
 Creature BiomeVariantFactory::createWoollyMammoth(int x, int y) {
     // Start with Tank Herbivore archetype (large, armored)
-    Creature mammoth = creatureFactory_.createTankHerbivore(x, y);
+    Creature mammoth = creatureFactory_->createTankHerbivore(x, y);
 
     // Apply extreme cold adaptations
     // Maximum insulation for ice age survival
@@ -110,7 +124,7 @@ Creature BiomeVariantFactory::createWoollyMammoth(int x, int y) {
 
 Plant BiomeVariantFactory::createTundraMoss(int x, int y) {
     // Start with Grass template (fast-growing ground cover)
-    Plant moss = plantFactory_.createFromTemplate("grass", x, y);
+    Plant moss = plantFactory_->createFromTemplate("grass", x, y);
 
     // Apply tundra adaptations
     // Cold-hardy with antifreeze compounds
@@ -135,7 +149,7 @@ Plant BiomeVariantFactory::createTundraMoss(int x, int y) {
 
 Creature BiomeVariantFactory::createDesertFennec(int x, int y) {
     // Start with Ambush Predator (patient, efficient hunter)
-    Creature fennec = creatureFactory_.createAmbushPredator(x, y);
+    Creature fennec = creatureFactory_->createAmbushPredator(x, y);
 
     // Apply desert thermal adaptations
     // Minimal insulation, heat dissipation focus
@@ -152,7 +166,7 @@ Creature BiomeVariantFactory::createDesertFennec(int x, int y) {
 
 Creature BiomeVariantFactory::createDesertCamel(int x, int y) {
     // Start with Tank Herbivore archetype
-    Creature camel = creatureFactory_.createTankHerbivore(x, y);
+    Creature camel = creatureFactory_->createTankHerbivore(x, y);
 
     // Apply desert adaptations
     // Specialized for water conservation and heat tolerance
@@ -169,7 +183,7 @@ Creature BiomeVariantFactory::createDesertCamel(int x, int y) {
 
 Plant BiomeVariantFactory::createDesertCactus(int x, int y) {
     // Start with Thorn Bush template (defensive, drought-tolerant)
-    Plant cactus = plantFactory_.createFromTemplate("thorn_bush", x, y);
+    Plant cactus = plantFactory_->createFromTemplate("thorn_bush", x, y);
 
     // Apply desert adaptations
     // Maximum water storage, extreme heat tolerance
@@ -194,7 +208,7 @@ Plant BiomeVariantFactory::createDesertCactus(int x, int y) {
 
 Creature BiomeVariantFactory::createTropicalJaguar(int x, int y) {
     // Start with Ambush Predator archetype (patient, powerful)
-    Creature jaguar = creatureFactory_.createAmbushPredator(x, y);
+    Creature jaguar = creatureFactory_->createAmbushPredator(x, y);
 
     // Apply tropical thermal adaptations
     // Minimal insulation, adapted to constant warmth
@@ -211,7 +225,7 @@ Creature BiomeVariantFactory::createTropicalJaguar(int x, int y) {
 
 Creature BiomeVariantFactory::createJungleElephant(int x, int y) {
     // Start with Tank Herbivore archetype
-    Creature elephant = creatureFactory_.createTankHerbivore(x, y);
+    Creature elephant = creatureFactory_->createTankHerbivore(x, y);
 
     // Apply tropical adaptations
     // Large body, minimal insulation, uses ears for cooling
@@ -228,7 +242,7 @@ Creature BiomeVariantFactory::createJungleElephant(int x, int y) {
 
 Plant BiomeVariantFactory::createRainforestVine(int x, int y) {
     // Start with Berry Bush template (fast-growing, fruit-producing)
-    Plant vine = plantFactory_.createFromTemplate("berry_bush", x, y);
+    Plant vine = plantFactory_->createFromTemplate("berry_bush", x, y);
 
     // Apply tropical adaptations
     // Warm-adapted, moderate water storage (abundant rainfall)

@@ -67,10 +67,24 @@ enum class BiomeType {
 class BiomeVariantFactory {
 public:
     /**
-     * @brief Construct factory with gene registry
+     * @brief Construct factory with gene registry (creates own factories)
      * @param registry Shared pointer to gene registry
+     * @deprecated Use constructor with existing factories to avoid duplicate gene registration
      */
     explicit BiomeVariantFactory(std::shared_ptr<GeneRegistry> registry);
+    
+    /**
+     * @brief Construct factory with existing factories (preferred)
+     * @param registry Shared pointer to gene registry
+     * @param creatureFactory Existing creature factory (non-owning pointer)
+     * @param plantFactory Existing plant factory (non-owning pointer)
+     *
+     * Use this constructor when factories already exist to avoid
+     * duplicate gene registration errors.
+     */
+    BiomeVariantFactory(std::shared_ptr<GeneRegistry> registry,
+                       CreatureFactory* creatureFactory,
+                       PlantFactory* plantFactory);
 
     // ========================================================================
     // Tundra Variants (-35°C to +10°C)
@@ -241,8 +255,14 @@ public:
 
 private:
     std::shared_ptr<GeneRegistry> registry_;
-    CreatureFactory creatureFactory_;
-    PlantFactory plantFactory_;
+    
+    // Owned factories (created when using single-arg constructor)
+    std::unique_ptr<CreatureFactory> ownedCreatureFactory_;
+    std::unique_ptr<PlantFactory> ownedPlantFactory_;
+    
+    // Pointers to active factories (either owned or borrowed)
+    CreatureFactory* creatureFactory_;
+    PlantFactory* plantFactory_;
 
     /**
      * @brief Apply thermal gene overrides to creature genome
