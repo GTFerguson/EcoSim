@@ -108,3 +108,45 @@ add_test(
     COMMAND WorldGenTest 12345 200 200
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 )
+
+# ==============================================================================
+# PerformanceBenchmark - Measures tick performance with varying organism counts
+# ==============================================================================
+# Standalone executable for benchmarking simulation performance.
+# Useful for validating optimizations and identifying bottlenecks.
+add_executable(PerformanceBenchmark
+    test_performance_benchmark.cpp
+)
+
+target_include_directories(PerformanceBenchmark PRIVATE
+    ${PROJECT_SOURCE_DIR}/include
+)
+
+target_link_libraries(PerformanceBenchmark PRIVATE
+    ecosim_genetics
+    ecosim_world
+    ecosim_core
+)
+
+add_compiler_warnings(PerformanceBenchmark)
+
+# ==============================================================================
+# ProfileHotspots - Detailed profiling of simulation phases
+# ==============================================================================
+# Profiles individual components of the simulation tick to identify
+# remaining CPU hotspots after caching optimizations.
+add_executable(ProfileHotspots
+    test_profile_hotspots.cpp
+)
+
+target_include_directories(ProfileHotspots PRIVATE
+    ${PROJECT_SOURCE_DIR}/include
+)
+
+target_link_libraries(ProfileHotspots PRIVATE
+    ecosim_genetics
+    ecosim_world
+    ecosim_core
+)
+
+add_compiler_warnings(ProfileHotspots)
