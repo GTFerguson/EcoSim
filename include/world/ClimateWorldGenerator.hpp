@@ -437,7 +437,7 @@ private:
     void findRiverSources(std::vector<RiverSource>& sources);
     void traceRiver(int x, int y, float flow);
     void floodFillLake(int x, int y, float inflow);
-    void formLake(int centerX, int centerY, float inflow);
+    void formLake(int centerX, int centerY, float inflow, float maxFlow);
     
     //=========================================================================
     // Utility Functions

@@ -1421,33 +1421,63 @@ void ClimateWorldGenerator::generateRivers() {
             // Check for local minimum (no downhill neighbor)
             if (dx == 0 && dy == 0 && flowAccum[x][y] > riverThreshold * 2.0f) {
                 // This is a depression with significant flow - create a lake
-                formLake(x, y, flowAccum[x][y]);
+                formLake(x, y, flowAccum[x][y], maxFlow);
             }
         }
     }
 }
 
-void ClimateWorldGenerator::formLake(int centerX, int centerY, float inflow) {
-    // Simple lake: mark center and immediate low neighbors
-    _climateMap[centerX][centerY].feature = TerrainFeature::LAKE;
-    _climateMap[centerX][centerY].biomeBlend = BiomeBlend(Biome::FRESHWATER);
-    _climateMap[centerX][centerY].waterLevel = 0.5f;
-    
+void ClimateWorldGenerator::formLake(int centerX, int centerY, float inflow, float maxFlow) {
     float centerElev = _elevationMap[centerX][centerY];
-    float lakeThreshold = centerElev + 0.02f;
     
-    // Expand lake to nearby cells at similar elevation
-    for (auto [dx, dy] : NEIGHBORS_8) {
-        int nx = centerX + dx;
-        int ny = centerY + dy;
-        if (!inBounds(nx, ny)) continue;
+    // Calculate lake water surface elevation based on inflow
+    // More accumulated flow = more water = higher water surface = bigger/deeper lake
+    float depthFactor = clampValue(inflow / (maxFlow * 0.5f), 0.0f, 1.0f);
+    float lakeWaterSurface = centerElev + 0.02f + depthFactor * 0.08f;
+    
+    // Priority queue: process lowest elevation first (simulates filling from bottom)
+    using PQEntry = std::pair<float, std::pair<int,int>>;  // {elevation, {x,y}}
+    std::priority_queue<PQEntry, std::vector<PQEntry>, std::greater<PQEntry>> frontier;
+    
+    std::set<std::pair<int,int>> visited;
+    std::vector<std::tuple<int,int,float>> lakeTiles;  // {x, y, depth}
+    
+    frontier.push({centerElev, {centerX, centerY}});
+    
+    constexpr int MAX_LAKE_TILES = 500;  // Prevent runaway expansion
+    
+    while (!frontier.empty() && static_cast<int>(lakeTiles.size()) < MAX_LAKE_TILES) {
+        auto [elev, pos] = frontier.top();
+        frontier.pop();
+        auto [x, y] = pos;
         
-        if (_elevationMap[nx][ny] < lakeThreshold &&
-            _elevationMap[nx][ny] >= _config.seaLevel) {
-            _climateMap[nx][ny].feature = TerrainFeature::LAKE;
-            _climateMap[nx][ny].biomeBlend = BiomeBlend(Biome::FRESHWATER);
-            _climateMap[nx][ny].waterLevel = 0.4f;
+        if (visited.count({x, y})) continue;
+        visited.insert({x, y});
+        
+        // Terrain above lake water surface = shore, stop here
+        if (elev >= lakeWaterSurface) continue;
+        
+        // Don't merge with ocean
+        if (elev < _config.seaLevel) continue;
+        
+        // This tile is underwater - add to lake
+        float depth = lakeWaterSurface - elev;
+        lakeTiles.push_back({x, y, depth});
+        
+        // Expand to neighbors
+        for (auto [dx, dy] : NEIGHBORS_8) {
+            int nx = x + dx, ny = y + dy;
+            if (!inBounds(nx, ny)) continue;
+            if (visited.count({nx, ny})) continue;
+            frontier.push({_elevationMap[nx][ny], {nx, ny}});
         }
+    }
+    
+    // Apply lake data to climate map
+    for (const auto& [x, y, depth] : lakeTiles) {
+        _climateMap[x][y].feature = TerrainFeature::LAKE;
+        _climateMap[x][y].biomeBlend = BiomeBlend(Biome::FRESHWATER);
+        _climateMap[x][y].waterLevel = depth;  // Actual depth for rendering
     }
 }
 
