@@ -33,29 +33,46 @@ using namespace EcoSim::Testing;
 //================================================================================
 
 /**
+ * @brief Get shared registry for health tests (initialized once)
+ */
+static GeneRegistry& getHealthTestRegistry() {
+    static GeneRegistry registry;
+    static bool initialized = false;
+    if (!initialized) {
+        // Register all needed genes
+        auto registerGene = [&](const std::string& name, ChromosomeType chrom,
+                                 float minVal, float maxVal) {
+            if (!registry.hasGene(name)) {
+                GeneLimits limits(minVal, maxVal, 0.05f);
+                GeneDefinition def(name, chrom, limits, DominanceType::Incomplete);
+                registry.registerGene(def);
+            }
+        };
+        
+        registerGene(UniversalGenes::HARDINESS, ChromosomeType::Morphology, 0.0f, 1.0f);
+        registerGene(UniversalGenes::TOXIN_TOLERANCE, ChromosomeType::Environmental, 0.0f, 1.0f);
+        registerGene(UniversalGenes::MAX_SIZE, ChromosomeType::Morphology, 0.0f, 10.0f);
+        registerGene(UniversalGenes::REGROWTH_RATE, ChromosomeType::Metabolism, 0.0f, 1.0f);
+        registerGene(UniversalGenes::REGENERATION_RATE, ChromosomeType::Metabolism, 0.0f, 1.0f);
+        initialized = true;
+    }
+    return registry;
+}
+
+/**
  * @brief Mock organism for testing HealthSystem
  *
  * Implements Organism interface with configurable traits.
  * Traits can be set directly for precise test control.
+ * Uses the inherited genome_ and phenotype_ from Organism base class.
  */
 class HealthMockOrganism : public Organism {
 public:
     HealthMockOrganism()
-        : Organism(0, 0, Genome(), registry_)
-        , phenotype_(&getGenomeMutable(), &registry_)
+        : Organism(0, 0, Genome(), getHealthTestRegistry())
     {
-        initializeRegistry();
         // Set optimal organism state so modulation returns 100% values
         setOptimalState();
-    }
-
-    // IGenetic - use inherited genome from Organism
-    void updatePhenotype() override {
-        phenotype_.invalidateCache();
-    }
-    
-    const Phenotype& getPhenotype() const override {
-        return phenotype_;
     }
 
     // IPositionable - world coordinates
@@ -83,6 +100,7 @@ public:
 
     /**
      * @brief Set a trait directly on the genome for testing
+     * Uses inherited genome_ from Organism base class
      */
     void setTrait(const std::string& name, float value) {
         // Determine appropriate chromosome
@@ -92,12 +110,12 @@ public:
             chromType = ChromosomeType::Morphology;
         } else if (name == UniversalGenes::TOXIN_TOLERANCE) {
             chromType = ChromosomeType::Environmental;
-        } else if (name == UniversalGenes::REGROWTH_RATE || 
+        } else if (name == UniversalGenes::REGROWTH_RATE ||
                    name == UniversalGenes::REGENERATION_RATE) {
             chromType = ChromosomeType::Metabolism;
         }
         
-        // Check if gene already exists
+        // Check if gene already exists in inherited genome_
         if (genome_.hasGene(name)) {
             Gene& existingGene = genome_.getGeneMutable(name);
             existingGene.setAlleleValues(value);
@@ -108,13 +126,15 @@ public:
         }
         
         // Ensure gene is in registry
-        if (!registry_.hasGene(name)) {
+        GeneRegistry& registry = getHealthTestRegistry();
+        if (!registry.hasGene(name)) {
             float maxVal = (name == UniversalGenes::MAX_SIZE) ? 10.0f : 1.0f;
             GeneLimits limits(0.0f, maxVal, 0.05f);
             GeneDefinition def(name, chromType, limits, DominanceType::Incomplete);
-            registry_.registerGene(def);
+            registry.registerGene(def);
         }
         
+        // Invalidate phenotype cache using inherited phenotype_
         phenotype_.invalidateCache();
     }
 
@@ -154,29 +174,8 @@ public:
         org.is_sleeping = false;
         org.is_pregnant = false;
         
+        // Use inherited phenotype_ from Organism
         phenotype_.updateContext(env, org);
-    }
-
-private:
-    Genome genome_;
-    mutable GeneRegistry registry_;
-    mutable Phenotype phenotype_;
-
-    void initializeRegistry() {
-        registerGeneIfNeeded(UniversalGenes::HARDINESS, ChromosomeType::Morphology, 0.0f, 1.0f);
-        registerGeneIfNeeded(UniversalGenes::TOXIN_TOLERANCE, ChromosomeType::Environmental, 0.0f, 1.0f);
-        registerGeneIfNeeded(UniversalGenes::MAX_SIZE, ChromosomeType::Morphology, 0.0f, 10.0f);
-        registerGeneIfNeeded(UniversalGenes::REGROWTH_RATE, ChromosomeType::Metabolism, 0.0f, 1.0f);
-        registerGeneIfNeeded(UniversalGenes::REGENERATION_RATE, ChromosomeType::Metabolism, 0.0f, 1.0f);
-    }
-
-    void registerGeneIfNeeded(const std::string& name, ChromosomeType chrom, 
-                               float minVal, float maxVal) {
-        if (!registry_.hasGene(name)) {
-            GeneLimits limits(minVal, maxVal, 0.05f);
-            GeneDefinition def(name, chrom, limits, DominanceType::Incomplete);
-            registry_.registerGene(def);
-        }
     }
 };
 

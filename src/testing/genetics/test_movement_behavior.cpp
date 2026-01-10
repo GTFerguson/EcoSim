@@ -17,7 +17,9 @@
 #include "genetics/organisms/Organism.hpp"
 #include "genetics/interfaces/IPositionable.hpp"
 #include "genetics/core/Genome.hpp"
+#include "genetics/core/Gene.hpp"
 #include "genetics/core/GeneRegistry.hpp"
+#include "genetics/core/GeneticTypes.hpp"
 #include "genetics/expression/Phenotype.hpp"
 #include "genetics/expression/EnvironmentState.hpp"
 #include "genetics/expression/OrganismState.hpp"
@@ -36,12 +38,18 @@ public:
         , worldX_(10.5f)
         , worldY_(10.5f)
     {
+        // Set optimal context for phenotype expression
         EnvironmentState env;
+        env.temperature = 22.0f;
+        env.humidity = 0.5f;
+        env.time_of_day = 0.5f;
+        
         OrganismState state;
         state.age_normalized = 0.5f;
         state.health = 1.0f;
         state.energy_level = 0.5f;
-        Organism::updatePhenotype();
+        
+        phenotype_.updateContext(env, state);
     }
     
     ~MockGeneticOrganism() noexcept override = default;
@@ -70,17 +78,27 @@ public:
     void setPosition(float x, float y) { worldX_ = x; worldY_ = y; }
     
     void setLocomotion(float value) {
-        if (getGenomeMutable().hasGene(UniversalGenes::LOCOMOTION)) {
-            getGenomeMutable().getGeneMutable(UniversalGenes::LOCOMOTION).setAlleleValues(value);
-            Organism::updatePhenotype();
+        Genome& genome = getGenomeMutable();
+        if (genome.hasGene(UniversalGenes::LOCOMOTION)) {
+            genome.getGeneMutable(UniversalGenes::LOCOMOTION).setAlleleValues(value);
+        } else {
+            // Add gene if it doesn't exist
+            Gene gene(UniversalGenes::LOCOMOTION, GeneValue(value));
+            genome.addGene(gene, ChromosomeType::Morphology);
         }
+        phenotype_.invalidateCache();
     }
     
     void setMetabolism(float value) {
-        if (getGenomeMutable().hasGene(UniversalGenes::METABOLISM_RATE)) {
-            getGenomeMutable().getGeneMutable(UniversalGenes::METABOLISM_RATE).setAlleleValues(value);
-            Organism::updatePhenotype();
+        Genome& genome = getGenomeMutable();
+        if (genome.hasGene(UniversalGenes::METABOLISM_RATE)) {
+            genome.getGeneMutable(UniversalGenes::METABOLISM_RATE).setAlleleValues(value);
+        } else {
+            // Add gene if it doesn't exist
+            Gene gene(UniversalGenes::METABOLISM_RATE, GeneValue(value));
+            genome.addGene(gene, ChromosomeType::Metabolism);
         }
+        phenotype_.invalidateCache();
     }
 
 private:

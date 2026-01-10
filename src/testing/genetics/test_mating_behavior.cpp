@@ -15,7 +15,9 @@
 #include "genetics/behaviors/BehaviorContext.hpp"
 #include "genetics/systems/PerceptionSystem.hpp"
 #include "genetics/core/Genome.hpp"
+#include "genetics/core/Gene.hpp"
 #include "genetics/core/GeneRegistry.hpp"
+#include "genetics/core/GeneticTypes.hpp"
 #include "genetics/defaults/UniversalGenes.hpp"
 #include "genetics/expression/Phenotype.hpp"
 #include "genetics/expression/OrganismState.hpp"
@@ -44,6 +46,7 @@ public:
         , registry_(registry)
         , maxLifespan_(maxLifespan)
     {
+        // Set optimal context for phenotype expression
         OrganismState state;
         state.age_normalized = 0.5f;
         state.health = 1.0f;
@@ -54,7 +57,7 @@ public:
         env.humidity = 0.5f;
         env.time_of_day = 0.5f;
         
-        Organism::updatePhenotype();
+        phenotype_.updateContext(env, state);
     }
     
     // IPositionable - world coordinates
@@ -78,15 +81,33 @@ public:
     float getMaxSize() const override { return 1.0f; }
     
     void setGene(const std::string& geneName, float value) {
-        if (getGenomeMutable().hasGene(geneName)) {
-            getGenomeMutable().getGeneMutable(geneName).setAlleleValues(value);
+        Genome& genome = getGenomeMutable();
+        if (genome.hasGene(geneName)) {
+            genome.getGeneMutable(geneName).setAlleleValues(value);
+        } else {
+            // Add gene if it doesn't exist
+            GeneValue geneVal = value;
+            Gene gene(geneName, geneVal);
+            // Use Metabolism chromosome as default
+            genome.addGene(gene, ChromosomeType::Metabolism);
         }
-        Organism::updatePhenotype();
+        phenotype_.invalidateCache();
     }
     
+    /**
+     * @brief Set the organism's age to achieve a target normalized age
+     * @param ageNorm Target normalized age (0.0 to 1.0)
+     */
     void setAgeNormalized(float ageNorm) {
-        // Use the base class age system through age() method
-        // Reset age first
+        // Calculate the number of ticks needed to achieve this normalized age
+        // ageNormalized = age_ / maxLifespan_
+        // So age_ = ageNorm * maxLifespan_
+        unsigned int targetAge = static_cast<unsigned int>(ageNorm * maxLifespan_);
+        
+        // Use the inherited age() method to set age
+        // First we need to reset and age to the target
+        age_ = targetAge;
+        
         Organism::updatePhenotype();
     }
     
