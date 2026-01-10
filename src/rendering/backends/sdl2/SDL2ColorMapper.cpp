@@ -86,6 +86,46 @@ SDL_Color SDL2ColorMapper::elevationToColor(unsigned int elevation) {
     }
 }
 
+SDL_Color SDL2ColorMapper::waterToColor(float depth, WaterType type) {
+    // Clamp depth to valid range
+    if (depth < 0.0f) depth = 0.0f;
+    if (depth > 1.0f) depth = 1.0f;
+    
+    SDL_Color shallow, deep;
+    
+    switch (type) {
+        case WaterType::OCEAN:
+            // Full ocean range - from light coastal to dark abyss
+            // Single gradient eliminates banding at type transitions
+            // Blue-dominant to avoid icy appearance (low green)
+            shallow = {75, 130, 180, 255};   // Light coastal blue (at beach/shore)
+            deep = {5, 15, 55, 255};         // Very dark navy - real oceanic depth
+            break;
+            
+        case WaterType::LAKE:
+            // Freshwater lake - slightly warmer/greener tint than ocean
+            // Distinct from ocean but NOT icy cyan
+            shallow = {55, 115, 165, 255};   // Lake blue with subtle warmth
+            deep = {30, 70, 120, 255};       // Deeper lake blue
+            break;
+            
+        case WaterType::RIVER:
+            // Flowing water - lighter, more reflective
+            // Slightly greener than ocean but NOT icy cyan
+            shallow = {70, 135, 185, 255};   // Light river blue
+            deep = {50, 100, 155, 255};      // Medium river for depth
+            break;
+            
+        default:
+            // Fallback to lake colors
+            shallow = {55, 115, 165, 255};
+            deep = {30, 70, 120, 255};
+            break;
+    }
+    
+    return blendColors(shallow, deep, depth);
+}
+
 //==============================================================================
 // Entity Color Mapping
 //==============================================================================

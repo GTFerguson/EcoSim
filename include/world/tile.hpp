@@ -43,6 +43,7 @@ class Tile {
       bool          _passable;
       bool          _isSource;
       unsigned int  _elevation;
+      float         _waterDepth;      // Water depth for gradient rendering (0.0 = shallow, 1.0 = deep)
   public:
       //==========================================================================
       // Default Constructor
@@ -69,15 +70,17 @@ class Tile {
       TerrainType                 getTerrainType() const;  // NEW: Returns semantic terrain type
       bool                        isPassable    () const;
       bool                        isSource      () const;
+      float                       getWaterDepth () const;  // Water depth for rendering (0.0-1.0)
       
       // Genetics-based plant getters (Phase 2.4)
       std::vector<std::shared_ptr<EcoSim::Genetics::Plant>>& getPlants();
       const std::vector<std::shared_ptr<EcoSim::Genetics::Plant>>& getPlants() const;
 
-      //==========================================================================      
+      //==========================================================================
       // Setters
-      //==========================================================================      
+      //==========================================================================
       void setElevation (unsigned int elevation);
+      void setWaterDepth(float depth);  // Set water depth for gradient rendering
 
       //==========================================================================
       // Container Handling - Genetics-based plants (Phase 2.4)

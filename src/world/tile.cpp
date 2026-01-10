@@ -21,6 +21,7 @@ Tile::Tile () {
 	_colPair	    = 4;
 	_terrainType  = TerrainType::PLAINS;
 	_passable	    = false;
+	_waterDepth   = 0.0f;
 }
 
 Tile::Tile (const unsigned &objLimit,
@@ -35,6 +36,7 @@ Tile::Tile (const unsigned &objLimit,
 	_terrainType  = terrainType;
 	_passable     = passable;
   _isSource     = isSource;
+	_waterDepth   = 0.0f;
 }
 
 Tile::Tile (const unsigned &objLimit,
@@ -51,6 +53,7 @@ Tile::Tile (const unsigned &objLimit,
 	_passable 	  = passable;
   _isSource     = isSource;
 	_elevation	  = elevation;
+	_waterDepth   = 0.0f;
 }
 
 //================================================================================
@@ -62,12 +65,17 @@ int			                Tile::getColPair    () const { return _colPair;   }
 TerrainType             Tile::getTerrainType() const { return _terrainType; }
 bool		                Tile::isPassable    () const { return _passable;	}
 bool                    Tile::isSource      () const { return _isSource;  }
+float                   Tile::getWaterDepth () const { return _waterDepth; }
 
 //================================================================================
 //	Setters
 //================================================================================
 void Tile::setElevation (unsigned int elevation) {
 	_elevation = elevation;
+}
+
+void Tile::setWaterDepth(float depth) {
+	_waterDepth = depth;
 }
 
 //================================================================================

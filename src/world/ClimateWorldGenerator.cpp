@@ -1511,27 +1511,39 @@ void ClimateWorldGenerator::applyToGrid(WorldGrid& grid) {
             bool isWater = false;
             TerrainType terrainType = props.terrainType;
             char displayChar = props.displayChar;
+            float waterDepth = 0.0f;  // Water depth for gradient rendering
             
             if (climate.biome() == Biome::OCEAN_DEEP ||
                 climate.biome() == Biome::OCEAN_SHALLOW ||
                 climate.biome() == Biome::OCEAN_COAST) {
                 passable = false;
                 isWater = true;
+                // Calculate ocean depth from elevation (deeper = lower elevation)
+                // seaLevel is the surface, so depth = seaLevel - elevation
+                float oceanDepth = _config.seaLevel - climate.elevation;
+                // Normalize to 0-1 range (max depth at elevation 0)
+                waterDepth = clampValue(oceanDepth / _config.seaLevel, 0.0f, 1.0f);
             } else if (climate.biome() == Biome::FRESHWATER) {
                 passable = true;  // Shallow enough to wade
                 isWater = true;
+                // Use stored water level for freshwater
+                waterDepth = clampValue(climate.waterLevel, 0.0f, 1.0f);
             } else if (climate.feature == TerrainFeature::RIVER) {
                 // Rivers are passable water with distinct terrain type
                 isWater = true;
                 passable = true;
                 terrainType = TerrainType::SHALLOW_WATER;
                 displayChar = '~';
+                // Rivers use waterLevel which represents flow (larger rivers = higher value)
+                waterDepth = clampValue(climate.waterLevel, 0.0f, 1.0f);
             } else if (climate.feature == TerrainFeature::LAKE) {
                 // Lakes are passable water bodies
                 isWater = true;
                 passable = true;
                 terrainType = TerrainType::WATER;
                 displayChar = '~';
+                // Lakes store actual depth in waterLevel (set during formLake())
+                waterDepth = clampValue(climate.waterLevel, 0.0f, 1.0f);
             } else if (climate.biome() == Biome::GLACIER ||
                        climate.biome() == Biome::MOUNTAIN_BARE) {
                 passable = false;
@@ -1543,6 +1555,7 @@ void ClimateWorldGenerator::applyToGrid(WorldGrid& grid) {
             // Create tile with appropriate terrain type
             Tile tile(100, displayChar, colorPair, passable, isWater, terrainType);
             tile.setElevation(static_cast<unsigned int>(climate.elevation * 255));
+            tile.setWaterDepth(waterDepth);  // Set water depth for gradient rendering
             
             grid(x, y) = tile;
         }

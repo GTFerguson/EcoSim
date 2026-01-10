@@ -219,8 +219,39 @@ void SDL2Renderer::renderWorld(const World& world, const Viewport& viewport) {
             int screenX = baseScreenX + (x - viewport.originX) * _tileSize;
             int screenY = baseScreenY + (y - viewport.originY) * _tileSize;
             
-            // Render terrain
-            SDL_Color terrainColor = getTerrainColor(curTile->getTerrainType());
+            // Render terrain - use depth-based coloring for water tiles
+            SDL_Color terrainColor;
+            TerrainType terrainType = curTile->getTerrainType();
+            
+            // Check if this is a water tile that should use depth-based coloring
+            if (terrainType == TerrainType::DEEP_WATER ||
+                terrainType == TerrainType::WATER ||
+                terrainType == TerrainType::SHALLOW_WATER ||
+                terrainType == TerrainType::SHALLOW_WATER_2) {
+                
+                float waterDepth = curTile->getWaterDepth();
+                WaterType waterType;
+                
+                // Determine water type based on terrain type and whether it's a source (isSource = freshwater)
+                if (curTile->isSource()) {
+                    // Freshwater bodies (lakes, rivers)
+                    if (terrainType == TerrainType::SHALLOW_WATER ||
+                        terrainType == TerrainType::SHALLOW_WATER_2) {
+                        waterType = WaterType::RIVER;
+                    } else {
+                        waterType = WaterType::LAKE;
+                    }
+                } else {
+                    // Ocean water - use single OCEAN type for smooth gradient
+                    // The depth value handles the transition from shallow to deep
+                    waterType = WaterType::OCEAN;
+                }
+                
+                terrainColor = SDL2ColorMapper::waterToColor(waterDepth, waterType);
+            } else {
+                terrainColor = getTerrainColor(terrainType);
+            }
+            
             drawFilledRect(screenX, screenY, _tileSize, _tileSize, terrainColor);
             
             // LEGACY REMOVAL: Legacy Spawner rendering disabled
@@ -305,8 +336,39 @@ void SDL2Renderer::renderTile(const Tile& tile, int screenX, int screenY) {
         return;
     }
     
-    // Render terrain
-    SDL_Color terrainColor = getTerrainColor(tile.getTerrainType());
+    // Render terrain - use depth-based coloring for water tiles
+    SDL_Color terrainColor;
+    TerrainType terrainType = tile.getTerrainType();
+    
+    // Check if this is a water tile that should use depth-based coloring
+    if (terrainType == TerrainType::DEEP_WATER ||
+        terrainType == TerrainType::WATER ||
+        terrainType == TerrainType::SHALLOW_WATER ||
+        terrainType == TerrainType::SHALLOW_WATER_2) {
+        
+        float waterDepth = tile.getWaterDepth();
+        WaterType waterType;
+        
+        // Determine water type based on terrain type and whether it's a source (isSource = freshwater)
+        if (tile.isSource()) {
+            // Freshwater bodies (lakes, rivers)
+            if (terrainType == TerrainType::SHALLOW_WATER ||
+                terrainType == TerrainType::SHALLOW_WATER_2) {
+                waterType = WaterType::RIVER;
+            } else {
+                waterType = WaterType::LAKE;
+            }
+        } else {
+            // Ocean water - use single OCEAN type for smooth gradient
+            // The depth value handles the transition from shallow to deep
+            waterType = WaterType::OCEAN;
+        }
+        
+        terrainColor = SDL2ColorMapper::waterToColor(waterDepth, waterType);
+    } else {
+        terrainColor = getTerrainColor(terrainType);
+    }
+    
     drawFilledRect(screenX, screenY, _tileSize, _tileSize, terrainColor);
     
     // LEGACY REMOVAL: Legacy Spawner rendering disabled

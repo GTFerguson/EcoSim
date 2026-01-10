@@ -19,6 +19,15 @@ class Creature;
 enum class Motivation;
 
 /**
+ * @brief Type of water body for distinct color palettes
+ */
+enum class WaterType {
+    OCEAN,      // Ocean water - full range from coastal to deep
+    LAKE,       // Inland freshwater, teal/cyan tones (never as dark as deep ocean)
+    RIVER       // Flowing water, lighter cyan tones
+};
+
+/**
  * @brief Helper class for SDL2 color management
  * 
  * This class provides static utility methods for mapping platform-independent
@@ -41,13 +50,25 @@ public:
     
     /**
      * @brief Convert elevation value to SDL_Color
-     * 
+     *
      * Uses elevation-based terrain classification.
-     * 
+     *
      * @param elevation The elevation value (0-255)
      * @return SDL_Color for the elevation
      */
     static SDL_Color elevationToColor(unsigned int elevation);
+    
+    /**
+     * @brief Convert water depth and type to SDL_Color
+     *
+     * Provides continuous color gradients based on water depth.
+     * Different water types (ocean, lake, river) have distinct color palettes.
+     *
+     * @param depth Normalized depth (0.0 = surface/shallow, 1.0 = max depth)
+     * @param type Type of water body (ocean, coastal, lake, river)
+     * @return SDL_Color blended between shallow and deep colors for that water type
+     */
+    static SDL_Color waterToColor(float depth, WaterType type);
 
     //==========================================================================
     // Entity Color Mapping
