@@ -38,18 +38,54 @@ The world of EcoSim is built from different terrain types, each creating unique 
 
 ### Water 💧
 
+EcoSim features three types of water bodies, each with distinct characteristics:
+
+#### Ocean 🌊
+
 | Property | Value |
 |----------|-------|
-| **Color** | Blue |
+| **Color** | Deep navy to light coastal blue |
 | **Passable** | No |
 | **Water Source** | Yes |
-| **Plant Growth** | No |
+| **Depth Variation** | Continuous gradient |
 
 **Characteristics:**
-- Essential for creature survival
-- Creatures must visit periodically
-- Creates natural barriers
-- Shapes creature movement patterns
+- Connected to map edges
+- Color darkens with depth (coastal shallows → deep navy abyss)
+- Creates natural world boundaries
+- Impassable terrain barrier
+
+#### Lakes 🏞️
+
+| Property | Value |
+|----------|-------|
+| **Color** | Light to medium blue (freshwater tones) |
+| **Passable** | Yes (shallow) |
+| **Water Source** | Yes |
+| **Formation** | Terrain depressions with river inflow |
+
+**Characteristics:**
+- Form in natural terrain basins
+- Deeper in center, shallow at edges
+- Color reflects depth (darker center, lighter shores)
+- Size depends on watershed and terrain shape
+- Creatures can wade through shallow areas
+
+#### Rivers 🏊
+
+| Property | Value |
+|----------|-------|
+| **Color** | Light reflective blue |
+| **Passable** | Yes |
+| **Water Source** | Yes |
+| **Formation** | Follow terrain downhill |
+
+**Characteristics:**
+- Flow from highlands to ocean or lakes
+- Meander naturally through terrain
+- Wider rivers appear slightly darker
+- Provide water access across the map
+- Creatures can cross rivers
 
 ### Mountain ⛰️
 

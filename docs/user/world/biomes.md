@@ -27,8 +27,13 @@ The combination of these creates a unique environment!
 | Biome | Temperature | Moisture | Description |
 |-------|-------------|----------|-------------|
 | **Deep Ocean** | Variable | 100% | Open water - land creatures cannot enter |
+| **Shallow Ocean** | Variable | 100% | Coastal waters, lighter blue color |
+| **Lakes** | Variable | 100% | Inland freshwater - creatures can wade |
+| **Rivers** | Variable | 100% | Flowing water connecting highlands to sea |
 
-**What Lives Here:** Fish in future updates. Currently uninhabitable by land creatures.
+**What Lives Here:** Fish in future updates. Land creatures can wade through lakes and cross rivers to access water.
+
+> **Visual Cues:** Water color indicates depth - darker blue means deeper water. Lakes are deepest in the center and shallow at edges. Rivers vary in width based on how much water flows through them.
 
 ---
 

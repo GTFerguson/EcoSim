@@ -790,6 +790,7 @@ For dynamic climate (Phase A implementation):
 
 ## See Also
 
+- [[../systems/water-system]] - Water generation and depth-based rendering
 - [[world-roadmap]] - Environment systems roadmap (Phase A-F)
 - [[../../future/environment/ecosystem-improvements]] - Ecosystem dynamics
 - [[coevolution]] - Creature-plant adaptation
