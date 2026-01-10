@@ -6,6 +6,7 @@
 
 #include "WorldGrid.hpp"
 #include "ScentLayer.hpp"
+#include "PlantSpatialIndex.hpp"
 #include "ClimateWorldGenerator.hpp"
 #include "../genetics/core/GeneRegistry.hpp"
 #include "../genetics/organisms/Plant.hpp"
@@ -179,6 +180,36 @@ public:
     void updateEnvironment(float temperature, float lightLevel, float waterAvailability);
     
     //==========================================================================
+    // Spatial Queries
+    //==========================================================================
+    
+    /**
+     * @brief Query plants within radius of a position.
+     * @param x Center X position
+     * @param y Center Y position
+     * @param radius Search radius in tiles
+     * @return Vector of plant pointers within radius
+     *
+     * Uses spatial index for O(1) average-case performance instead of O(r²) tile iteration.
+     */
+    std::vector<Genetics::Plant*> queryPlantsInRadius(int x, int y, float radius);
+    
+    /**
+     * @brief Rebuild the plant spatial index.
+     *
+     * Call this after bulk plant operations (initial population, loading saves).
+     * Individual addPlant() calls update the index automatically.
+     */
+    void rebuildPlantIndex();
+    
+    /**
+     * @brief Get the plant spatial index for direct queries.
+     * @return Pointer to the spatial index, or nullptr if not initialized
+     */
+    PlantSpatialIndex* getPlantIndex();
+    const PlantSpatialIndex* getPlantIndex() const;
+    
+    //==========================================================================
     // Access
     //==========================================================================
     
@@ -214,10 +245,12 @@ private:
     std::shared_ptr<Genetics::GeneRegistry> _plantRegistry;
     std::unique_ptr<Genetics::PlantFactory> _plantFactory;
     std::unique_ptr<Genetics::BiomeVariantFactory> _biomeFactory;
+    std::unique_ptr<PlantSpatialIndex> _plantSpatialIndex;  // For fast plant queries
     Genetics::EnvironmentState _currentEnvironment;  // Fallback when no environment system
     Genetics::SeedDispersal _seedDispersal;
     
     std::mt19937 _rng;
+    bool _spatialIndexDirty = true;  // Track if index needs rebuild
     
     /**
      * @brief Helper to select plant species based on biome
@@ -225,6 +258,22 @@ private:
      * @return Function that creates the appropriate plant at given coordinates
      */
     std::function<Genetics::Plant(int, int)> selectPlantForBiome(Biome biome);
+    
+    /**
+     * @brief Add a plant to the spatial index
+     * @param plant Pointer to the plant
+     * @param x X coordinate
+     * @param y Y coordinate
+     */
+    void addToSpatialIndex(Genetics::Plant* plant, int x, int y);
+    
+    /**
+     * @brief Remove a plant from the spatial index
+     * @param plant Pointer to the plant
+     * @param x X coordinate
+     * @param y Y coordinate
+     */
+    void removeFromSpatialIndex(Genetics::Plant* plant, int x, int y);
 };
 
 } // namespace EcoSim

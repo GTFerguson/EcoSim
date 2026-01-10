@@ -88,6 +88,12 @@ bool findWater(
 //  Plant Finding
 //============================================================================
 
+/**
+ * @deprecated This O(r²) tile iteration implementation is superseded by
+ * Creature::findGeneticsPlants() which uses PlantSpatialIndex for O(1) queries.
+ * Kept for A/B benchmark comparison - enable PLANT_SEARCH_USE_TILE_ITERATION
+ * in creature.cpp to use this legacy implementation for performance testing.
+ */
 bool findGeneticsPlants(
     Creature& creature,
     World& world,

@@ -19,7 +19,13 @@ PlantManager::PlantManager(WorldGrid& grid, ScentLayer& scents)
     : _grid(grid)
     , _scents(scents)
     , _environmentSystem(nullptr)
-    , _rng(std::random_device{}()) {
+    , _rng(std::random_device{}())
+    , _spatialIndexDirty(true) {
+    // Initialize spatial index with grid dimensions
+    _plantSpatialIndex = std::make_unique<PlantSpatialIndex>(
+        static_cast<int>(grid.width()),
+        static_cast<int>(grid.height())
+    );
 }
 
 PlantManager::~PlantManager() = default;
@@ -111,12 +117,16 @@ void PlantManager::addPlants(unsigned lowElev, unsigned highElev,
                     Plant plant = _plantFactory->createFromTemplate(species,
                                                                     static_cast<int>(x),
                                                                     static_cast<int>(y));
-                    tile.addPlant(std::make_shared<Plant>(std::move(plant)));
+                    auto plantPtr = std::make_shared<Plant>(std::move(plant));
+                    tile.addPlant(plantPtr);
                     ++plantsAdded;
                 }
             }
         }
     }
+    
+    // Mark spatial index dirty for rebuild on next query
+    _spatialIndexDirty = true;
     
     std::cout << "[PlantManager] Added " << plantsAdded << " " << species << " plants" << std::endl;
 }
@@ -292,6 +302,9 @@ void PlantManager::addPlantsByBiome(unsigned rate) {
         }
     }
     
+    // Mark spatial index dirty for rebuild on next query
+    _spatialIndexDirty = true;
+    
     unsigned total = tundraPlants + desertPlants + tropicalPlants + temperatePlants;
     std::cout << "[PlantManager] Added " << total << " biome-appropriate plants:" << std::endl;
     std::cout << "  Tundra (moss): " << tundraPlants << std::endl;
@@ -369,8 +382,25 @@ void PlantManager::tick(unsigned currentTick) {
             // Update plants with location-specific environment
             tile.updatePlants(tileEnv);
             
-            // Remove dead plants
-            tile.removeDeadPlants();
+            // Remove dead plants with incremental spatial index update
+            // Instead of tile.removeDeadPlants(), we handle removal here to update the index
+            auto& plants = tile.getPlants();
+            auto it = plants.begin();
+            while (it != plants.end()) {
+                if (!(*it) || !(*it)->isAlive()) {
+                    // Remove from spatial index before erasing from tile
+                    if (*it && _plantSpatialIndex && !_spatialIndexDirty) {
+                        _plantSpatialIndex->remove(
+                            (*it).get(),
+                            static_cast<int>(x),
+                            static_cast<int>(y)
+                        );
+                    }
+                    it = plants.erase(it);
+                } else {
+                    ++it;
+                }
+            }
             
             // Handle seed dispersal for mature plants
             for (auto& plant : tile.getPlants()) {
@@ -447,8 +477,21 @@ void PlantManager::tick(unsigned currentTick) {
             event.targetX, event.targetY
         );
         
-        targetTile.addPlant(std::make_shared<Plant>(std::move(offspring)));
+        auto offspringPtr = std::make_shared<Plant>(std::move(offspring));
+        
+        // Add to spatial index incrementally if index is valid
+        if (_plantSpatialIndex && !_spatialIndexDirty) {
+            _plantSpatialIndex->insert(
+                offspringPtr.get(),
+                event.targetX,
+                event.targetY
+            );
+        }
+        
+        targetTile.addPlant(offspringPtr);
     }
+    
+    // No need to mark dirty - we updated incrementally
 }
 
 //==============================================================================
@@ -467,6 +510,80 @@ void PlantManager::updateEnvironment(float temperature, float lightLevel, float 
     _currentEnvironment.temperature = temperature;
     _currentEnvironment.humidity = waterAvailability;
     _currentEnvironment.time_of_day = lightLevel;
+}
+
+//==============================================================================
+// Spatial Queries
+//==============================================================================
+
+std::vector<Plant*> PlantManager::queryPlantsInRadius(int x, int y, float radius) {
+    // Rebuild index if dirty (e.g., after bulk operations)
+    if (_spatialIndexDirty) {
+        rebuildPlantIndex();
+    }
+    
+    if (!_plantSpatialIndex) {
+        return {};
+    }
+    
+    return _plantSpatialIndex->queryRadius(
+        static_cast<float>(x),
+        static_cast<float>(y),
+        radius
+    );
+}
+
+void PlantManager::rebuildPlantIndex() {
+    if (!_plantSpatialIndex) {
+        _plantSpatialIndex = std::make_unique<PlantSpatialIndex>(
+            static_cast<int>(_grid.width()),
+            static_cast<int>(_grid.height())
+        );
+    }
+    
+    _plantSpatialIndex->clear();
+    
+    unsigned cols = _grid.width();
+    unsigned rows = _grid.height();
+    
+    for (unsigned x = 0; x < cols; x++) {
+        for (unsigned y = 0; y < rows; y++) {
+            Tile& tile = _grid(x, y);
+            for (auto& plant : tile.getPlants()) {
+                if (plant && plant->isAlive()) {
+                    _plantSpatialIndex->insert(
+                        plant.get(),
+                        static_cast<int>(x),
+                        static_cast<int>(y)
+                    );
+                }
+            }
+        }
+    }
+    
+    _spatialIndexDirty = false;
+    std::cout << "[PlantManager] Rebuilt spatial index with "
+              << _plantSpatialIndex->size() << " plants" << std::endl;
+}
+
+PlantSpatialIndex* PlantManager::getPlantIndex() {
+    return _plantSpatialIndex.get();
+}
+
+const PlantSpatialIndex* PlantManager::getPlantIndex() const {
+    return _plantSpatialIndex.get();
+}
+
+void PlantManager::addToSpatialIndex(Plant* plant, int x, int y) {
+    if (_plantSpatialIndex && plant) {
+        _plantSpatialIndex->insert(plant, x, y);
+    }
+}
+
+void PlantManager::removeFromSpatialIndex(Plant* plant, int x, int y) {
+    if (_plantSpatialIndex && plant) {
+        _plantSpatialIndex->remove(plant, x, y);
+    }
 }
 
 //==============================================================================
