@@ -12,6 +12,7 @@
 #include <random>
 #include <set>
 #include <unordered_set>
+#include <unordered_map>
 #include "creature.hpp"
 
 // Forward declarations
@@ -49,6 +50,52 @@ struct CoordHash {
 using CoordSet = std::unordered_set<std::pair<int, int>, CoordHash>;
 
 /**
+ * @brief Per-search cache for tile environmental costs
+ *
+ * Caches the computed environmental cost for each visited tile during
+ * a single A* search. Since the environment doesn't change during a search,
+ * this reduces temperature queries from up to 1,600 per search to ~200
+ * (one per unique visited tile).
+ */
+struct PathfindingCostCache {
+    std::unordered_map<uint64_t, float> tileCosts;
+    
+    /// Convert x,y to a single key for fast lookup
+    static uint64_t makeKey(int x, int y) {
+        return (static_cast<uint64_t>(static_cast<uint32_t>(x)) << 32) |
+               static_cast<uint64_t>(static_cast<uint32_t>(y));
+    }
+    
+    /// Clear the cache (call at start of each new search)
+    void clear() { tileCosts.clear(); }
+    
+    /// Reserve capacity for expected number of tiles
+    void reserve(size_t expectedTiles) { tileCosts.reserve(expectedTiles); }
+    
+    /**
+     * @brief Get cached cost for a tile
+     * @param x Tile X coordinate
+     * @param y Tile Y coordinate
+     * @return Cached cost, or -1.0f if not cached
+     */
+    float getCachedCost(int x, int y) const {
+        auto key = makeKey(x, y);
+        auto it = tileCosts.find(key);
+        return (it != tileCosts.end()) ? it->second : -1.0f;
+    }
+    
+    /**
+     * @brief Store a computed cost in the cache
+     * @param x Tile X coordinate
+     * @param y Tile Y coordinate
+     * @param cost The computed environmental cost
+     */
+    void setCachedCost(int x, int y, float cost) {
+        tileCosts[makeKey(x, y)] = cost;
+    }
+};
+
+/**
  * @brief Context for environmental pathfinding calculations
  *
  * Pre-computed creature data and environment access for efficient
@@ -68,6 +115,9 @@ struct PathfindingContext {
     /// Environment system for temperature queries (non-owning, may be null)
     const EcoSim::EnvironmentSystem* envSystem = nullptr;
     
+    /// Per-search cost cache (mutable since caching doesn't change logical state)
+    mutable PathfindingCostCache costCache;
+    
     /// Danger weight factor for cost calculation
     static constexpr float DANGER_WEIGHT_FACTOR = 10.0f;
     
@@ -77,8 +127,15 @@ struct PathfindingContext {
      * @param x Target tile X coordinate
      * @param y Target tile Y coordinate
      * @return Total cost with environmental danger penalty applied
+     *
+     * Uses per-search caching to avoid redundant temperature queries.
      */
     float calculateTileCost(float baseCost, int x, int y) const;
+    
+    /**
+     * @brief Clear the cost cache (call at start of each new search)
+     */
+    void clearCache() const { costCache.clear(); }
     
     /**
      * @brief Create context from creature phenotype

@@ -1,7 +1,7 @@
 ---
 title: Environmental Stress System
 created: 2026-01-09
-updated: 2026-01-09
+updated: 2026-01-10
 status: complete
 audience: developer
 type: reference
@@ -328,7 +328,27 @@ However:
 
 - Temperature stress: Calculated per tick per organism
 - Moisture stress: Calculated per tick per plant
-- Caching: Not currently cached (fast enough for current population sizes)
+- Caching: Thermal adaptation values are cached (see below)
+
+### Thermal Adaptation Cache
+
+Creature thermal adaptations and tolerance ranges are now cached to reduce per-tick phenotype lookups:
+
+```cpp
+struct CachedThermalAdaptation {
+    float toleranceLow;
+    float toleranceHigh;
+    float coldAdaptation;
+    float heatAdaptation;
+};
+
+// Cached in creature, invalidated when phenotype context changes
+CachedThermalAdaptation _cachedThermal;
+```
+
+**Cache invalidation:** The cache is invalidated when [`updatePhenotypeContext()`](../../../src/objects/creature/creature.cpp:1) is called (typically when environment changes significantly or creature moves to new biome).
+
+**Performance impact:** Reduces per-tick phenotype lookups from 8+ trait queries to 0 for creatures that haven't moved biomes. This is significant because `getPhenotype().getTrait()` involves string lookups.
 
 ### Optimization Opportunities
 

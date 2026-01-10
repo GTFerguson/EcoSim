@@ -11,11 +11,34 @@ EnvironmentSystem::EnvironmentSystem(const SeasonManager& seasonManager, const W
     : _seasonManager(seasonManager)
     , _grid(grid)
     , _climateMap(nullptr)
+    , _cachedDayProgress(0.5f)
+    , _cachedBaseLightLevel(0.5f)
+    , _lastCachedTickId(-1)
 {
 }
 
 void EnvironmentSystem::setClimateMap(const std::vector<std::vector<TileClimate>>* climateMap) {
     _climateMap = climateMap;
+}
+
+//==============================================================================
+// Per-Tick Cache Management
+//==============================================================================
+
+void EnvironmentSystem::updateTickCache(int tickId) {
+    if (tickId == _lastCachedTickId) {
+        return;  // Already cached for this tick
+    }
+    
+    _cachedDayProgress = _seasonManager.getDayProgress();
+    
+    // Pre-compute base light level (expensive sin calculation done once per tick)
+    constexpr float PI = 3.14159265358979f;
+    // timeOfDay: 0.0 = midnight, 0.5 = noon, 1.0 = midnight
+    _cachedBaseLightLevel = 0.5f + 0.5f * std::sin((_cachedDayProgress - 0.25f) * 2.0f * PI);
+    _cachedBaseLightLevel = std::max(0.0f, std::min(1.0f, _cachedBaseLightLevel));
+    
+    _lastCachedTickId = tickId;
 }
 
 bool EnvironmentSystem::isValidPosition(int x, int y) const {
@@ -49,8 +72,8 @@ Genetics::EnvironmentState EnvironmentSystem::getEnvironmentStateAt(int x, int y
         // Use climate-based environment with biome blending
         const TileClimate& climate = getClimateAt(x, y);
         
-        // Get time of day from season manager (normalized 0.0-1.0)
-        float timeOfDay = _seasonManager.getDayProgress();
+        // Use cached day progress if available, fall back to live query
+        float timeOfDay = _cachedDayProgress;
         int season = static_cast<int>(_seasonManager.getCurrentSeason());
         
         return Genetics::EnvironmentState::fromTileClimate(climate, timeOfDay, season);
@@ -62,7 +85,8 @@ Genetics::EnvironmentState EnvironmentSystem::getEnvironmentStateAt(int x, int y
         env.humidity = DEFAULT_HUMIDITY;
         env.elevation = DEFAULT_ELEVATION;
         env.lightLevel = DEFAULT_LIGHT_LEVEL;
-        env.time_of_day = _seasonManager.getDayProgress();
+        // Use cached day progress if available
+        env.time_of_day = _cachedDayProgress;
         env.season = static_cast<int>(_seasonManager.getCurrentSeason());
         env.primaryBiome = static_cast<int>(Biome::TEMPERATE_GRASSLAND);
         env.vegetationDensity = 0.5f;
@@ -114,22 +138,17 @@ float EnvironmentSystem::getLightLevel(int x, int y) const {
         return DEFAULT_LIGHT_LEVEL;
     }
     
-    // Calculate light based on time of day
-    float timeOfDay = _seasonManager.getDayProgress();
-    constexpr float PI = 3.14159265358979f;
+    // Use pre-computed base light level from updateTickCache()
+    // This avoids expensive sin() calculation per query
+    float lightLevel = _cachedBaseLightLevel;
     
-    // Base light follows sinusoidal day/night cycle
-    // timeOfDay: 0.0 = midnight, 0.5 = noon, 1.0 = midnight
-    float baseLightLevel = 0.5f + 0.5f * std::sin((timeOfDay - 0.25f) * 2.0f * PI);
-    baseLightLevel = std::max(0.0f, std::min(1.0f, baseLightLevel));
-    
-    // Reduce light in dense vegetation (canopy effect)
+    // Reduce light in dense vegetation (canopy effect) - per-tile modifier
     if (_climateMap) {
         float canopyReduction = getClimateAt(x, y).getVegetationDensity() * 0.3f;
-        baseLightLevel *= (1.0f - canopyReduction);
+        lightLevel *= (1.0f - canopyReduction);
     }
     
-    return baseLightLevel;
+    return lightLevel;
 }
 
 float EnvironmentSystem::getWindSpeed(int x, int y) const {

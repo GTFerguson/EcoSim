@@ -187,6 +187,14 @@ class Creature: public GameObject,
     
     //  Environmental Stress System
     EcoSim::Genetics::TemperatureStress _currentEnvironmentalStress;  // Current stress state (for UI/debugging)
+    
+    //  Cached thermal calculation data - uses existing structs from EnvironmentalStress.hpp
+    EcoSim::Genetics::ThermalAdaptations _cachedThermalAdaptations;
+    EcoSim::Genetics::EffectiveToleranceRange _cachedToleranceRange;
+    float _cachedBaseTempLow = -999.0f;   // Base tolerance from genes
+    float _cachedBaseTempHigh = -999.0f;
+    bool _thermalCacheDirty = true;       // Flag to recompute when phenotype changes
+    float _lastProcessedTemp = -999.0f;   // Track temp for stress recalc
 
     //  Will Variables (creature-specific needs)
     float _hunger, _thirst, _fatigue, _mate;
@@ -248,6 +256,14 @@ class Creature: public GameObject,
      * @return New offspring creature
      */
     Creature  breedCreature (Creature &mate);
+    
+    /**
+     * @brief Update thermal adaptation cache from phenotype.
+     *
+     * Extracts ThermalAdaptations and calculates EffectiveToleranceRange
+     * from phenotype traits. Called when _thermalCacheDirty is true.
+     */
+    void updateThermalCache();
 
   protected:
     //============================================================================

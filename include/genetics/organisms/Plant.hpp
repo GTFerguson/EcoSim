@@ -23,6 +23,24 @@ enum class DispersalStrategy {
 };
 
 /**
+ * @brief Cache for plant growth-related gene values
+ *
+ * Plants perform 7+ gene lookups per tick in grow(). Since genes don't change
+ * after plant creation, we cache these values once at first use to avoid
+ * repeated genome traversal. Values are computed lazily on first access.
+ */
+struct PlantGrowthCache {
+    float maxSize = 1.0f;
+    float growthRate = 0.1f;
+    float lightNeed = 0.5f;
+    float waterNeed = 0.5f;
+    float tempToleranceLow = 10.0f;
+    float tempToleranceHigh = 30.0f;
+    float waterStorage = 0.0f;
+    bool isComputed = false;
+};
+
+/**
  * @brief Plant organism that extends the Organism base class
  * 
  * Plants use the same genome system as creatures but with plant-specific genes.
@@ -610,7 +628,20 @@ protected:
     
     // Static ID generator for unique plant IDs
     static unsigned int nextId_;
+
+private:
+    // Cached growth-related gene values (computed once, used every tick)
+    mutable PlantGrowthCache growthCache_;
     
+    /**
+     * @brief Ensure growth cache is computed (lazy initialization)
+     *
+     * Called at the start of grow() to populate cached gene values.
+     * No-op after first call since genes don't change after creation.
+     */
+    void ensureGrowthCacheComputed() const;
+
+protected:
     // Internal helpers
     void checkDeathConditions(const EnvironmentState& env);
     void grow(const EnvironmentState& env);

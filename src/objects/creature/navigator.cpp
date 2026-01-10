@@ -68,7 +68,13 @@ float PathfindingContext::calculateTileCost(float baseCost, int x, int y) const 
         return baseCost;
     }
     
-    // Get temperature at the tile
+    // Check cache first - environmental cost is independent of base cost
+    float cachedEnvCost = costCache.getCachedCost(x, y);
+    if (cachedEnvCost >= 0.0f) {
+        return baseCost + cachedEnvCost;
+    }
+    
+    // Get temperature at the tile (this is the expensive query we're caching)
     float temp = envSystem->getTemperature(x, y);
     
     // Calculate how many degrees outside tolerance the temperature is
@@ -80,9 +86,12 @@ float PathfindingContext::calculateTileCost(float baseCost, int x, int y) const 
     }
     // If temp is within tolerance, degreesOutside remains 0
     
-    // Apply formula: cost = baseCost + (degreesOutside/10) * sensitivity * DANGER_WEIGHT_FACTOR
+    // Apply formula: envCost = (degreesOutside/10) * sensitivity * DANGER_WEIGHT_FACTOR
     // This makes tiles 10°C outside tolerance cost an extra sensitivity*10 movement units
     float environmentalCost = (degreesOutside / 10.0f) * environmentalSensitivity * DANGER_WEIGHT_FACTOR;
+    
+    // Cache the environmental cost for this tile
+    costCache.setCachedCost(x, y, environmentalCost);
     
     return baseCost + environmentalCost;
 }
@@ -274,6 +283,13 @@ bool Navigator::astarSearch (Creature &c,
                              const int &endX,
                              const int &endY,
                              const PathfindingContext* ctx) {
+  // Clear cost cache at start of new search - environment doesn't change during search
+  if (ctx) {
+    ctx->clearCache();
+    // Reserve capacity for expected number of unique tiles (MAX_NODES * 8 neighbors)
+    ctx->costCache.reserve(MAX_NODES * 8);
+  }
+  
   int timeOut = 0;
   //  Sets of tiles already evaluated
   set<Node, nodeCompare> closedSet;

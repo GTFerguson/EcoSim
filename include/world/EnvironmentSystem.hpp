@@ -48,6 +48,21 @@ public:
     EnvironmentSystem(const SeasonManager& seasonManager, const WorldGrid& grid);
     
     //==========================================================================
+    // Per-Tick Cache Management
+    //==========================================================================
+    
+    /**
+     * @brief Update cached time-dependent values for the current tick
+     * @param tickId Current simulation tick ID
+     *
+     * Call once at the start of each tick to pre-compute expensive calculations
+     * like light level (sin-based day/night cycle). Subsequent calls within the
+     * same tick are no-ops. If not called, cached values default to sensible
+     * initial values.
+     */
+    void updateTickCache(int tickId);
+    
+    //==========================================================================
     // Climate Map Connection
     //==========================================================================
     
@@ -202,6 +217,12 @@ private:
     
     // Default climate for out-of-bounds or missing data
     static TileClimate _defaultClimate;
+    
+    // Per-tick cached values (call updateTickCache() at start of each tick)
+    // These avoid recomputing expensive sin() calculations for every query
+    mutable float _cachedDayProgress = 0.5f;    // Cached time of day (0.0-1.0)
+    mutable float _cachedBaseLightLevel = 0.5f; // Base light before per-tile modifiers
+    mutable int _lastCachedTickId = -1;         // Track which tick we cached for
     
     // Helper to validate coordinates
     bool isValidPosition(int x, int y) const;

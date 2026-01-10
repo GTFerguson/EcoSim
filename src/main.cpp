@@ -353,6 +353,11 @@ bool takeTurn (World &w, GeneralStats &gs, vector<Creature> &c,
  *  @param c A vector of creature objects.
  */
 void advanceSimulation (World &w, vector<Creature> &c, GeneralStats &gs) {
+  //  Update environment tick cache before processing any organisms
+  //  This pre-computes expensive calculations like light level (sin-based day/night cycle)
+  unsigned int currentTick = w.getCurrentTick();
+  w.environment().updateTickCache(static_cast<int>(currentTick));
+  
   //  Rebuild spatial index for O(1) neighbor queries (Phase 3 optimization)
   //  This is called once per tick - O(n) rebuild cost enables O(1) queries
   w.rebuildCreatureIndex(c);
@@ -369,7 +374,7 @@ void advanceSimulation (World &w, vector<Creature> &c, GeneralStats &gs) {
   // PRE-PASS: Have ALL breeding creatures deposit scents BEFORE any creature acts
   // This ensures scents from all potential mates are available during detection
   // (Phase 2: Gradient Navigation)
-  unsigned int currentTick = w.getCurrentTick();
+  // (currentTick already retrieved above for updateTickCache)
   for (auto& creature : c) {
     if (creature.getMotivation() == Motivation::Amorous) {
       creature.depositBreedingScent(w.getScentLayer(), currentTick);

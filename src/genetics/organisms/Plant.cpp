@@ -191,6 +191,25 @@ float Plant::getGeneValueFromGenome(const char* geneId, float defaultValue) cons
 }
 
 // ============================================================================
+// Growth Cache
+// ============================================================================
+
+void Plant::ensureGrowthCacheComputed() const {
+    if (growthCache_.isComputed) return;
+    
+    // Compute all growth-related values once from genome
+    growthCache_.maxSize = getGeneValueFromGenome(PlantGenes::MAX_SIZE, 5.0f);
+    growthCache_.growthRate = getGeneValueFromGenome(PlantGenes::GROWTH_RATE, 0.5f);
+    growthCache_.lightNeed = getGeneValueFromGenome(PlantGenes::LIGHT_NEED, 0.5f);
+    growthCache_.waterNeed = getGeneValueFromGenome(PlantGenes::WATER_NEED, 0.5f);
+    growthCache_.tempToleranceLow = getGeneValueFromGenome(UniversalGenes::TEMP_TOLERANCE_LOW, 5.0f);
+    growthCache_.tempToleranceHigh = getGeneValueFromGenome(UniversalGenes::TEMP_TOLERANCE_HIGH, 35.0f);
+    growthCache_.waterStorage = getGeneValueFromGenome(UniversalGenes::WATER_STORAGE, 0.0f);
+    
+    growthCache_.isComputed = true;
+}
+
+// ============================================================================
 // Plant-specific getters
 // ============================================================================
 
@@ -293,22 +312,22 @@ void Plant::grow() {
 void Plant::grow(const EnvironmentState& env) {
     if (!alive_) return;
     
-    float maxSize = getMaxSize();
+    // Ensure growth cache is computed (lazy initialization - no-op after first call)
+    ensureGrowthCacheComputed();
+    
+    // Use cached values instead of repeated gene lookups
+    float maxSize = growthCache_.maxSize;
     if (currentSize_ >= maxSize) {
         if (!mature_) setMature(true);
         return;
     }
     
-    float growthRate = getGrowthRate();
-    float lightNeed = getLightNeed();
-    float waterNeed = getWaterNeed();
-    
-    // Get temperature tolerance from genes
-    float tempLow = getGeneValueFromGenome(UniversalGenes::TEMP_TOLERANCE_LOW, 5.0f);
-    float tempHigh = getGeneValueFromGenome(UniversalGenes::TEMP_TOLERANCE_HIGH, 35.0f);
-    
-    // Get water storage gene for drought resistance
-    float waterStorage = getGeneValueFromGenome(UniversalGenes::WATER_STORAGE, 0.0f);
+    float growthRate = growthCache_.growthRate;
+    float lightNeed = growthCache_.lightNeed;
+    float waterNeed = growthCache_.waterNeed;
+    float tempLow = growthCache_.tempToleranceLow;
+    float tempHigh = growthCache_.tempToleranceHigh;
+    float waterStorage = growthCache_.waterStorage;
     
     // Calculate combined environmental stress using the stress calculator
     CombinedPlantStress stress = EnvironmentalStressCalculator::calculatePlantStress(
