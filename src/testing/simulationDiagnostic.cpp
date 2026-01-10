@@ -399,14 +399,12 @@ int main(int argc, char* argv[]) {
         
         // Take population snapshot at intervals
         if (tick % snapshotInterval == 0) {
-            int foodCount = 0;
-            const auto& gridRef = w.getGrid();
-            for (const auto& col : gridRef) {
-                for (const auto& tile : col) {
-                    foodCount += tile.getFoodVec().size();
-                }
+            // Get actual plant count from PlantManager's spatial index
+            int plantCount = 0;
+            if (auto* plantIndex = w.plants().getPlantIndex()) {
+                plantCount = static_cast<int>(plantIndex->size());
             }
-            logger.populationSnapshot(tick, creatures.size(), 0, foodCount);
+            logger.populationSnapshot(tick, creatures.size(), plantCount);
         }
         
         // Check for extinction

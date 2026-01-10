@@ -87,7 +87,6 @@ struct PopulationSnapshot {
     int tick;
     int creatures;
     int plants;
-    int food;
 };
 
 /**
@@ -264,7 +263,7 @@ public:
     void resetBreedingStats();
 
     // === Population ===
-    void populationSnapshot(int tick, int creatures, int plants, int food);
+    void populationSnapshot(int tick, int creatures, int plants);
     void extinctionWarning(const std::string& type, int remaining);
     void extinction(const std::string& entityType);
 

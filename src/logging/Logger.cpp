@@ -511,16 +511,16 @@ void Logger::resetBreedingStats() {
 
 // === Population ===
 
-void Logger::populationSnapshot(int tick, int creatures, int plants, int food) {
+void Logger::populationSnapshot(int tick, int creatures, int plants) {
     std::ostringstream details;
-    details << "creatures:" << creatures << ",plants:" << plants << ",food:" << food;
+    details << "creatures:" << creatures << ",plants:" << plants;
     log(LogLevel::INFO, "POPULATION_SNAPSHOT", -1, "", details.str());
     
     std::lock_guard<std::mutex> lock(m_mutex);
     if (m_populationHistory.size() >= MAX_POPULATION_HISTORY_SIZE) {
         m_populationHistory.pop_front();
     }
-    m_populationHistory.push_back({tick, creatures, plants, food});
+    m_populationHistory.push_back({tick, creatures, plants});
 }
 
 void Logger::extinctionWarning(const std::string& type, int remaining) {
@@ -586,17 +586,15 @@ void Logger::printPopulationHistory() {
     std::lock_guard<std::mutex> lock(m_mutex);
     
     std::cout << "\n========== POPULATION HISTORY ==========\n";
-    std::cout << std::setw(8) << "Tick" 
-              << std::setw(12) << "Creatures" 
-              << std::setw(10) << "Plants" 
-              << std::setw(8) << "Food" << "\n";
-    std::cout << std::string(38, '-') << "\n";
+    std::cout << std::setw(8) << "Tick"
+              << std::setw(12) << "Creatures"
+              << std::setw(10) << "Plants" << "\n";
+    std::cout << std::string(30, '-') << "\n";
     
     for (const auto& snap : m_populationHistory) {
-        std::cout << std::setw(8) << snap.tick 
-                  << std::setw(12) << snap.creatures 
-                  << std::setw(10) << snap.plants 
-                  << std::setw(8) << snap.food << "\n";
+        std::cout << std::setw(8) << snap.tick
+                  << std::setw(12) << snap.creatures
+                  << std::setw(10) << snap.plants << "\n";
     }
     
     std::cout << "========================================\n\n";

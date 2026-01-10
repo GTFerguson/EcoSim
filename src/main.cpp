@@ -1483,11 +1483,15 @@ void runGameLoop(World& w, vector<Creature>& creatures,
         
         // Population snapshot every 20 ticks
         if (tickCount % 20 == 0) {
+          // Get actual plant count from PlantManager's spatial index
+          int plantCount = 0;
+          if (auto* plantIndex = w.plants().getPlantIndex()) {
+            plantCount = static_cast<int>(plantIndex->size());
+          }
           logging::Logger::getInstance().populationSnapshot(
             tickCount,
             static_cast<int>(creatures.size()),
-            0,  // plant count - would need to iterate tiles to count
-            0   // food count - not tracked separately
+            plantCount
           );
         }
         
