@@ -452,8 +452,8 @@ void SDL2Renderer::renderCreatures(const std::vector<Creature>& creatures,
             int pixelY = static_cast<int>(screenY);
             
             // Special rendering for selected creature
-            // Compare creature's unique ID, not vector index
-            if (creature.getId() == selectedId) {
+            // Use creature-specific ID (not organism ID which is shared with plants)
+            if (creature.getCreatureId() == selectedId) {
                 renderSelectedCreature(creature, pixelX, pixelY);
             } else {
                 renderCreature(creature, pixelX, pixelY);
@@ -493,16 +493,14 @@ void SDL2Renderer::renderSelectedCreature(const Creature& creature, int screenX,
         return;
     }
     
-    // Draw a highlight ring around the selected creature
-    SDL_Color highlightColor = {255, 255, 100, 255};  // Yellow highlight
+    // Two-color highlight ring for visibility against any backdrop
+    SDL_Color outerColor = {0, 0, 0, 255};        // Black outer ring
+    SDL_Color innerColor = {255, 255, 100, 255};  // Yellow inner ring
     
-    // Outer highlight ring
-    drawRect(screenX - 1, screenY - 1,
-            _tileSize + 2, _tileSize + 2,
-            highlightColor);
-    drawRect(screenX - 2, screenY - 2,
-            _tileSize + 4, _tileSize + 4,
-            highlightColor);
+    // Black outer ring (provides contrast against light backgrounds)
+    drawRect(screenX - 2, screenY - 2, _tileSize + 4, _tileSize + 4, outerColor);
+    // Yellow inner ring (provides contrast against dark backgrounds)
+    drawRect(screenX - 1, screenY - 1, _tileSize + 2, _tileSize + 2, innerColor);
     
     // Get color based on creature's behavior profile
     SDL_Color creatureColor = getProfileColor(creature);
@@ -519,7 +517,7 @@ void SDL2Renderer::renderSelectedCreature(const Creature& creature, int screenX,
                   creatureColor);
     
     // Draw a brighter outline
-    SDL_Color outlineColor = highlightColor;
+    SDL_Color outlineColor = innerColor;
     drawRect(screenX + padding, screenY + padding,
             _tileSize - 2 * padding, _tileSize - 2 * padding,
             outlineColor);
