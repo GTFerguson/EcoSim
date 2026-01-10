@@ -4,7 +4,12 @@
 /**
  * @file WorldGenerator.hpp
  * @brief Terrain generation using Simplex noise
- * 
+ *
+ * @deprecated This generator uses simple elevation-based terrain types.
+ *             For new code, use ClimateWorldGenerator which provides
+ *             realistic climate-based biomes with temperature, moisture,
+ *             rivers, and proper ecological zones.
+ *
  * Extracted from World class as part of Phase 1.2 decomposition.
  * Handles procedural terrain generation using octaves of Simplex noise
  * with configurable terrain types and elevation mappings.

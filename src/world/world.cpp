@@ -202,6 +202,34 @@ void World::simplexGen() {
     _generator->generate(_grid);
 }
 
+void World::regenerateClimate() {
+    if (_climateGenerator) {
+        _climateGenerator->generate(_grid);
+        
+        // Update environment system with new climate data
+        if (_environmentSystem) {
+            _environmentSystem->setClimateMap(&_climateGenerator->getClimateMap());
+        }
+    }
+}
+
+void World::regenerateClimate(unsigned int seed) {
+    if (_climateGenerator) {
+        EcoSim::ClimateGeneratorConfig& config = _climateGenerator->getConfig();
+        config.seed = seed;
+        _climateGenerator->setConfig(config);
+        regenerateClimate();
+    }
+}
+
+EcoSim::ClimateWorldGenerator& World::climateGenerator() {
+    return *_climateGenerator;
+}
+
+const EcoSim::ClimateWorldGenerator& World::climateGenerator() const {
+    return *_climateGenerator;
+}
+
 //================================================================================
 // Simulation Update
 //================================================================================

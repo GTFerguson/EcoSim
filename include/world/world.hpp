@@ -184,8 +184,29 @@ public:
     /**
      * @brief Regenerate terrain using current configuration
      * Call after changing generation parameters.
+     * @deprecated Use regenerateClimate() for new worlds
      */
     void simplexGen();
+    
+    /**
+     * @brief Regenerate world using ClimateWorldGenerator
+     * This generates a full climate-based world with biomes, rivers, etc.
+     * Call after changing generation parameters.
+     */
+    void regenerateClimate();
+    
+    /**
+     * @brief Regenerate world using ClimateWorldGenerator with specific seed
+     * @param seed Random seed for reproducible generation
+     */
+    void regenerateClimate(unsigned int seed);
+    
+    /**
+     * @brief Get the ClimateWorldGenerator for configuration
+     * @return Reference to the ClimateWorldGenerator
+     */
+    EcoSim::ClimateWorldGenerator& climateGenerator();
+    const EcoSim::ClimateWorldGenerator& climateGenerator() const;
 
     //============================================================================
     // Simulation Update

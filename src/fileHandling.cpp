@@ -329,6 +329,9 @@ bool FileHandling::saveGameJson(
     MapGen mg = world.getMapGen();
     OctaveGen og = world.getOctaveGen();
     
+    // Get climate generator config for the new climate-based world generation
+    const auto& climateConfig = const_cast<World&>(world).climateGenerator().getConfig();
+    
     saveData["world"] = {
       {"tick", currentTick},
       {"mapWidth", mapWidth},
@@ -348,6 +351,18 @@ bool FileHandling::saveGameJson(
         {"minWeight", og.minWeight},
         {"maxWeight", og.maxWeight},
         {"freqInterval", og.freqInterval}
+      }},
+      {"climateGen", {
+        {"seed", climateConfig.seed},
+        {"seaLevel", climateConfig.seaLevel},
+        {"isIsland", climateConfig.isIsland},
+        {"islandFalloff", climateConfig.islandFalloff},
+        {"equatorPosition", climateConfig.equatorPosition},
+        {"temperatureRange", climateConfig.temperatureRange},
+        {"baseTemperature", climateConfig.baseTemperature},
+        {"generateRivers", climateConfig.generateRivers},
+        {"maxRivers", climateConfig.maxRivers},
+        {"generateLakes", climateConfig.generateLakes}
       }}
     };
     
@@ -806,9 +821,34 @@ bool FileHandling::loadGameJson(
       world.setOctaveGen(og);
     }
     
-    // Regenerate terrain with the saved parameters
-    world.simplexGen();
-    std::cout << "       Terrain regenerated with seed: " << world.getSeed() << std::endl;
+    // Load climate generator configuration if present
+    unsigned int climateSeed = 0;
+    if (worldData.contains("climateGen")) {
+      const auto& climateGenData = worldData["climateGen"];
+      auto& climateConfig = world.climateGenerator().getConfig();
+      
+      climateSeed = climateGenData.value("seed", 0u);
+      climateConfig.seed = climateSeed;
+      climateConfig.seaLevel = climateGenData.value("seaLevel", 0.30f);
+      climateConfig.isIsland = climateGenData.value("isIsland", true);
+      climateConfig.islandFalloff = climateGenData.value("islandFalloff", 0.35f);
+      climateConfig.equatorPosition = climateGenData.value("equatorPosition", 0.5f);
+      climateConfig.temperatureRange = climateGenData.value("temperatureRange", 70.0f);
+      climateConfig.baseTemperature = climateGenData.value("baseTemperature", 15.0f);
+      climateConfig.generateRivers = climateGenData.value("generateRivers", true);
+      climateConfig.maxRivers = climateGenData.value("maxRivers", 20);
+      climateConfig.generateLakes = climateGenData.value("generateLakes", true);
+      
+      world.climateGenerator().setConfig(climateConfig);
+    } else {
+      // Legacy save without climate data - use mapGen seed
+      MapGen mg = world.getMapGen();
+      climateSeed = static_cast<unsigned int>(mg.seed);
+    }
+    
+    // Regenerate climate-based terrain with the saved parameters
+    world.regenerateClimate(climateSeed);
+    std::cout << "       Climate terrain regenerated with seed: " << climateSeed << std::endl;
     
     // Clear existing creatures
     creatures.clear();

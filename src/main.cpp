@@ -812,14 +812,14 @@ namespace MapCreator {
           w.setScale(w.getScale() + 0.0001);
         else
           w.setScale(1);
-        w.simplexGen();
+        w.regenerateClimate();
         break;
       case InputAction::DECREASE_SCALE:
         if (w.getScale() > 0.0001)
           w.setScale(w.getScale() - 0.0001);
         else
           w.setScale(0.0001);
-        w.simplexGen();
+        w.regenerateClimate();
         break;
       default:
         break;
@@ -829,16 +829,25 @@ namespace MapCreator {
   void handleSeedChange(InputAction action, World& w) {
     switch (action) {
       case InputAction::NEW_SEED:
-        w.setSeed(randSeed());
-        w.simplexGen();
+        {
+          // Generate a new random seed and regenerate the climate world
+          // Use small values (0-100) because ClimateWorldGenerator adds seed
+          // directly to noise coordinates - large values cause float precision loss
+          unsigned int newSeed = static_cast<unsigned int>(randSeed() * 10);
+          w.regenerateClimate(newSeed);
+        }
         break;
       case InputAction::DECREASE_SEED:
-        w.setSeed(w.getSeed() - 0.005);
-        w.simplexGen();
+        {
+          auto& config = w.climateGenerator().getConfig();
+          w.regenerateClimate(config.seed > 5 ? config.seed - 5 : 0);
+        }
         break;
       case InputAction::INCREASE_SEED:
-        w.setSeed(w.getSeed() + 0.005);
-        w.simplexGen();
+        {
+          auto& config = w.climateGenerator().getConfig();
+          w.regenerateClimate(config.seed + 5);
+        }
         break;
       default:
         break;
@@ -849,11 +858,11 @@ namespace MapCreator {
     switch (action) {
       case InputAction::INCREASE_FREQ:
         w.setFreq(w.getFreq() + 0.01);
-        w.simplexGen();
+        w.regenerateClimate();
         break;
       case InputAction::DECREASE_FREQ:
         w.setFreq(w.getFreq() - 0.01);
-        w.simplexGen();
+        w.regenerateClimate();
         break;
       default:
         break;
@@ -864,11 +873,11 @@ namespace MapCreator {
     switch (action) {
       case InputAction::INCREASE_EXPONENT:
         w.setExponent(w.getExponent() + 0.01);
-        w.simplexGen();
+        w.regenerateClimate();
         break;
       case InputAction::DECREASE_EXPONENT:
         w.setExponent(w.getExponent() - 0.01);
-        w.simplexGen();
+        w.regenerateClimate();
         break;
       default:
         break;
@@ -879,14 +888,14 @@ namespace MapCreator {
     switch (action) {
       case InputAction::INCREASE_TERRACES:
         w.setTerraces(w.getTerraces() + 1);
-        w.simplexGen();
+        w.regenerateClimate();
         break;
       case InputAction::DECREASE_TERRACES:
         if (w.getTerraces() > 1)
           w.setTerraces(w.getTerraces() - 1);
         else
           w.setTerraces(1);
-        w.simplexGen();
+        w.regenerateClimate();
         break;
       default:
         break;
@@ -906,11 +915,11 @@ namespace MapCreator {
       case InputAction::SELECT_TERRAIN_9: trnSelector = 8; break;
       case InputAction::INCREASE_TERRAIN_LEVEL:
         incTrn(w, trnSelector);
-        w.simplexGen();
+        w.regenerateClimate();
         break;
       case InputAction::DECREASE_TERRAIN_LEVEL:
         decTrn(w, trnSelector);
-        w.simplexGen();
+        w.regenerateClimate();
         break;
       default:
         break;
@@ -1100,9 +1109,19 @@ void handleNewWorld(World& w, vector<Creature>& creatures,
   // Reset creature-specific ID counter for new games
   Creature::resetCreatureIdCounter(0);
   
+  // Clear existing creatures for new world
+  creatures.clear();
+  
   file.saveStatsHeader();
   renderer.renderMessage("CREATING NEW WORLD");
   renderer.endFrame();
+
+  // Generate a fresh climate-based world with a new random seed
+  // Use small values (0-100) because ClimateWorldGenerator adds seed
+  // directly to noise coordinates - large values cause float precision loss
+  unsigned int newSeed = static_cast<unsigned int>(randSeed() * 10);
+  w.regenerateClimate(newSeed);
+  std::cout << "[World] Generated new climate world with seed: " << newSeed << std::endl;
 
   // Edit world to liking
   runWorldEditor(w, creatures, xOrigin, yOrigin);
