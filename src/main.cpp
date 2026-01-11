@@ -1589,14 +1589,28 @@ int main() {
   // This ensures the new genetics system is ready for creature-plant interactions
   Creature::initializeGeneRegistry();
   
-  // Configure logger to suppress noisy plant/seed events
-  // Keep COMBAT and other important events visible
+  // Configure logger for production performance
+  // Keep console output for useful events, but disable high-frequency events
+  // that generate hundreds of logs per tick and cause significant slowdown
   {
     logging::Logger& logger = logging::Logger::getInstance();
-    logger.disableEventType("SEED_DISPERSAL");
+    
+    // Disable HIGH-FREQUENCY events that log every tick per creature
+    // These cause major performance issues due to std::cout overhead
+    logger.disableEventType("FEEDING");       // Logs every eat attempt (100s/tick)
+    logger.disableEventType("SEED_DISPERSAL"); // Logs every plant seed spread
+    logger.disableEventType("STARVATION");    // Logs every tick when hungry
+    
+    // Disable moderate-frequency plant lifecycle events
     logger.disableEventType("PLANT_SPAWNED");
     logger.disableEventType("PLANT_DIED");
-    logger.disableEventType("STARVATION");
+    
+    // Keep USEFUL low-frequency events enabled:
+    // - CREATURE_BORN, CREATURE_DIED (population changes)
+    // - COMBAT, COMBAT_KILL (important interactions)
+    // - EXTINCTION_WARNING, EXTINCTION (critical alerts)
+    // - POPULATION_SNAPSHOT (periodic summary)
+    
     // Combat events use the new detailed format via combatEvent()
     logger.setCombatLogDetail(logging::CombatLogDetail::STANDARD);
   }
