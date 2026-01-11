@@ -183,6 +183,18 @@ When thirsty, creatures search for water:
 
 > 🌊 **Water tiles** are blue tiles in the world, usually near low elevations.
 
+### Drinking from Shore
+
+Creatures don't need to stand IN the water to drink—they can drink when **adjacent** to water, just like real animals approaching a river bank or lake shore!
+
+| Position | Can Drink? |
+|----------|------------|
+| Standing on water tile | ✅ Yes |
+| Adjacent to water (on shore) | ✅ Yes |
+| More than 1 tile away | ❌ No |
+
+This means you'll see creatures approach the water's edge, pause briefly to drink, and then continue on their way without having to wade into the water.
+
 ### What You'll See
 - Creatures heading toward blue areas
 - Brief pause at water's edge (drinking)

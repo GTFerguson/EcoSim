@@ -2,7 +2,7 @@
 title: Technical Documentation
 aliases: [technical, technical-index]
 created: 2025-12-24
-updated: 2026-01-01
+updated: 2026-01-11
 status: complete
 tags: [documentation, index, navigation]
 ---
@@ -52,9 +52,12 @@ Detailed documentation for individual subsystems.
 |----------|-------------|--------|
 | [[systems/scent-system]] | Olfactory communication | ✅ Available |
 | [[systems/world-system]] | World environment and climate | ✅ Available |
+| [[systems/water-system]] | Water features and creature drinking | ✅ Available |
 | [[systems/environmental-stress]] | Fitness gradients and survival | ✅ Available |
 | [[systems/behavior-system]] | State machine AI | ✅ Available |
+| [[systems/behavior-state]] | Creature motivation/action states | ✅ Available |
 | [[systems/spatial-index]] | O(1) creature queries | ✅ Available |
+| [[systems/headless-simulation]] | GUI-free debugging tool | ✅ Available |
 | [[design/resource-allocation]] | Energy budget framework | ✅ Available |
 | [[systems/energy-budget]] | Energy system details | 🚧 Coming |
 | [[systems/dispersal]] | Seed dispersal mechanics | 🚧 Coming |
@@ -88,6 +91,7 @@ Design rationale explaining the philosophy behind implementation decisions.
 | Understand world generation | [[design/world-generation]] |
 | Learn about environmental stress | [[systems/environmental-stress]] |
 | See how environment affects organisms | [[design/world-organism-integration]] |
+| Debug creature behavior | [[systems/headless-simulation]] |
 | See future roadmap | [[../future/genetics-phase3-roadmap]] |
 | Understand design choices | [[design/coevolution]] |
 
@@ -144,6 +148,8 @@ include/world/
 
 src/genetics/       # Implementations mirror include/
 src/world/          # World system implementations
+src/testing/        # Test tools and diagnostics
+└── headlessSimulation.cpp  # GUI-free debugging runner
 ```
 
 ## ℹ️ Document Status Legend
@@ -157,5 +163,5 @@ src/world/          # World system implementations
 
 ---
 
-**Last Updated:** 2026-01-09
-**Documentation Version:** 4.0 (World Systems Integration)
+**Last Updated:** 2026-01-11
+**Documentation Version:** 4.1 (Movement System Fixes & Debug Tools)

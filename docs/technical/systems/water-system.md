@@ -1,9 +1,9 @@
 ---
 title: Water System Architecture
 created: 2026-01-10
-updated: 2026-01-10
+updated: 2026-01-11
 status: implemented
-tags: [water, hydrology, lakes, rivers, rendering, climate]
+tags: [water, hydrology, lakes, rivers, rendering, climate, creature-interaction]
 ---
 
 # Water System Architecture
@@ -328,12 +328,72 @@ color = waterToColor(tile.getWaterDepth(), type);
 
 ---
 
+## Creature Water Interaction
+
+### Adjacent Water Drinking
+
+**Updated (2026-01-11):** Creatures can now drink water when adjacent to water tiles, not just when standing on water tiles.
+
+**Distance Threshold:**
+
+```cpp
+const float WATER_ADJACENT_THRESHOLD = 0.1f;  // Within 0.1 units of water tile edge
+```
+
+A creature is considered "at water" if:
+1. Standing directly on a water tile, OR
+2. Within `WATER_ADJACENT_THRESHOLD` (0.1 units) of a water tile edge
+
+**Why Adjacent Drinking?**
+
+| Old Behavior | Problem |
+|--------------|---------|
+| Creatures must stand ON water | Land creatures couldn't drink from lakes/rivers |
+| Had to step into water | Unrealistic—animals drink from shores |
+
+| New Behavior | Benefit |
+|--------------|---------|
+| Can drink when adjacent | Creatures approach water's edge naturally |
+| Shore drinking | Realistic animal behavior |
+
+**Implementation:**
+
+```cpp
+bool Creature::isAdjacentToWater(const World& world) const {
+    // Check if any of the 8 neighboring tiles is water
+    int tileX = static_cast<int>(getWorldX());
+    int tileY = static_cast<int>(getWorldY());
+    
+    for (int dx = -1; dx <= 1; dx++) {
+        for (int dy = -1; dy <= 1; dy++) {
+            if (dx == 0 && dy == 0) continue;
+            if (world.isWater(tileX + dx, tileY + dy)) {
+                // Check if creature is close enough to tile edge
+                float distToEdge = calculateDistanceToTileEdge(dx, dy);
+                if (distToEdge <= WATER_ADJACENT_THRESHOLD) {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+```
+
+**Affected Behaviors:**
+
+- `Motivation::Thirsty` - Creatures search for and navigate to water
+- `Action::Drinking` - Triggered when at water (on tile OR adjacent)
+
+---
+
 ## See Also
 
 - [[world-generation]] - Overall climate-based generation system
 - [[world-system]] - World architecture overview
 - [[../design/world-generation]] - Design rationale for climate system
+- [[behavior-state]] - Creature behavior state system (thirsty motivation)
 
 ---
 
-**Last Updated:** 2026-01-10
+**Last Updated:** 2026-01-11

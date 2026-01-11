@@ -1,7 +1,7 @@
 ---
 title: Creature Behavior State System
 created: 2025-12-25
-updated: 2025-12-25
+updated: 2026-01-11
 status: implemented
 tags: [creatures, behavior, motivation, action, architecture]
 ---
@@ -144,6 +144,33 @@ bool isFleeing() const {
     return _behaviorState.action == Action::Fleeing; 
 }
 ```
+
+### Movement and Action State Coordination
+
+The movement system and behavior profiles coordinate to ensure Action states accurately reflect what the creature is doing.
+
+**Key Fix (2026-01-11):** Navigator::move() now returns `true` when the creature's position is updated (i.e., actually moving), not just when arriving at destination. Profile methods verify movement succeeded before setting action states like `Action::Navigating`.
+
+**Stuck Creature Handling:**
+
+When a creature cannot move (e.g., surrounded by impassable terrain, no valid path), the system now correctly displays `Action::Idle` instead of misleading states like `Action::Navigating` or `Action::Searching`.
+
+```cpp
+// Profile methods verify movement before setting action
+if (navigator.move()) {
+    setAction(Action::Navigating);  // Actually moving
+} else {
+    setAction(Action::Idle);  // Stuck or blocked
+}
+```
+
+**Why This Matters:**
+
+| Old Behavior | New Behavior |
+|--------------|--------------|
+| Stuck creature shows `Navigating` | Stuck creature shows `Idle` |
+| Action state misleading | Action state accurate |
+| Hard to debug movement issues | Easy to identify stuck creatures |
 
 ## State Transitions
 
