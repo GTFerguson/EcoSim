@@ -150,3 +150,31 @@ target_link_libraries(ProfileHotspots PRIVATE
 )
 
 add_compiler_warnings(ProfileHotspots)
+
+# ==============================================================================
+# HeadlessSimulation - Headless simulation runner for debugging
+# ==============================================================================
+# Runs simulation without GUI for debugging creature movement issues and
+# catching segfaults with stack traces.
+add_executable(HeadlessSimulation
+    headlessSimulation.cpp
+)
+
+target_include_directories(HeadlessSimulation PRIVATE
+    ${PROJECT_SOURCE_DIR}/include
+)
+
+target_link_libraries(HeadlessSimulation PRIVATE
+    ecosim_genetics
+    ecosim_world
+    ecosim_core
+)
+
+add_compiler_warnings(HeadlessSimulation)
+
+# Register with CTest for basic verification
+add_test(
+    NAME HeadlessSimulation_QuickTest
+    COMMAND HeadlessSimulation -t 100 -p 20 -s 12345
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+)
