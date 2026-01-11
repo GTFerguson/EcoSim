@@ -37,6 +37,7 @@
 
 // Classification system
 #include "genetics/classification/ArchetypeIdentity.hpp"
+#include "genetics/classification/BiomeAdaptation.hpp"
 
 // Behavior system
 #include "genetics/behaviors/BehaviorController.hpp"
@@ -224,6 +225,20 @@ class Creature: public GameObject,
     const EcoSim::Genetics::ArchetypeIdentity* _archetype = nullptr;
     
     //============================================================================
+    //  Biome Adaptation
+    //============================================================================
+    /**
+     * @brief Shared biome adaptation flyweight (non-owning)
+     *
+     * Points to one of the BiomeAdaptation singleton objects (Temperate, Tundra, etc.).
+     * Orthogonal to archetype - represents environmental specialization.
+     * Lifetime: The pointed-to object lives for program duration.
+     *
+     * @note Do NOT delete this pointer - it's a shared flyweight.
+     */
+    const EcoSim::Genetics::BiomeAdaptation* _biomeAdaptation = nullptr;
+    
+    //============================================================================
     //  Creature-Plant Interaction Data
     //============================================================================
     // Attached burrs: (plant dispersal strategy, origin X, origin Y, ticks attached)
@@ -320,7 +335,7 @@ class Creature: public GameObject,
     Creature(Creature&& other) noexcept;
     Creature& operator=(const Creature& other);
     Creature& operator=(Creature&& other) noexcept;
-    ~Creature() noexcept override;  // Decrements archetype population count
+    ~Creature() noexcept override;  // Decrements archetype and biome population counts
   
     //============================================================================
     //  New Genetics System - Static Methods
@@ -737,6 +752,30 @@ class Creature: public GameObject,
      * @return Scientific name string
      */
     std::string getScientificName() const;
+    
+    /**
+     * @brief Get biome adaptation (environmental specialization).
+     * @return Pointer to BiomeAdaptation flyweight, or nullptr if temperate
+     */
+    const EcoSim::Genetics::BiomeAdaptation* getBiomeAdaptation() const;
+    
+    /**
+     * @brief Reclassify biome adaptation based on current genome.
+     *
+     * Call this after modifying thermal genes (fur density, fat layer, temp tolerance)
+     * to update the biome classification. Automatically updates population tracking.
+     */
+    void reclassifyBiomeAdaptation();
+    
+    /**
+     * @brief Get full label combining archetype and biome (e.g., "Arctic Pack", "Jungle Titan").
+     * @return Full label string with biome prefix and archetype suffix
+     *
+     * Uses the BiomeAdaptation's getFullLabel() method which combines
+     * the biome prefix with the archetype's role suffix.
+     * Falls back to archetype label alone if no biome adaptation.
+     */
+    std::string getFullLabel() const;
     
     //  Genetics-Derived Getters (derived from new genetics system)
     unsigned  getLifespan   () const;

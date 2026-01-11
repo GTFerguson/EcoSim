@@ -16,6 +16,7 @@
 #include "genetics/defaults/UniversalGenes.hpp"
 #include "world/SpatialIndex.hpp"
 #include "genetics/classification/ArchetypeIdentity.hpp"
+#include "genetics/classification/BiomeAdaptation.hpp"
 #include "genetics/classification/CreatureTaxonomy.hpp"
 #include "genetics/interactions/CombatInteraction.hpp"
 #include "genetics/systems/PerceptionSystem.hpp"
@@ -196,6 +197,7 @@ Creature::Creature(const Creature& other)
       _metabolism(other._metabolism),
       _speed(other._speed),
       _archetype(other._archetype),
+      _biomeAdaptation(other._biomeAdaptation),
       _attachedBurrs(other._attachedBurrs),
       _gutSeeds(other._gutSeeds),
       creatureId_(nextCreatureId_++) {
@@ -209,6 +211,10 @@ Creature::Creature(const Creature& other)
     // Increment archetype population for the copy
     if (_archetype) {
         _archetype->incrementPopulation();
+    }
+    // Increment biome adaptation population for the copy
+    if (_biomeAdaptation) {
+        _biomeAdaptation->incrementPopulation();
     }
     // Behavior controller is NOT copied - use lazy initialization
     // _behaviorController remains nullptr and will be initialized on first use
@@ -237,6 +243,7 @@ Creature::Creature(Creature&& other) noexcept
       _metabolism(other._metabolism),
       _speed(other._speed),
       _archetype(other._archetype),
+      _biomeAdaptation(other._biomeAdaptation),
       _attachedBurrs(std::move(other._attachedBurrs)),
       _gutSeeds(std::move(other._gutSeeds)),
       _behaviorController(std::move(other._behaviorController)),
@@ -244,6 +251,8 @@ Creature::Creature(Creature&& other) noexcept
 {
     // Transfer archetype without incrementing - just null out source
     other._archetype = nullptr;
+    // Transfer biome adaptation without incrementing - just null out source
+    other._biomeAdaptation = nullptr;
 }
 
 /**
@@ -257,6 +266,10 @@ Creature& Creature::operator=(const Creature& other) {
         // Decrement old archetype population before reassignment
         if (_archetype) {
             _archetype->decrementPopulation();
+        }
+        // Decrement old biome adaptation population before reassignment
+        if (_biomeAdaptation) {
+            _biomeAdaptation->decrementPopulation();
         }
         
         GameObject::operator=(other);
@@ -299,6 +312,12 @@ Creature& Creature::operator=(const Creature& other) {
             _archetype->incrementPopulation();
         }
         
+        // Copy biome adaptation and increment population
+        _biomeAdaptation = other._biomeAdaptation;
+        if (_biomeAdaptation) {
+            _biomeAdaptation->incrementPopulation();
+        }
+        
         // Copy vector members
         _attachedBurrs = other._attachedBurrs;
         _gutSeeds = other._gutSeeds;
@@ -317,6 +336,10 @@ Creature& Creature::operator=(Creature&& other) noexcept {
         // Decrement old archetype population before reassignment
         if (_archetype) {
             _archetype->decrementPopulation();
+        }
+        // Decrement old biome adaptation population before reassignment
+        if (_biomeAdaptation) {
+            _biomeAdaptation->decrementPopulation();
         }
         
         GameObject::operator=(std::move(other));
@@ -344,6 +367,10 @@ Creature& Creature::operator=(Creature&& other) noexcept {
         _archetype = other._archetype;
         other._archetype = nullptr;
         
+        // Transfer biome adaptation - don't increment, just null source
+        _biomeAdaptation = other._biomeAdaptation;
+        other._biomeAdaptation = nullptr;
+        
         // Move vector members
         _attachedBurrs = std::move(other._attachedBurrs);
         _gutSeeds = std::move(other._gutSeeds);
@@ -363,6 +390,9 @@ Creature& Creature::operator=(Creature&& other) noexcept {
 Creature::~Creature() {
     if (_archetype) {
         _archetype->decrementPopulation();
+    }
+    if (_biomeAdaptation) {
+        _biomeAdaptation->decrementPopulation();
     }
 }
 
@@ -1996,6 +2026,45 @@ std::string Creature::getArchetypeLabel() const {
     return EcoSim::Genetics::Phenotype::dietTypeToString(getDietType());
 }
 
+/**
+ * Get the biome adaptation for this creature.
+ * Returns nullptr if no biome adaptation assigned (shouldn't happen normally).
+ */
+const EcoSim::Genetics::BiomeAdaptation* Creature::getBiomeAdaptation() const {
+    return _biomeAdaptation;
+}
+
+/**
+ * Get the full label combining biome and archetype.
+ * Examples: "Arctic Pack", "Jungle Tyrant", or "Pack Hunter" (for temperate).
+ */
+std::string Creature::getFullLabel() const {
+    if (_biomeAdaptation && _archetype) {
+        return _biomeAdaptation->getFullLabel(_archetype);
+    }
+    return getArchetypeLabel();
+}
+
+/**
+ * Reclassify biome adaptation based on current genome.
+ * Call this after modifying thermal genes (fur density, fat layer, temp tolerance)
+ * to update the biome classification. Automatically updates population tracking.
+ */
+void Creature::reclassifyBiomeAdaptation() {
+    // Decrement old biome adaptation population
+    if (_biomeAdaptation) {
+        _biomeAdaptation->decrementPopulation();
+    }
+    
+    // Reclassify based on current genome state
+    _biomeAdaptation = EcoSim::Genetics::CreatureTaxonomy::classifyBiomeAdaptation(genome_);
+    
+    // Increment new biome adaptation population
+    if (_biomeAdaptation) {
+        _biomeAdaptation->incrementPopulation();
+    }
+}
+
 //================================================================================
 //  Health System
 //================================================================================
@@ -2255,6 +2324,12 @@ Creature::Creature(int x, int y, std::unique_ptr<EcoSim::Genetics::Genome> genom
         _archetype->incrementPopulation();
     }
     
+    // Classify biome adaptation from genome
+    _biomeAdaptation = EcoSim::Genetics::CreatureTaxonomy::classifyBiomeAdaptation(genome_);
+    if (_biomeAdaptation) {
+        _biomeAdaptation->incrementPopulation();
+    }
+    
     _character = generateChar();
     _name = generateName();
     
@@ -2303,6 +2378,12 @@ Creature::Creature(int x, int y, float hunger, float thirst,
     _archetype = EcoSim::Genetics::CreatureTaxonomy::classifyArchetype(genome_);
     if (_archetype) {
         _archetype->incrementPopulation();
+    }
+    
+    // Classify biome adaptation from genome
+    _biomeAdaptation = EcoSim::Genetics::CreatureTaxonomy::classifyBiomeAdaptation(genome_);
+    if (_biomeAdaptation) {
+        _biomeAdaptation->incrementPopulation();
     }
     
     _character = generateChar();

@@ -866,8 +866,8 @@ void ImGuiOverlay::renderCreatureInspectorWindow(const Creature* creature) {
         // HEADER SECTION (Always visible above tabs)
         // ============================================
         
-        // Common name from archetype label
-        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.5f, 1.0f), "%s", creature->getArchetypeLabel().c_str());
+        // Common name with biome adaptation prefix (e.g., "Arctic Wolf", "Desert Stalker")
+        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.5f, 1.0f), "%s", creature->getFullLabel().c_str());
         
         // Scientific name
         ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.9f, 1.0f), "%s", creature->getScientificName().c_str());

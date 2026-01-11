@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ArchetypeIdentity.hpp"
+#include "BiomeAdaptation.hpp"
 #include "genetics/core/Genome.hpp"
 #include <string>
 
@@ -97,6 +98,17 @@ namespace ClassificationThresholds {
     constexpr float SIGHT_RANGE_MAX = 150.0f;   // Maximum sight range
     constexpr float LOCOMOTION_MAX = 2.0f;      // Maximum locomotion value
 
+    // ========================================================================
+    // Biome Adaptation Thresholds
+    // ========================================================================
+    
+    constexpr float TUNDRA_FUR_MIN = 0.7f;      // High fur density for tundra
+    constexpr float TUNDRA_FAT_MIN = 0.6f;      // High fat storage for tundra
+    constexpr float DESERT_FUR_MAX = 0.3f;      // Low fur density for desert
+    constexpr float DESERT_HEAT_TOL_MIN = 0.7f; // High heat tolerance for desert
+    constexpr float TROPICAL_FUR_MAX = 0.3f;    // Low fur for tropical
+    constexpr float TROPICAL_TEMP_LOW_MIN = 0.5f; // Moderate cold tolerance for tropical
+
 } // namespace ClassificationThresholds
 
 /**
@@ -143,36 +155,55 @@ public:
     static const ArchetypeIdentity* classifyArchetype(const Genome& genome);
     
     /**
+     * @brief Classify biome adaptation from thermal genes
+     * @param genome The creature's genome
+     * @return Non-owning pointer to shared BiomeAdaptation (never null)
+     *
+     * Uses RAW gene values for thermal adaptation traits:
+     * - Tundra: High fur density (>0.7), high fat storage (>0.6)
+     * - Desert: Low fur (<0.3), high heat tolerance (>0.7)
+     * - Tropical: Low fur (<0.3), moderate cold tolerance (>0.5)
+     * - Temperate: Default (baseline, no special adaptations)
+     */
+    static const BiomeAdaptation* classifyBiomeAdaptation(const Genome& genome);
+    
+    /**
      * @brief Generate a scientific name based on genetics
-     * 
+     *
      * Format: "Genus species epithet" (e.g., "Carnopredax titan dentatus")
-     * 
+     * For biome variants: "Genus species epithet biomemod" (e.g., "Carnopredax titan dentatus borealis")
+     *
      * Structure:
      * - Genus: Diet prefix + behavior suffix
      *   - Diet prefix: Necro (scavenger), Carno (carnivore), Herbo (herbivore), Omni (omnivore)
      *   - Behavior suffix: rex, predax, latens, socialis, cursor, scutum, insidia, grazer, flexus
-     * 
+     *
      * - Species: Size-based
      *   - minimus (<0.7), minor (<1.0), mediocris (<1.5), major (<2.0), grandis (<2.5), titan (>=2.5)
-     * 
+     *
      * - Epithet: Most distinctive trait
      *   - dentatus (teeth), unguiculatus (claws), cornuatus (horns), caudatus (tail)
      *   - fortis (hide), squamatus (scales), crassus (fat), spinosus (spines)
      *   - regenerans (regen), olfactans (smell), vigilans (sight), velocis (speed)
      *   - armatus (combined armor), timidus (defensive), vulgaris (default)
-     * 
+     *
+     * - Biome modifier (for non-temperate variants):
+     *   - borealis (tundra/taiga), tropicus (tropical), deserti (desert)
+     *
      * @param genome The creature's genome
-     * @return Trinomial scientific name
+     * @param biomeAdaptation Optional biome adaptation (if null, will auto-classify)
+     * @return Trinomial or quadrinomial scientific name
      */
-    static std::string generateScientificName(const Genome& genome);
+    static std::string generateScientificName(const Genome& genome,
+                                              const BiomeAdaptation* biomeAdaptation = nullptr);
     
     /**
      * @brief Get raw gene value from genome (bypasses phenotype age modulation)
-     * 
+     *
      * Classification must use raw genetic potential, not phenotype's modulated values.
      * This ensures a newborn apex predator is classified as an apex predator,
      * even though its phenotype may express differently due to age modulation.
-     * 
+     *
      * @param genome The genome to query
      * @param geneId The gene ID to look up
      * @param fallback Value if gene not found (default: 0.5)

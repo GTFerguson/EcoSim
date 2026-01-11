@@ -1,8 +1,9 @@
 /**
  * @file CreatureTaxonomy.cpp
  * @brief Implementation of the CreatureTaxonomy stateless classification utility
- * 
- * Provides archetype classification and scientific naming based on raw genetic values.
+ *
+ * Provides archetype classification, biome adaptation classification, and
+ * scientific naming based on raw genetic values.
  * Classification logic is ported from CreatureFactory::classifyCreature()
  * Naming logic is ported from CreatureFactory::generateScientificName()
  */
@@ -116,10 +117,54 @@ const ArchetypeIdentity* CreatureTaxonomy::classifyArchetype(const Genome& genom
 }
 
 // ============================================================================
+// Biome Adaptation Classification
+// ============================================================================
+
+const BiomeAdaptation* CreatureTaxonomy::classifyBiomeAdaptation(const Genome& genome) {
+    // Get RAW thermal adaptation gene values
+    float furDensity = getRawGeneValue(genome, UniversalGenes::FUR_DENSITY, 0.5f);
+    float fatLayer = getRawGeneValue(genome, UniversalGenes::FAT_LAYER_THICKNESS, 0.3f);
+    
+    // Try to get temperature tolerance genes (may not exist in all genomes)
+    // Default to moderate values if genes don't exist
+    float tempTolLow = getRawGeneValue(genome, "temp_tolerance_low", 0.5f);
+    float tempTolHigh = getRawGeneValue(genome, "temp_tolerance_high", 0.5f);
+    
+    namespace CT = ClassificationThresholds;
+    
+    // Tundra: High insulation (fur + fat) = cold adaptation
+    // Real-world analogs: Arctic Wolf, Woolly Mammoth, Polar Bear
+    if (furDensity > CT::TUNDRA_FUR_MIN && fatLayer > CT::TUNDRA_FAT_MIN) {
+        return BiomeAdaptation::Tundra();
+    }
+    
+    // Desert: Low fur + high heat tolerance = arid adaptation
+    // Real-world analogs: Fennec Fox, Camel, Desert Tortoise
+    if (furDensity < CT::DESERT_FUR_MAX && tempTolHigh > CT::DESERT_HEAT_TOL_MIN) {
+        return BiomeAdaptation::Desert();
+    }
+    
+    // Tropical: Low fur + moderate cold tolerance = humid heat adaptation
+    // Real-world analogs: Jaguar, Elephant, Tapir
+    if (furDensity < CT::TROPICAL_FUR_MAX && tempTolLow > CT::TROPICAL_TEMP_LOW_MIN) {
+        return BiomeAdaptation::Tropical();
+    }
+    
+    // Taiga: Moderate-high fur but not extreme = cold forest adaptation
+    if (furDensity > 0.5f && furDensity <= CT::TUNDRA_FUR_MIN) {
+        return BiomeAdaptation::Taiga();
+    }
+    
+    // Default: Temperate (baseline, no special adaptations)
+    return BiomeAdaptation::Temperate();
+}
+
+// ============================================================================
 // Scientific Name Generation
 // ============================================================================
 
-std::string CreatureTaxonomy::generateScientificName(const Genome& genome) {
+std::string CreatureTaxonomy::generateScientificName(const Genome& genome,
+                                                      const BiomeAdaptation* biomeAdaptation) {
     // Get RAW gene values - scientific name is based on genetic potential, not
     // current phenotype expression. A newborn or injured predator should have
     // the same scientific name as a healthy adult of the same species!
@@ -259,7 +304,23 @@ std::string CreatureTaxonomy::generateScientificName(const Genome& genome) {
         }
     }
     
-    return genus + " " + species + " " + epithet;
+    // === BIOME MODIFIER (for non-temperate variants) ===
+    // If no biome adaptation provided, auto-classify from genome
+    const BiomeAdaptation* biome = biomeAdaptation;
+    if (!biome) {
+        biome = classifyBiomeAdaptation(genome);
+    }
+    
+    // Build the trinomial/quadrinomial name
+    std::string baseName = genus + " " + species + " " + epithet;
+    
+    // Add biome subspecies modifier for non-temperate creatures
+    // Examples: "borealis" (tundra/taiga), "tropicus" (tropical), "deserti" (desert)
+    if (biome && !biome->isBaseline() && !biome->getLatinModifier().empty()) {
+        return baseName + " " + biome->getLatinModifier();
+    }
+    
+    return baseName;
 }
 
 } // namespace Genetics

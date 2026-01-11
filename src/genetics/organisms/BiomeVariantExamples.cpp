@@ -102,6 +102,9 @@ Creature BiomeVariantFactory::createArcticWolf(int x, int y) {
         15.0f    // tempMax - struggles in warmth
     );
 
+    // Reclassify biome adaptation after thermal gene changes
+    wolf.reclassifyBiomeAdaptation();
+
     return wolf;
 }
 
@@ -118,6 +121,9 @@ Creature BiomeVariantFactory::createWoollyMammoth(int x, int y) {
         -40.0f,  // tempMin - extreme cold tolerance
         10.0f    // tempMax - overheats easily
     );
+
+    // Reclassify biome adaptation after thermal gene changes
+    mammoth.reclassifyBiomeAdaptation();
 
     return mammoth;
 }
@@ -161,6 +167,9 @@ Creature BiomeVariantFactory::createDesertFennec(int x, int y) {
         50.0f    // tempMax - extreme heat tolerance
     );
 
+    // Reclassify biome adaptation after thermal gene changes
+    fennec.reclassifyBiomeAdaptation();
+
     return fennec;
 }
 
@@ -177,6 +186,9 @@ Creature BiomeVariantFactory::createDesertCamel(int x, int y) {
         0.0f,    // tempMin - tolerates cold desert nights
         55.0f    // tempMax - extreme heat tolerance
     );
+
+    // Reclassify biome adaptation after thermal gene changes
+    camel.reclassifyBiomeAdaptation();
 
     return camel;
 }
@@ -220,6 +232,9 @@ Creature BiomeVariantFactory::createTropicalJaguar(int x, int y) {
         45.0f    // tempMax - high heat tolerance
     );
 
+    // Reclassify biome adaptation after thermal gene changes
+    jaguar.reclassifyBiomeAdaptation();
+
     return jaguar;
 }
 
@@ -236,6 +251,9 @@ Creature BiomeVariantFactory::createJungleElephant(int x, int y) {
         10.0f,   // tempMin - some cold tolerance
         45.0f    // tempMax - good heat tolerance
     );
+
+    // Reclassify biome adaptation after thermal gene changes
+    elephant.reclassifyBiomeAdaptation();
 
     return elephant;
 }
