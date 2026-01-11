@@ -505,11 +505,32 @@ void populateWorldByBiome(World& w, vector<Creature>& c, unsigned amount) {
   
   // Scan the world grid to categorize spawn positions by biome
   // Water biomes are explicitly skipped - creatures can't spawn in water
+  // Additionally, positions must have at least one passable neighbor to avoid
+  // spawning creatures on isolated tiles where they can't navigate
   const auto& grid = w.grid();
   unsigned skippedWater = 0;
+  unsigned skippedIsolated = 0;
   for (unsigned x = 0; x < grid.width(); ++x) {
     for (unsigned y = 0; y < grid.height(); ++y) {
       if (!grid(x, y).isPassable()) continue;
+      
+      // Check that this position has at least one passable neighbor
+      // to prevent spawning creatures on isolated tiles (small islands, etc.)
+      bool hasPassableNeighbor = false;
+      for (int dx = -1; dx <= 1 && !hasPassableNeighbor; ++dx) {
+        for (int dy = -1; dy <= 1 && !hasPassableNeighbor; ++dy) {
+          if (dx == 0 && dy == 0) continue;  // Skip self
+          int nx = static_cast<int>(x) + dx;
+          int ny = static_cast<int>(y) + dy;
+          if (grid.inBounds(nx, ny) && grid(static_cast<unsigned>(nx), static_cast<unsigned>(ny)).isPassable()) {
+            hasPassableNeighbor = true;
+          }
+        }
+      }
+      if (!hasPassableNeighbor) {
+        ++skippedIsolated;
+        continue;  // Skip isolated tiles - creatures can't navigate from here
+      }
       
       // Get biome from environment system
       int biomeInt = w.environment().getBiome(static_cast<int>(x), static_cast<int>(y));

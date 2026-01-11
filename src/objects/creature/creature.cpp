@@ -23,6 +23,35 @@
 #include <unordered_map>
 #include <optional>
 
+// Debug logging for behavior/profile diagnostics - set to 1 to enable verbose logging
+#ifndef CREATURE_BEHAVIOR_DEBUG_LOG
+#define CREATURE_BEHAVIOR_DEBUG_LOG 0
+#endif
+
+#if CREATURE_BEHAVIOR_DEBUG_LOG
+#include <iostream>
+#include <sstream>
+
+// Throttle logging to avoid spam - only log every Nth occurrence per creature
+static std::unordered_map<int, int> s_profileDebugCount;
+static const int PROFILE_LOG_EVERY_N = 50;  // Log every 50th occurrence
+
+#define PROFILE_DEBUG(creatureId, msg) do { \
+    s_profileDebugCount[creatureId]++; \
+    if (s_profileDebugCount[creatureId] % PROFILE_LOG_EVERY_N == 1) { \
+        std::cerr << "[PROFILE DEBUG] Creature " << creatureId << " (#" << s_profileDebugCount[creatureId] << "): " << msg << std::endl; \
+    } \
+} while(0)
+
+#define PROFILE_DEBUG_ALWAYS(creatureId, msg) do { \
+    std::cerr << "[PROFILE DEBUG] Creature " << creatureId << ": " << msg << std::endl; \
+} while(0)
+
+#else
+#define PROFILE_DEBUG(creatureId, msg) ((void)0)
+#define PROFILE_DEBUG_ALWAYS(creatureId, msg) ((void)0)
+#endif
+
 #include "genetics/behaviors/BehaviorController.hpp"
 #include "genetics/behaviors/BehaviorContext.hpp"
 #include "genetics/behaviors/FeedingBehavior.hpp"
@@ -602,52 +631,82 @@ void Creature::updatePhenotype() {
 //================================================================================
 //  Behaviours
 //================================================================================
-void Creature::migrateProfile (World &world,
+bool Creature::migrateProfile (World &world,
                                vector<Creature> &creatures,
                                const unsigned index) {
-  setAction(Action::Wandering);
+  PROFILE_DEBUG(id_, "migrateProfile entered at (" << tileX() << "," << tileY() << ")");
   
   if (ifFlocks()) {
-    if (flock (world, creatures))
-      return;
+    if (flock (world, creatures)) {
+      setAction(Action::Wandering);
+      PROFILE_DEBUG(id_, "migrateProfile: flock succeeded");
+      return true;
+    }
   }
 
-  Navigator::wander (*this, world.getGrid(), world.getRows(), world.getCols());
+  bool moved = Navigator::wander (*this, world.getGrid(), world.getRows(), world.getCols());
+  if (moved) {
+    setAction(Action::Wandering);
+    PROFILE_DEBUG(id_, "migrateProfile: wander succeeded, now at (" << tileX() << "," << tileY() << ")");
+  } else {
+    setAction(Action::Idle);
+    PROFILE_DEBUG_ALWAYS(id_, "migrateProfile: WANDER FAILED at (" << tileX() << "," << tileY() << ") - creature stuck!");
+  }
+  return moved;
 }
 
 void Creature::hungryProfile (World &world,
                               vector<Creature> &creatures,
                               const unsigned index,
                               GeneralStats &gs) {
+  PROFILE_DEBUG(id_, "hungryProfile entered at (" << tileX() << "," << tileY() << "), hunger=" << _hunger);
+  
   bool actionTaken = false;
   DietType dietType = getDietType();
   
-  // Set initial searching action
-  setAction(Action::Searching);
-  
   if (dietType == DietType::CARNIVORE || dietType == DietType::NECROVORE) {
-    setAction(Action::Hunting);
     actionTaken = findPrey
       (world.getGrid(), world.getRows(), world.getCols(), creatures, gs.deaths.predator);
+    if (actionTaken) {
+      setAction(Action::Hunting);
+      PROFILE_DEBUG(id_, "hungryProfile: found prey, hunting");
+    } else {
+      PROFILE_DEBUG(id_, "hungryProfile: no prey found");
+    }
   } else {
-    // LEGACY REMOVAL: Only genetics-based plants now
     actionTaken = findGeneticsPlants(world, gs.feeding);
+    if (actionTaken) {
+      setAction(Action::Searching);
+      PROFILE_DEBUG(id_, "hungryProfile: found plant, searching");
+    } else {
+      PROFILE_DEBUG(id_, "hungryProfile: no plants found in range");
+    }
   }
 
   if (!actionTaken) {
-    setAction(Action::Wandering);
-    migrateProfile (world, creatures, index);
+    PROFILE_DEBUG(id_, "hungryProfile: no food found, falling back to migrate");
+    bool moved = migrateProfile (world, creatures, index);
+    if (moved) {
+      setAction(Action::Wandering);
+    } else {
+      setAction(Action::Idle);
+      PROFILE_DEBUG_ALWAYS(id_, "hungryProfile: STUCK - no food AND cannot move at (" << tileX() << "," << tileY() << ")");
+    }
   }
 }
 
 void Creature::thirstyProfile (World &world,
                                vector<Creature> &creatures,
                                const unsigned index) {
-  setAction(Action::Searching);
-  
   if (!findWater(world.getGrid(), world.getRows(), world.getCols())) {
-    setAction(Action::Wandering);
-    migrateProfile (world, creatures, index);
+    bool moved = migrateProfile (world, creatures, index);
+    if (moved) {
+      setAction(Action::Wandering);
+    } else {
+      setAction(Action::Idle);
+    }
+  } else {
+    setAction(Action::Searching);
   }
 }
 
@@ -655,9 +714,6 @@ void Creature::breedProfile (World &world,
                              vector<Creature> &creatures,
                              const unsigned index,
                              GeneralStats &gs) {
-  // Set courting action while seeking mate
-  setAction(Action::Courting);
-  
   // Deposit breeding scent each tick while in breeding mode
   depositBreedingScent(world.getScentLayer(), world.getCurrentTick());
   
@@ -668,12 +724,25 @@ void Creature::breedProfile (World &world,
     
     if (findMateScent(world.getScentLayer(), scentTargetX, scentTargetY)) {
       // Found a scent trail - navigate toward scent source using A* pathfinding
-      Navigator::astarSearch(*this, world.getGrid(), world.getRows(), world.getCols(),
+      bool moved = Navigator::astarSearch(*this, world.getGrid(), world.getRows(), world.getCols(),
                             scentTargetX, scentTargetY);
+      if (moved) {
+        setAction(Action::Courting);
+      } else {
+        setAction(Action::Idle);
+      }
     } else {
       // No scent detected - fall back to wandering
-      migrateProfile (world, creatures, index);
+      bool moved = migrateProfile (world, creatures, index);
+      if (moved) {
+        setAction(Action::Courting);
+      } else {
+        setAction(Action::Idle);
+      }
     }
+  } else {
+    // Found mate visually - set courting action
+    setAction(Action::Courting);
   }
 }
 
@@ -730,9 +799,13 @@ bool Creature::flock (World &world, vector<Creature> &creatures) {
     unsigned flee   = getFlee();
     unsigned pursue = getPursue();
 
-		if (distance < flee) {			
-      Navigator::moveAway 
-        (*this, world.getGrid(), mapHeight,  mapWidth, cX, cY);	
+		if (distance < flee) {
+		    bool escaped = Navigator::moveAway
+		      (*this, world.getGrid(), mapHeight,  mapWidth, cX, cY);
+		    if (!escaped) {
+		      // Couldn't flee directly, try random wander
+		      Navigator::wander(*this, world.getGrid(), mapHeight, mapWidth);
+		    }
 			return true;
 
     //  Creature is too far, pursue
@@ -1249,8 +1322,49 @@ bool Creature::findFood (vector<vector<Tile>> &map,
  */
 bool Creature::findWater (const vector<vector<Tile>> &map,
                           const int &rows, const int &cols) {
-  //  If on water source drink from it
+  // Maximum distance from water tile edge to allow drinking (0.1 units)
+  constexpr float DRINKING_DISTANCE = 0.1f;
+  
+  // Check if creature is on or adjacent to water source
+  bool isNearWater = false;
+  
+  // Check current tile first
   if (map.at(tileX()).at(tileY()).isSource()) {
+    isNearWater = true;
+  } else {
+    // Check 8 neighboring tiles (creatures stop at water's edge, so check adjacency)
+    // Must also verify creature's precise position is within DRINKING_DISTANCE of the water
+    for (int dx = -1; dx <= 1 && !isNearWater; dx++) {
+      for (int dy = -1; dy <= 1 && !isNearWater; dy++) {
+        if (dx == 0 && dy == 0) continue;  // Skip self (already checked)
+        
+        int checkX = tileX() + dx;
+        int checkY = tileY() + dy;
+        
+        // Bounds check
+        if (checkX >= 0 && checkX < cols && checkY >= 0 && checkY < rows) {
+          if (map.at(checkX).at(checkY).isSource()) {
+            // Calculate distance from creature's float position to nearest edge of water tile
+            // Water tile occupies [checkX, checkX+1] x [checkY, checkY+1]
+            float nearestX = std::max(static_cast<float>(checkX),
+                                      std::min(_worldX, static_cast<float>(checkX + 1)));
+            float nearestY = std::max(static_cast<float>(checkY),
+                                      std::min(_worldY, static_cast<float>(checkY + 1)));
+            float distX = _worldX - nearestX;
+            float distY = _worldY - nearestY;
+            float distToWater = std::sqrt(distX * distX + distY * distY);
+            
+            if (distToWater <= DRINKING_DISTANCE) {
+              isNearWater = true;
+            }
+          }
+        }
+      }
+    }
+  }
+  
+  // If on or adjacent to water (and within drinking distance), drink from it
+  if (isNearWater) {
     setAction(Action::Drinking);
     _thirst = RESOURCE_LIMIT;
     return true;

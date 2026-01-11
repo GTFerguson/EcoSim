@@ -7,13 +7,46 @@
  *            plus helper methods for wandering, moving towards/away from targets, and
  *            boundary checking.
  *
- *            Phase 3 Enhancement: Environmental sensitivity in pathfinding.
- *            Creatures with high ENVIRONMENTAL_SENSITIVITY gene will avoid hostile
- *            biomes (temperatures outside their tolerance), while low-sensitivity
- *            creatures prioritize direct paths.
+ *            Supports environmental sensitivity in pathfinding - creatures with high
+ *            ENVIRONMENTAL_SENSITIVITY gene will avoid hostile biomes (temperatures
+ *            outside their tolerance), while low-sensitivity creatures prioritize
+ *            direct paths.
  */
 
 #include "../../../include/objects/creature/navigator.hpp"
+
+// Debug logging for movement diagnostics - set to 1 to enable verbose logging
+#ifndef NAVIGATOR_DEBUG_LOG
+#define NAVIGATOR_DEBUG_LOG 0
+#endif
+
+#if NAVIGATOR_DEBUG_LOG
+#include <iostream>
+#include <iomanip>
+#include <sstream>
+
+// Throttle logging to avoid spam - only log every Nth failure per creature
+static std::unordered_map<int, int> s_moveFailureCount;
+static std::unordered_map<int, int> s_astarTimeoutCount;
+static std::unordered_map<int, int> s_wanderFailureCount;
+static const int LOG_EVERY_N = 100;  // Log every 100th failure
+
+#define NAV_DEBUG(creatureId, counter, msg) do { \
+    counter[creatureId]++; \
+    if (counter[creatureId] % LOG_EVERY_N == 1) { \
+        std::cerr << "[NAV DEBUG] Creature " << creatureId << " (failure #" << counter[creatureId] << "): " << msg << std::endl; \
+    } \
+} while(0)
+
+#define NAV_DEBUG_ONCE(msg) do { \
+    static bool logged = false; \
+    if (!logged) { std::cerr << "[NAV DEBUG] " << msg << std::endl; logged = true; } \
+} while(0)
+
+#else
+#define NAV_DEBUG(creatureId, counter, msg) ((void)0)
+#define NAV_DEBUG_ONCE(msg) ((void)0)
+#endif
 #include "genetics/expression/Phenotype.hpp"
 #include "genetics/expression/EnvironmentalStress.hpp"
 #include "genetics/defaults/UniversalGenes.hpp"
@@ -22,7 +55,7 @@
 //  Adjusts movement cost for diagonal
 const float Navigator::DIAG_ADJUST = 1.4f;
 
-//  Static random engine for wander() - avoids recreation every call (CREATURE-009 fix)
+//  Static random engine for wander() - avoids recreation every call
 static std::random_device s_rd;
 static std::mt19937 s_wanderGen(s_rd());
 
@@ -101,7 +134,7 @@ float PathfindingContext::calculateTileCost(float baseCost, int x, int y) const 
 //================================================================================
 /**
  *  Checks if a node with matching coordinates already exists within a coordinate set.
- *  Uses O(1) lookup with unordered_set instead of O(n) linear search (CREATURE-006 fix).
+ *  Uses O(1) lookup with unordered_set.
  *
  *  @param coordSet  The coordinate set to be searched.
  *  @param x         X coordinate to search for.
@@ -114,7 +147,6 @@ bool Navigator::nodeInCoordSet (const CoordSet &coordSet, int x, int y) {
 
 /**
  *  This checks if a node is valid and if so it will add that node to the set.
- *  (CREATURE-007 fix: closedCoords and openCoords passed by const reference)
  *
  *  @param openSet      The set being populated.
  *  @param openCoords   Coordinate set for O(1) open set lookup.
@@ -137,8 +169,9 @@ void Navigator::validateNode (set<Node, nodeCompare> &openSet,
                               const int &curY,
                               const int &endX,
                               const int &endY) {
+
   if (curTile.isPassable() && !(curX == parent->getX() && curY == parent->getY())) {
-    // Use O(1) coordinate lookup instead of O(n) set iteration (CREATURE-006 fix)
+    // Use O(1) coordinate lookup
     if (!nodeInCoordSet(closedCoords, curX, curY) && !nodeInCoordSet(openCoords, curX, curY)) {
       Node newNode (curX, curY, parent);
       newNode.setG (gCost);
@@ -169,11 +202,9 @@ bool Navigator::boundaryCheck (const int &x,    const int &y,
 /**
  *  Checks each neighbouring Tile object to the node given.
  *  These Tiles can then be turned into Nodes, validated, then
- *  added to the openSet.
- *
- *  Phase 3 Enhancement: When a PathfindingContext is provided, tile costs
- *  are modified based on environmental danger (temperature outside tolerance).
- *  This causes creatures with high ENVIRONMENTAL_SENSITIVITY to prefer safe routes.
+ *  added to the openSet. When a PathfindingContext is provided, tile costs
+ *  are modified based on environmental danger (temperature outside tolerance),
+ *  causing creatures with high ENVIRONMENTAL_SENSITIVITY to prefer safe routes.
  *
  *  @param map          A reference to the world map
  *  @param curNode      The current node being expanded.
@@ -295,11 +326,11 @@ bool Navigator::astarSearch (Creature &c,
   set<Node, nodeCompare> closedSet;
   //  Set of currently discovered tiles not yet evaluated
   set<Node, nodeCompare> openSet;
-  //  Coordinate sets for O(1) lookup (CREATURE-006 fix)
+  //  Coordinate sets for O(1) lookup
   CoordSet closedCoords;
   CoordSet openCoords;
 
-  //  Put starting node on set using stack allocation (CREATURE-008 fix)
+  //  Put starting node on set
   Node sNode (c.getX(), c.getY());
   sNode.setG (0);
   sNode.setH (endX, endY);
@@ -335,30 +366,97 @@ bool Navigator::astarSearch (Creature &c,
       closedCoords.insert({nodeX, nodeY});
       openSet.erase (iter);
       openCoords.erase({nodeX, nodeY});
+      
+#if NAVIGATOR_DEBUG_LOG
+      // Diagnostic: Log first node expansion details to catch startup failures
+      if (timeOut == 0) {
+        size_t openSetBefore = openSet.size();
+        //  Find the inserted node in closedSet to pass to checkNeighbours
+        auto closedIter = closedSet.find(currentNode);
+        // Pass PathfindingContext to enable environmental cost calculation
+        checkNeighbours (map, *closedIter, openSet, openCoords, closedCoords, rows, cols, endX, endY, ctx);
+        
+        // After expansion, check if any neighbors were added
+        size_t openSetAfter = openSet.size();
+        if (openSetAfter == 0) {
+          std::cerr << "[A* STARTUP FAILURE] Creature " << c.getId()
+                    << " at (" << nodeX << "," << nodeY << ") "
+                    << "found 0 valid neighbors!" << std::endl;
+          
+          // Log each neighbor tile to diagnose WHY all failed
+          for (int dx = -1; dx <= 1; ++dx) {
+            for (int dy = -1; dy <= 1; ++dy) {
+              if (dx == 0 && dy == 0) continue;
+              int nx = nodeX + dx;
+              int ny = nodeY + dy;
+              bool inBounds = boundaryCheck(nx, ny, rows, cols);
+              if (inBounds) {
+                const Tile& tile = map.at(nx).at(ny);
+                std::cerr << "  Neighbor (" << nx << "," << ny << "): "
+                          << "passable=" << tile.isPassable()
+                          << " terrain=" << static_cast<int>(tile.getTerrainType())
+                          << std::endl;
+              } else {
+                std::cerr << "  Neighbor (" << nx << "," << ny << "): OUT_OF_BOUNDS" << std::endl;
+              }
+            }
+          }
+        }
+      } else {
+        //  Find the inserted node in closedSet to pass to checkNeighbours
+        auto closedIter = closedSet.find(currentNode);
+        // Pass PathfindingContext to enable environmental cost calculation
+        checkNeighbours (map, *closedIter, openSet, openCoords, closedCoords, rows, cols, endX, endY, ctx);
+      }
+#else
       //  Find the inserted node in closedSet to pass to checkNeighbours
       auto closedIter = closedSet.find(currentNode);
       // Pass PathfindingContext to enable environmental cost calculation
       checkNeighbours (map, *closedIter, openSet, openCoords, closedCoords, rows, cols, endX, endY, ctx);
+#endif
       timeOut++;
     }
 
-    if (timeOut > MAX_NODES)
+    if (timeOut > MAX_NODES) {
+#if NAVIGATOR_DEBUG_LOG
+      // A* timeout - this is a major indicator of geographic isolation
+      std::stringstream ss;
+      ss << "A* TIMEOUT: start=(" << c.getX() << "," << c.getY() << ") "
+         << "target=(" << endX << "," << endY << ") "
+         << "nodes_explored=" << timeOut << " "
+         << "MAX_NODES=" << MAX_NODES << " "
+         << "openSet_size=" << openSet.size() << " "
+         << "closedSet_size=" << closedSet.size();
+      NAV_DEBUG(c.getId(), s_astarTimeoutCount, ss.str());
+#endif
       break;
+    }
   }
+#if NAVIGATOR_DEBUG_LOG
+  // Path not found (not due to timeout)
+  if (timeOut <= MAX_NODES) {
+    std::stringstream ss;
+    ss << "A* NO PATH: start=(" << c.getX() << "," << c.getY() << ") "
+       << "target=(" << endX << "," << endY << ") "
+       << "nodes_explored=" << timeOut << " "
+       << "openSet emptied (no reachable path)";
+    NAV_DEBUG(c.getId(), s_astarTimeoutCount, ss.str());
+  }
+#endif
   return false;
 }
 
 /**
  *  This method makes a creature move in a random direction using smooth movement.
- *  (CREATURE-009 fix: Uses static random engine instead of recreating each call)
- *  Phase 1: Float Movement System - creatures now move smoothly in random directions.
+ *  Uses static random engine for efficiency.
  *
  *  @param c    The creature moving.
  *  @param map  A reference to the 2D grid of the world.
  *  @param rows Number of rows on the map.
  *  @param cols Number of columns on the map.
+ *  @return     True if movement succeeded, false if blocked.
  */
-void Navigator::wander (Creature &c,
+bool Navigator::wander (Creature &c,
                         const vector<vector<Tile>> &map,
                         const unsigned rows,
                         const unsigned cols) {
@@ -366,42 +464,81 @@ void Navigator::wander (Creature &c,
 
 	int targetTileX = c.tileX() + (change(s_wanderGen));
 	int targetTileY = c.tileY() + (change(s_wanderGen));
-  moveTowards (c, map, rows, cols, targetTileX, targetTileY);
+  bool success = moveTowards (c, map, rows, cols, targetTileX, targetTileY);
+  
+#if NAVIGATOR_DEBUG_LOG
+  if (!success) {
+    // Check WHY wander failed for diagnostics
+    bool outOfBounds = !boundaryCheck(targetTileX, targetTileY, rows, cols);
+    bool impassable = false;
+    
+    if (!outOfBounds) {
+      impassable = !map.at(targetTileX).at(targetTileY).isPassable();
+    }
+    
+    // Also check ALL 8 neighbors to see if creature is completely trapped
+    int passableNeighbors = 0;
+    for (int dx = -1; dx <= 1; dx++) {
+      for (int dy = -1; dy <= 1; dy++) {
+        if (dx == 0 && dy == 0) continue;
+        int nx = c.tileX() + dx;
+        int ny = c.tileY() + dy;
+        if (boundaryCheck(nx, ny, rows, cols) && map.at(nx).at(ny).isPassable()) {
+          passableNeighbors++;
+        }
+      }
+    }
+    
+    std::stringstream ss;
+    ss << "WANDER FAILED: pos=(" << c.tileX() << "," << c.tileY() << ") "
+       << "target=(" << targetTileX << "," << targetTileY << ") "
+       << "reason=" << (outOfBounds ? "OUT_OF_BOUNDS" : (impassable ? "IMPASSABLE" : "MOVE_BLOCKED")) << " "
+       << "passable_neighbors=" << passableNeighbors << "/8";
+    
+    // CRITICAL: If passableNeighbors is 0, creature is geographically trapped!
+    if (passableNeighbors == 0) {
+      ss << " *** CREATURE TRAPPED - NO PASSABLE NEIGHBORS ***";
+    }
+    
+    NAV_DEBUG(c.getId(), s_wanderFailureCount, ss.str());
+  }
+#endif
+  
+  return success;
 }
 
 /**
- *  Simply moves the creature towards a target using smooth float movement.
- *  Phase 1: Float Movement System - creatures now move gradually toward
- *  their target tile, with movement speed determined by getMovementSpeed().
+ *  Moves the creature towards a target using smooth float movement.
+ *  Creatures move gradually toward their target tile, with movement
+ *  speed determined by getMovementSpeed().
  *
- *  @param goalX  x pos of the target tile.
- *  @param goalY  y pos of the target tile.
+ *  @param goalX  X pos of the target tile.
+ *  @param goalY  Y pos of the target tile.
+ *  @return       True if movement succeeded, false if blocked.
  */
-void Navigator::moveTowards (Creature &c,
+bool Navigator::moveTowards (Creature &c,
                              const vector<vector<Tile>> &map,
                              const int &rows,
                              const int &cols,
                              const int &goalX,
                              const int &goalY) {
   // Calculate the target position as the center of the goal tile
-  // This gives a smooth movement toward the tile center
   float targetX = static_cast<float>(goalX) + 0.5f;
   float targetY = static_cast<float>(goalY) + 0.5f;
   
-  // Move toward the target using float coordinates
-  // deltaTime = 1.0 (one tick) by default
-  move(c, map, rows, cols, targetX, targetY, 1.0f);
+  return move(c, map, rows, cols, targetX, targetY, 1.0f);
 }
 
 /**
- *  Simply moves the creature away from the target using smooth float movement.
- *  Phase 1: Float Movement System - creatures now move gradually away from
- *  threats, with movement speed determined by getMovementSpeed().
+ *  Moves the creature away from the target using smooth float movement.
+ *  Creatures move gradually away from threats, with movement speed
+ *  determined by getMovementSpeed().
  *
  *  @param avoidX X-position to move away from.
- *  @param avoidY y-position to move away from.
+ *  @param avoidY Y-position to move away from.
+ *  @return       True if movement succeeded, false if blocked.
  */
-void Navigator::moveAway (Creature &c,
+bool Navigator::moveAway (Creature &c,
                           const vector<vector<Tile>> &map,
                           const int &rows,
                           const int &cols,
@@ -412,7 +549,7 @@ void Navigator::moveAway (Creature &c,
 
   //  If at same tile location, wander randomly
   if (avoidX == curTileX && avoidY == curTileY) {
-    wander (c, map, rows, cols);
+    return wander (c, map, rows, cols);
 
   } else {
     // Calculate target tile (opposite direction from threat)
@@ -433,10 +570,11 @@ void Navigator::moveAway (Creature &c,
         float targetY = static_cast<float>(targetTileY) + 0.5f;
         
         // Move toward target using float coordinates
-        move(c, map, rows, cols, targetX, targetY, 1.0f);
+        return move(c, map, rows, cols, targetX, targetY, 1.0f);
       }
     }
   }
+  return false;  // Movement failed - blocked or out of bounds
 }
 
 //================================================================================
@@ -501,11 +639,27 @@ bool Navigator::move(Creature &c,
   if (newTileX != curTileX || newTileY != curTileY) {
     // Boundary check
     if (!boundaryCheck(newTileX, newTileY, rows, cols)) {
+#if NAVIGATOR_DEBUG_LOG
+      std::stringstream ss;
+      ss << "MOVE BLOCKED (bounds): cur=(" << curX << "," << curY << ") "
+         << "target=(" << targetX << "," << targetY << ") "
+         << "newTile=(" << newTileX << "," << newTileY << ") "
+         << "map_size=(" << cols << "x" << rows << ")";
+      NAV_DEBUG(c.getId(), s_moveFailureCount, ss.str());
+#endif
       return false;  // Can't move - out of bounds
     }
     
     // Passability check
     if (!map.at(newTileX).at(newTileY).isPassable()) {
+#if NAVIGATOR_DEBUG_LOG
+      std::stringstream ss;
+      ss << "MOVE BLOCKED (impassable): cur=(" << curX << "," << curY << ") curTile=(" << curTileX << "," << curTileY << ") "
+         << "target=(" << targetX << "," << targetY << ") "
+         << "blocked_tile=(" << newTileX << "," << newTileY << ") "
+         << "passable=" << map.at(newTileX).at(newTileY).isPassable();
+      NAV_DEBUG(c.getId(), s_moveFailureCount, ss.str());
+#endif
       return false;  // Can't move - blocked
     }
   }
@@ -521,6 +675,9 @@ bool Navigator::move(Creature &c,
   int yChange = (dy > 0.1f) ? 1 : (dy < -0.1f) ? -1 : 0;
   c.changeDirection(xChange, yChange);
   
-  // Return whether we've arrived
-  return (dist - moveAmount) <= ARRIVAL_THRESHOLD;
+  // Return true if movement succeeded (position was updated)
+  // Previous bug: returned (dist - moveAmount) <= ARRIVAL_THRESHOLD
+  // This caused false negatives when creature moved but hadn't "arrived" yet,
+  // making callers think movement was blocked when it actually succeeded.
+  return true;
 }

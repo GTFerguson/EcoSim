@@ -775,7 +775,7 @@ class Creature: public GameObject,
     //============================================================================
     //  Behaviours - Legacy Profile System (Deprecated)
     //============================================================================
-    void migrateProfile     (World &world,
+    bool migrateProfile     (World &world,
                              std::vector<Creature> &creatures,
                              const unsigned index);
     void hungryProfile      (World &world,

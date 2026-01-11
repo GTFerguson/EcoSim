@@ -25,12 +25,11 @@ namespace EcoSim {
     }
 }
 
-// CREATURE-018 fix: Convert macros to type-safe constexpr constants
-// These are now properly scoped and type-safe
+// Type-safe constexpr constants (properly scoped)
 namespace NavigatorConstants {
-  constexpr int NORM_COST = 10;   // Cost for orthogonal movement
-  constexpr int DIAG_COST = 14;   // Cost for diagonal movement (approx sqrt(2) * 10)
-  constexpr int MAX_NODES = 200;  // Maximum nodes to expand in A* search
+  constexpr int NORM_COST = 10;    // Cost for orthogonal movement
+  constexpr int DIAG_COST = 14;    // Cost for diagonal movement (approx sqrt(2) * 10)
+  constexpr int MAX_NODES = 1000;  // Maximum nodes to expand in A* search (increased for large 500x500 maps)
 }
 
 // For backward compatibility with existing code using the old macro names
@@ -283,15 +282,15 @@ class Navigator {
                                  const int &endX,
                                  const int &endY,
                                  const PathfindingContext* ctx = nullptr);
-    static void wander          (Creature &c, const std::vector<std::vector<Tile>> &map,
+    static bool wander          (Creature &c, const std::vector<std::vector<Tile>> &map,
                                  const unsigned rows, const unsigned cols);
-    static void moveTowards     (Creature &c,
+    static bool moveTowards     (Creature &c,
                                  const std::vector<std::vector<Tile>> &map,
                                  const int &rows,
                                  const int &cols,
                                  const int &goalX,
                                  const int &goalY);
-    static void moveAway        (Creature &c,
+    static bool moveAway        (Creature &c,
                                  const std::vector<std::vector<Tile>> &map,
                                  const int &rows,
                                  const int &cols,
