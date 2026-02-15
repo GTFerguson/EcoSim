@@ -1352,7 +1352,7 @@ public:
     void onActivate(Creature& c) override {
         c.setMetabolismMultiplier(0.1f);
         c.setMovementEnabled(false);
-        c.setProfile(Profile::rest);
+        c.setMotivation(Motivation::Tired);
     }
     
     bool shouldDeactivate(const Creature& c, const EnvironmentState& env) override {

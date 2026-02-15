@@ -124,14 +124,7 @@ bool MatingBehavior::isReadyToMate(const Organism& organism) const {
 }
 
 float MatingBehavior::getMateValue(const Organism& organism) const {
-    const Phenotype& phenotype = organism.getPhenotype();
-    
-    if (phenotype.hasTrait(UniversalGenes::MATE_THRESHOLD)) {
-        float threshold = phenotype.getTrait(UniversalGenes::MATE_THRESHOLD);
-        return threshold;
-    }
-    
-    return 0.0f;
+    return organism.getNeeds().reproductiveUrge;
 }
 
 float MatingBehavior::checkFitness(const Organism& seeker,
@@ -154,7 +147,34 @@ float MatingBehavior::checkFitness(const Organism& seeker,
 
 Organism* MatingBehavior::findMate(const Organism& seeker,
                                            const BehaviorContext& ctx) const {
-    return nullptr;
+    const auto* pos = dynamic_cast<const IPositionable*>(&seeker);
+    if (!pos) {
+        return nullptr;
+    }
+
+    float sightRange = getTraitSafe(seeker.getPhenotype(), UniversalGenes::SIGHT_RANGE, 5.0f);
+
+    auto nearby = ctx.queryNearbyOrganisms(pos->getWorldX(), pos->getWorldY(), sightRange);
+
+    Organism* bestMate = nullptr;
+    float bestFitness = -1.0f;
+
+    for (auto* candidate : nearby) {
+        if (candidate == &seeker) continue;
+        if (!candidate->isAlive()) continue;
+
+        // Candidate must also be ready to mate
+        if (candidate->getNeeds().reproductiveUrge < MATE_THRESHOLD) continue;
+        if (candidate->getNeeds().energy < MIN_HUNGER_TO_BREED) continue;
+
+        float fitness = checkFitness(seeker, *candidate);
+        if (fitness > bestFitness) {
+            bestFitness = fitness;
+            bestMate = candidate;
+        }
+    }
+
+    return bestMate;
 }
 
 bool MatingBehavior::isMature(const Organism& organism) const {
@@ -168,11 +188,7 @@ bool MatingBehavior::isMature(const Organism& organism) const {
 }
 
 bool MatingBehavior::hasResourcesToBread(const Organism& organism) const {
-    const Phenotype& phenotype = organism.getPhenotype();
-    
-    float hunger = getTraitSafe(phenotype, UniversalGenes::HUNGER_THRESHOLD, 0.0f);
-    
-    return hunger >= MIN_HUNGER_TO_BREED;
+    return organism.getNeeds().energy >= MIN_HUNGER_TO_BREED;
 }
 
 float MatingBehavior::calculateGeneticSimilarity(const Organism& org1,

@@ -189,8 +189,8 @@ struct OrganismCapabilities {
 Replace hard-coded behavior with **modular components activated by gene expression**:
 
 ```
-Current Architecture (Hard-coded):
-    Creature → has hungryProfile(), breedProfile(), migrateProfile()
+Current Architecture:
+    Creature → BehaviorController with FeedingBehavior, MatingBehavior, etc.
     Plant → has update(), grow(), spreadSeeds()
 
 Proposed Architecture (Component-based):

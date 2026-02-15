@@ -104,14 +104,10 @@ Replace priority-based motivation selection with scored utility functions.
 Instead of fixed priority order, each motivation gets a dynamic score:
 
 ```cpp
-// Current: Fixed priority
-decideBehaviour() {
-    if (thirst > threshold) setMotivation(Thirsty);
-    else if (hunger > threshold) setMotivation(Hungry);
-    // ... priority order
-}
+// Current: BehaviorController selects highest-priority applicable behavior
+// Each behavior's getPriority() returns a score based on need urgency
 
-// Extension: Utility Scoring
+// Extension: Utility Scoring (replace getPriority with richer utility functions)
 float scoreThirst() {
     float base = thirst / maxThirst;
     float urgency = nearWater ? 0.8f : 1.2f;  // Boost if far from water

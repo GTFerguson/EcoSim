@@ -324,12 +324,6 @@ PhaseTimings executeProfiledTick(World& w, std::vector<Creature>& creatures,
             continue;
         }
         
-        // Creature update (aging, needs, etc.)
-        {
-            TIME_PHASE(timings.creatureUpdate);
-            activeC->update();
-        }
-        
         // Phenotype context update
         {
             TIME_PHASE(timings.creaturePhenotypeContext);
@@ -338,49 +332,22 @@ PhaseTimings executeProfiledTick(World& w, std::vector<Creature>& creatures,
                 static_cast<int>(activeC->getWorldY()));
             activeC->updatePhenotypeContext(localEnv);
         }
-        
-        // Behavior execution
+
+        // Record motivation for distribution stats before BC dispatch
         Motivation motivation = activeC->getMotivation();
+        switch(motivation) {
+            case Motivation::Hungry:   timings.hungryCount++;   break;
+            case Motivation::Thirsty:  timings.thirstyCount++;  break;
+            case Motivation::Amorous:  timings.amorousCount++;  break;
+            case Motivation::Content:  timings.contentCount++;  break;
+            case Motivation::Tired:    timings.tiredCount++;    break;
+        }
+
+        // Behavior execution via BehaviorController
         {
             TIME_PHASE(timings.creatureBehavior);
-            
-            switch(motivation) {
-                case Motivation::Hungry:
-                    {
-                        TIME_PHASE(timings.behaviorHungry);
-                        activeC->hungryBehavior(w, creatures, static_cast<unsigned>(i), gs);
-                        timings.hungryCount++;
-                    }
-                    break;
-                case Motivation::Thirsty:
-                    {
-                        TIME_PHASE(timings.behaviorThirsty);
-                        activeC->thirstyBehavior(w, creatures, static_cast<unsigned>(i));
-                        timings.thirstyCount++;
-                    }
-                    break;
-                case Motivation::Amorous:
-                    {
-                        TIME_PHASE(timings.behaviorAmorous);
-                        activeC->amorousBehavior(w, creatures, static_cast<unsigned>(i), gs);
-                        timings.amorousCount++;
-                    }
-                    break;
-                case Motivation::Content:
-                    {
-                        TIME_PHASE(timings.behaviorContent);
-                        activeC->contentBehavior(w, creatures, static_cast<unsigned>(i));
-                        timings.contentCount++;
-                    }
-                    break;
-                case Motivation::Tired:
-                    {
-                        TIME_PHASE(timings.behaviorTired);
-                        activeC->tiredBehavior(w, creatures, static_cast<unsigned>(i));
-                        timings.tiredCount++;
-                    }
-                    break;
-            }
+            auto ctx = activeC->buildBehaviorContext(w, w.getScentLayer(), tick);
+            activeC->updateWithBehaviors(ctx);
         }
     }
     

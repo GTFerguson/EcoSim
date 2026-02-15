@@ -20,11 +20,9 @@ The creature feeding system, particularly herbivore plant-eating behavior, has m
 When a hungry creature tries to eat a plant, the following checks occur:
 
 ```
-hungryBehavior()
-└── hungryProfile()
-    └── findGeneticsPlants()
-        └── canEatPlant()
-            └── FeedingInteraction::attemptToEatPlant()
+FeedingBehavior::execute()
+└── findNearestEdiblePlant()
+    └── FeedingInteraction::attemptToEatPlant()
                 ├── Phase 1: Detection Check
                 │   └── detectionScore vs DETECTION_THRESHOLD
                 ├── Phase 2: Attraction Check  

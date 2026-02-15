@@ -44,20 +44,15 @@ Creature createBreedingTestCreature(int x = 10, int y = 10) {
     creature.setFatigue(0.0f);
     
     // Set mate value high so breed priority is highest
-    // decideBehaviour() computes: _mate - getTMate() where getTMate() defaults to 3.0f
-    // Need mate > 3.0f and higher than other needs for Profile::breed
     creature.setMate(5.0f);
-    
-    // Grow creature to maturity (canReproduce requires isMature() which checks
-    // if creature has grown to 50% of max size via the growth system)
-    // With high hunger (nutrition), growth is fast
+
+    // Grow creature to maturity (canReproduce requires isMature())
     while (!creature.isMature()) {
         creature.grow();
     }
-    
-    // Call decideBehaviour() to set _profile based on current needs
-    // This should set _profile to Profile::breed since mate need is highest
-    creature.decideBehaviour();
+
+    // Set motivation to Amorous (canReproduce checks this)
+    creature.setMotivation(Motivation::Amorous);
     
     return creature;
 }
@@ -90,9 +85,9 @@ Creature createModifiedCreature(int x, int y, float geneModifier) {
     while (!creature.isMature()) {
         creature.grow();
     }
-    
-    creature.decideBehaviour();
-    
+
+    creature.setMotivation(Motivation::Amorous);
+
     return creature;
 }
 
@@ -238,25 +233,10 @@ void test_reproduce_offspringStartsYoung() {
     Creature parent1 = createBreedingTestCreature(10, 10);
     Creature parent2 = createBreedingTestCreature(10, 10);
     
-    // Age the parents more (they already start mature from createBreedingTestCreature)
-    for (int i = 0; i < 100; i++) {
-        parent1.update();
-        parent2.update();
-    }
+    // Age the parents manually
+    parent1.age(100);
+    parent2.age(100);
     TEST_ASSERT_GT(parent1.getAge(), 0u);
-    
-    // Reset breeding state after updates (updates drain resources and change profile)
-    parent1.setHunger(8.0f);
-    parent1.setThirst(8.0f);
-    parent1.setMate(5.0f);
-    parent1.setFatigue(0.0f);
-    parent1.decideBehaviour();
-    
-    parent2.setHunger(8.0f);
-    parent2.setThirst(8.0f);
-    parent2.setMate(5.0f);
-    parent2.setFatigue(0.0f);
-    parent2.decideBehaviour();
     
     auto offspringBase = parent1.reproduce(&parent2);
     TEST_ASSERT_MSG(offspringBase != nullptr, "reproduce() should return offspring");

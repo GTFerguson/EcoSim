@@ -6,6 +6,7 @@
 #include "genetics/interfaces/IReproducible.hpp"
 #include "genetics/core/Genome.hpp"
 #include "genetics/expression/Phenotype.hpp"
+#include "genetics/organisms/OrganismNeeds.hpp"
 #include <memory>
 
 namespace EcoSim {
@@ -132,9 +133,16 @@ public:
     virtual void grow() = 0;
     
     // ========================================================================
+    // Organism Needs (shared by all organisms)
+    // ========================================================================
+
+    OrganismNeeds& getNeeds() { return needs_; }
+    const OrganismNeeds& getNeeds() const { return needs_; }
+
+    // ========================================================================
     // Identity
     // ========================================================================
-    
+
     int getId() const { return id_; }
     unsigned int getUnsignedId() const { return static_cast<unsigned int>(id_); }
     
@@ -201,6 +209,9 @@ protected:
      */
     void rebindPhenotypeGenome();
     
+    // Organism needs (energy, hydration, fatigue, mating drive)
+    OrganismNeeds needs_;
+
     // Position (tile coordinates)
     int x_;
     int y_;

@@ -77,6 +77,7 @@ struct SimulationConfig {
     bool verbose = false;
     bool navDebug = false;
     bool behaviorDebug = false;
+    bool metrics = false;
     unsigned mapWidth = 200;
     unsigned mapHeight = 200;
     int statusInterval = 100;
@@ -137,6 +138,7 @@ void printUsage(const char* programName) {
               << "  -v, --verbose         Enable verbose debug output\n"
               << "  --nav-debug           Enable navigator debug logging\n"
               << "  --behavior-debug      Enable creature behavior debug logging\n"
+              << "  --metrics             Output JSON metrics at milestone ticks\n"
               << "  --help                Show this help message\n";
 }
 
@@ -167,6 +169,8 @@ SimulationConfig parseArgs(int argc, char* argv[]) {
             config.navDebug = true;
         } else if (arg == "--behavior-debug") {
             config.behaviorDebug = true;
+        } else if (arg == "--metrics") {
+            config.metrics = true;
         }
     }
     
@@ -406,33 +410,17 @@ bool takeTurn(World& w, GeneralStats& gs, std::vector<Creature>& c,
         return true;
     } else {
         g_lastAction = "updating creature " + std::to_string(activeC->getId());
-        activeC->update();
-        
+
         auto localEnv = w.environment().getEnvironmentStateAt(
             static_cast<int>(activeC->getWorldX()),
             static_cast<int>(activeC->getWorldY()));
         activeC->updatePhenotypeContext(localEnv);
-        
-        g_lastAction = "executing behavior for creature " + std::to_string(activeC->getId()) +
-                       " motivation=" + std::to_string(static_cast<int>(activeC->getMotivation()));
-        
-        switch(activeC->getMotivation()) {
-            case Motivation::Hungry:
-                activeC->hungryBehavior(w, c, cIndex, gs);
-                break;
-            case Motivation::Thirsty:
-                activeC->thirstyBehavior(w, c, cIndex);
-                break;
-            case Motivation::Amorous:
-                activeC->amorousBehavior(w, c, cIndex, gs);
-                break;
-            case Motivation::Content:
-                activeC->contentBehavior(w, c, cIndex);
-                break;
-            case Motivation::Tired:
-                activeC->tiredBehavior(w, c, cIndex);
-                break;
-        }
+
+        g_lastAction = "executing BC for creature " + std::to_string(activeC->getId());
+
+        auto ctx = activeC->buildBehaviorContext(w, w.getScentLayer(), w.getCurrentTick());
+        activeC->updateWithBehaviors(ctx);
+
         return false;
     }
 }
@@ -620,6 +608,40 @@ int main(int argc, char* argv[]) {
     auto endTime = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
     
+    // Metrics output (JSON format for regression comparison)
+    if (config.metrics) {
+        std::cout << "\n{\"metrics\": {\n";
+        std::cout << "  \"seed\": " << config.seed << ",\n";
+        std::cout << "  \"final_population\": " << creatures.size() << ",\n";
+        std::cout << "  \"ticks_run\": " << g_currentTick << ",\n";
+        std::cout << "  \"deaths\": {\n";
+        std::cout << "    \"old_age\": " << gs.deaths.oldAge << ",\n";
+        std::cout << "    \"starvation\": " << gs.deaths.starved << ",\n";
+        std::cout << "    \"dehydration\": " << gs.deaths.dehydrated << ",\n";
+        std::cout << "    \"discomfort\": " << gs.deaths.discomfort << ",\n";
+        std::cout << "    \"combat\": " << gs.deaths.predator << "\n";
+        std::cout << "  },\n";
+        std::cout << "  \"births\": " << gs.births << ",\n";
+
+        // Average needs across surviving creatures
+        float avgHunger = 0, avgThirst = 0, avgFatigue = 0;
+        if (!creatures.empty()) {
+            for (const auto& c : creatures) {
+                avgHunger += c.getHunger();
+                avgThirst += c.getThirst();
+                avgFatigue += c.getFatigue();
+            }
+            float n = static_cast<float>(creatures.size());
+            avgHunger /= n;
+            avgThirst /= n;
+            avgFatigue /= n;
+        }
+        std::cout << "  \"avg_hunger\": " << avgHunger << ",\n";
+        std::cout << "  \"avg_thirst\": " << avgThirst << ",\n";
+        std::cout << "  \"avg_fatigue\": " << avgFatigue << "\n";
+        std::cout << "}}\n";
+    }
+
     // Final report
     std::cout << "\n────────────────────────────────────────────────────────────\n";
     std::cout << "[Headless] Simulation complete!\n";

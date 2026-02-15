@@ -97,8 +97,6 @@ enum class Action {
 //  Wound state enum for health system
 enum class WoundState { Healthy, Injured, Wounded, Critical, Dead };
 
-//  Deprecated - use Motivation instead
-enum class Profile { thirsty, hungry, breed, sleep, migrate };
 
 /**
  * @brief Creature organism that extends the Organism base class
@@ -176,7 +174,6 @@ class Creature: public GameObject,
     //  Float-based world coordinates (precise position)
     float     _worldX, _worldY;
     Direction _direction;
-    Profile   _profile;          // Deprecated - use _motivation instead
     Motivation _motivation = Motivation::Content;  // Current motivation/drive
     Action    _action = Action::Idle;              // Current action being performed
     
@@ -562,7 +559,6 @@ class Creature: public GameObject,
     float     getMetabolism () const;
     unsigned  getSpeed      () const;
     Direction   getDirection  () const;
-    Profile     getProfile    () const;  // Deprecated - use getMotivation()
     Motivation  getMotivation () const;
     Action      getAction     () const;
     
@@ -791,86 +787,12 @@ class Creature: public GameObject,
     unsigned  getPursue     () const;
 
     //============================================================================
-    //  Behaviours - New Motivation/Action System
+    //  Core Simulation Methods
     //============================================================================
-    void hungryBehavior     (World &world,
-                             std::vector<Creature> &creatures,
-                             const unsigned index,
-                             GeneralStats &gs);
-    void thirstyBehavior    (World &world,
-                             std::vector<Creature> &creatures,
-                             const unsigned index);
-    void amorousBehavior    (World &world,
-                             std::vector<Creature> &creatures,
-                             const unsigned index,
-                             GeneralStats &gs);
-    void contentBehavior    (World &world,
-                             std::vector<Creature> &creatures,
-                             const unsigned index);
-    void tiredBehavior      (World &world,
-                             std::vector<Creature> &creatures,
-                             const unsigned index);
-    
-    //============================================================================
-    //  Behaviours - Legacy Profile System (Deprecated)
-    //============================================================================
-    bool migrateProfile     (World &world,
-                             std::vector<Creature> &creatures,
-                             const unsigned index);
-    void hungryProfile      (World &world,
-                             std::vector<Creature> &creatures,
-                             const unsigned index,
-                             GeneralStats &gs);
-    void thirstyProfile     (World &world,
-                             std::vector<Creature> &creatures,
-                             const unsigned index);
-    void breedProfile       (World &world,
-                             std::vector<Creature> &creatures,
-                             const unsigned index,
-                             GeneralStats &gs);
-    bool  flock             (World &world, std::vector<Creature> &creatures);
-    void  update            ();
     short deathCheck        () const;
     float shareResource     (const int &amount, float &resource);
     float shareFood         (const int &amount);
     float shareWater        (const int &amount);
-    void  decideBehaviour   ();
-    bool  foodCheck         (const std::vector<std::vector<Tile>> &map,
-                             const unsigned &rows,
-                             const unsigned &cols,
-                             const int &x,
-                             const int &y);
-    bool  waterCheck        (const std::vector<std::vector<Tile>> &map,
-                             const unsigned &rows,
-                             const unsigned &cols,
-                             const int &x,
-                             const int &y);
-    template<typename Predicate>
-    bool spiralSearch       (const std::vector<std::vector<Tile>> &map,
-                             const int &rows,
-                             const int &cols,
-                             Predicate predicate,
-                             unsigned maxRadius = 0);  // 0 = use getSightRange()
-    template<typename Visitor>
-    void forEachTileInRange (unsigned maxRadius, Visitor visitor);
-    bool  findGeneticsPlants(World &world, unsigned &feedingCounter);
-    bool  findFood          (std::vector<std::vector<Tile>> &map,
-                             const int &rows,
-                             const int &cols,
-                             unsigned int &foodCounter);
-    bool  findWater         (const std::vector<std::vector<Tile>> &map,
-                             const int &rows, const int &cols);
-    bool  findMate          (std::vector<std::vector<Tile>> &map,
-                             const int &rows,
-                             const int &cols,
-                             std::vector<Creature> &c,
-                             const unsigned &index,
-                             unsigned &birthCounter);
-    bool  findPrey          (std::vector<std::vector<Tile>> &map,
-                             const int &rows,
-                             const int &cols,
-                             std::vector<Creature> &c,
-                             unsigned &preyAte);
     void  changeDirection   (const int &xChange, const int &yChange);
     float calculateDistance (const int &goalX, const int &goalY) const;
     void  movementCost      (const float &distance);
@@ -1059,9 +981,7 @@ public:
     //============================================================================
     //  To String
     //============================================================================
-    Profile     stringToProfile   (const std::string &str);
     Direction   stringToDirection (const std::string &str);
-    std::string profileToString   () const;
     std::string directionToString () const;
     std::string toString          () const;
     

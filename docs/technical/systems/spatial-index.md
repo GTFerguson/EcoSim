@@ -259,7 +259,7 @@ auto prey = index.queryWithFilter(
 Creature* mate = index.findNearest(
     seeker.getWorldX(), seeker.getWorldY(), sightRange,
     [&seeker](const Creature* c) {
-        return c != &seeker && c->getProfile() == Profile::breed;
+        return c != &seeker && c->getMotivation() == Motivation::Amorous;
     }
 );
 ```

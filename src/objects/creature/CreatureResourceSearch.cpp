@@ -282,7 +282,7 @@ Creature* findBestMate(
     
     for (Creature& other : creatures) {
         bool isPotentialMate = &other != &creature
-            && other.getProfile() == Profile::breed;
+            && other.getMotivation() == Motivation::Amorous;
         
         if (isPotentialMate) {
             // Calculate the distance between the creatures

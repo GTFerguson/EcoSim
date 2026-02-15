@@ -5,6 +5,9 @@
 #include "genetics/expression/PhenotypeUtils.hpp"
 #include "genetics/organisms/Plant.hpp"
 #include "genetics/defaults/UniversalGenes.hpp"
+#include "genetics/interfaces/IPositionable.hpp"
+#include "world/world.hpp"
+#include "world/tile.hpp"
 #include <cmath>
 #include <vector>
 #include <sstream>
@@ -110,15 +113,20 @@ BehaviorResult FeedingBehavior::execute(Organism& organism,
     );
     
     if (feedingResult.success) {
-        // Apply damage to the plant
         targetPlant->takeDamage(feedingResult.plantDamage);
-        
+
+        // Apply nutrition gain to organism needs
+        organism.getNeeds().energy += feedingResult.nutritionGained;
+        if (organism.getNeeds().energy > organism.getNeeds().maxEnergy) {
+            organism.getNeeds().energy = organism.getNeeds().maxEnergy;
+        }
+
         result.executed = true;
         result.completed = true;
         result.energyCost = BASE_ENERGY_COST;
-        
+
         std::ostringstream ss;
-        ss << "Fed on plant, gained " << feedingResult.nutritionGained 
+        ss << "Fed on plant, gained " << feedingResult.nutritionGained
            << " nutrition, took " << feedingResult.damageReceived << " damage";
         result.debugInfo = ss.str();
     } else {
@@ -153,52 +161,58 @@ Plant* FeedingBehavior::findNearestEdiblePlant(const Organism& organism,
     if (!ctx.world) {
         return nullptr;
     }
-    
-    const Phenotype& phenotype = organism.getPhenotype();
+
+    const auto* pos = dynamic_cast<const IPositionable*>(&organism);
+    if (!pos) {
+        return nullptr;
+    }
+
+    int orgX = pos->getX();
+    int orgY = pos->getY();
     float detectionRange = getDetectionRange(organism);
-    
-    Plant* nearestPlant = nullptr;
-    float nearestDistance = detectionRange + 1.0f;
-    
-    // Search the world for plants
-    // Since we don't have organism position through Organism,
-    // we'll search all tiles within world bounds
-    // In a complete implementation, organism position would be provided
-    
-    // Get world dimensions from context
+    unsigned maxRadius = static_cast<unsigned>(detectionRange);
+    if (maxRadius < 1) maxRadius = 1;
+
+    auto& grid = ctx.world->getGrid();
     int rows = ctx.worldRows;
     int cols = ctx.worldCols;
-    
-    // For now, we need to iterate through tiles to find plants
-    // This is a simplified implementation - in practice, we'd use
-    // spatial indexing or have organism position available
-    
-    // Access world's grid to search for plants
-    // Note: This requires World to provide plant access
-    // For now, return nullptr and document the limitation
-    
-    // The actual implementation would use IWorldQuery or similar
-    // to get plants in radius:
-    // auto plants = ctx.worldQuery->getPlantsInRadius(orgX, orgY, detectionRange);
-    
-    // Placeholder: The behavior is structured correctly but needs
-    // proper world querying support
-    
-    return nullptr;
+
+    Plant* nearestPlant = nullptr;
+    float nearestDist = detectionRange + 1.0f;
+
+    for (unsigned radius = 0; radius < maxRadius; ++radius) {
+        int r = static_cast<int>(radius);
+        for (int dx = -r; dx <= r; ++dx) {
+            for (int dy = -r; dy <= r; ++dy) {
+                if (radius > 0 && std::abs(dx) != r && std::abs(dy) != r) continue;
+                int tx = orgX + dx;
+                int ty = orgY + dy;
+                if (tx < 0 || tx >= cols || ty < 0 || ty >= rows) continue;
+
+                const auto& plants = grid[tx][ty].getPlants();
+                for (const auto& plantPtr : plants) {
+                    if (!plantPtr || !plantPtr->isAlive()) continue;
+
+                    float plantDig = getTraitSafe(organism.getPhenotype(),
+                        UniversalGenes::PLANT_DIGESTION_EFFICIENCY, 0.0f);
+                    if (plantDig <= PLANT_DIGESTION_THRESHOLD) continue;
+
+                    float dist = calculateDistance(orgX, orgY, tx, ty);
+                    if (dist < nearestDist) {
+                        nearestDist = dist;
+                        nearestPlant = plantPtr.get();
+                    }
+                }
+            }
+        }
+        if (nearestPlant) break;
+    }
+
+    return nearestPlant;
 }
 
 float FeedingBehavior::getHungerLevel(const Organism& organism) const {
-    // Try to get hunger from phenotype traits
-    // In a full implementation, OrganismState would track current hunger
-    const Phenotype& phenotype = organism.getPhenotype();
-    
-    // Use max_hunger trait as reference
-    float maxHunger = getTraitSafe(phenotype, UniversalGenes::MAX_SIZE, 0.0f);
-    
-    // Without access to actual organism state, return a default
-    // that indicates the organism is hungry (triggering applicability)
-    // In practice, this would come from organism state
-    return 0.3f;  // Default to 30% full (hungry)
+    return organism.getNeeds().energy;
 }
 
 float FeedingBehavior::getHungerThreshold(const Organism& organism) const {

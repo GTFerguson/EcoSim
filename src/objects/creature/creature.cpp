@@ -29,30 +29,6 @@
 #define CREATURE_BEHAVIOR_DEBUG_LOG 0
 #endif
 
-#if CREATURE_BEHAVIOR_DEBUG_LOG
-#include <iostream>
-#include <sstream>
-
-// Throttle logging to avoid spam - only log every Nth occurrence per creature
-static std::unordered_map<int, int> s_profileDebugCount;
-static const int PROFILE_LOG_EVERY_N = 50;  // Log every 50th occurrence
-
-#define PROFILE_DEBUG(creatureId, msg) do { \
-    s_profileDebugCount[creatureId]++; \
-    if (s_profileDebugCount[creatureId] % PROFILE_LOG_EVERY_N == 1) { \
-        std::cerr << "[PROFILE DEBUG] Creature " << creatureId << " (#" << s_profileDebugCount[creatureId] << "): " << msg << std::endl; \
-    } \
-} while(0)
-
-#define PROFILE_DEBUG_ALWAYS(creatureId, msg) do { \
-    std::cerr << "[PROFILE DEBUG] Creature " << creatureId << ": " << msg << std::endl; \
-} while(0)
-
-#else
-#define PROFILE_DEBUG(creatureId, msg) ((void)0)
-#define PROFILE_DEBUG_ALWAYS(creatureId, msg) ((void)0)
-#endif
-
 #include "genetics/behaviors/BehaviorController.hpp"
 #include "genetics/behaviors/BehaviorContext.hpp"
 #include "genetics/behaviors/FeedingBehavior.hpp"
@@ -60,6 +36,7 @@ static const int PROFILE_LOG_EVERY_N = 50;  // Log every 50th occurrence
 #include "genetics/behaviors/MatingBehavior.hpp"
 #include "genetics/behaviors/MovementBehavior.hpp"
 #include "genetics/behaviors/RestBehavior.hpp"
+#include "genetics/behaviors/ThirstBehavior.hpp"
 #include "genetics/behaviors/ZoochoryBehavior.hpp"
 #include "genetics/systems/HealthSystem.hpp"
 
@@ -183,7 +160,6 @@ Creature::Creature(const Creature& other)
       Organism(other.x_, other.y_, other.genome_, getGeneRegistry()),
       _worldX(other._worldX), _worldY(other._worldY),
       _direction(other._direction),
-      _profile(other._profile),
       _motivation(other._motivation),
       _action(other._action),
       _inCombat(other._inCombat),
@@ -216,6 +192,14 @@ Creature::Creature(const Creature& other)
     if (_biomeAdaptation) {
         _biomeAdaptation->incrementPopulation();
     }
+    // Sync OrganismNeeds with legacy floats
+    needs_.energy = _hunger;
+    needs_.hydration = _thirst;
+    needs_.fatigue = _fatigue;
+    needs_.reproductiveUrge = _mate;
+    needs_.maxEnergy = RESOURCE_LIMIT;
+    needs_.maxHydration = RESOURCE_LIMIT;
+
     // Behavior controller is NOT copied - use lazy initialization
     // _behaviorController remains nullptr and will be initialized on first use
     _behaviorController = nullptr;
@@ -229,7 +213,6 @@ Creature::Creature(Creature&& other) noexcept
       Organism(std::move(other)),
       _worldX(other._worldX), _worldY(other._worldY),
       _direction(other._direction),
-      _profile(other._profile),
       _motivation(other._motivation),
       _action(other._action),
       _inCombat(other._inCombat),
@@ -292,7 +275,6 @@ Creature& Creature::operator=(const Creature& other) {
         _worldX = other._worldX;
         _worldY = other._worldY;
         _direction = other._direction;
-        _profile = other._profile;
         _motivation = other._motivation;
         _action = other._action;
         _inCombat = other._inCombat;
@@ -322,6 +304,14 @@ Creature& Creature::operator=(const Creature& other) {
         _attachedBurrs = other._attachedBurrs;
         _gutSeeds = other._gutSeeds;
         
+        // Sync OrganismNeeds
+        needs_.energy = _hunger;
+        needs_.hydration = _thirst;
+        needs_.fatigue = _fatigue;
+        needs_.reproductiveUrge = _mate;
+        needs_.maxEnergy = RESOURCE_LIMIT;
+        needs_.maxHydration = RESOURCE_LIMIT;
+
         // Reset behavior controller - lazy initialization will recreate it when needed
         _behaviorController.reset();
     }
@@ -349,7 +339,6 @@ Creature& Creature::operator=(Creature&& other) noexcept {
         _worldX = other._worldX;
         _worldY = other._worldY;
         _direction = other._direction;
-        _profile = other._profile;
         _motivation = other._motivation;
         _action = other._action;
         _inCombat = other._inCombat;
@@ -400,10 +389,10 @@ Creature::~Creature() {
 //  Setters
 //================================================================================
 void Creature::setAge     (unsigned age) { age_    = age;    }
-void Creature::setHunger  (float hunger) { _hunger = hunger; }
-void Creature::setThirst  (float thirst) { _thirst = thirst; }
-void Creature::setFatigue (float fatigue) { _fatigue = fatigue; }
-void Creature::setMate    (float mate)   { _mate   = mate;   }
+void Creature::setHunger  (float hunger) { _hunger = hunger; needs_.energy = hunger; }
+void Creature::setThirst  (float thirst) { _thirst = thirst; needs_.hydration = thirst; }
+void Creature::setFatigue (float fatigue) { _fatigue = fatigue; needs_.fatigue = fatigue; }
+void Creature::setMate    (float mate)   { _mate   = mate;   needs_.reproductiveUrge = mate; }
 void Creature::setXY      (int x, int y) { _worldX = static_cast<float>(x); _worldY = static_cast<float>(y); }
 void Creature::setX       (int x)        { _worldX = static_cast<float>(x); }
 void Creature::setY       (int y)        { _worldY = static_cast<float>(y); }
@@ -479,7 +468,6 @@ float Creature::getMovementSpeed() const {
     return std::max(MIN_MOVEMENT_SPEED, speed);
 }
 Direction Creature::getDirection  () const { return _direction; }
-Profile   Creature::getProfile    () const { return _profile;   }
 
 // Genetics-only getters - derive all values from phenotype
 unsigned Creature::getLifespan() const {
@@ -659,221 +647,9 @@ void Creature::updatePhenotype() {
 }
 
 //================================================================================
-//  Behaviours
+//  Behaviours (legacy Profile methods removed — now handled by BehaviorController)
 //================================================================================
-bool Creature::migrateProfile (World &world,
-                               vector<Creature> &creatures,
-                               const unsigned index) {
-  PROFILE_DEBUG(id_, "migrateProfile entered at (" << tileX() << "," << tileY() << ")");
-  
-  if (ifFlocks()) {
-    if (flock (world, creatures)) {
-      setAction(Action::Wandering);
-      PROFILE_DEBUG(id_, "migrateProfile: flock succeeded");
-      return true;
-    }
-  }
 
-  bool moved = Navigator::wander (*this, world.getGrid(), world.getRows(), world.getCols());
-  if (moved) {
-    setAction(Action::Wandering);
-    PROFILE_DEBUG(id_, "migrateProfile: wander succeeded, now at (" << tileX() << "," << tileY() << ")");
-  } else {
-    setAction(Action::Idle);
-    PROFILE_DEBUG_ALWAYS(id_, "migrateProfile: WANDER FAILED at (" << tileX() << "," << tileY() << ") - creature stuck!");
-  }
-  return moved;
-}
-
-void Creature::hungryProfile (World &world,
-                              vector<Creature> &creatures,
-                              const unsigned index,
-                              GeneralStats &gs) {
-  PROFILE_DEBUG(id_, "hungryProfile entered at (" << tileX() << "," << tileY() << "), hunger=" << _hunger);
-  
-  bool actionTaken = false;
-  DietType dietType = getDietType();
-  
-  if (dietType == DietType::CARNIVORE || dietType == DietType::NECROVORE) {
-    actionTaken = findPrey
-      (world.getGrid(), world.getRows(), world.getCols(), creatures, gs.deaths.predator);
-    if (actionTaken) {
-      setAction(Action::Hunting);
-      PROFILE_DEBUG(id_, "hungryProfile: found prey, hunting");
-    } else {
-      PROFILE_DEBUG(id_, "hungryProfile: no prey found");
-    }
-  } else {
-    actionTaken = findGeneticsPlants(world, gs.feeding);
-    if (actionTaken) {
-      setAction(Action::Searching);
-      PROFILE_DEBUG(id_, "hungryProfile: found plant, searching");
-    } else {
-      PROFILE_DEBUG(id_, "hungryProfile: no plants found in range");
-    }
-  }
-
-  if (!actionTaken) {
-    PROFILE_DEBUG(id_, "hungryProfile: no food found, falling back to migrate");
-    bool moved = migrateProfile (world, creatures, index);
-    if (moved) {
-      setAction(Action::Wandering);
-    } else {
-      setAction(Action::Idle);
-      PROFILE_DEBUG_ALWAYS(id_, "hungryProfile: STUCK - no food AND cannot move at (" << tileX() << "," << tileY() << ")");
-    }
-  }
-}
-
-void Creature::thirstyProfile (World &world,
-                               vector<Creature> &creatures,
-                               const unsigned index) {
-  if (!findWater(world.getGrid(), world.getRows(), world.getCols())) {
-    bool moved = migrateProfile (world, creatures, index);
-    if (moved) {
-      setAction(Action::Wandering);
-    } else {
-      setAction(Action::Idle);
-    }
-  } else {
-    setAction(Action::Searching);
-  }
-}
-
-void Creature::breedProfile (World &world,
-                             vector<Creature> &creatures,
-                             const unsigned index,
-                             GeneralStats &gs) {
-  // Deposit breeding scent each tick while in breeding mode
-  depositBreedingScent(world.getScentLayer(), world.getCurrentTick());
-  
-  if (!findMate (world.getGrid(), world.getRows(),
-        world.getCols(), creatures, index, gs.births)) {
-    // Visual mate finding failed - try scent-based navigation
-    int scentTargetX, scentTargetY;
-    
-    if (findMateScent(world.getScentLayer(), scentTargetX, scentTargetY)) {
-      // Found a scent trail - navigate toward scent source using A* pathfinding
-      bool moved = Navigator::astarSearch(*this, world.getGrid(), world.getRows(), world.getCols(),
-                            scentTargetX, scentTargetY);
-      if (moved) {
-        setAction(Action::Courting);
-      } else {
-        setAction(Action::Idle);
-      }
-    } else {
-      // No scent detected - fall back to wandering
-      bool moved = migrateProfile (world, creatures, index);
-      if (moved) {
-        setAction(Action::Courting);
-      } else {
-        setAction(Action::Idle);
-      }
-    }
-  } else {
-    // Found mate visually - set courting action
-    setAction(Action::Courting);
-  }
-}
-
-/**
- *  Uses a flocking algorithm to gather creatures together  
- *
- *  @param world      The world object.
- *  @param creatures  A vector of all creatures.
- *  @return           True if an actiom was taken.
- */
-bool Creature::flock (World &world, vector<Creature> &creatures) {
-	Creature *closestC = NULL;
-  float closestDistance = getSightRange();
-
-	//	Find closest creature using spatial index if available (O(1) vs O(n))
-  EcoSim::SpatialIndex* spatialIndex = world.getCreatureIndex();
-  
-  if (spatialIndex) {
-    // Use O(1) spatial query instead of O(n) iteration
-    std::vector<Creature*> nearby = spatialIndex->queryRadius(
-      tileX(), tileY(), static_cast<int>(getSightRange())
-    );
-    
-    for (Creature* creature : nearby) {
-      if (creature != this) {
-        float distance = calculateDistance(creature->getX(), creature->getY());
-        if (distance < closestDistance) {
-          closestC = creature;
-          closestDistance = distance;
-        }
-      }
-    }
-  } else {
-    // Fallback to O(n) iteration when spatial index not available
-    for (Creature & creature : creatures) {
-      if (&creature != this) {
-        float distance = calculateDistance(creature.getX(), creature.getY());
-        if (distance < closestDistance) {
-          closestC = &creature;
-          closestDistance = distance;
-        }
-      }
-    }
-  }
-
-	if (closestC != NULL) {
-    int cX = closestC->getX();
-    int cY = closestC->getY();
-    unsigned mapWidth   = world.getCols();
-    unsigned mapHeight  = world.getRows();
-
-    float distance = calculateDistance(cX, cY);
-
-    unsigned flee   = getFlee();
-    unsigned pursue = getPursue();
-
-		if (distance < flee) {
-		    bool escaped = Navigator::moveAway
-		      (*this, world.getGrid(), mapHeight,  mapWidth, cX, cY);
-		    if (!escaped) {
-		      // Couldn't flee directly, try random wander
-		      Navigator::wander(*this, world.getGrid(), mapHeight, mapWidth);
-		    }
-			return true;
-
-    //  Creature is too far, pursue
-		} else if (flee < pursue && distance > pursue) {	
-			Direction cDir = closestC->getDirection();
-
-      //  Predict where target is moving
-      switch (cDir) {
-        case Direction::N:  cY -= distance; break;
-        case Direction::S:  cY += distance; break;
-        case Direction::E:  cX += distance; break;
-        case Direction::W:  cX -= distance; break;
-        case Direction::NE: cX += distance/2; cY -= distance/2; break;
-        case Direction::NW: cX -= distance/2; cY -= distance/2; break;
-        case Direction::SE: cX += distance/2; cY += distance/2; break;
-        case Direction::SW: cX -= distance;   cY += distance/2; break;
-        case Direction::none: default:                          break;
-      }
-
-      //  Clamp values
-      if      (cX > mapWidth - 1)   cX = mapWidth - 1;
-      else if (cX < 0)              cX = 0;
-      if      (cY > mapHeight - 1)  cY = mapHeight - 1;
-      else if (cY < 0)              cY = 0;
-
-      return Navigator::astarSearch
-        (*this, world.getGrid(), mapHeight, mapWidth, cX, cY);
-		}
-	}
-  return false;
-}
-
-
-/**
- *  Process growth for one tick.
- *  Growth depends on nutrition (energy) and age factors.
- *  Creatures mature at 50% of max size, matching Plant behavior.
- */
 void Creature::grow() {
     if (mature_) return;  // Already fully grown
     
@@ -899,64 +675,6 @@ void Creature::grow() {
     if (currentSize_ >= maxSize_ * 0.5f) {
         mature_ = true;
     }
-}
-
-/**
- *  This method updates the creatures variables relevant to one turn within the
- *  simulation.
- */
-void Creature::update () {
-  decideBehaviour();
-  
-  // Growth happens each tick
-  grow();
-
-  //  Sleeping slows down metabolism
-  float change = _metabolism;
-  if (_profile == Profile::sleep) {
-    _fatigue  -= _metabolism;
-    change    /= 2;
-  } else {
-    _fatigue  += _metabolism;
-  }
-
-  // Update thermal cache if phenotype has changed
-  if (_thermalCacheDirty) {
-    updateThermalCache();
-  }
-  
-  // Get current environment temperature from phenotype's stored environment
-  float currentTemp = phenotype_.getEnvironment().temperature;
-  
-  // Only recalculate stress if temperature has changed significantly
-  if (std::abs(currentTemp - _lastProcessedTemp) > 0.1f) {
-    using namespace EcoSim::Genetics;
-    _currentEnvironmentalStress = EnvironmentalStressCalculator::calculateTemperatureStress(
-        currentTemp, _cachedBaseTempLow, _cachedBaseTempHigh, _cachedThermalAdaptations);
-    _lastProcessedTemp = currentTemp;
-  }
-  
-  // Apply energy drain multiplier from environmental stress
-  change *= _currentEnvironmentalStress.energyDrainMultiplier;
-
-  // Track energy before changes for starvation logging
-  float hungerBefore = _hunger;
-  
-  _hunger -= change;
-  _thirst -= change;
-  
-  // Apply environmental health damage if creature is outside safe temperature range
-  if (_currentEnvironmentalStress.healthDamageRate > 0.0f) {
-    float damage = _currentEnvironmentalStress.healthDamageRate * getMaxHealth();
-    takeDamage(damage);
-  }
-  
-  // Log when creature enters critical starvation zone (approaching death)
-  if (hungerBefore > STARVATION_POINT && _hunger <= STARVATION_POINT + 0.5f) {
-    logging::Logger::getInstance().starvation(id_, hungerBefore, _hunger);
-  }
-  
-  age_++;
 }
 
 /**
@@ -1011,290 +729,6 @@ float Creature::shareWater (const int& amount) {
   return shareResource (amount, _thirst); 
 }
 
-/**
- *  Based on the creatures needs and priorities decides their behaviour by setting
- *  the creature to the relevant profile.
- *
- *  @todo implementing profile elasticity and more nuanced decision making
- *  This prevents creatures getting stuck switching between resource profiles
- */
-void Creature::decideBehaviour () {
-  bool seekingResource =
-    (_profile == Profile::hungry  && _hunger < getTHunger()) ||
-    (_profile == Profile::thirsty && _thirst < getTThirst());
-  bool isAsleep = _profile == Profile::sleep && _fatigue > 0.0f;
-
-  if (seekingResource) {
-    _mate   -= getComfDec() * 0.3f;
-  } else if (!isAsleep) {
-    // Calculate the priority of each behaviour
-    // Using std::array instead of vector to avoid heap allocation each tick
-    std::array<float, 4> priorities = {{
-      getTThirst()  - _thirst,
-      getTHunger()  - _hunger,
-      _mate         - getTMate(),
-      _fatigue      - getTFatigue()
-    }};
-
-    auto highestPriority =
-      max_element  (priorities.begin(), priorities.end());
-    unsigned pIndex = static_cast<unsigned>(distance(priorities.begin(), highestPriority));
-
-    if (*highestPriority  > 0.0f) {
-      // Profile enum has 5 values: thirsty(0), hungry(1), breed(2), sleep(3), migrate(4)
-      // priorities array only covers first 4, so pIndex is always valid (0-3)
-      static constexpr unsigned MAX_PRIORITY_INDEX = 3;
-      if (pIndex > MAX_PRIORITY_INDEX) {
-        pIndex = MAX_PRIORITY_INDEX;  // Fallback to sleep if somehow out of range
-      }
-      _profile = static_cast<Profile>(pIndex);
-      switch (_profile) {
-        case Profile::thirsty: case Profile::hungry:
-          _mate -= getComfDec() * 0.3f;
-          break;
-        default:
-          break;
-      }
-
-    //  All needs have been met
-    } else {
-      _mate     += getComfInc();
-      _profile   = Profile::migrate;
-    }
-  }
-}
-
-// Legacy Food system removed - this is a stub for any remaining callers
-static unsigned dietToFoodID(DietType diet) {
-  // Legacy Food IDs no longer used - return 0 as placeholder
-  return 0;
-}
-
-// LEGACY REMOVAL: foodCheck is deprecated - use findGeneticsPlants instead
-// This stub remains for compatibility but always returns false
-bool Creature::foodCheck (const vector<vector<Tile>> &map,
-                          const unsigned &rows,
-                          const unsigned &cols,
-                          const int &x,
-                          const int &y) {
-  // Legacy Food system removed - creatures now only eat genetics Plants
-  return false;
-}
-
-bool Creature::waterCheck (const vector<vector<Tile>> &map,
-                           const unsigned &rows,
-                           const unsigned &cols,
-                           const int &x,
-                           const int &y) {
-  return CreatureResourceSearch::waterCheck(*this, map, rows, cols, x, y);
-}
-
-// This template method performs an expanding square search pattern
-// and calls the predicate for each position until it returns true
-template<typename Predicate>
-bool Creature::spiralSearch (const vector<vector<Tile>> &map,
-                             const int &rows,
-                             const int &cols,
-                             Predicate predicate,
-                             unsigned maxRadius) {
-  // If maxRadius is 0, use sight range as default
-  if (maxRadius == 0) {
-    maxRadius = getSightRange();
-  }
-  // Use tile positions for grid-based search
-  int tx = tileX();
-  int ty = tileY();
-  //  While the search radius does not exceed the available space
-  for (int radius = 1; radius < static_cast<int>(maxRadius); radius++) {
-    //  Top and Bottom Lines
-    for (int xMod = -radius; xMod <= radius; xMod++) {
-      int curX = tx + xMod;
-      int curY = ty + radius;
-      if (predicate(curX, curY)) return true;
-      curY = ty - radius;
-      if (predicate(curX, curY)) return true;
-    }
-
-    //  Right and Left Lines (excluding corners already checked)
-    for (int yMod = -radius + 1; yMod <= radius - 1; yMod++) {
-      int curX = tx + radius;
-      int curY = ty + yMod;
-      if (predicate(curX, curY)) return true;
-      curX = tx - radius;
-      if (predicate(curX, curY)) return true;
-    }
-  }
-  return false;
-}
-
-// Unlike spiralSearch, this doesn't stop early - useful for finding closest match
-// Visitor receives (x, y) coordinates and returns void
-template<typename Visitor>
-void Creature::forEachTileInRange(unsigned maxRadius, Visitor visitor) {
-  // Use tile positions for grid-based iteration
-  int tx = tileX();
-  int ty = tileY();
-  for (unsigned radius = 1; radius < maxRadius; radius++) {
-    // Top and Bottom edges
-    for (int xMod = -static_cast<int>(radius); xMod <= static_cast<int>(radius); xMod++) {
-      int curX = tx + xMod;
-      // Top edge
-      int curY = ty - static_cast<int>(radius);
-      visitor(curX, curY);
-      // Bottom edge
-      curY = ty + static_cast<int>(radius);
-      visitor(curX, curY);
-    }
-    
-    // Left and Right edges (excluding corners already visited)
-    for (int yMod = -static_cast<int>(radius) + 1; yMod <= static_cast<int>(radius) - 1; yMod++) {
-      int curY = ty + yMod;
-      // Left edge
-      int curX = tx - static_cast<int>(radius);
-      visitor(curX, curY);
-      // Right edge
-      curX = tx + static_cast<int>(radius);
-      visitor(curX, curY);
-    }
-  }
-}
-
-//================================================================================
-//  Genetics-Based Plant Finding
-//================================================================================
-
-// Compile-time switch for A/B benchmarking
-// Set to 1 to use legacy O(r²) tile iteration, 0 for spatial index O(1)
-// Benchmark results (400 creatures): Spatial index is 14% faster at scale
-#ifndef PLANT_SEARCH_USE_TILE_ITERATION
-#define PLANT_SEARCH_USE_TILE_ITERATION 0  // Spatial index is default (better at scale)
-#endif
-
-/**
- *  Search for nearby genetics-based plants and attempt to eat them.
- *  This method searches the creature's sight range for edible plants
- *  and navigates toward or eats them using the genetics feeding system.
- *
- *  Uses PlantSpatialIndex for O(1) plant queries unless
- *  PLANT_SEARCH_USE_TILE_ITERATION is defined as 1 for benchmarking.
- *
- *  @param world          Reference to the world object.
- *  @param feedingCounter Counter for tracking feeding events.
- *  @return               True if an action was taken (eating or moving toward plant).
- */
-bool Creature::findGeneticsPlants(World &world, unsigned &feedingCounter) {
-  using namespace EcoSim::Genetics;
-  
-  vector<vector<Tile>> &map = world.getGrid();
-  const int rows = world.getRows();
-  const int cols = world.getCols();
-  
-  // Check if we're standing on a tile with edible plants
-  // Use tile positions for grid access
-  Tile &currentTile = map[tileX()][tileY()];
-  auto &plantsHere = currentTile.getPlants();
-  
-  for (auto &plantPtr : plantsHere) {
-    if (!plantPtr || !plantPtr->isAlive()) {
-      continue;
-    }
-    
-    // Check if we can eat this plant (detection + defenses)
-    bool canEat = canEatPlant(*plantPtr);
-    
-    if (canEat) {
-      // Attempt to eat the plant
-      FeedingResult result = eatPlant(*plantPtr);
-      
-      if (result.success) {
-        setAction(Action::Grazing);
-        feedingCounter++;
-        
-        // Successful feeding significantly increases mate (reduces discomfort)
-        // This creates proper survival pressure tied to feeding success
-        // Eating should be very rewarding to offset the continuous drain while searching
-        _mate += 2.0f;  // Large fixed boost from eating - enough to survive ~200+ ticks
-        if (_mate > RESOURCE_LIMIT) _mate = RESOURCE_LIMIT;
-        
-        // Log the feeding event
-        logging::Logger::getInstance().feeding(
-          id_, plantPtr->getId(), result.success, result.nutritionGained, result.damageReceived
-        );
-        
-        return true;
-      }
-    }
-  }
-  
-  // Search nearby tiles for edible plants
-  Plant* closestPlant = nullptr;
-  int closestX = -1, closestY = -1;
-  float closestDistance = getPlantDetectionRange();
-  
-#if PLANT_SEARCH_USE_TILE_ITERATION
-  // Legacy O(r²) tile iteration - for benchmarking comparison
-  unsigned maxRadius = static_cast<unsigned>(getPlantDetectionRange());
-  forEachTileInRange(maxRadius, [&](int checkX, int checkY) {
-    if (Navigator::boundaryCheck(checkX, checkY, rows, cols)) {
-      Tile& tile = map[checkX][checkY];
-      auto& plants = tile.getPlants();
-      for (auto& plantPtr : plants) {
-        if (plantPtr && plantPtr->isAlive() && canEatPlant(*plantPtr)) {
-          float distance = calculateDistance(checkX, checkY);
-          if (distance < closestDistance) {
-            closestDistance = distance;
-            closestPlant = plantPtr.get();
-            closestX = checkX;
-            closestY = checkY;
-          }
-        }
-      }
-    }
-  });
-#else
-  // Spatial index O(1) query - default optimized path
-  EcoSim::PlantManager& plantManager = world.plants();
-  std::vector<Plant*> nearbyPlants = plantManager.queryPlantsInRadius(
-      tileX(), tileY(), getPlantDetectionRange());
-  
-  // Find the closest edible plant from the spatial query results
-  for (Plant* plant : nearbyPlants) {
-    if (plant && plant->isAlive() && canEatPlant(*plant)) {
-      int plantX = plant->getX();
-      int plantY = plant->getY();
-      float distance = calculateDistance(plantX, plantY);
-      if (distance < closestDistance) {
-        closestDistance = distance;
-        closestPlant = plant;
-        closestX = plantX;
-        closestY = plantY;
-      }
-    }
-  }
-#endif
-  
-  // If we found a plant, navigate toward it
-  if (closestPlant != nullptr && closestX >= 0 && closestY >= 0) {
-    // Decrement mate while seeking food (discomfort from hunger)
-    _mate -= getComfDec() * 0.5f;  // Less harsh than not finding any food
-    return Navigator::astarSearch(*this, map, rows, cols, closestX, closestY);
-  }
-  
-  // Scent-based fallback - try to smell food when vision fails
-  // Only try scent detection if creature has meaningful scent ability
-  if (hasScentDetection()) {
-    int scentTargetX = -1, scentTargetY = -1;
-    
-    if (findFoodScent(world.getScentLayer(), scentTargetX, scentTargetY)) {
-      // Decrement mate while following scent (discomfort from hunger)
-      _mate -= getComfDec() * SEEKING_FOOD_MATE_PENALTY;
-      return Navigator::astarSearch(*this, map, rows, cols, scentTargetX, scentTargetY);
-    }
-  }
-  
-  return false;
-}
-
 //================================================================================
 //  Scent Detection Helper
 //================================================================================
@@ -1320,176 +754,6 @@ bool Creature::hasScentDetection() const {
  */
 bool Creature::findFoodScent(const EcoSim::ScentLayer& scentLayer, int& outX, int& outY) const {
   return CreatureScent::findFoodScent(*this, scentLayer, outX, outY);
-}
-
-/**
- *  This method searches for the sight range of the creature for suitable food to
- *  consume. If the creature is already on suitable food it is eaten.
- *
- *  @param map  A reference to the world map.
- *  @param rows Number of rows on the map.
- *  @param cols Number of columns on the map.
- *  @return     Returns true turn has been spent.
- */
-bool Creature::findFood (vector<vector<Tile>> &map,
-                         const int &rows,
-                         const int &cols,
-                         unsigned &foodCounter) {
-  // LEGACY REMOVAL: Legacy Food system has been removed
-  // Creatures now only eat genetics-based Plants via findGeneticsPlants()
-  // This stub remains for API compatibility but always returns false
-  return false;
-}
-
-/**
- *  Simulates a basic line of sight system used for
- *  searching the environment for water.
- *
- *  @param map  A reference to the world map.
- *  @param rows Number of rows on the map.
- *  @param cols Number of columns on the map.
- *  @return     Returns true turn has been spent.
- */
-bool Creature::findWater (const vector<vector<Tile>> &map,
-                          const int &rows, const int &cols) {
-  // Maximum distance from water tile edge to allow drinking (0.1 units)
-  constexpr float DRINKING_DISTANCE = 0.1f;
-  
-  // Check if creature is on or adjacent to water source
-  bool isNearWater = false;
-  
-  // Check current tile first
-  if (map.at(tileX()).at(tileY()).isSource()) {
-    isNearWater = true;
-  } else {
-    // Check 8 neighboring tiles (creatures stop at water's edge, so check adjacency)
-    // Must also verify creature's precise position is within DRINKING_DISTANCE of the water
-    for (int dx = -1; dx <= 1 && !isNearWater; dx++) {
-      for (int dy = -1; dy <= 1 && !isNearWater; dy++) {
-        if (dx == 0 && dy == 0) continue;  // Skip self (already checked)
-        
-        int checkX = tileX() + dx;
-        int checkY = tileY() + dy;
-        
-        // Bounds check
-        if (checkX >= 0 && checkX < cols && checkY >= 0 && checkY < rows) {
-          if (map.at(checkX).at(checkY).isSource()) {
-            // Calculate distance from creature's float position to nearest edge of water tile
-            // Water tile occupies [checkX, checkX+1] x [checkY, checkY+1]
-            float nearestX = std::max(static_cast<float>(checkX),
-                                      std::min(_worldX, static_cast<float>(checkX + 1)));
-            float nearestY = std::max(static_cast<float>(checkY),
-                                      std::min(_worldY, static_cast<float>(checkY + 1)));
-            float distX = _worldX - nearestX;
-            float distY = _worldY - nearestY;
-            float distToWater = std::sqrt(distX * distX + distY * distY);
-            
-            if (distToWater <= DRINKING_DISTANCE) {
-              isNearWater = true;
-            }
-          }
-        }
-      }
-    }
-  }
-  
-  // If on or adjacent to water (and within drinking distance), drink from it
-  if (isNearWater) {
-    setAction(Action::Drinking);
-    _thirst = RESOURCE_LIMIT;
-    return true;
-  }
-
-  return spiralSearch(map, rows, cols, [this, &map, rows, cols](int curX, int curY) {
-    return waterCheck(map, rows, cols, curX, curY);
-  });
-}
-
-/**
- *  Has the current agent search for a suitable mate, if found a new offspring 
- *  will be created with the mate.
- *
- *  @param map          A reference to the world map.
- *  @param rows         Number of rows on the map.
- *  @param cols         Number of columns on the map.
- *  @param c            A vector of all creatures.
- *  @param index        The creature currently moving.
- *  @param birthCounter Aids in keeping count of creatures born.
- *  @param return       True if action taken.
- */
-bool Creature::findMate (vector<vector<Tile>> &map,
-                         const int &rows,
-                         const int &cols,
-                         vector<Creature> &creatures,
-                         const unsigned &index,
-                         unsigned &birthCounter) {
-  float bestDesirability = -1.0f;
-  Creature *bestMate = NULL;
-
-  //  Attempt to find the most desirable mate
-  //  Mate compatibility is now determined by genetic similarity 
-  //  via checkFitness(), not diet type.
-  unsigned sightRange = getSightRange();
-  
-  for (Creature & creature : creatures) {
-    bool isPotentialMate = &creature != this
-        && creature.getProfile() == Profile::breed;
-
-    if (isPotentialMate) {
-      //  Calculate the distance between the creatures
-      unsigned diffX = abs(tileX() - creature.getX());
-      unsigned diffY = abs(tileY() - creature.getY());
-
-      if (diffX < sightRange && diffY < sightRange) {
-        float desirability = checkFitness (creature);
-        if (desirability > bestDesirability) {
-          bestMate = &creature;
-          bestDesirability = desirability;
-        }
-      }
-    }
-  }
-
-  //  If mate is found seek it
-  if (bestMate != NULL) {
-    int mateX = bestMate->getX();
-    int mateY = bestMate->getY();
-    // use tile positions for grid-based distance
-    unsigned diffX = abs(tileX() - bestMate->getX());
-    unsigned diffY = abs(tileY() - bestMate->getY());
-
-    if (diffX <= 1 && diffY <= 1) {
-      setAction(Action::Mating);
-      creatures.push_back (breedCreature(*bestMate));
-      birthCounter++;
-      return true;
-
-    //  Move towards ideal mate
-    } else {
-      return Navigator::astarSearch (*this, map, rows, cols, mateX, mateY);
-    }
-  }
-
-  return false;
-}
-
-
-/**
- *  Used by carnivorous creatures to seek out prey.
- *  Delegates to CreatureCombat::findPrey for implementation.
- *
- *  @param map          A reference to the world map.
- *  @param rows         Number of rows on the map.
- *  @param cols         Number of columns on the map.
- *  @param c            A vector of all creatures.
- *  @param return       True if action taken.
- */
-bool Creature::findPrey (vector<vector<Tile>> &map,
-                         const int &rows,
-                         const int &cols,
-                         vector<Creature> &creatures,
-                         unsigned &preyAte) {
-  return CreatureCombat::findPrey(*this, map, rows, cols, creatures, preyAte);
 }
 
 
@@ -1631,7 +895,7 @@ bool Creature::canReproduce() const {
     bool hasResources = _hunger > BREED_COST && _thirst > BREED_COST;
     bool isHealthy = health_ > getMaxHealth() * 0.25f;
     
-    return isMature() && hasResources && isHealthy && _profile == Profile::breed;
+    return isMature() && hasResources && isHealthy && _motivation == Motivation::Amorous;
 }
 
 /**
@@ -1960,22 +1224,8 @@ string Creature::generateName () {
 //================================================================================
 //  To String
 //================================================================================
-Profile Creature::stringToProfile (const string &str) {
-  return CreatureSerialization::stringToProfile(str);
-}
-
 Direction Creature::stringToDirection (const string &str) {
   return CreatureSerialization::stringToDirection(str);
-}
-
-/**
- *  This method converts the profile to a human readable string.
- *  Delegates to CreatureSerialization namespace.
- *
- *  @return A human readable string representation of the profile.
- */
-string Creature::profileToString () const {
-  return CreatureSerialization::profileToString(_profile);
 }
 
 /**
@@ -2198,14 +1448,7 @@ int Creature::getCombatCooldown() const {
  * Get creature's current motivation state.
  */
 Motivation Creature::getMotivation() const {
-    switch (_profile) {
-        case Profile::hungry:   return Motivation::Hungry;
-        case Profile::thirsty:  return Motivation::Thirsty;
-        case Profile::breed:    return Motivation::Amorous;
-        case Profile::sleep:    return Motivation::Tired;
-        case Profile::migrate:
-        default:                return Motivation::Content;
-    }
+    return _motivation;
 }
 
 /**
@@ -2226,63 +1469,6 @@ float Creature::getExpressedValue(const std::string& geneId) const {
 }
 
 //================================================================================
-//  New Motivation System Behavior Wrappers
-//================================================================================
-
-/**
- * Hungry behavior - wrapper for hungryProfile.
- * Part of the new Motivation/Action system that delegates to legacy Profile implementation.
- */
-void Creature::hungryBehavior(World &world,
-                              std::vector<Creature> &creatures,
-                              const unsigned index,
-                              GeneralStats &gs) {
-    hungryProfile(world, creatures, index, gs);
-}
-
-/**
- * Thirsty behavior - wrapper for thirstyProfile.
- */
-void Creature::thirstyBehavior(World &world,
-                               std::vector<Creature> &creatures,
-                               const unsigned index) {
-    thirstyProfile(world, creatures, index);
-}
-
-/**
- * Amorous behavior - wrapper for breedProfile.
- */
-void Creature::amorousBehavior(World &world,
-                               std::vector<Creature> &creatures,
-                               const unsigned index,
-                               GeneralStats &gs) {
-    breedProfile(world, creatures, index, gs);
-}
-
-/**
- * Content behavior - wrapper for migrateProfile.
- */
-void Creature::contentBehavior(World &world,
-                               std::vector<Creature> &creatures,
-                               const unsigned index) {
-    setAction(Action::Idle);
-    migrateProfile(world, creatures, index);
-}
-
-/**
- * Tired behavior - sleep is passive, handled by update().
- * This just does a simple wander while resting.
- */
-void Creature::tiredBehavior(World &world,
-                             std::vector<Creature> &creatures,
-                             const unsigned index) {
-    setAction(Action::Resting);
-    // Sleep is mostly passive (metabolism changes happen in update())
-    // When tired, just rest in place or move minimally
-    Navigator::wander(*this, world.getGrid(), world.getRows(), world.getCols());
-}
-
-//================================================================================
 //  New Genetics Constructors
 //================================================================================
 
@@ -2295,7 +1481,6 @@ Creature::Creature(int x, int y, std::unique_ptr<EcoSim::Genetics::Genome> genom
       _worldX(static_cast<float>(x)),
       _worldY(static_cast<float>(y)),
       _direction(Direction::none),
-      _profile(Profile::migrate),
       _motivation(Motivation::Content),
       _action(Action::Idle),
       _inCombat(false),
@@ -2332,10 +1517,18 @@ Creature::Creature(int x, int y, std::unique_ptr<EcoSim::Genetics::Genome> genom
     
     _character = generateChar();
     _name = generateName();
-    
+
     // Initialize health to max health (phenotype must be ready)
     health_ = getMaxHealth();
-    
+
+    // Sync OrganismNeeds with legacy floats
+    needs_.energy = _hunger;
+    needs_.hydration = _thirst;
+    needs_.fatigue = _fatigue;
+    needs_.reproductiveUrge = _mate;
+    needs_.maxEnergy = RESOURCE_LIMIT;
+    needs_.maxHydration = RESOURCE_LIMIT;
+
     // Initialize phenotype context
     EcoSim::Genetics::EnvironmentState defaultEnv;
     updatePhenotypeContext(defaultEnv);
@@ -2351,7 +1544,6 @@ Creature::Creature(int x, int y, float hunger, float thirst,
       _worldX(static_cast<float>(x)),
       _worldY(static_cast<float>(y)),
       _direction(Direction::none),
-      _profile(Profile::migrate),
       _motivation(Motivation::Content),
       _action(Action::Idle),
       _inCombat(false),
@@ -2366,32 +1558,40 @@ Creature::Creature(int x, int y, float hunger, float thirst,
       _speed(1),
       _archetype(nullptr),
       creatureId_(nextCreatureId_++) {
-    
+
     // Set metabolism from phenotype (Organism already created phenotype_)
     if (phenotype_.hasTrait(EcoSim::Genetics::UniversalGenes::METABOLISM_RATE)) {
         _metabolism = phenotype_.getTrait(EcoSim::Genetics::UniversalGenes::METABOLISM_RATE) * 0.001f;
     } else {
         _metabolism = 0.001f;
     }
-    
+
     // Classify archetype from genome (after phenotype is ready)
     _archetype = EcoSim::Genetics::CreatureTaxonomy::classifyArchetype(genome_);
     if (_archetype) {
         _archetype->incrementPopulation();
     }
-    
+
     // Classify biome adaptation from genome
     _biomeAdaptation = EcoSim::Genetics::CreatureTaxonomy::classifyBiomeAdaptation(genome_);
     if (_biomeAdaptation) {
         _biomeAdaptation->incrementPopulation();
     }
-    
+
     _character = generateChar();
     _name = generateName();
-    
+
     // Initialize health to max health (phenotype must be ready)
     health_ = getMaxHealth();
-    
+
+    // Sync OrganismNeeds with legacy floats
+    needs_.energy = _hunger;
+    needs_.hydration = _thirst;
+    needs_.fatigue = _fatigue;
+    needs_.reproductiveUrge = _mate;
+    needs_.maxEnergy = RESOURCE_LIMIT;
+    needs_.maxHydration = RESOURCE_LIMIT;
+
     // Initialize phenotype context
     EcoSim::Genetics::EnvironmentState defaultEnv;
     updatePhenotypeContext(defaultEnv);
@@ -2447,23 +1647,26 @@ void Creature::initializeBehaviorController() {
     // Register behaviors in priority order
     // RestBehavior - CRITICAL priority when exhausted (no dependencies)
     _behaviorController->addBehavior(std::make_unique<RestBehavior>());
-    
+
+    // ThirstBehavior - HIGH priority when dehydrated (no dependencies)
+    _behaviorController->addBehavior(std::make_unique<ThirstBehavior>());
+
     // HuntingBehavior - HIGH priority for carnivores
     _behaviorController->addBehavior(std::make_unique<HuntingBehavior>(
         *s_combatInteraction, *s_perceptionSystem));
-    
+
     // FeedingBehavior - NORMAL priority for herbivores
     _behaviorController->addBehavior(std::make_unique<FeedingBehavior>(
         *s_feedingInteraction, *s_perceptionSystem));
-    
+
     // MatingBehavior - NORMAL priority when ready to mate
     _behaviorController->addBehavior(std::make_unique<MatingBehavior>(
         *s_perceptionSystem, *s_geneRegistry));
-    
+
     // ZoochoryBehavior - LOW priority for seed dispersal
     _behaviorController->addBehavior(std::make_unique<ZoochoryBehavior>(
         *s_seedDispersal));
-    
+
     // MovementBehavior - IDLE priority as default fallback (no dependencies)
     _behaviorController->addBehavior(std::make_unique<MovementBehavior>());
 }
@@ -2487,13 +1690,14 @@ EcoSim::Genetics::BehaviorContext Creature::buildBehaviorContext(
     // Using thread_local static for safe temporary storage
     thread_local OrganismState tempState;
     tempState.age_normalized = getAgeNormalized();
-    tempState.energy_level = std::max(0.0f, std::min(1.0f, _hunger / RESOURCE_LIMIT));
+    tempState.energy_level = std::max(0.0f, std::min(1.0f, needs_.energyRatio()));
     tempState.health = getHealthPercent();
     
     BehaviorContext ctx;
     ctx.scentLayer = &scentLayer;
     ctx.world = &world;
     ctx.organismState = &tempState;
+    ctx.creatureIndex = world.getCreatureIndex();
     ctx.deltaTime = 1.0f;  // One tick = 1.0 time unit
     ctx.currentTick = currentTick;
     ctx.worldRows = world.getRows();
@@ -2508,61 +1712,106 @@ EcoSim::Genetics::BehaviorContext Creature::buildBehaviorContext(
  */
 EcoSim::Genetics::BehaviorResult Creature::updateWithBehaviors(EcoSim::Genetics::BehaviorContext& ctx) {
     using namespace EcoSim::Genetics;
-    
+
     // Ensure behavior controller is initialized
     if (!_behaviorController) {
         initializeBehaviorController();
     }
-    
-    // Update the behavior controller
+
+    // Update the behavior controller — selects and executes the highest priority behavior
     BehaviorResult result = _behaviorController->update(*this, ctx);
-    
+
+    // Sync behavior state writes back to legacy floats so metabolism code
+    // below operates on the values behaviors actually set (e.g., RestBehavior
+    // reducing fatigue, FeedingBehavior adding energy)
+    _hunger = needs_.energy;
+    _thirst = needs_.hydration;
+    _fatigue = needs_.fatigue;
+    _mate = needs_.reproductiveUrge;
+
     // Apply energy cost from behavior execution
     if (result.executed && result.energyCost > 0.0f) {
         _hunger -= result.energyCost;
     }
-    
+
+    // Derive Motivation/Action from the currently active behavior
+    std::string behaviorId = _behaviorController->getCurrentBehaviorId();
+    if (behaviorId == "feeding") {
+        _motivation = Motivation::Hungry;
+        _action = Action::Grazing;
+    } else if (behaviorId == "hunting") {
+        _motivation = Motivation::Hungry;
+        _action = Action::Hunting;
+    } else if (behaviorId == "thirst") {
+        _motivation = Motivation::Thirsty;
+        _action = result.completed ? Action::Drinking : Action::Searching;
+    } else if (behaviorId == "mating") {
+        _motivation = Motivation::Amorous;
+        _action = Action::Courting;
+    } else if (behaviorId == "rest") {
+        _motivation = Motivation::Tired;
+        _action = Action::Resting;
+    } else if (behaviorId == "movement") {
+        _motivation = Motivation::Content;
+        _action = Action::Wandering;
+    } else {
+        _motivation = Motivation::Content;
+        _action = Action::Idle;
+    }
+
     // Growth happens each tick
     grow();
-    
-    // Update metabolism effects (similar to legacy update())
+
+    // Update metabolism effects
     float change = _metabolism;
-    if (_profile == Profile::sleep) {
+    bool isResting = (_motivation == Motivation::Tired);
+    if (isResting) {
         _fatigue -= _metabolism;
         change /= 2;
     } else {
         _fatigue += _metabolism;
     }
-    
+
     // Update thermal cache if phenotype has changed
     if (_thermalCacheDirty) {
         updateThermalCache();
     }
-    
-    // Get current environment temperature from phenotype's stored environment
+
     float currentTemp = phenotype_.getEnvironment().temperature;
-    
-    // Only recalculate stress if temperature has changed significantly
+
     if (std::abs(currentTemp - _lastProcessedTemp) > 0.1f) {
         _currentEnvironmentalStress = EnvironmentalStressCalculator::calculateTemperatureStress(
             currentTemp, _cachedBaseTempLow, _cachedBaseTempHigh, _cachedThermalAdaptations);
         _lastProcessedTemp = currentTemp;
     }
-    
+
     // Apply energy drain multiplier from environmental stress
     change *= _currentEnvironmentalStress.energyDrainMultiplier;
-    
+
     _hunger -= change;
     _thirst -= change;
-    
+
     // Apply environmental health damage if creature is outside safe temperature range
     if (_currentEnvironmentalStress.healthDamageRate > 0.0f) {
         float damage = _currentEnvironmentalStress.healthDamageRate * getMaxHealth();
         takeDamage(damage);
     }
-    
+
+    // Mating drive: decrease while resource-seeking, increase when content
+    if (_motivation == Motivation::Hungry || _motivation == Motivation::Thirsty) {
+        _mate -= getComfDec() * 0.3f;
+    } else if (_motivation == Motivation::Content) {
+        _mate += getComfInc();
+    }
+
+    // Keep OrganismNeeds in sync with legacy floats
+    needs_.energy = _hunger;
+    needs_.hydration = _thirst;
+    needs_.fatigue = _fatigue;
+    needs_.reproductiveUrge = _mate;
+
     age_++;
-    
+
     return result;
 }
 

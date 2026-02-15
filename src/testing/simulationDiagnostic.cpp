@@ -129,21 +129,13 @@ void takeTurnWithLogging(World& w, GeneralStats& gs, vector<Creature>& c,
         
         c.erase(c.begin() + cIndex);
     } else {
-        activeC->update();
-        
-        // Update creature phenotype with location-specific environment data
         auto localEnv = w.environment().getEnvironmentStateAt(
             static_cast<int>(activeC->getWorldX()),
             static_cast<int>(activeC->getWorldY()));
         activeC->updatePhenotypeContext(localEnv);
-        
-        switch(activeC->getMotivation()) {
-            case Motivation::Content:   activeC->contentBehavior(w, c, cIndex); break;
-            case Motivation::Hungry:    activeC->hungryBehavior(w, c, cIndex, gs); break;
-            case Motivation::Thirsty:   activeC->thirstyBehavior(w, c, cIndex); break;
-            case Motivation::Amorous:   activeC->amorousBehavior(w, c, cIndex, gs); break;
-            case Motivation::Tired:     break;
-        }
+
+        auto ctx = activeC->buildBehaviorContext(w, w.getScentLayer(), w.getCurrentTick());
+        activeC->updateWithBehaviors(ctx);
     }
 }
 

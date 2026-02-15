@@ -6,6 +6,7 @@
 #include "genetics/expression/PhenotypeUtils.hpp"
 #include "genetics/expression/OrganismState.hpp"
 #include "genetics/organisms/Organism.hpp"
+#include "genetics/interfaces/IPositionable.hpp"
 #include "genetics/defaults/UniversalGenes.hpp"
 #include "genetics/core/Genome.hpp"
 #include <cmath>
@@ -193,7 +194,43 @@ bool HuntingBehavior::attemptEscape(const Organism& predator,
 
 Organism* HuntingBehavior::findPrey(const Organism& hunter,
                                             const BehaviorContext& ctx) const {
-    return nullptr;
+    const auto* pos = dynamic_cast<const IPositionable*>(&hunter);
+    if (!pos) {
+        return nullptr;
+    }
+
+    const Phenotype& hunterPhenotype = hunter.getPhenotype();
+    float sightRange = getTraitSafe(hunterPhenotype, UniversalGenes::SIGHT_RANGE, 5.0f);
+    float huntInstinct = getTraitSafe(hunterPhenotype, UniversalGenes::HUNT_INSTINCT, 0.0f);
+
+    auto nearby = ctx.queryNearbyOrganisms(pos->getWorldX(), pos->getWorldY(), sightRange);
+
+    Organism* bestPrey = nullptr;
+    float bestScore = -1.0f;
+
+    for (auto* candidate : nearby) {
+        if (candidate == &hunter) continue;
+        if (!candidate->isAlive()) continue;
+
+        const Phenotype& preyPhenotype = candidate->getPhenotype();
+        float preyHuntInstinct = getTraitSafe(preyPhenotype, UniversalGenes::HUNT_INSTINCT, 0.0f);
+
+        // Prefer prey with lower hunt instinct (herbivores)
+        if (preyHuntInstinct >= huntInstinct) continue;
+
+        float dx = pos->getWorldX() - candidate->getWorldX();
+        float dy = pos->getWorldY() - candidate->getWorldY();
+        float dist = std::sqrt(dx * dx + dy * dy);
+
+        // Score: closer + weaker = better prey
+        float score = (sightRange - dist) * (1.0f - preyHuntInstinct);
+        if (score > bestScore) {
+            bestScore = score;
+            bestPrey = candidate;
+        }
+    }
+
+    return bestPrey;
 }
 
 void HuntingBehavior::recordHunt(unsigned int organismId, unsigned int tick) {
@@ -214,11 +251,7 @@ void HuntingBehavior::cleanupStaleEntries(unsigned int currentTick) {
 }
 
 float HuntingBehavior::getHungerLevel(const Organism& organism) const {
-    const Phenotype& phenotype = organism.getPhenotype();
-    
-    float maxHunger = getTraitSafe(phenotype, UniversalGenes::MAX_SIZE, 0.0f);
-    
-    return maxHunger * 0.3f;
+    return organism.getNeeds().energy;
 }
 
 float HuntingBehavior::getHungerThreshold(const Organism& organism) const {

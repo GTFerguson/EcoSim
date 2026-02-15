@@ -201,7 +201,7 @@ void ScentLayer::processDecay(unsigned int currentTick) {
         constexpr float INTENSITY_THRESHOLD = 0.001f;
         deposits.erase(
             std::remove_if(deposits.begin(), deposits.end(),
-                [](const ScentDeposit& s) {
+                [INTENSITY_THRESHOLD](const ScentDeposit& s) {
                     return s.intensity < INTENSITY_THRESHOLD;
                 }),
             deposits.end()

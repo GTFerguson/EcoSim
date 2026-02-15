@@ -49,23 +49,27 @@ BehaviorResult RestBehavior::execute(Organism& organism,
     
     result.executed = true;
     result.energyCost = REST_ENERGY_COST;
-    
+
     float newFatigue = fatigue - recoveryRate;
-    
+    if (newFatigue < 0.0f) newFatigue = 0.0f;
+
+    // Write fatigue back through OrganismNeeds
+    organism.getNeeds().fatigue = newFatigue;
+
     if (newFatigue <= threshold) {
         result.completed = true;
         std::ostringstream ss;
-        ss << "Rest complete, fatigue reduced from " << fatigue 
+        ss << "Rest complete, fatigue reduced from " << fatigue
            << " to " << newFatigue << " (threshold: " << threshold << ")";
         result.debugInfo = ss.str();
     } else {
         result.completed = false;
         std::ostringstream ss;
-        ss << "Resting, fatigue: " << fatigue << " -> " << newFatigue 
+        ss << "Resting, fatigue: " << fatigue << " -> " << newFatigue
            << " (threshold: " << threshold << ")";
         result.debugInfo = ss.str();
     }
-    
+
     return result;
 }
 
@@ -74,13 +78,7 @@ float RestBehavior::getEnergyCost(const Organism& organism) const {
 }
 
 float RestBehavior::getFatigueLevel(const Organism& organism) const {
-    const Phenotype& phenotype = organism.getPhenotype();
-    
-    float threshold = getTraitSafe(phenotype,
-                                    UniversalGenes::FATIGUE_THRESHOLD, 
-                                    DEFAULT_FATIGUE_THRESHOLD);
-    
-    return threshold * 1.5f;
+    return organism.getNeeds().fatigue;
 }
 
 float RestBehavior::getFatigueThreshold(const Organism& organism) const {
@@ -108,10 +106,7 @@ float RestBehavior::getRecoveryRate(const Organism& organism) const {
 }
 
 bool RestBehavior::isTired(const Organism& organism) const {
-    float fatigue = getFatigueLevel(organism);
-    float threshold = getFatigueThreshold(organism);
-    
-    return fatigue > threshold;
+    return organism.getNeeds().fatigue > getFatigueThreshold(organism);
 }
 
 } // namespace Genetics

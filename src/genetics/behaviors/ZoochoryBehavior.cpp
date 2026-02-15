@@ -1,6 +1,7 @@
 #include "genetics/behaviors/ZoochoryBehavior.hpp"
 #include "genetics/interactions/SeedDispersal.hpp"
 #include "genetics/organisms/Organism.hpp"
+#include "genetics/interfaces/IPositionable.hpp"
 #include "genetics/defaults/UniversalGenes.hpp"
 #include "genetics/core/Genome.hpp"
 #include "genetics/core/RandomEngine.hpp"
@@ -33,24 +34,35 @@ BehaviorResult ZoochoryBehavior::execute(Organism& organism,
     result.executed = true;
     result.completed = true;
     result.energyCost = 0.0f;
-    
+
     unsigned int organismId = getOrganismId(organism);
-    
+
+    // Get position for seed dispersal location
+    int currentX = organism.getX();
+    int currentY = organism.getY();
+
+    // Process seeds (burr detachment + gut passage)
+    auto events = processOrganismSeeds(organismId, currentX, currentY, 1);
+
     std::ostringstream debugInfo;
     debugInfo << "Zoochory passive for organism " << organismId;
-    
+
+    if (!events.empty()) {
+        debugInfo << "; dispersed " << events.size() << " seeds";
+    }
+
     bool hasBurrsPending = hasBurrs(organismId);
     auto gutIt = gutSeeds_.find(organismId);
     bool hasGutSeeds = (gutIt != gutSeeds_.end() && !gutIt->second.empty());
-    
+
     if (hasBurrsPending || hasGutSeeds) {
         debugInfo << "; pending: ";
-        if (hasBurrsPending) debugInfo << "burrs(epizoochory) ";
-        if (hasGutSeeds) debugInfo << "gut_seeds(endozoochory:" << gutIt->second.size() << ")";
+        if (hasBurrsPending) debugInfo << "burrs ";
+        if (hasGutSeeds) debugInfo << "gut_seeds(" << gutIt->second.size() << ")";
     }
-    
+
     result.debugInfo = debugInfo.str();
-    
+
     return result;
 }
 

@@ -27,7 +27,7 @@ std::string toString(const Creature& creature) {
     ss  << creature.GameObject::toString()  << ","
         << creature.tileX() << "," << creature.tileY() << "," << creature.getAge() << ","
         << directionToString(creature.getDirection()) << ","
-        << profileToString(creature.getProfile()) << ","
+        << motivationToString(creature.getMotivation()) << ","
         << creature.getHunger()     << ","
         << creature.getThirst()     << ","
         << creature.getFatigue()    << ","
@@ -36,17 +36,6 @@ std::string toString(const Creature& creature) {
         << creature.getSpeed();
 
     return ss.str();
-}
-
-std::string profileToString(Profile profile) {
-    switch(profile) {
-        case Profile::hungry:   return "hungry";
-        case Profile::thirsty:  return "thirsty";
-        case Profile::sleep:    return "sleep";
-        case Profile::breed:    return "breed";
-        case Profile::migrate:  return "migrate";
-        default:                return "error";
-    }
 }
 
 std::string directionToString(Direction direction) {
@@ -62,19 +51,6 @@ std::string directionToString(Direction direction) {
         case Direction::none: return "none";
         default:              return "error";
     }
-}
-
-Profile stringToProfile(const std::string& str) {
-    static const std::unordered_map<std::string, Profile> profileMap = {
-        {"hungry",  Profile::hungry},
-        {"thirsty", Profile::thirsty},
-        {"sleep",   Profile::sleep},
-        {"breed",   Profile::breed},
-        {"migrate", Profile::migrate}
-    };
-
-    auto it = profileMap.find(str);
-    return (it != profileMap.end()) ? it->second : Profile::migrate;
 }
 
 Direction stringToDirection(const std::string& str) {

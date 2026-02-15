@@ -30,9 +30,8 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 include(CompilerWarnings)
 
 # Find dependencies
-find_package(PkgConfig REQUIRED)
-
 if(ECOSIM_USE_NCURSES)
+    find_package(PkgConfig REQUIRED)
     pkg_check_modules(NCURSES REQUIRED ncurses)
 endif()
 
@@ -109,6 +108,7 @@ add_library(ecosim_core STATIC
     src/objects/creature/CreaturePlantInteraction.cpp
     src/objects/creature/CreatureResourceSearch.cpp
     src/objects/creature/CreatureSerialization.cpp
+    src/objects/creature/BehaviorContextImpl.cpp
     src/calendar.cpp
     src/fileHandling.cpp
     ${STATISTICS_SOURCES}

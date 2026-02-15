@@ -115,26 +115,29 @@ private:
 void test_isApplicable_trueWhenHungry() {
     auto registry = std::make_shared<G::GeneRegistry>();
     G::UniversalGenes::registerDefaults(*registry);
-    
+
     // Create organism with good plant digestion (herbivore)
     MockOrganism herbivore(*registry, 0.8f);
-    
+
+    // Set energy low so organism is hungry (below threshold of 0.5)
+    herbivore.getNeeds().energy = 0.3f;
+
     // Create dependencies
     G::FeedingInteraction feeding;
     G::PerceptionSystem perception;
     G::FeedingBehavior behavior(feeding, perception);
-    
+
     // Create empty context
     G::BehaviorContext ctx;
     ctx.world = nullptr;
     ctx.worldRows = 100;
     ctx.worldCols = 100;
-    
-    // Check applicability - should be true (organism can eat plants)
+
+    // Check applicability - should be true (organism can eat plants and is hungry)
     bool applicable = behavior.isApplicable(herbivore, ctx);
-    
+
     std::cout << "      Herbivore isApplicable: " << (applicable ? "yes" : "no") << std::endl;
-    
+
     TEST_ASSERT(applicable);
 }
 
@@ -145,29 +148,25 @@ void test_isApplicable_trueWhenHungry() {
 void test_isApplicable_falseWhenFull() {
     auto registry = std::make_shared<G::GeneRegistry>();
     G::UniversalGenes::registerDefaults(*registry);
-    
+
     // Create organism with good plant digestion
     MockOrganism herbivore(*registry, 0.8f);
-    
-    // Note: In current implementation, hunger level is a default value (0.3)
-    // This test documents expected behavior - in a full implementation,
-    // we'd need to set organism state to "full" (hunger > threshold)
-    
+
+    // Set energy high so organism is full (above threshold of 0.5)
+    herbivore.getNeeds().energy = 8.0f;
+
     G::FeedingInteraction feeding;
     G::PerceptionSystem perception;
     G::FeedingBehavior behavior(feeding, perception);
-    
+
     G::BehaviorContext ctx;
-    
-    // With default hunger level (0.3) and threshold (0.5), organism IS hungry
-    // So this test verifies the current implementation behavior
+
     bool applicable = behavior.isApplicable(herbivore, ctx);
-    
-    std::cout << "      Herbivore (default state) isApplicable: " << (applicable ? "yes" : "no") << std::endl;
-    
-    // Currently returns true because default hunger (0.3) < threshold (0.5)
-    // In a full implementation with organism state, we'd set hunger > threshold
-    TEST_ASSERT(applicable);  // Documents current behavior
+
+    std::cout << "      Herbivore (full) isApplicable: " << (applicable ? "yes" : "no") << std::endl;
+
+    // Full organism should not need to eat
+    TEST_ASSERT(!applicable);
 }
 
 // ============================================================================
@@ -202,23 +201,26 @@ void test_isApplicable_falseWhenCarnivore() {
 void test_getPriority_increasesWithHunger() {
     auto registry = std::make_shared<G::GeneRegistry>();
     G::UniversalGenes::registerDefaults(*registry);
-    
+
     MockOrganism herbivore(*registry, 0.8f);
-    
+
+    // Set energy low so organism is hungry (below threshold of 0.5)
+    herbivore.getNeeds().energy = 0.2f;
+
     G::FeedingInteraction feeding;
     G::PerceptionSystem perception;
     G::FeedingBehavior behavior(feeding, perception);
-    
+
     // Get priority - should be above base (50) because organism is hungry
     float priority = behavior.getPriority(herbivore);
-    
+
     std::cout << "      Herbivore priority: " << priority << std::endl;
-    
+
     // Base priority is 50, max boost is 25, so priority should be between 50-75
     TEST_ASSERT_GE(priority, 50.0f);
     TEST_ASSERT_LE(priority, 75.0f);
-    
-    // Since default hunger (0.3) < threshold (0.5), should have some boost
+
+    // Energy (0.2) < threshold (0.5), should have priority boost
     TEST_ASSERT_GT(priority, 50.0f);
 }
 

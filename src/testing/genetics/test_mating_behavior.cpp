@@ -133,19 +133,23 @@ void setupImmatureOrganism(MockMatingOrganism& organism) {
 void test_isApplicable_trueWhenReadyToMate() {
     GeneRegistry registry;
     UniversalGenes::registerDefaults(registry);
-    
+
     PerceptionSystem perception;
     MatingBehavior mating(perception, registry);
-    
+
     MockMatingOrganism organism(registry);
     setupMatureOrganism(organism);
     organism.setGene(UniversalGenes::MATE_THRESHOLD, 1.0f);
-    
+
+    // Set reproductive urge above MATE_THRESHOLD (0.7) and energy above MIN_HUNGER_TO_BREED (5.0)
+    organism.getNeeds().reproductiveUrge = 5.0f;
+    organism.getNeeds().energy = 8.0f;
+
     BehaviorContext ctx;
     ctx.currentTick = 100;
-    
+
     bool applicable = mating.isApplicable(organism, ctx);
-    
+
     TEST_ASSERT_MSG(applicable, "Mature organism with high mate value should be ready to mate");
 }
 
@@ -311,21 +315,23 @@ void test_offspringCallback_setCorrectly() {
 void test_priority_increasesWithMateValue() {
     GeneRegistry registry;
     UniversalGenes::registerDefaults(registry);
-    
+
     PerceptionSystem perception;
     MatingBehavior mating(perception, registry);
-    
+
     MockMatingOrganism lowMateOrganism(registry);
     setupMatureOrganism(lowMateOrganism);
-    lowMateOrganism.setGene(UniversalGenes::MATE_THRESHOLD, 0.8f);
-    
+    // Set a low reproductive urge (just above MATE_THRESHOLD of 0.7)
+    lowMateOrganism.getNeeds().reproductiveUrge = 1.0f;
+
     MockMatingOrganism highMateOrganism(registry);
     setupMatureOrganism(highMateOrganism);
-    highMateOrganism.setGene(UniversalGenes::MATE_THRESHOLD, 2.0f);
-    
+    // Set a high reproductive urge
+    highMateOrganism.getNeeds().reproductiveUrge = 5.0f;
+
     float lowPriority = mating.getPriority(lowMateOrganism);
     float highPriority = mating.getPriority(highMateOrganism);
-    
+
     TEST_ASSERT_GE(lowPriority, 50.0f);
     TEST_ASSERT_GE(highPriority, 50.0f);
     TEST_ASSERT_GT(highPriority, lowPriority);

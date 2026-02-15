@@ -471,78 +471,63 @@ void takeTurnWithBreedingDiagnostics(World& w, GeneralStats& gs, vector<Creature
         
         c.erase(c.begin() + cIndex);
     } else {
-        activeC->update();
-        
         unsigned birthsBefore = gs.births;
-        
-        switch(activeC->getMotivation()) {
-            case Motivation::Content:   activeC->contentBehavior(w, c, cIndex); break;
-            case Motivation::Hungry:    activeC->hungryBehavior(w, c, cIndex, gs); break;
-            case Motivation::Thirsty:   activeC->thirstyBehavior(w, c, cIndex); break;
-            case Motivation::Amorous:
-                {
-                    // Use amorousBehavior which includes scent-following (Phase 2: Gradient Navigation)
-                    // This will:
-                    // 1. Deposit breeding scent
-                    // 2. Try visual mate finding via findMate()
-                    // 3. If visual fails, try scent-based navigation via detectMateDirection()
-                    // 4. Fall back to wandering if no scent found
-                    activeC->amorousBehavior(w, c, cIndex, gs);
-                    
-                    // Check if birth occurred (by comparing birth count)
-                    bool hadBirth = (gs.births > birthsBefore);
-                    
-                    // Determine reason for not finding mate (for diagnostic tracking)
-                    // GENETICS-MIGRATION: Removed diet filtering - any breeding creature is a potential mate
-                    std::string reason = "unknown";
-                    if (!hadBirth) {
-                        // Check potential reasons
-                        int inBreedStateCount = 0;
-                        int inSightRangeCount = 0;
-                        int inAdjacentCount = 0;
-                        unsigned sightRange = activeC->getSightRange();
-                        
-                        for (const auto& other : c) {
-                            if (&other == activeC) continue;
-                            
-                            // Count ALL breeding creatures, not just same diet
-                            if (other.getMotivation() == Motivation::Amorous) {
-                                inBreedStateCount++;
-                                
-                                unsigned diffX = abs(activeC->getX() - other.getX());
-                                unsigned diffY = abs(activeC->getY() - other.getY());
-                                
-                                // Check if within sight range (for findMate visual detection)
-                                if (diffX < sightRange && diffY < sightRange) {
-                                    inSightRangeCount++;
-                                }
-                                
-                                // Check if adjacent (for breeding)
-                                if (diffX <= 1 && diffY <= 1) {
-                                    inAdjacentCount++;
-                                }
-                            }
+        bool wasAmorous = (activeC->getMotivation() == Motivation::Amorous);
+
+        auto localEnv = w.environment().getEnvironmentStateAt(
+            static_cast<int>(activeC->getWorldX()),
+            static_cast<int>(activeC->getWorldY()));
+        activeC->updatePhenotypeContext(localEnv);
+
+        auto ctx = activeC->buildBehaviorContext(w, w.getScentLayer(), w.getCurrentTick());
+        activeC->updateWithBehaviors(ctx);
+
+        // Breeding diagnostic tracking for creatures that were in amorous state
+        if (wasAmorous) {
+            bool hadBirth = (gs.births > birthsBefore);
+
+            std::string reason = "unknown";
+            if (!hadBirth) {
+                int inBreedStateCount = 0;
+                int inSightRangeCount = 0;
+                int inAdjacentCount = 0;
+                unsigned sightRange = activeC->getSightRange();
+
+                for (const auto& other : c) {
+                    if (&other == activeC) continue;
+
+                    if (other.getMotivation() == Motivation::Amorous) {
+                        inBreedStateCount++;
+
+                        unsigned diffX = abs(activeC->getX() - other.getX());
+                        unsigned diffY = abs(activeC->getY() - other.getY());
+
+                        if (diffX < sightRange && diffY < sightRange) {
+                            inSightRangeCount++;
                         }
-                        
-                        if (inBreedStateCount == 0) {
-                            reason = "no_other_breeding_creatures";
-                        } else if (inAdjacentCount > 0) {
-                            reason = "adjacent_but_not_breeding";
-                        } else if (inSightRangeCount > 0) {
-                            reason = "in_sight_navigating";
-                        } else {
-                            reason = "following_scent_trail";
+
+                        if (diffX <= 1 && diffY <= 1) {
+                            inAdjacentCount++;
                         }
-                    }
-                    
-                    g_breedingTracker.recordMatingAttempt(hadBirth, reason);
-                    
-                    if (hadBirth) {
-                        g_breedingTracker.recordBirth();
                     }
                 }
-                break;
-            case Motivation::Tired:     break;
+
+                if (inBreedStateCount == 0) {
+                    reason = "no_other_breeding_creatures";
+                } else if (inAdjacentCount > 0) {
+                    reason = "adjacent_but_not_breeding";
+                } else if (inSightRangeCount > 0) {
+                    reason = "in_sight_navigating";
+                } else {
+                    reason = "following_scent_trail";
+                }
+            }
+
+            g_breedingTracker.recordMatingAttempt(hadBirth, reason);
+
+            if (hadBirth) {
+                g_breedingTracker.recordBirth();
+            }
         }
     }
 }

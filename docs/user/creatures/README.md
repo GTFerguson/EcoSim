@@ -26,7 +26,7 @@ Creatures don't follow scripts - they respond to their environment moment-to-mom
 
 | Aspect | What to Watch For |
 |--------|-------------------|
-| **Behavior** | Profile states (hungry, thirsty, breeding, fleeing) |
+| **Behavior** | Motivation states (hungry, thirsty, amorous, tired, content) |
 | **Movement** | Speed, direction changes, pursuit and evasion |
 | **Diet** | What they eat (plants, other creatures, or both) |
 | **Reproduction** | Scent trails, mate-finding, offspring |

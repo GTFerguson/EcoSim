@@ -747,7 +747,7 @@ bool Prey::detectPredators(World& world) {
                                                  scents);
         Direction fleeDir = oppositeDirection(threatDir);
         
-        setProfile(Profile::flee);
+        // FleeingBehavior would handle escape via BehaviorController
         Navigator::moveDirection(*this, world, fleeDir);
         
         // Emit alarm scent to warn others
@@ -770,7 +770,7 @@ bool Prey::detectPredators(World& world) {
             Direction threatDir = moveTowardSound(*this, sound);
             Direction fleeDir = oppositeDirection(threatDir);
             
-            setProfile(Profile::flee);
+            // FleeingBehavior would handle escape via BehaviorController
             Navigator::moveDirection(*this, world, fleeDir);
             depositAlarmScent(world);
             return true;
@@ -808,7 +808,7 @@ Predator approaches → Prey A detects via scent
 
 **Implementation**:
 ```cpp
-// In prey breedProfile or hungryProfile, check for alarms first
+// In prey behavior execution, check for alarms first
 bool respondToAlarms(World& world) {
     // Check for alarm scents
     auto alarms = world.detectScents(
@@ -823,7 +823,7 @@ bool respondToAlarms(World& world) {
         // Flee from alarm source (where threat was detected)
         Direction threatDir = followScentGradient(*this, ScentType::ALARM, alarms);
         Direction fleeDir = oppositeDirection(threatDir);
-        setProfile(Profile::flee);
+        // FleeingBehavior would handle escape via BehaviorController
         Navigator::moveDirection(*this, world, fleeDir);
         
         // Propagate alarm

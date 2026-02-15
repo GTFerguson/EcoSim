@@ -191,23 +191,14 @@ void executeTick(World& w, std::vector<Creature>& creatures, GeneralStats& gs) {
             continue;
         }
         
-        // Update creature
-        activeC->update();
-        
-        // Update phenotype context
+        // Update phenotype context and execute behavior via BehaviorController
         auto localEnv = w.environment().getEnvironmentStateAt(
             static_cast<int>(activeC->getWorldX()),
             static_cast<int>(activeC->getWorldY()));
         activeC->updatePhenotypeContext(localEnv);
-        
-        // Execute behavior based on motivation
-        switch(activeC->getMotivation()) {
-            case Motivation::Content:   activeC->contentBehavior(w, creatures, i); break;
-            case Motivation::Hungry:    activeC->hungryBehavior(w, creatures, i, gs); break;
-            case Motivation::Thirsty:   activeC->thirstyBehavior(w, creatures, i); break;
-            case Motivation::Amorous:   activeC->amorousBehavior(w, creatures, i, gs); break;
-            case Motivation::Tired:     break;
-        }
+
+        auto ctx = activeC->buildBehaviorContext(w, w.getScentLayer(), w.getCurrentTick());
+        activeC->updateWithBehaviors(ctx);
     }
     
     gs.population = creatures.size();

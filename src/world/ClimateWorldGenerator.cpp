@@ -3,6 +3,8 @@
  * @brief Implementation of climate-based world generation
  */
 
+#define _USE_MATH_DEFINES
+
 #include "../../include/world/ClimateWorldGenerator.hpp"
 #include "../../include/colorPairs.hpp"
 

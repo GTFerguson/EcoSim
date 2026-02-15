@@ -142,7 +142,7 @@ Technical performance metrics:
 Sortable and filterable list of all creatures:
 
 - **Sort by**: ID, Age, Energy, Generation
-- **Filter by**: Diet type, Profile state, Health status
+- **Filter by**: Diet type, Motivation state, Health status
 - Click on a creature to select and track it
 
 ### Creature Inspector (F5)
@@ -330,17 +330,17 @@ Creatures are displayed with colors indicating their characteristics:
 | **Color** | Determined by `color_hue` gene (HSV hue value) |
 | **Movement** | Animation shows creature facing/moving direction |
 
-### Creature Profiles (Behavior States)
+### Creature Motivations (Behavior States)
 
-Creatures cycle through different behavioral states:
+Creatures cycle through different behavioral states based on their most urgent need:
 
-| Profile | Description |
-|---------|-------------|
-| **Hungry** | Actively seeking food |
+| Motivation | Description |
+|------------|-------------|
+| **Hungry** | Actively seeking food (feeding or hunting) |
 | **Thirsty** | Seeking water |
-| **Breed** | Looking for a mate |
-| **Flee** | Running from predator |
-| **Idle** | Resting, no urgent needs |
+| **Amorous** | Looking for a mate |
+| **Tired** | Resting to recover fatigue |
+| **Content** | No urgent needs, wandering |
 
 ### Plant Types
 

@@ -100,17 +100,20 @@ private:
 void test_isApplicable_trueWhenTired() {
     auto registry = std::make_shared<G::GeneRegistry>();
     G::UniversalGenes::registerDefaults(*registry);
-    
+
     MockRestOrganism organism(*registry, 3.0f);
-    
+
+    // Set fatigue above threshold (3.0) so organism is tired
+    organism.getNeeds().fatigue = 5.0f;
+
     G::RestBehavior behavior;
-    
+
     G::BehaviorContext ctx;
-    
+
     bool applicable = behavior.isApplicable(organism, ctx);
-    
+
     std::cout << "      Tired organism isApplicable: " << (applicable ? "yes" : "no") << std::endl;
-    
+
     TEST_ASSERT(applicable);
 }
 
@@ -121,21 +124,22 @@ void test_isApplicable_trueWhenTired() {
 void test_isApplicable_falseWhenRested() {
     auto registry = std::make_shared<G::GeneRegistry>();
     G::UniversalGenes::registerDefaults(*registry);
-    
+
     MockRestOrganism organism(*registry, 10.0f);
-    
+
+    // Fatigue defaults to 0.0 (fully rested), well below any threshold
+    // organism.getNeeds().fatigue == 0.0f
+
     G::RestBehavior behavior;
-    
+
     G::BehaviorContext ctx;
-    
+
     bool applicable = behavior.isApplicable(organism, ctx);
-    
+
     std::cout << "      Rested organism isApplicable: " << (applicable ? "yes" : "no") << std::endl;
-    
-    // Note: Current implementation derives fatigue from threshold
-    // With high threshold (10.0), fatigue (threshold * 1.5 = 15.0) > threshold (10.0) = tired
-    // This test documents current behavior
-    TEST_ASSERT(applicable);  // Documents current implementation
+
+    // Fully rested organism should not need rest
+    TEST_ASSERT(!applicable);
 }
 
 // ============================================================================
@@ -265,23 +269,30 @@ void test_recoveryRate_fromPhenotype() {
 void test_fatigueThreshold_fromPhenotype() {
     auto registry = std::make_shared<G::GeneRegistry>();
     G::UniversalGenes::registerDefaults(*registry);
-    
-    MockRestOrganism lowThreshold(*registry, 2.0f);
-    MockRestOrganism highThreshold(*registry, 5.0f);
-    
+
+    // Low threshold gene (1.0) — organism needs rest sooner
+    MockRestOrganism lowThreshold(*registry, 1.0f);
+    // High threshold gene (10.0) — organism tolerates more fatigue
+    MockRestOrganism highThreshold(*registry, 10.0f);
+
+    // Set same fatigue for both — between the two expressed thresholds
+    lowThreshold.getNeeds().fatigue = 2.0f;
+    highThreshold.getNeeds().fatigue = 2.0f;
+
     G::RestBehavior behavior;
-    
+
     G::BehaviorContext ctx;
-    
+
     bool lowApplicable = behavior.isApplicable(lowThreshold, ctx);
     bool highApplicable = behavior.isApplicable(highThreshold, ctx);
-    
-    std::cout << "      Low threshold applicable: " << (lowApplicable ? "yes" : "no") << std::endl;
-    std::cout << "      High threshold applicable: " << (highApplicable ? "yes" : "no") << std::endl;
-    
-    // Both should be applicable since fatigue is derived from threshold
+
+    std::cout << "      Low threshold gene (1.0) applicable at fatigue 2.0: " << (lowApplicable ? "yes" : "no") << std::endl;
+    std::cout << "      High threshold gene (10.0) applicable at fatigue 2.0: " << (highApplicable ? "yes" : "no") << std::endl;
+
+    // Low-threshold organism should be tired (fatigue 2.0 > expressed low threshold)
     TEST_ASSERT(lowApplicable);
-    TEST_ASSERT(highApplicable);
+    // High-threshold organism should not be tired (fatigue 2.0 < expressed high threshold)
+    TEST_ASSERT(!highApplicable);
 }
 
 // ============================================================================

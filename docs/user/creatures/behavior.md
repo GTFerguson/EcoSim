@@ -14,13 +14,13 @@ Creature behavior is controlled by two systems working together:
 
 At any moment, a creature has one primary motivation driving its behavior:
 
-| Motivation | Icon | Description |
-|------------|------|-------------|
-| **Hungry** | 🍖 | Needs food, will search for plants or prey |
-| **Thirsty** | 💧 | Needs water, will seek water sources |
-| **Amorous** | 💕 | Ready to mate, seeking a compatible partner |
-| **Tired** | 💤 | Needs rest to recover energy |
-| **Content** | 😊 | All needs satisfied, will wander or explore |
+| Motivation | Description |
+|------------|-------------|
+| **Hungry** | Needs food, will search for plants or prey |
+| **Thirsty** | Needs water, will seek water sources |
+| **Amorous** | Ready to mate, seeking a compatible partner |
+| **Tired** | Needs rest to recover energy |
+| **Content** | All needs satisfied, will wander or explore |
 
 ### Actions (Activities)
 
@@ -43,33 +43,29 @@ The current action shows what the creature is actively doing:
 | **Mating** | Breeding with partner |
 | **Resting** | Sleeping to recover |
 
-> 💡 **Tip:** Press **F5** to open the Inspector and see a creature's current motivation and action!
+> [!TIP]
+> Press **F5** to open the Inspector and see a creature's current motivation and action!
 
 ---
 
 ## How Creatures Choose Their Behavior
 
-Every tick, creatures evaluate their needs and pick the most urgent one:
+Every tick, all registered behaviors are evaluated. Each behavior checks whether it applies (e.g., "am I hungry?") and reports its priority. The most urgent applicable behavior wins and executes.
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                   DECISION CYCLE                     │
-│                                                      │
-│   Check Hunger ──► Above threshold? ──► HUNGRY      │
-│        │                                             │
-│        ▼                                             │
-│   Check Thirst ──► Above threshold? ──► THIRSTY     │
-│        │                                             │
-│        ▼                                             │
-│   Check Fatigue ─► Above threshold? ──► SLEEP       │
-│        │                                             │
-│        ▼                                             │
-│   Check Mate ────► Above threshold? ──► BREED       │
-│        │                                             │
-│        ▼                                             │
-│   Default ───────────────────────────► MIGRATE      │
-│                                                      │
-└─────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────┐
+│              BEHAVIOR PRIORITY SYSTEM                     │
+│                                                           │
+│   Rest ──────► Exhausted? ──► CRITICAL priority          │
+│                                                           │
+│   Thirst ────► Dehydrated? ─► HIGH priority              │
+│   Hunting ───► Hungry carnivore? ► HIGH priority         │
+│                                                           │
+│   Feeding ───► Hungry herbivore? ► NORMAL priority       │
+│   Mating ────► Ready to breed? ──► NORMAL priority       │
+│                                                           │
+│   Movement ──► Always applies ──► IDLE (fallback)        │
+└──────────────────────────────────────────────────────────┘
 ```
 
 The **thresholds** are determined by genes! This means:
@@ -79,24 +75,15 @@ The **thresholds** are determined by genes! This means:
 
 ---
 
-## Hungry Profile 🍖
+## Feeding (Herbivore)
 
-When hungry, creatures search for food based on their diet:
+When hungry, herbivores search for plants based on their diet genes:
 
-### Herbivores
-- Search for plants within sight range
-- Navigate toward nearest edible plant
-- Consume plants to gain energy
-
-### Carnivores
-- Search for prey within sight range
-- Pursue prey (initiating a chase!)
-- Hunt and consume prey for high energy
-
-### Omnivores
-- Can eat both plants and prey
-- Opportunistic - takes whatever is closest
-- Flexible survival strategy
+### How It Works
+- Check if energy is below the hunger threshold
+- Scan nearby tiles for edible plants within detection range
+- Navigate toward the nearest plant
+- Consume the plant to gain energy
 
 ### What You'll See
 
@@ -104,8 +91,52 @@ When hungry, creatures search for food based on their diet:
 |----------|---------|
 | Direct movement | Found food, heading toward it |
 | Spiral pattern | Searching for food |
-| Sudden acceleration | Prey fleeing OR predator pursuing |
 | Stopping near plant | Eating |
+
+### Finding Food: Two Senses
+
+Creatures use **two senses** to locate food:
+
+| Sense | Gene | Best For | Limitation |
+|-------|------|----------|------------|
+| **Sight** | Color Vision | Colorful plants (berries, fruit) | Blocked by obstacles |
+| **Smell** | Scent Detection | Fragrant plants | Works through obstacles! |
+
+#### Color Vision (Sight)
+
+Creatures with high **Color Vision** excel at spotting brightly-colored plants:
+- Berry bushes stand out with their vivid colors
+- Fruit-bearing plants catch the eye from afar
+- Works best in open terrain with clear line-of-sight
+
+#### Scent Detection (Smell)
+
+Creatures with high **Scent Detection** can smell fragrant plants:
+- Sweet-smelling plants like berry bushes are easy to find
+- Scent travels around obstacles — through forests, over hills
+- Great for finding hidden food sources
+
+> [!TIP]
+> Watch for creatures heading toward something they can't see — they're following their nose!
+
+#### Which Plants Smell?
+
+Not all plants are fragrant! Here's what you'll observe:
+
+| Plant Type | Scent Strength | Color | Found By |
+|------------|----------------|-------|----------|
+| Berry Bushes | Strong, sweet | Bright | Both senses! |
+| Thorn Bushes | Moderate | Moderate | Either sense |
+| Oak Trees | Faint | Green | Mostly sight |
+| Grass | None | Green | Sight only |
+
+This creates different foraging strategies! Some creatures evolve to "see" their food, others to "smell" it.
+
+---
+
+## Hunting (Carnivore)
+
+When a carnivore's energy is low, the hunting behavior activates:
 
 ### The Hunt
 
@@ -132,68 +163,33 @@ PREDATOR                           PREY
 - **Pursue distance** (how far predator will chase)
 - **Navigation** (pathfinding ability)
 
-### Finding Food: Two Senses 👀 👃
-
-Creatures use **two senses** to locate food:
-
-| Sense | Gene | Best For | Limitation |
-|-------|------|----------|------------|
-| 👀 **Sight** | Color Vision | Colorful plants (berries, fruit) | Blocked by obstacles |
-| 👃 **Smell** | Scent Detection | Fragrant plants | Works through obstacles! |
-
-#### Color Vision (Sight)
-
-Creatures with high **Color Vision** excel at spotting brightly-colored plants:
-- Berry bushes stand out with their vivid colors
-- Fruit-bearing plants catch the eye from afar
-- Works best in open terrain with clear line-of-sight
-
-#### Scent Detection (Smell)
-
-Creatures with high **Scent Detection** can smell fragrant plants:
-- Sweet-smelling plants like berry bushes are easy to find
-- Scent travels around obstacles—through forests, over hills
-- Great for finding hidden food sources
-
-> [!TIP]
-> Watch for creatures heading toward something they can't see—they're following their nose!
-
-#### Which Plants Smell?
-
-Not all plants are fragrant! Here's what you'll observe:
-
-| Plant Type | Scent Strength | Color | Found By |
-|------------|----------------|-------|----------|
-| 🫐 Berry Bushes | Strong, sweet | Bright | Both senses! |
-| 🌵 Thorn Bushes | Moderate | Moderate | Either sense |
-| 🌳 Oak Trees | Faint | Green | Mostly sight |
-| 🌿 Grass | None | Green | Sight only |
-
-This creates different foraging strategies! Some creatures evolve to "see" their food, others to "smell" it.
+### Omnivores
+- Can eat both plants and prey
+- Opportunistic — takes whatever is closest
+- Flexible survival strategy
 
 ---
 
-## Thirsty Profile 💧
+## Thirst
 
-When thirsty, creatures search for water:
+When hydration drops below threshold, creatures search for water:
 
-1. Scan for water tiles within sight range
-2. Navigate toward nearest water
-3. Drink to restore hydration
+1. Scan for water tiles within sight range using a spiral search pattern
+2. Navigate toward nearest water via A* pathfinding
+3. Drink to fully restore hydration
 
-> 🌊 **Water tiles** are blue tiles in the world, usually near low elevations.
+> [!NOTE]
+> **Water tiles** are blue tiles in the world, usually near low elevations.
 
 ### Drinking from Shore
 
-Creatures don't need to stand IN the water to drink—they can drink when **adjacent** to water, just like real animals approaching a river bank or lake shore!
+Creatures don't need to stand IN the water to drink — they can drink when **adjacent** to water, just like real animals approaching a river bank or lake shore!
 
 | Position | Can Drink? |
 |----------|------------|
-| Standing on water tile | ✅ Yes |
-| Adjacent to water (on shore) | ✅ Yes |
-| More than 1 tile away | ❌ No |
-
-This means you'll see creatures approach the water's edge, pause briefly to drink, and then continue on their way without having to wade into the water.
+| Standing on water tile | Yes |
+| Adjacent to water (on shore) | Yes |
+| More than 1 tile away | No |
 
 ### What You'll See
 - Creatures heading toward blue areas
@@ -202,7 +198,7 @@ This means you'll see creatures approach the water's edge, pause briefly to drin
 
 ---
 
-## Breed Profile 💕
+## Mating
 
 The breeding system is one of EcoSim's most complex behaviors!
 
@@ -212,22 +208,23 @@ Breeding-ready creatures use **scent trails**:
 
 ```
                     SCENT TRAIL
-     💕 ─────────────────────────────────
+     ─────────────────────────────────
          │ │ │ │ │ │ │ │ │ │ │ │
          stronger ─────────► weaker
 
 Other creature detects scent and follows gradient toward source
 ```
 
-See **[[scent-communication.md|Scent and Communication]]** for the full scent system!
+See **[[../world/scent-communication.md|Scent and Communication]]** for the full scent system!
 
 ### Mating Requirements
 
 Both creatures must:
-- ✅ Be in breeding profile
-- ✅ Have enough energy
-- ✅ Be genetically compatible (but not too similar)
-- ✅ Meet in the same location
+- Have high enough reproductive urge (builds over time when content)
+- Have enough energy reserves
+- Be genetically compatible (but not too similar)
+- Be mature (past juvenile stage)
+- Be within range of each other
 
 ### Genetic Compatibility
 
@@ -249,15 +246,14 @@ This creates a "Goldilocks zone" of mate preference!
 
 ---
 
-## Sleep Profile 💤
+## Rest
 
-When fatigue gets too high, creatures must rest:
+When fatigue gets too high, the rest behavior takes priority:
 
 ### What Happens During Rest
-
 - Creature stops moving
-- Energy slowly recovers
-- Fatigue decreases
+- Fatigue decreases based on regeneration rate
+- Very low energy cost (resting is cheap)
 - Vulnerable to predators!
 
 ### The Risk of Resting
@@ -273,24 +269,24 @@ This creates selection pressure for:
 
 ### What You'll See
 - Creature stops moving
-- No profile changes for several ticks
-- Gradual energy bar recovery
+- No motivation changes for several ticks
+- Gradual fatigue recovery
 
 ---
 
-## Migrate Profile 🧭
+## Wandering (Content)
 
-When no urgent needs exist, creatures explore:
+When no urgent needs exist, the movement behavior kicks in as the default fallback:
 
-### Migration Behavior
-- Move in generally consistent direction
+### What Happens
+- Move in a generally consistent direction
 - Occasional random direction changes
 - Explores new territory
-- May find new food sources or mates
+- May discover new food sources or mates
 
-### Why Migration Matters
+### Why Wandering Matters
 
-Migration helps creatures:
+Wandering helps creatures:
 - Escape overpopulated areas
 - Find unexploited resources
 - Spread genes across the world
@@ -319,16 +315,16 @@ Over generations, you may notice behavior changes:
 
 ---
 
-## Try This! 🔬
+## Try This!
 
 ### Experiment: Behavior Frequency
 
 1. Select a creature with Inspector (F5)
-2. Note its starting profile
-3. Count how many times each profile appears over 5 minutes
+2. Note its starting motivation
+3. Count how many times each motivation appears over 5 minutes
 4. Compare with another creature of different generation
 
-You might see evolved creatures spending more time in productive profiles!
+You might see evolved creatures spending more time in productive behaviors!
 
 ### Experiment: Predator Stalking
 
@@ -379,7 +375,7 @@ They might have:
 
 ## See Also
 
-- 📖 **[Creature Needs](needs.md)** - What drives each behavior
-- 📖 **[Creature Lifecycle](lifecycle.md)** - How behavior changes with age
-- 📖 **[Scent and Communication](../world/scent-communication.md)** - How creatures find each other
-- 📖 **[Watching Evolution](../genetics/evolution.md)** - How behavior evolves over time
+- [[needs|Creature Needs]] - What drives each behavior
+- [[lifecycle|Creature Lifecycle]] - How behavior changes with age
+- [[../world/scent-communication|Scent and Communication]] - How creatures find each other
+- [[../genetics/evolution|Watching Evolution]] - How behavior evolves over time

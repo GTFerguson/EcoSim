@@ -92,7 +92,7 @@ float calculateSignatureSimilarity(
 
 void depositBreedingScent(Creature& creature, EcoSim::ScentLayer& layer, unsigned int currentTick) {
     // Only deposit if in breeding profile
-    if (creature.getProfile() != Profile::breed) {
+    if (creature.getMotivation() != Motivation::Amorous) {
         return;
     }
     
@@ -162,7 +162,7 @@ int getDetectionRange(const Creature& creature) {
 
 std::optional<Direction> detectMateDirection(const Creature& creature, const EcoSim::ScentLayer& scentLayer) {
     // Only detect if we're in breeding mode
-    if (creature.getProfile() != Profile::breed) {
+    if (creature.getMotivation() != Motivation::Amorous) {
         return std::nullopt;
     }
     
@@ -217,7 +217,7 @@ std::optional<Direction> detectMateDirection(const Creature& creature, const Eco
 
 bool findMateScent(const Creature& creature, const EcoSim::ScentLayer& scentLayer, int& outX, int& outY) {
     // Only detect if we're in breeding mode
-    if (creature.getProfile() != Profile::breed) {
+    if (creature.getMotivation() != Motivation::Amorous) {
         return false;
     }
     

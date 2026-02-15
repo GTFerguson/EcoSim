@@ -15,7 +15,6 @@
 class Creature;
 
 // Forward declare enums
-enum class Profile;
 enum class Direction;
 enum class WoundState;
 enum class Motivation;
@@ -39,25 +38,11 @@ namespace CreatureSerialization {
 std::string toString(const Creature& creature);
 
 /**
- * @brief Convert profile enum to string.
- * @param profile The profile value
- * @return Human-readable profile string
- */
-std::string profileToString(Profile profile);
-
-/**
  * @brief Convert direction enum to string.
  * @param direction The direction value
  * @return Direction string (e.g., "N", "SE", "none")
  */
 std::string directionToString(Direction direction);
-
-/**
- * @brief Parse profile from string.
- * @param str The string to parse
- * @return Profile enum value (defaults to migrate on unknown)
- */
-Profile stringToProfile(const std::string& str);
 
 /**
  * @brief Parse direction from string.

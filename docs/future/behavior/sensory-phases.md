@@ -248,7 +248,7 @@ bool Prey::detectPredators(World& world) {
         Direction threatDir = followScentGradient(...);
         Direction fleeDir = oppositeDirection(threatDir);
         
-        setProfile(Profile::flee);
+        // FleeingBehavior would handle this in the BehaviorController
         Navigator::moveDirection(*this, world, fleeDir);
         
         // Emit alarm scent to warn others
