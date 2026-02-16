@@ -21,6 +21,8 @@ Tile::Tile () {
 	_colPair	    = 4;
 	_terrainType  = TerrainType::PLAINS;
 	_passable	    = false;
+	_isSource     = false;
+	_elevation    = 0;
 	_waterDepth   = 0.0f;
 }
 
@@ -36,6 +38,7 @@ Tile::Tile (const unsigned &objLimit,
 	_terrainType  = terrainType;
 	_passable     = passable;
   _isSource     = isSource;
+	_elevation    = 0;
 	_waterDepth   = 0.0f;
 }
 
