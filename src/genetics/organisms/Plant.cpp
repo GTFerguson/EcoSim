@@ -15,6 +15,9 @@
 #include "genetics/expression/EnvironmentalStress.hpp"
 #include "genetics/core/RandomEngine.hpp"
 #include "genetics/core/GeneRegistry.hpp"
+#include "genetics/behaviors/BehaviorController.hpp"
+#include "genetics/behaviors/SeedDispersalBehavior.hpp"
+#include "genetics/interactions/SeedDispersal.hpp"
 #include "logging/Logger.hpp"
 #include <algorithm>
 #include <cmath>
@@ -36,8 +39,16 @@ unsigned int Plant::nextId_ = 1;
 Plant::Plant(int x, int y, const GeneRegistry& registry)
     : Organism(x, y, PlantGenes::createRandomGenome(registry), registry)
 {
+    // Initialize plant needs (photosynthetic reserves start healthy)
+    needs_.energy = 1.0f;
+    needs_.hydration = 1.0f;
+    needs_.fatigue = 0.0f;
+    needs_.reproductiveUrge = 0.0f;
+    needs_.maxEnergy = 1.0f;
+    needs_.maxHydration = 1.0f;
+
     updatePhenotype();
-    
+
     logging::Logger::getInstance().plantSpawned(
         static_cast<unsigned int>(getId()), "random", x_, y_);
 }
@@ -45,8 +56,16 @@ Plant::Plant(int x, int y, const GeneRegistry& registry)
 Plant::Plant(int x, int y, const Genome& genome, const GeneRegistry& registry)
     : Organism(x, y, genome, registry)
 {
+    // Initialize plant needs (photosynthetic reserves start healthy)
+    needs_.energy = 1.0f;
+    needs_.hydration = 1.0f;
+    needs_.fatigue = 0.0f;
+    needs_.reproductiveUrge = 0.0f;
+    needs_.maxEnergy = 1.0f;
+    needs_.maxHydration = 1.0f;
+
     updatePhenotype();
-    
+
     logging::Logger::getInstance().plantSpawned(
         static_cast<unsigned int>(getId()), "offspring", x_, y_);
 }
@@ -271,42 +290,63 @@ bool Plant::canSurviveTemperature(float temperature) const {
 
 void Plant::update(const EnvironmentState& env) {
     if (!alive_) return;
-    
-    // Update phenotype with current environment
-    OrganismState state;
-    state.age_normalized = getAgeNormalized();
-    state.health = health_;
-    state.energy_level = 1.0f;
-    phenotype_.updateContext(env, state);
-    
-    // Grow the plant (includes maturity check)
-    grow(env);
-    
-    // Increment fruit timer for production cooldown
-    fruitTimer_++;
-    
-    // Increment age manually (don't use age() which checks for death)
-    // Plant handles its own death check below with > instead of >=
-    incrementAge();
-    
+    tickLifecycle(env);
+
     // Check death conditions (health-based)
     checkDeathConditions(env);
-    
+
     // Check for death from old age AFTER other lifecycle events
     float maxLifespan = static_cast<float>(getMaxLifespan());
     if (static_cast<float>(age_) > maxLifespan) {
         die();
         health_ = 0.0f;
-        
+
         logging::Logger::getInstance().plantDied(
             static_cast<unsigned int>(getId()), "plant", "old_age", age_);
     }
 }
 
+// ============================================================================
+// Lifecycle Overrides
+// ============================================================================
+
+void Plant::updatePhenotypeContext(const EnvironmentState& env) {
+    OrganismState state;
+    state.age_normalized = getAgeNormalized();
+    state.health = health_;
+    state.energy_level = 1.0f;
+    phenotype_.updateContext(env, state);
+}
+
+void Plant::tickMetabolism(const EnvironmentState& /* env */) {
+    fruitTimer_++;
+}
+
+void Plant::tickEnvironmentalStress(const EnvironmentState& env) {
+    // Stress damage is calculated inside grow(env) via the stress calculator.
+    // This override is a no-op because Plant::grow(env) already handles
+    // both growth and stress damage in a single pass.
+    (void)env;
+}
+
+void Plant::tickReproductiveDrive() {
+    // Plants are ready to reproduce when mature and healthy
+    needs_.reproductiveUrge = (mature_ && alive_ && health_ > 0.5f) ? 1.0f : 0.0f;
+}
+
+// ============================================================================
+// Behavior System
+// ============================================================================
+
+void Plant::initializeBehaviorController(SeedDispersal& seedDispersal) {
+    auto bc = std::make_unique<BehaviorController>();
+    bc->addBehavior(std::make_unique<SeedDispersalBehavior>(seedDispersal));
+    setBehaviorController(std::move(bc));
+}
+
 void Plant::grow() {
-    // Default growth without environment - use default environment
-    EnvironmentState defaultEnv;
-    grow(defaultEnv);
+    // Use cached environment from phenotype (set by updatePhenotypeContext)
+    grow(phenotype_.getEnvironment());
 }
 
 void Plant::grow(const EnvironmentState& env) {
@@ -399,7 +439,7 @@ bool Plant::canReproduce() const {
 }
 
 float Plant::getReproductiveUrge() const {
-    return mature_ && alive_ && health_ > 0.5f ? 1.0f : 0.0f;
+    return needs_.reproductiveUrge;
 }
 
 float Plant::getReproductionEnergyCost() const {

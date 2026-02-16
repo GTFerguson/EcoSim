@@ -12,6 +12,8 @@
 namespace EcoSim {
 namespace Genetics {
 
+class SeedDispersal;
+
 /// Emergent seed dispersal strategy determined by physical properties
 enum class DispersalStrategy {
     GRAVITY,
@@ -241,9 +243,29 @@ public:
     void grow() override;
     
     // ========================================================================
+    // Lifecycle Overrides (from Organism::tickLifecycle framework)
+    // ========================================================================
+
+    void updatePhenotypeContext(const EnvironmentState& env) override;
+    void tickMetabolism(const EnvironmentState& env) override;
+    void tickEnvironmentalStress(const EnvironmentState& env) override;
+    void tickReproductiveDrive() override;
+
+    // ========================================================================
+    // Behavior System
+    // ========================================================================
+
+    /**
+     * @brief Initialize the behavior controller with plant behaviors.
+     * Registers SeedDispersalBehavior for active dispersal decisions.
+     * @param seedDispersal Reference to the SeedDispersal interaction (owned by PlantManager)
+     */
+    void initializeBehaviorController(SeedDispersal& seedDispersal);
+
+    // ========================================================================
     // Plant-specific methods
     // ========================================================================
-    
+
     /**
      * @brief Get growth rate from phenotype
      * @return Growth rate (higher = faster growing)

@@ -402,16 +402,16 @@ void PlantManager::tick(unsigned currentTick) {
                 }
             }
             
-            // Handle seed dispersal for mature plants
+            // Handle scent emission and seed dispersal for living plants
             for (auto& plant : tile.getPlants()) {
                 if (!plant || !plant->isAlive()) continue;
-                
+
                 // Emit plant scent if plant has scent production capability
                 float scentRate = plant->getScentProductionRate();
                 if (scentRate > 0.01f) {
                     std::array<float, 8> signature = plant->getScentSignature();
                     float intensity = scentRate * plant->getCurrentSize() / plant->getMaxSize();
-                    
+
                     ScentDeposit plantScent(
                         ScentType::FOOD_TRAIL,
                         -1,
@@ -420,20 +420,29 @@ void PlantManager::tick(unsigned currentTick) {
                         currentTick,
                         50
                     );
-                    
+
                     _scents.deposit(
                         static_cast<int>(x),
                         static_cast<int>(y),
                         plantScent
                     );
                 }
-                
-                // Seed dispersal - mature plants attempt passive dispersal
-                bool canDisperse = plant->canProduceFruit() || plant->canSpreadVegetatively();
-                
-                if (canDisperse) {
+
+                // Lazy-init BehaviorController on first encounter
+                if (!plant->hasBehaviorController()) {
+                    plant->initializeBehaviorController(_seedDispersal);
+                }
+
+                // BC decides whether dispersal should happen this tick
+                BehaviorContext ctx;
+                ctx.currentTick = currentTick;
+                BehaviorResult result = plant->getBehaviorController()->update(*plant, ctx);
+
+                // BC signals dispersal readiness — PlantManager handles
+                // the actual probability roll and offspring creation
+                if (result.completed && result.debugInfo == "dispersal_ready") {
                     std::uniform_real_distribution<float> dist(0.0f, 1.0f);
-                    
+
                     float dispersalChance;
                     if (plant->canSpreadVegetatively()) {
                         float sizeRatio = plant->getCurrentSize() / plant->getMaxSize();
@@ -441,13 +450,11 @@ void PlantManager::tick(unsigned currentTick) {
                     } else {
                         dispersalChance = plant->getFruitProductionRate() * 0.1f;
                     }
-                    
+
                     if (dist(_rng) < dispersalChance) {
                         DispersalEvent event = _seedDispersal.disperse(*plant, &tileEnv);
                         dispersalEvents.push_back({event, plant});
                     }
-                    
-                    plant->resetFruitTimer();
                 }
             }
         }

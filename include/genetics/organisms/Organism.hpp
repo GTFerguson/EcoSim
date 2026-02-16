@@ -7,6 +7,8 @@
 #include "genetics/core/Genome.hpp"
 #include "genetics/expression/Phenotype.hpp"
 #include "genetics/organisms/OrganismNeeds.hpp"
+#include "genetics/expression/EnvironmentState.hpp"
+#include "genetics/behaviors/BehaviorController.hpp"
 #include <memory>
 
 namespace EcoSim {
@@ -176,7 +178,36 @@ public:
      */
     void heal(float amount);
 
+    // ========================================================================
+    // Behavior System (available to all organisms)
+    // ========================================================================
+
+    BehaviorController* getBehaviorController() { return behaviorController_.get(); }
+    const BehaviorController* getBehaviorController() const { return behaviorController_.get(); }
+    void setBehaviorController(std::unique_ptr<BehaviorController> bc) { behaviorController_ = std::move(bc); }
+    bool hasBehaviorController() const { return behaviorController_ != nullptr; }
+
+    // ========================================================================
+    // Lifecycle Framework (passive processes run every tick)
+    // ========================================================================
+
+    /**
+     * @brief Run all passive lifecycle processes for this tick.
+     *
+     * Calls in order: updatePhenotypeContext, grow, tickMetabolism,
+     * tickEnvironmentalStress, tickReproductiveDrive, incrementAge.
+     * Death checking is NOT included — it stays as a front-of-tick guard
+     * in the caller (takeTurn / PlantManager::tick).
+     */
+    virtual void tickLifecycle(const EnvironmentState& env);
+
 protected:
+    virtual void updatePhenotypeContext(const EnvironmentState& env);
+    virtual void tickMetabolism(const EnvironmentState& env);
+    virtual void tickEnvironmentalStress(const EnvironmentState& env);
+    virtual void tickReproductiveDrive();
+
+public:
     /**
      * @brief Set alive state to false
      * Called when death conditions are met (age, health, environment)
@@ -211,6 +242,9 @@ protected:
     
     // Organism needs (energy, hydration, fatigue, mating drive)
     OrganismNeeds needs_;
+
+    // Behavior system (any organism can have active behaviors)
+    std::unique_ptr<BehaviorController> behaviorController_;
 
     // Position (tile coordinates)
     int x_;

@@ -166,10 +166,6 @@ Creature::Creature(const Creature& other)
       _isFleeing(other._isFleeing),
       _targetId(other._targetId),
       _combatCooldown(other._combatCooldown),
-      _hunger(other._hunger),
-      _thirst(other._thirst),
-      _fatigue(other._fatigue),
-      _mate(other._mate),
       _metabolism(other._metabolism),
       _speed(other._speed),
       _archetype(other._archetype),
@@ -183,7 +179,8 @@ Creature::Creature(const Creature& other)
     currentSize_ = other.currentSize_;
     maxSize_ = other.maxSize_;
     mature_ = other.mature_;
-    
+    needs_ = other.needs_;
+
     // Increment archetype population for the copy
     if (_archetype) {
         _archetype->incrementPopulation();
@@ -192,17 +189,9 @@ Creature::Creature(const Creature& other)
     if (_biomeAdaptation) {
         _biomeAdaptation->incrementPopulation();
     }
-    // Sync OrganismNeeds with legacy floats
-    needs_.energy = _hunger;
-    needs_.hydration = _thirst;
-    needs_.fatigue = _fatigue;
-    needs_.reproductiveUrge = _mate;
-    needs_.maxEnergy = RESOURCE_LIMIT;
-    needs_.maxHydration = RESOURCE_LIMIT;
 
     // Behavior controller is NOT copied - use lazy initialization
-    // _behaviorController remains nullptr and will be initialized on first use
-    _behaviorController = nullptr;
+    behaviorController_ = nullptr;
 }
 
 /**
@@ -219,17 +208,12 @@ Creature::Creature(Creature&& other) noexcept
       _isFleeing(other._isFleeing),
       _targetId(other._targetId),
       _combatCooldown(other._combatCooldown),
-      _hunger(other._hunger),
-      _thirst(other._thirst),
-      _fatigue(other._fatigue),
-      _mate(other._mate),
       _metabolism(other._metabolism),
       _speed(other._speed),
       _archetype(other._archetype),
       _biomeAdaptation(other._biomeAdaptation),
       _attachedBurrs(std::move(other._attachedBurrs)),
       _gutSeeds(std::move(other._gutSeeds)),
-      _behaviorController(std::move(other._behaviorController)),
       creatureId_(other.creatureId_)
 {
     // Transfer archetype without incrementing - just null out source
@@ -281,39 +265,28 @@ Creature& Creature::operator=(const Creature& other) {
         _isFleeing = other._isFleeing;
         _targetId = other._targetId;
         _combatCooldown = other._combatCooldown;
-        _hunger = other._hunger;
-        _thirst = other._thirst;
-        _fatigue = other._fatigue;
-        _mate = other._mate;
         _metabolism = other._metabolism;
         _speed = other._speed;
-        
+        needs_ = other.needs_;
+
         // Copy archetype and increment population
         _archetype = other._archetype;
         if (_archetype) {
             _archetype->incrementPopulation();
         }
-        
+
         // Copy biome adaptation and increment population
         _biomeAdaptation = other._biomeAdaptation;
         if (_biomeAdaptation) {
             _biomeAdaptation->incrementPopulation();
         }
-        
+
         // Copy vector members
         _attachedBurrs = other._attachedBurrs;
         _gutSeeds = other._gutSeeds;
-        
-        // Sync OrganismNeeds
-        needs_.energy = _hunger;
-        needs_.hydration = _thirst;
-        needs_.fatigue = _fatigue;
-        needs_.reproductiveUrge = _mate;
-        needs_.maxEnergy = RESOURCE_LIMIT;
-        needs_.maxHydration = RESOURCE_LIMIT;
 
         // Reset behavior controller - lazy initialization will recreate it when needed
-        _behaviorController.reset();
+        behaviorController_.reset();
     }
     return *this;
 }
@@ -345,10 +318,6 @@ Creature& Creature::operator=(Creature&& other) noexcept {
         _isFleeing = other._isFleeing;
         _targetId = other._targetId;
         _combatCooldown = other._combatCooldown;
-        _hunger = other._hunger;
-        _thirst = other._thirst;
-        _fatigue = other._fatigue;
-        _mate = other._mate;
         _metabolism = other._metabolism;
         _speed = other._speed;
         
@@ -365,7 +334,7 @@ Creature& Creature::operator=(Creature&& other) noexcept {
         _gutSeeds = std::move(other._gutSeeds);
         
         // Move behavior controller from source
-        _behaviorController = std::move(other._behaviorController);
+        behaviorController_ = std::move(other.behaviorController_);
     }
     return *this;
 }
@@ -389,10 +358,10 @@ Creature::~Creature() {
 //  Setters
 //================================================================================
 void Creature::setAge     (unsigned age) { age_    = age;    }
-void Creature::setHunger  (float hunger) { _hunger = hunger; needs_.energy = hunger; }
-void Creature::setThirst  (float thirst) { _thirst = thirst; needs_.hydration = thirst; }
-void Creature::setFatigue (float fatigue) { _fatigue = fatigue; needs_.fatigue = fatigue; }
-void Creature::setMate    (float mate)   { _mate   = mate;   needs_.reproductiveUrge = mate; }
+void Creature::setHunger  (float hunger) { needs_.energy = hunger; }
+void Creature::setThirst  (float thirst) { needs_.hydration = thirst; }
+void Creature::setFatigue (float fatigue) { needs_.fatigue = fatigue; }
+void Creature::setMate    (float mate)   { needs_.reproductiveUrge = mate; }
 void Creature::setXY      (int x, int y) { _worldX = static_cast<float>(x); _worldY = static_cast<float>(y); }
 void Creature::setX       (int x)        { _worldX = static_cast<float>(x); }
 void Creature::setY       (int y)        { _worldY = static_cast<float>(y); }
@@ -427,10 +396,10 @@ bool Creature::isAlive() const {
 void Creature::age(unsigned int ticks) {
     age_ += ticks;
 }
-float     Creature::getHunger     () const { return _hunger;                }
-float     Creature::getThirst     () const { return _thirst;                }
-float     Creature::getFatigue    () const { return _fatigue;               }
-float     Creature::getMate       () const { return _mate;                  }
+float     Creature::getHunger     () const { return needs_.energy;           }
+float     Creature::getThirst     () const { return needs_.hydration;       }
+float     Creature::getFatigue    () const { return needs_.fatigue;          }
+float     Creature::getMate       () const { return needs_.reproductiveUrge; }
 float     Creature::getMetabolism () const { return _metabolism;            }
 unsigned  Creature::getSpeed      () const { return _speed;                 }
 
@@ -604,7 +573,7 @@ void Creature::updatePhenotypeContext(const EcoSim::Genetics::EnvironmentState& 
     
     // Convert hunger level to energy (higher hunger = lower energy)
     // _hunger ranges from about -1 to RESOURCE_LIMIT (10.0)
-    orgState.energy_level = std::max(0.0f, std::min(1.0f, _hunger / RESOURCE_LIMIT));
+    orgState.energy_level = std::max(0.0f, std::min(1.0f, needs_.energy / RESOURCE_LIMIT));
     
     // Health is always 1.0 for now (could be expanded later)
     orgState.health = 1.0f;
@@ -654,7 +623,7 @@ void Creature::grow() {
     if (mature_) return;  // Already fully grown
     
     // Growth rate based on nutrition (energy relative to needs)
-    float nutritionFactor = std::clamp(_hunger / 100.0f, 0.1f, 1.5f);
+    float nutritionFactor = std::clamp(needs_.energy / 100.0f, 0.1f, 1.5f);
     
     // Base growth rate from genetics (could use METABOLISM gene)
     float baseGrowthRate = 0.001f;  // Small increment per tick
@@ -691,11 +660,11 @@ void Creature::grow() {
  */
 short Creature::deathCheck () const {
   //  First check creatures age against limit remove if dead
-  if      (age_     > getLifespan())      return 1;
-  else if (_hunger  < STARVATION_POINT)   return 2;
-  else if (_thirst  < DEHYDRATION_POINT)  return 3;
-  else if (_mate    < DISCOMFORT_POINT)   return 4;
-  else if (health_  <= 0.0f)              return 5;  // Combat death
+  if      (age_            > getLifespan())      return 1;
+  else if (needs_.energy   < STARVATION_POINT)   return 2;
+  else if (needs_.hydration < DEHYDRATION_POINT) return 3;
+  else if (needs_.reproductiveUrge < DISCOMFORT_POINT) return 4;
+  else if (health_         <= 0.0f)              return 5;  // Combat death
 
   return 0;
 }
@@ -721,12 +690,12 @@ float Creature::shareResource (const int& amount, float& resource) {
   return shared;
 }
 
-float Creature::shareFood (const int& amount) { 
-  return shareResource (amount, _hunger); 
+float Creature::shareFood (const int& amount) {
+  return shareResource (amount, needs_.energy);
 }
 
-float Creature::shareWater (const int& amount) { 
-  return shareResource (amount, _thirst); 
+float Creature::shareWater (const int& amount) {
+  return shareResource (amount, needs_.hydration);
 }
 
 //================================================================================
@@ -797,7 +766,7 @@ float Creature::calculateDistance (const int &goalX, const int &goalY) const {
 
 void Creature::movementCost (const float &distance) {
   //  First get non-diagonal movement by getting absolute difference
-  _hunger -= _metabolism * distance;
+  needs_.energy -= _metabolism * distance;
 }
 
 //================================================================================
@@ -846,7 +815,7 @@ float Creature::checkFitness (const Creature &c2) const {
  */
 Creature Creature::breedCreature (Creature &mate) {
   //  Charge the cost to breed to parents
-  _hunger -= Creature::BREED_COST; _thirst -= Creature::BREED_COST;
+  needs_.energy -= Creature::BREED_COST; needs_.hydration -= Creature::BREED_COST;
   mate.setHunger (mate.getHunger() - Creature::BREED_COST);
   mate.setThirst (mate.getThirst() - Creature::BREED_COST);
 
@@ -858,7 +827,7 @@ Creature Creature::breedCreature (Creature &mate) {
   if (thirst > RESOURCE_LIMIT) thirst = RESOURCE_LIMIT;
 
   //  Reset the parents mating levels
-  _mate = 0.0f; mate.setMate (0.0f);
+  needs_.reproductiveUrge = 0.0f; mate.setMate (0.0f);
 
   // Create offspring genome using Genome::crossover()
   // genome_ is always valid (value member inherited from Organism)
@@ -892,7 +861,7 @@ Creature Creature::breedCreature (Creature &mate) {
  * Uses existing fitness checks: mature, healthy, sufficient resources.
  */
 bool Creature::canReproduce() const {
-    bool hasResources = _hunger > BREED_COST && _thirst > BREED_COST;
+    bool hasResources = needs_.energy > BREED_COST && needs_.hydration > BREED_COST;
     bool isHealthy = health_ > getMaxHealth() * 0.25f;
     
     return isMature() && hasResources && isHealthy && _motivation == Motivation::Amorous;
@@ -905,7 +874,7 @@ bool Creature::canReproduce() const {
 float Creature::getReproductiveUrge() const {
     // _mate typically ranges from negative (discomfort) to RESOURCE_LIMIT
     // Normalize to 0.0-1.0 range
-    float urge = (_mate + 3.0f) / (RESOURCE_LIMIT + 3.0f);  // Offset for negative values
+    float urge = (needs_.reproductiveUrge + 3.0f) / (RESOURCE_LIMIT + 3.0f);  // Offset for negative values
     return std::max(0.0f, std::min(1.0f, urge));
 }
 
@@ -1487,47 +1456,43 @@ Creature::Creature(int x, int y, std::unique_ptr<EcoSim::Genetics::Genome> genom
       _isFleeing(false),
       _targetId(-1),
       _combatCooldown(0),
-      _hunger(1.0f),
-      _thirst(1.0f),
-      _fatigue(INIT_FATIGUE),
-      _mate(0.0f),
       _metabolism(0.001f),
       _speed(1),
       _archetype(nullptr),
       creatureId_(nextCreatureId_++) {
-    
+
+    // Initialize needs
+    needs_.energy = 1.0f;
+    needs_.hydration = 1.0f;
+    needs_.fatigue = INIT_FATIGUE;
+    needs_.reproductiveUrge = 0.0f;
+    needs_.maxEnergy = RESOURCE_LIMIT;
+    needs_.maxHydration = RESOURCE_LIMIT;
+
     // Set metabolism from phenotype (Organism already created phenotype_)
     if (phenotype_.hasTrait(EcoSim::Genetics::UniversalGenes::METABOLISM_RATE)) {
         _metabolism = phenotype_.getTrait(EcoSim::Genetics::UniversalGenes::METABOLISM_RATE) * 0.001f;
     } else {
         _metabolism = 0.001f;
     }
-    
+
     // Classify archetype from genome (after phenotype is ready)
     _archetype = EcoSim::Genetics::CreatureTaxonomy::classifyArchetype(genome_);
     if (_archetype) {
         _archetype->incrementPopulation();
     }
-    
+
     // Classify biome adaptation from genome
     _biomeAdaptation = EcoSim::Genetics::CreatureTaxonomy::classifyBiomeAdaptation(genome_);
     if (_biomeAdaptation) {
         _biomeAdaptation->incrementPopulation();
     }
-    
+
     _character = generateChar();
     _name = generateName();
 
     // Initialize health to max health (phenotype must be ready)
     health_ = getMaxHealth();
-
-    // Sync OrganismNeeds with legacy floats
-    needs_.energy = _hunger;
-    needs_.hydration = _thirst;
-    needs_.fatigue = _fatigue;
-    needs_.reproductiveUrge = _mate;
-    needs_.maxEnergy = RESOURCE_LIMIT;
-    needs_.maxHydration = RESOURCE_LIMIT;
 
     // Initialize phenotype context
     EcoSim::Genetics::EnvironmentState defaultEnv;
@@ -1550,14 +1515,18 @@ Creature::Creature(int x, int y, float hunger, float thirst,
       _isFleeing(false),
       _targetId(-1),
       _combatCooldown(0),
-      _hunger(hunger),
-      _thirst(thirst),
-      _fatigue(INIT_FATIGUE),
-      _mate(0.0f),
       _metabolism(0.001f),
       _speed(1),
       _archetype(nullptr),
       creatureId_(nextCreatureId_++) {
+
+    // Initialize needs from parameters
+    needs_.energy = hunger;
+    needs_.hydration = thirst;
+    needs_.fatigue = INIT_FATIGUE;
+    needs_.reproductiveUrge = 0.0f;
+    needs_.maxEnergy = RESOURCE_LIMIT;
+    needs_.maxHydration = RESOURCE_LIMIT;
 
     // Set metabolism from phenotype (Organism already created phenotype_)
     if (phenotype_.hasTrait(EcoSim::Genetics::UniversalGenes::METABOLISM_RATE)) {
@@ -1584,14 +1553,6 @@ Creature::Creature(int x, int y, float hunger, float thirst,
     // Initialize health to max health (phenotype must be ready)
     health_ = getMaxHealth();
 
-    // Sync OrganismNeeds with legacy floats
-    needs_.energy = _hunger;
-    needs_.hydration = _thirst;
-    needs_.fatigue = _fatigue;
-    needs_.reproductiveUrge = _mate;
-    needs_.maxEnergy = RESOURCE_LIMIT;
-    needs_.maxHydration = RESOURCE_LIMIT;
-
     // Initialize phenotype context
     EcoSim::Genetics::EnvironmentState defaultEnv;
     updatePhenotypeContext(defaultEnv);
@@ -1602,29 +1563,13 @@ Creature::Creature(int x, int y, float hunger, float thirst,
 //================================================================================
 
 /**
- * Get the behavior controller for this creature.
- * Returns nullptr if behavior system is not initialized.
- */
-EcoSim::Genetics::BehaviorController* Creature::getBehaviorController() {
-    return _behaviorController.get();
-}
-
-/**
- * Get the behavior controller for this creature (const version).
- * Returns nullptr if behavior system is not initialized.
- */
-const EcoSim::Genetics::BehaviorController* Creature::getBehaviorController() const {
-    return _behaviorController.get();
-}
-
-/**
  * Initialize the behavior controller with all behaviors.
  * Called once during creature construction or on first use.
  */
 void Creature::initializeBehaviorController() {
     using namespace EcoSim::Genetics;
     
-    if (_behaviorController) {
+    if (behaviorController_) {
         return;  // Already initialized
     }
     
@@ -1642,33 +1587,33 @@ void Creature::initializeBehaviorController() {
         s_seedDispersal = std::make_unique<SeedDispersal>();
     }
     
-    _behaviorController = std::make_unique<BehaviorController>();
+    behaviorController_ = std::make_unique<BehaviorController>();
     
     // Register behaviors in priority order
     // RestBehavior - CRITICAL priority when exhausted (no dependencies)
-    _behaviorController->addBehavior(std::make_unique<RestBehavior>());
+    behaviorController_->addBehavior(std::make_unique<RestBehavior>());
 
     // ThirstBehavior - HIGH priority when dehydrated (no dependencies)
-    _behaviorController->addBehavior(std::make_unique<ThirstBehavior>());
+    behaviorController_->addBehavior(std::make_unique<ThirstBehavior>());
 
     // HuntingBehavior - HIGH priority for carnivores
-    _behaviorController->addBehavior(std::make_unique<HuntingBehavior>(
+    behaviorController_->addBehavior(std::make_unique<HuntingBehavior>(
         *s_combatInteraction, *s_perceptionSystem));
 
     // FeedingBehavior - NORMAL priority for herbivores
-    _behaviorController->addBehavior(std::make_unique<FeedingBehavior>(
+    behaviorController_->addBehavior(std::make_unique<FeedingBehavior>(
         *s_feedingInteraction, *s_perceptionSystem));
 
     // MatingBehavior - NORMAL priority when ready to mate
-    _behaviorController->addBehavior(std::make_unique<MatingBehavior>(
+    behaviorController_->addBehavior(std::make_unique<MatingBehavior>(
         *s_perceptionSystem, *s_geneRegistry));
 
     // ZoochoryBehavior - LOW priority for seed dispersal
-    _behaviorController->addBehavior(std::make_unique<ZoochoryBehavior>(
+    behaviorController_->addBehavior(std::make_unique<ZoochoryBehavior>(
         *s_seedDispersal));
 
     // MovementBehavior - IDLE priority as default fallback (no dependencies)
-    _behaviorController->addBehavior(std::make_unique<MovementBehavior>());
+    behaviorController_->addBehavior(std::make_unique<MovementBehavior>());
 }
 
 /**
@@ -1714,28 +1659,20 @@ EcoSim::Genetics::BehaviorResult Creature::updateWithBehaviors(EcoSim::Genetics:
     using namespace EcoSim::Genetics;
 
     // Ensure behavior controller is initialized
-    if (!_behaviorController) {
+    if (!behaviorController_) {
         initializeBehaviorController();
     }
 
     // Update the behavior controller — selects and executes the highest priority behavior
-    BehaviorResult result = _behaviorController->update(*this, ctx);
-
-    // Sync behavior state writes back to legacy floats so metabolism code
-    // below operates on the values behaviors actually set (e.g., RestBehavior
-    // reducing fatigue, FeedingBehavior adding energy)
-    _hunger = needs_.energy;
-    _thirst = needs_.hydration;
-    _fatigue = needs_.fatigue;
-    _mate = needs_.reproductiveUrge;
+    BehaviorResult result = behaviorController_->update(*this, ctx);
 
     // Apply energy cost from behavior execution
     if (result.executed && result.energyCost > 0.0f) {
-        _hunger -= result.energyCost;
+        needs_.energy -= result.energyCost;
     }
 
     // Derive Motivation/Action from the currently active behavior
-    std::string behaviorId = _behaviorController->getCurrentBehaviorId();
+    std::string behaviorId = behaviorController_->getCurrentBehaviorId();
     if (behaviorId == "feeding") {
         _motivation = Motivation::Hungry;
         _action = Action::Grazing;
@@ -1759,17 +1696,25 @@ EcoSim::Genetics::BehaviorResult Creature::updateWithBehaviors(EcoSim::Genetics:
         _action = Action::Idle;
     }
 
-    // Growth happens each tick
-    grow();
+    // Passive lifecycle (shared framework — grow, metabolize, stress, reproduce, age)
+    EnvironmentState env = phenotype_.getEnvironment();
+    tickLifecycle(env);
 
-    // Update metabolism effects
+    return result;
+}
+
+//================================================================================
+//  Lifecycle Overrides (Organism::tickLifecycle framework)
+//================================================================================
+
+void Creature::tickMetabolism(const EcoSim::Genetics::EnvironmentState& /* env */) {
     float change = _metabolism;
     bool isResting = (_motivation == Motivation::Tired);
     if (isResting) {
-        _fatigue -= _metabolism;
+        needs_.fatigue -= _metabolism;
         change /= 2;
     } else {
-        _fatigue += _metabolism;
+        needs_.fatigue += _metabolism;
     }
 
     // Update thermal cache if phenotype has changed
@@ -1780,7 +1725,7 @@ EcoSim::Genetics::BehaviorResult Creature::updateWithBehaviors(EcoSim::Genetics:
     float currentTemp = phenotype_.getEnvironment().temperature;
 
     if (std::abs(currentTemp - _lastProcessedTemp) > 0.1f) {
-        _currentEnvironmentalStress = EnvironmentalStressCalculator::calculateTemperatureStress(
+        _currentEnvironmentalStress = EcoSim::Genetics::EnvironmentalStressCalculator::calculateTemperatureStress(
             currentTemp, _cachedBaseTempLow, _cachedBaseTempHigh, _cachedThermalAdaptations);
         _lastProcessedTemp = currentTemp;
     }
@@ -1788,31 +1733,23 @@ EcoSim::Genetics::BehaviorResult Creature::updateWithBehaviors(EcoSim::Genetics:
     // Apply energy drain multiplier from environmental stress
     change *= _currentEnvironmentalStress.energyDrainMultiplier;
 
-    _hunger -= change;
-    _thirst -= change;
+    needs_.energy -= change;
+    needs_.hydration -= change;
+}
 
-    // Apply environmental health damage if creature is outside safe temperature range
+void Creature::tickEnvironmentalStress(const EcoSim::Genetics::EnvironmentState& /* env */) {
     if (_currentEnvironmentalStress.healthDamageRate > 0.0f) {
         float damage = _currentEnvironmentalStress.healthDamageRate * getMaxHealth();
         takeDamage(damage);
     }
+}
 
-    // Mating drive: decrease while resource-seeking, increase when content
+void Creature::tickReproductiveDrive() {
     if (_motivation == Motivation::Hungry || _motivation == Motivation::Thirsty) {
-        _mate -= getComfDec() * 0.3f;
+        needs_.reproductiveUrge -= getComfDec() * 0.3f;
     } else if (_motivation == Motivation::Content) {
-        _mate += getComfInc();
+        needs_.reproductiveUrge += getComfInc();
     }
-
-    // Keep OrganismNeeds in sync with legacy floats
-    needs_.energy = _hunger;
-    needs_.hydration = _thirst;
-    needs_.fatigue = _fatigue;
-    needs_.reproductiveUrge = _mate;
-
-    age_++;
-
-    return result;
 }
 
 //================================================================================

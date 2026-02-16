@@ -1,5 +1,6 @@
 #include "genetics/organisms/Organism.hpp"
 #include "genetics/core/GeneRegistry.hpp"
+#include "genetics/expression/EnvironmentState.hpp"
 #include <algorithm>
 
 namespace EcoSim {
@@ -25,7 +26,9 @@ Organism::Organism(int x, int y, Genome genome, const GeneRegistry& registry)
 }
 
 Organism::Organism(Organism&& other) noexcept
-    : x_(other.x_)
+    : needs_(other.needs_)
+    , behaviorController_(std::move(other.behaviorController_))
+    , x_(other.x_)
     , y_(other.y_)
     , age_(other.age_)
     , alive_(other.alive_)
@@ -48,6 +51,8 @@ Organism::Organism(Organism&& other) noexcept
 
 Organism& Organism::operator=(Organism&& other) noexcept {
     if (this != &other) {
+        needs_ = other.needs_;
+        behaviorController_ = std::move(other.behaviorController_);
         x_ = other.x_;
         y_ = other.y_;
         age_ = other.age_;
@@ -118,6 +123,35 @@ void Organism::heal(float amount) {
     if (amount > 0.0f && alive_) {
         setHealth(health_ + amount);
     }
+}
+
+// ========================================================================
+// Lifecycle Framework (base implementations are minimal/no-ops)
+// ========================================================================
+
+void Organism::tickLifecycle(const EnvironmentState& env) {
+    updatePhenotypeContext(env);
+    grow();
+    tickMetabolism(env);
+    tickEnvironmentalStress(env);
+    tickReproductiveDrive();
+    incrementAge();
+}
+
+void Organism::updatePhenotypeContext(const EnvironmentState& /* env */) {
+    // Base no-op — subclasses override to update phenotype with environment
+}
+
+void Organism::tickMetabolism(const EnvironmentState& /* env */) {
+    // Base no-op — subclasses override with type-specific metabolism
+}
+
+void Organism::tickEnvironmentalStress(const EnvironmentState& /* env */) {
+    // Base no-op — subclasses override with stress calculations
+}
+
+void Organism::tickReproductiveDrive() {
+    // Base no-op — subclasses override with reproductive drive logic
 }
 
 void Organism::rebindPhenotypeGenome() {

@@ -194,9 +194,6 @@ class Creature: public GameObject,
     bool _thermalCacheDirty = true;       // Flag to recompute when phenotype changes
     float _lastProcessedTemp = -999.0f;   // Track temp for stress recalc
 
-    //  Will Variables (creature-specific needs)
-    float _hunger, _thirst, _fatigue, _mate;
-
     //  How quickly the creature burns through food
     float     _metabolism = 0.001f;
     unsigned  _speed      = 1;
@@ -251,10 +248,10 @@ class Creature: public GameObject,
     static std::unique_ptr<EcoSim::Genetics::SeedDispersal> s_seedDispersal;
 
     //============================================================================
-    //  Behavior System
+    //  Behavior System (shared services)
     //============================================================================
-    std::unique_ptr<EcoSim::Genetics::BehaviorController> _behaviorController;
-    
+    // behaviorController_ is inherited from Organism base class
+
     // Shared services for behavior system
     static std::unique_ptr<EcoSim::Genetics::PerceptionSystem> s_perceptionSystem;
     static std::unique_ptr<EcoSim::Genetics::CombatInteraction> s_combatInteraction;
@@ -285,10 +282,10 @@ class Creature: public GameObject,
     // implementation details in the public API. Test fixtures can inherit
     // from Creature to access these methods.
     
-    float getInternalEnergy() const { return _hunger; }
-    float getInternalHydration() const { return _thirst; }
-    float getInternalFatigueLevel() const { return _fatigue; }
-    float getInternalMatingUrge() const { return _mate; }
+    float getInternalEnergy() const { return needs_.energy; }
+    float getInternalHydration() const { return needs_.hydration; }
+    float getInternalFatigueLevel() const { return needs_.fatigue; }
+    float getInternalMatingUrge() const { return needs_.reproductiveUrge; }
     float getInternalHealthValue() const { return health_; }
     bool getInternalCombatFlag() const { return _inCombat; }
     bool getInternalFleeingFlag() const { return _isFleeing; }
@@ -494,15 +491,17 @@ class Creature: public GameObject,
     void grow() override;
     
     //============================================================================
+    //  Lifecycle Overrides (from Organism::tickLifecycle framework)
+    //============================================================================
+
+    void updatePhenotypeContext(const EcoSim::Genetics::EnvironmentState& env) override;
+    void tickMetabolism(const EcoSim::Genetics::EnvironmentState& env) override;
+    void tickEnvironmentalStress(const EcoSim::Genetics::EnvironmentState& env) override;
+    void tickReproductiveDrive() override;
+
+    //============================================================================
     //  Genetics System - Instance Methods
     //============================================================================
-    
-    /**
-     * @brief Update phenotype context with current environment and organism state.
-     *        Should be called each tick or when environment changes significantly.
-     * @param env Current environment state
-     */
-    void updatePhenotypeContext(const EcoSim::Genetics::EnvironmentState& env);
     
     /**
      * @brief Get the expressed value of a gene from the phenotype.
@@ -933,15 +932,8 @@ class Creature: public GameObject,
     static void initializeInteractionSystems();
 
     //============================================================================
-    //  Behavior System
+    //  Behavior System (getBehaviorController() inherited from Organism)
     //============================================================================
-    /**
-     * @brief Get the behavior controller for this creature.
-     * @return Pointer to BehaviorController, or nullptr if not initialized
-     */
-    EcoSim::Genetics::BehaviorController* getBehaviorController();
-    const EcoSim::Genetics::BehaviorController* getBehaviorController() const;
-    
     /**
      * @brief Update creature using the new behavior system.
      * @param ctx Behavior context with world access and timing
