@@ -3,7 +3,7 @@
 **Author:** Gary Ferguson
 **Date:** 2025-12-22
 **Updated:** 2025-12-27
-**Status:** Phase 1 Complete, Phase 2 In Progress - UniversalGenes exists, BehaviorController + IBehavior implemented, but Creature/Plant are still separate classes
+**Status:** Phase 1 Complete, Phase 2 In Progress - UniversalGenes exists, BehaviorController lives on Organism base (both Creature and Plant have it), `tickLifecycle()` shared framework implemented, `needs_` is single source of truth. Creature/Plant are still separate subclasses but share behavior and lifecycle infrastructure.
 **Scope:** Conceptual design for merging creature and plant gene pools
 
 ---
@@ -190,8 +190,9 @@ Replace hard-coded behavior with **modular components activated by gene expressi
 
 ```
 Current Architecture:
-    Creature → BehaviorController with FeedingBehavior, MatingBehavior, etc.
-    Plant → has update(), grow(), spreadSeeds()
+    Organism (base) → owns BehaviorController, tickLifecycle() framework, OrganismNeeds
+    Creature → BC with FeedingBehavior, HuntingBehavior, MatingBehavior, RestBehavior, etc.
+    Plant → BC with SeedDispersalBehavior; PlantManager handles offspring creation
 
 Proposed Architecture (Component-based):
     Organism → capabilities determine active behaviors

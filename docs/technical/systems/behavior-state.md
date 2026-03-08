@@ -1,14 +1,14 @@
 ---
-title: Creature Behavior State System
+title: Organism Behavior State System
 created: 2025-12-25
-updated: 2026-02-15
+updated: 2026-02-16
 status: implemented
-tags: [creatures, behavior, motivation, action, architecture]
+tags: [organisms, creatures, plants, behavior, motivation, action, architecture]
 ---
 
-# Creature Behavior State System
+# Organism Behavior State System
 
-The behavior system uses a **BehaviorController** to select and execute behaviors each tick, with **Motivation/Action** enums derived from the active behavior for UI and rendering observability.
+The behavior system uses a **BehaviorController** on the `Organism` base class to select and execute behaviors each tick. Any organism type can have a BehaviorController — creatures use it for feeding, hunting, mating, etc., while plants use it for seed dispersal decisions. Creatures additionally derive **Motivation/Action** enums from the active behavior for UI and rendering observability.
 
 ## Overview
 
@@ -52,8 +52,8 @@ The `BehaviorController` owns a list of `IBehavior` implementations. Each tick i
 4. Returns a `BehaviorResult` describing what happened
 
 ```cpp
-// In Creature::updateWithBehaviors()
-BehaviorResult result = _behaviorController->update(*this, ctx);
+// Any organism with a BehaviorController (Creature, Plant, etc.)
+BehaviorResult result = behaviorController_->update(*this, ctx);
 ```
 
 ### IBehavior Interface
@@ -105,7 +105,9 @@ struct BehaviorContext {
 
 ## Registered Behaviors
 
-Behaviors are registered in priority order during `initializeBehaviorController()`:
+### Creature Behaviors
+
+Registered in priority order during `Creature::initializeBehaviorController()`:
 
 | Behavior | ID | Priority Tier | Reads | Writes |
 |----------|----|---------------|-------|--------|
@@ -117,33 +119,71 @@ Behaviors are registered in priority order during `initializeBehaviorController(
 | ZoochoryBehavior | `"zoochory"` | LOW | Seed readiness | Disperses seeds |
 | MovementBehavior | `"movement"` | IDLE | Always applicable | Random movement |
 
+### Plant Behaviors
+
+Registered via `Plant::initializeBehaviorController()` (lazy-initialized by PlantManager on first tick):
+
+| Behavior | ID | Priority | Reads | Writes |
+|----------|----|----------|-------|--------|
+| SeedDispersalBehavior | `"seed_dispersal"` | 25+ | `canProduceFruit()`, `canSpreadVegetatively()`, `needs_.reproductiveUrge` | Signals dispersal readiness via `result.completed` |
+
+PlantManager reads the BehaviorResult and handles the actual probability roll and offspring creation.
+
 Each behavior's `isApplicable()` gates whether it can run (e.g., FeedingBehavior checks if the organism can digest plants and is below the hunger threshold). The `getPriority()` then scales with urgency — a starving creature's FeedingBehavior has higher priority than a slightly hungry one.
 
 ## Tick Execution Flow
 
+### Creature Tick
+
 ```
-updateWithBehaviors(ctx)
+takeTurn()
     │
-    ├── 1. BehaviorController selects and executes behavior
-    │       └── Behaviors read/write organism.getNeeds()
+    ├── deathCheck()  ← front-of-tick guard (creature removed if dead)
     │
-    ├── 2. Sync needs_ → legacy floats (_hunger, _thirst, etc.)
-    │
-    ├── 3. Apply behavior energy cost
-    │
-    ├── 4. Derive Motivation/Action from active behavior ID
-    │
-    ├── 5. Growth tick
-    │
-    ├── 6. Metabolism (drain hunger/thirst, accumulate fatigue)
-    │       └── Environmental stress modifies drain rate
-    │
-    ├── 7. Mate drive update (increases when content, decreases when hungry/thirsty)
-    │
-    ├── 8. Sync legacy floats → needs_
-    │
-    └── 9. Age increment
+    └── updateWithBehaviors(ctx)
+            │
+            ├── 1. BehaviorController selects and executes behavior
+            │       └── Behaviors read/write organism.getNeeds()
+            │
+            ├── 2. Apply behavior energy cost (needs_.energy -= cost)
+            │
+            ├── 3. Derive Motivation/Action from active behavior ID
+            │
+            └── 4. tickLifecycle(env)  ← shared Organism framework
+                    ├── updatePhenotypeContext(env)
+                    ├── grow()
+                    ├── tickMetabolism(env)     — drain energy/hydration, accumulate fatigue
+                    ├── tickEnvironmentalStress(env) — temperature/stress health damage
+                    ├── tickReproductiveDrive() — mate drive adjustment
+                    └── incrementAge()
 ```
+
+### Plant Tick
+
+```
+PlantManager::tick()
+    │
+    ├── tile.updatePlants(env)  ← calls plant->update() per plant
+    │       │
+    │       ├── tickLifecycle(env)  ← same shared Organism framework
+    │       │       ├── updatePhenotypeContext(env)
+    │       │       ├── grow(env)
+    │       │       ├── tickMetabolism(env)     — increment fruit timer
+    │       │       ├── tickEnvironmentalStress(env)
+    │       │       ├── tickReproductiveDrive() — set reproductive urge from maturity
+    │       │       └── incrementAge()
+    │       │
+    │       └── checkDeathConditions(env)  ← front-of-tick equivalent
+    │
+    ├── Remove dead plants
+    │
+    └── For each living plant:
+            ├── Emit scent
+            ├── BehaviorController decides dispersal readiness
+            └── PlantManager handles probability roll + offspring creation
+```
+
+`needs_` is the single source of truth for all organism state — there is no sync step between duplicate fields.
 
 ## Motivation and Action Derivation
 
@@ -296,14 +336,17 @@ if (creature.hasTarget()) {
 
 | File | Purpose |
 |------|---------|
+| `include/genetics/organisms/Organism.hpp` | BehaviorController ownership, `tickLifecycle()` framework |
 | `include/genetics/behaviors/IBehavior.hpp` | Behavior interface |
 | `include/genetics/behaviors/BehaviorContext.hpp` | Context struct with world access |
 | `include/genetics/behaviors/BehaviorController.hpp` | Controller that selects/executes behaviors |
 | `src/genetics/behaviors/*.cpp` | Individual behavior implementations |
-| `include/genetics/organisms/OrganismNeeds.hpp` | Shared needs struct |
+| `include/genetics/behaviors/SeedDispersalBehavior.hpp` | Plant dispersal behavior |
+| `include/genetics/organisms/OrganismNeeds.hpp` | Shared needs struct (single source of truth) |
 | `src/objects/creature/BehaviorContextImpl.cpp` | Context builder with SpatialIndex queries |
 | `include/objects/creature/creature.hpp` | Motivation/Action enums, BehaviorState struct |
 | `src/objects/creature/creature.cpp` | `updateWithBehaviors()` — tick execution and M/A derivation |
+| `src/world/PlantManager.cpp` | Plant BC lazy-init and dispersal result handling |
 
 ## See Also
 
