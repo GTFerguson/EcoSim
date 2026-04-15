@@ -303,8 +303,7 @@ void EcoSim::Genetics::Organism::setY       (int y)        { if (mobility_) mobi
 void EcoSim::Genetics::Organism::setMotivation(Motivation m) { motivation_ = m; }
 void EcoSim::Genetics::Organism::setAction(Action a)       { action_ = a; }
 
-// Float position setters
-void Creature::setWorldPosition(float x, float y) { mobility_->worldX = x; mobility_->worldY = y; }
+// Float position setters — setWorldPosition in Organism.cpp for vtable.
 void EcoSim::Genetics::Organism::setWorldX(float x) { if (mobility_) mobility_->worldX = x; }
 void EcoSim::Genetics::Organism::setWorldY(float y) { if (mobility_) mobility_->worldY = y; }
 
@@ -498,32 +497,7 @@ void EcoSim::Genetics::Organism::updateThermalCache() {
 //  Behaviours (legacy Profile methods removed — now handled by BehaviorController)
 //================================================================================
 
-void Creature::grow() {
-    if (mature_) return;  // Already fully grown
-    
-    // Growth rate based on nutrition (energy relative to needs)
-    float nutritionFactor = std::clamp(heterotrophy_->hunger / 100.0f, 0.1f, 1.5f);
-    
-    // Base growth rate from genetics (could use METABOLISM gene)
-    float baseGrowthRate = 0.001f;  // Small increment per tick
-    
-    // Age factor - grow faster when young
-    float ageFactor = 1.0f;
-    if (age_ < 1000) {
-        ageFactor = 1.5f;  // Juveniles grow faster
-    }
-    
-    // Calculate growth increment
-    float growthIncrement = baseGrowthRate * nutritionFactor * ageFactor;
-    
-    // Apply growth
-    currentSize_ = std::min(currentSize_ + growthIncrement, maxSize_);
-    
-    // Check maturity (50% of max size, matching Plant)
-    if (currentSize_ >= maxSize_ * 0.5f) {
-        mature_ = true;
-    }
-}
+// grow() moved to Organism base. Plant keeps its own (plant-specific logic).
 
 /**
  *  This method checks the relevant values of a creature to determine
@@ -1044,10 +1018,8 @@ void EcoSim::Genetics::Organism::takeDamage(float amount) {
     health_ = std::max(0.0f, health_ - amount);
 }
 
-void Creature::heal(float amount) {
-    if (amount <= 0.0f) return;
-    health_ = std::min(getMaxHealth(), health_ + amount);
-}
+// Creature::heal removed — Organism::heal does the same thing now that
+// getMaxHealth is MAX_SIZE-based on the base class.
 
 void EcoSim::Genetics::Organism::setInCombat(bool combat) {
     if (combat_) combat_->inCombat = combat;

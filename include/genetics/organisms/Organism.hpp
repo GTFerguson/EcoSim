@@ -105,7 +105,7 @@ public:
     // World coordinates depend on subclass (Plant: tile center, Creature: precise)
     float getWorldX() const override = 0;
     float getWorldY() const override = 0;
-    void setWorldPosition(float x, float y) override = 0;
+    void setWorldPosition(float x, float y) override;
     
     // ========================================================================
     // ILifecycle - Mostly implemented, max lifespan is gene-dependent
@@ -161,7 +161,7 @@ public:
      * @brief Perform growth for this tick
      * Subclasses implement with their specific growth logic
      */
-    virtual void grow() = 0;
+    virtual void grow();
     
     // ========================================================================
     // Identity

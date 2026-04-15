@@ -272,14 +272,7 @@ class Creature: public GameObject,
      */
     float getWorldY() const override { return mobility_ ? mobility_->worldY : static_cast<float>(y_); }
     
-    /**
-     * @brief Set world position
-     * @param x New X position
-     * @param y New Y position
-     *
-     * Updates both world coordinates and tile coordinates.
-     */
-    void setWorldPosition(float x, float y) override;
+    // setWorldPosition now on Organism base.
     
     //============================================================================
     //  ILifecycle overrides
@@ -321,7 +314,7 @@ class Creature: public GameObject,
      * @brief Perform growth for this tick
      * Growth depends on nutrition and age factors.
      */
-    void grow() override;
+    // grow now on Organism base. Plant keeps its own override.
     // updatePhenotypeContext now on Organism base.
 
     //============================================================================
@@ -335,10 +328,7 @@ class Creature: public GameObject,
      */
     //  getExpressedValue now lives on Organism base.
 
-    //============================================================================
-    //  Creature overrides heal to cap at organism getMaxHealth
-    //============================================================================
-    void  heal(float amount);
+    //  heal now lives on Organism base (uses getMaxHealth which is also on base).
 
     //============================================================================
     //  Inherited from Organism base:

@@ -152,6 +152,27 @@ ReproductionMode Organism::getReproductionMode() const {
     return ReproductionMode::SEXUAL;
 }
 
+void Organism::setWorldPosition(float x, float y) {
+    if (mobility_) { mobility_->worldX = x; mobility_->worldY = y; }
+    x_ = static_cast<int>(x);
+    y_ = static_cast<int>(y);
+}
+
+void Organism::grow() {
+    if (mature_) return;
+    float nutritionFactor = 1.0f;
+    if (heterotrophy_) {
+        nutritionFactor = std::clamp(heterotrophy_->hunger / 100.0f, 0.1f, 1.5f);
+    }
+    float baseGrowthRate = 0.001f;
+    float ageFactor = (age_ < 1000) ? 1.5f : 1.0f;
+    float growthIncrement = baseGrowthRate * nutritionFactor * ageFactor;
+    currentSize_ = std::min(currentSize_ + growthIncrement, maxSize_);
+    if (!mature_ && currentSize_ >= maxSize_ * 0.5f) {
+        mature_ = true;
+    }
+}
+
 unsigned Organism::getLifespan() const {
     if (phenotype_.hasTrait(UniversalGenes::LIFESPAN)) {
         return static_cast<unsigned>(phenotype_.getTrait(UniversalGenes::LIFESPAN));
