@@ -299,6 +299,30 @@ public:
     static void resetIdCounter(int nextId);
     static int  getNextId();
 
+    // Simple getters and setters that delegate to components.
+    // Historically lived on Creature; inherited by Creature via base.
+    void setAge        (unsigned age);
+    void setHunger     (float hunger);
+    void setThirst     (float thirst);
+    void setFatigue    (float fatigue);
+    void setMate       (float mate);
+    void setXY         (int x, int y);
+    void setX          (int x);
+    void setY          (int y);
+    void setMotivation (Motivation m);
+    void setAction     (Action a);
+    void setWorldX     (float x);
+    void setWorldY     (float y);
+    float     getHunger     () const;
+    float     getThirst     () const;
+    float     getFatigue    () const;
+    float     getMate       () const;
+    float     getMetabolism () const;
+    unsigned  getSpeed      () const;
+    Direction getDirection  () const;
+    Motivation getMotivation() const;
+    Action     getAction    () const;
+
     // Display state: current motivation / action for UI/rendering.
     // Derived from active behavior selection, surfaced here for cheap
     // access by panels and renderers.

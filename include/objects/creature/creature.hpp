@@ -397,55 +397,17 @@ class Creature: public GameObject,
     float getExpressedValue(const std::string& geneId) const;
 
     //============================================================================
-    //  Setters
-    //============================================================================
-    void setAge        (unsigned age);
-    void setHunger     (float hunger);
-    void setThirst     (float thirst);
-    void setFatigue    (float fatigue);
-    void setMate       (float mate);
-    void setXY         (int x, int y);
-    void setX          (int x);
-    void setY          (int y);
-    void setMotivation (Motivation m);
-    void setAction     (Action a);
-    
-    //============================================================================
-    //  Float Position Setters
-    //============================================================================
-    /**
-     * @brief Set precise world X coordinate.
-     * @param x Float x-coordinate in world space
-     */
-    void setWorldX(float x);
-    
-    /**
-     * @brief Set precise world Y coordinate.
-     * @param y Float y-coordinate in world space
-     */
-    void setWorldY(float y);
-
-    //============================================================================
-    //  Getters
+    //  Setters, getters for needs/position/motivation/action/speed/direction
+    //  now live on Organism base. Inherited here.
     //============================================================================
     float     getTMate      () const;
-    
+
     //============================================================================
     //  ILifecycle Interface Getters (use Organism's age_)
     //============================================================================
     unsigned int getAge() const override { return Organism::getAge(); }
     float getAgeNormalized() const override;
     void age(unsigned int ticks = 1) override;
-    
-    float     getHunger     () const;
-    float     getThirst     () const;
-    float     getFatigue    () const;
-    float     getMate       () const;
-    float     getMetabolism () const;
-    unsigned  getSpeed      () const;
-    Direction   getDirection  () const;
-    Motivation  getMotivation () const;
-    Action      getAction     () const;
     
     //============================================================================
     //  Float Position Getters

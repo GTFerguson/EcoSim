@@ -292,21 +292,21 @@ Creature::~Creature() {
 //================================================================================
 //  Setters
 //================================================================================
-void Creature::setAge     (unsigned age) { age_    = age;    }
-void Creature::setHunger  (float hunger)  { if (heterotrophy_) heterotrophy_->hunger  = hunger;  }
-void Creature::setThirst  (float thirst)  { if (heterotrophy_) heterotrophy_->thirst  = thirst;  }
-void Creature::setFatigue (float fatigue) { if (heterotrophy_) heterotrophy_->fatigue = fatigue; }
-void Creature::setMate    (float mate)    { if (reproduction_) reproduction_->mate    = mate;    }
-void Creature::setXY      (int x, int y) { mobility_->worldX = static_cast<float>(x); mobility_->worldY = static_cast<float>(y); }
-void Creature::setX       (int x)        { mobility_->worldX = static_cast<float>(x); }
-void Creature::setY       (int y)        { mobility_->worldY = static_cast<float>(y); }
-void Creature::setMotivation(Motivation m) { motivation_ = m; }
-void Creature::setAction(Action a)       { action_ = a; }
+void EcoSim::Genetics::Organism::setAge     (unsigned age_val) { age_    = age_val;    }
+void EcoSim::Genetics::Organism::setHunger  (float hunger)  { if (heterotrophy_) heterotrophy_->hunger  = hunger;  }
+void EcoSim::Genetics::Organism::setThirst  (float thirst)  { if (heterotrophy_) heterotrophy_->thirst  = thirst;  }
+void EcoSim::Genetics::Organism::setFatigue (float fatigue) { if (heterotrophy_) heterotrophy_->fatigue = fatigue; }
+void EcoSim::Genetics::Organism::setMate    (float mate)    { if (reproduction_) reproduction_->mate    = mate;    }
+void EcoSim::Genetics::Organism::setXY      (int x, int y) { if (mobility_) { mobility_->worldX = static_cast<float>(x); mobility_->worldY = static_cast<float>(y); } x_ = x; y_ = y; }
+void EcoSim::Genetics::Organism::setX       (int x)        { if (mobility_) mobility_->worldX = static_cast<float>(x); x_ = x; }
+void EcoSim::Genetics::Organism::setY       (int y)        { if (mobility_) mobility_->worldY = static_cast<float>(y); y_ = y; }
+void EcoSim::Genetics::Organism::setMotivation(Motivation m) { motivation_ = m; }
+void EcoSim::Genetics::Organism::setAction(Action a)       { action_ = a; }
 
 // Float position setters
 void Creature::setWorldPosition(float x, float y) { mobility_->worldX = x; mobility_->worldY = y; }
-void Creature::setWorldX(float x) { mobility_->worldX = x; }
-void Creature::setWorldY(float y) { mobility_->worldY = y; }
+void EcoSim::Genetics::Organism::setWorldX(float x) { if (mobility_) mobility_->worldX = x; }
+void EcoSim::Genetics::Organism::setWorldY(float y) { if (mobility_) mobility_->worldY = y; }
 
 //================================================================================
 //  Getters
@@ -331,12 +331,12 @@ bool Creature::isAlive() const {
 void Creature::age(unsigned int ticks) {
     age_ += ticks;
 }
-float     Creature::getHunger     () const { return heterotrophy_ ? heterotrophy_->hunger  : 0.0f; }
-float     Creature::getThirst     () const { return heterotrophy_ ? heterotrophy_->thirst  : 0.0f; }
-float     Creature::getFatigue    () const { return heterotrophy_ ? heterotrophy_->fatigue : 0.0f; }
-float     Creature::getMate       () const { return reproduction_ ? reproduction_->mate    : 0.0f; }
-float     Creature::getMetabolism () const { return heterotrophy_ ? heterotrophy_->metabolism : 0.0f; }
-unsigned  Creature::getSpeed      () const { return mobility_ ? mobility_->speed : 1u; }
+float     EcoSim::Genetics::Organism::getHunger     () const { return heterotrophy_ ? heterotrophy_->hunger  : 0.0f; }
+float     EcoSim::Genetics::Organism::getThirst     () const { return heterotrophy_ ? heterotrophy_->thirst  : 0.0f; }
+float     EcoSim::Genetics::Organism::getFatigue    () const { return heterotrophy_ ? heterotrophy_->fatigue : 0.0f; }
+float     EcoSim::Genetics::Organism::getMate       () const { return reproduction_ ? reproduction_->mate    : 0.0f; }
+float     EcoSim::Genetics::Organism::getMetabolism () const { return heterotrophy_ ? heterotrophy_->metabolism : 0.0f; }
+unsigned  EcoSim::Genetics::Organism::getSpeed      () const { return mobility_ ? mobility_->speed : 1u; }
 
 // Float position getters
 // getX(), getY(), getWorldX(), getWorldY() are now defined inline in creature.hpp
@@ -371,7 +371,7 @@ float Creature::getMovementSpeed() const {
     // Ensure minimum speed
     return std::max(MIN_MOVEMENT_SPEED, speed);
 }
-Direction Creature::getDirection  () const { return mobility_->direction; }
+Direction EcoSim::Genetics::Organism::getDirection  () const { return mobility_ ? mobility_->direction : Direction::none; }
 
 // Genetics-only getters - derive all values from phenotype
 unsigned Creature::getLifespan() const {
@@ -1351,14 +1351,14 @@ int Creature::getCombatCooldown() const {
 /**
  * Get creature's current motivation state.
  */
-Motivation Creature::getMotivation() const {
+Motivation EcoSim::Genetics::Organism::getMotivation() const {
     return motivation_;
 }
 
 /**
  * Get creature's current action state.
  */
-Action Creature::getAction() const {
+Action EcoSim::Genetics::Organism::getAction() const {
     return action_;
 }
 
