@@ -2,8 +2,8 @@
 
 **Author:** Gary Ferguson
 **Date:** 2025-12-22
-**Updated:** 2025-12-27
-**Status:** Phase 1 Complete, Phase 2 In Progress - UniversalGenes exists, BehaviorController lives on Organism base (both Creature and Plant have it), `tickLifecycle()` shared framework implemented, `needs_` is single source of truth. Creature/Plant are still separate subclasses but share behavior and lifecycle infrastructure.
+**Updated:** 2026-04-15
+**Status:** Phase 1 Complete; Phase 2 partial. `UniversalGenes` registry exists. `IBehavior` + `BehaviorController` exist on `Creature` (not Organism base — the earlier "BehaviorController on Organism base / shared `needs_`" direction was attempted, rolled back after divergence review on 2026-04-15). Six behavior components implemented (Feeding, Hunting, Mating, Rest, Zoochory, Movement) and read shared state via `Phenotype::getOrganismState()` (now carries `hydration`, `fatigue`, `reproductive_urge`). **Still TODO for Phase 2:** behavior activation is hardcoded in `Creature::initializeBehaviorController()` — every creature gets the same 6 behaviors regardless of genes. No `OrganismCapabilities` class, no gene-driven behavior registration. Phase 3 (unified `Organism` class) and Phase 4 (cross-type evolution) not started.
 **Scope:** Conceptual design for merging creature and plant gene pools
 
 ---
@@ -190,9 +190,13 @@ Replace hard-coded behavior with **modular components activated by gene expressi
 
 ```
 Current Architecture:
-    Organism (base) → owns BehaviorController, tickLifecycle() framework, OrganismNeeds
-    Creature → BC with FeedingBehavior, HuntingBehavior, MatingBehavior, RestBehavior, etc.
-    Plant → BC with SeedDispersalBehavior; PlantManager handles offspring creation
+    Organism (base) → minimal: Genome, Phenotype, age/health, lifecycle hooks
+    Creature → owns BehaviorController with hardcoded 6 behaviors (Rest/Hunting/
+        Feeding/Mating/Zoochory/Movement), owns _hunger/_thirst/_fatigue/_mate
+    Plant → owns update()/grow()/spreadSeeds(); PlantManager handles offspring
+    OrganismState (on Phenotype) → shared state read surface: energy_level,
+        hydration, fatigue, reproductive_urge — behaviors read via
+        organism.getPhenotype().getOrganismState()
 
 Proposed Architecture (Component-based):
     Organism → capabilities determine active behaviors
