@@ -428,19 +428,8 @@ void PlantManager::tick(unsigned currentTick) {
                     );
                 }
 
-                // Lazy-init BehaviorController on first encounter
-                if (!plant->hasBehaviorController()) {
-                    plant->initializeBehaviorController(_seedDispersal);
-                }
-
-                // BC decides whether dispersal should happen this tick
-                BehaviorContext ctx;
-                ctx.currentTick = currentTick;
-                BehaviorResult result = plant->getBehaviorController()->update(*plant, ctx);
-
-                // BC signals dispersal readiness — PlantManager handles
-                // the actual probability roll and offspring creation
-                if (result.completed && result.debugInfo == "dispersal_ready") {
+                // Seed dispersal — only mature plants with sufficient energy
+                if (plant->isMature()) {
                     std::uniform_real_distribution<float> dist(0.0f, 1.0f);
 
                     float dispersalChance;

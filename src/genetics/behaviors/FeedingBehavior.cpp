@@ -5,7 +5,7 @@
 #include "genetics/expression/PhenotypeUtils.hpp"
 #include "genetics/organisms/Plant.hpp"
 #include "genetics/defaults/UniversalGenes.hpp"
-#include "genetics/interfaces/IPositionable.hpp"
+#include "genetics/expression/OrganismState.hpp"
 #include "world/world.hpp"
 #include "world/tile.hpp"
 #include <cmath>
@@ -115,15 +115,14 @@ BehaviorResult FeedingBehavior::execute(Organism& organism,
     if (feedingResult.success) {
         targetPlant->takeDamage(feedingResult.plantDamage);
 
-        // Apply nutrition gain to organism needs
-        organism.getNeeds().energy += feedingResult.nutritionGained;
-        if (organism.getNeeds().energy > organism.getNeeds().maxEnergy) {
-            organism.getNeeds().energy = organism.getNeeds().maxEnergy;
-        }
+        // @todo Caller should apply nutrition gain (feedingResult.nutritionGained)
+        // to organism state after execute() returns. Behaviors should not mutate
+        // organism needs directly.
 
         result.executed = true;
         result.completed = true;
-        result.energyCost = BASE_ENERGY_COST;
+        // Report nutrition as negative energy cost so the caller can apply the net effect
+        result.energyCost = BASE_ENERGY_COST - feedingResult.nutritionGained;
 
         std::ostringstream ss;
         ss << "Fed on plant, gained " << feedingResult.nutritionGained
@@ -158,61 +157,17 @@ bool FeedingBehavior::canEatPlants(const Organism& organism) const {
 
 Plant* FeedingBehavior::findNearestEdiblePlant(const Organism& organism,
                                                 const BehaviorContext& ctx) const {
-    if (!ctx.world) {
-        return nullptr;
-    }
-
-    const auto* pos = dynamic_cast<const IPositionable*>(&organism);
-    if (!pos) {
-        return nullptr;
-    }
-
-    int orgX = pos->getX();
-    int orgY = pos->getY();
-    float detectionRange = getDetectionRange(organism);
-    unsigned maxRadius = static_cast<unsigned>(detectionRange);
-    if (maxRadius < 1) maxRadius = 1;
-
-    auto& grid = ctx.world->getGrid();
-    int rows = ctx.worldRows;
-    int cols = ctx.worldCols;
-
-    Plant* nearestPlant = nullptr;
-    float nearestDist = detectionRange + 1.0f;
-
-    for (unsigned radius = 0; radius < maxRadius; ++radius) {
-        int r = static_cast<int>(radius);
-        for (int dx = -r; dx <= r; ++dx) {
-            for (int dy = -r; dy <= r; ++dy) {
-                if (radius > 0 && std::abs(dx) != r && std::abs(dy) != r) continue;
-                int tx = orgX + dx;
-                int ty = orgY + dy;
-                if (tx < 0 || tx >= cols || ty < 0 || ty >= rows) continue;
-
-                const auto& plants = grid[tx][ty].getPlants();
-                for (const auto& plantPtr : plants) {
-                    if (!plantPtr || !plantPtr->isAlive()) continue;
-
-                    float plantDig = getTraitSafe(organism.getPhenotype(),
-                        UniversalGenes::PLANT_DIGESTION_EFFICIENCY, 0.0f);
-                    if (plantDig <= PLANT_DIGESTION_THRESHOLD) continue;
-
-                    float dist = calculateDistance(orgX, orgY, tx, ty);
-                    if (dist < nearestDist) {
-                        nearestDist = dist;
-                        nearestPlant = plantPtr.get();
-                    }
-                }
-            }
-        }
-        if (nearestPlant) break;
-    }
-
-    return nearestPlant;
+    // @todo Add spatial query through BehaviorContext::creatureIndex
+    // Previously used IPositionable dynamic_cast and direct grid iteration.
+    // Needs reimplementation using ctx.creatureIndex or a plant-specific
+    // spatial query once the spatial index supports plant lookups.
+    (void)organism;
+    (void)ctx;
+    return nullptr;
 }
 
 float FeedingBehavior::getHungerLevel(const Organism& organism) const {
-    return organism.getNeeds().energy;
+    return organism.getPhenotype().getOrganismState().energy_level;
 }
 
 float FeedingBehavior::getHungerThreshold(const Organism& organism) const {

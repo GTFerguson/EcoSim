@@ -94,6 +94,31 @@ public:
         phenotype_.invalidateCache();
     }
     
+    void setHunger(float value) {
+        hunger_ = value;
+        syncPhenotypeState();
+    }
+    float getHunger() const { return hunger_; }
+
+    void setMate(float value) {
+        mate_ = value;
+        syncPhenotypeState();
+    }
+    float getMate() const { return mate_; }
+
+    void syncPhenotypeState() {
+        EnvironmentState env;
+        env.temperature = 20.0f;
+        env.humidity = 0.5f;
+        env.time_of_day = 0.5f;
+        OrganismState state;
+        state.age_normalized = static_cast<float>(age_) / static_cast<float>(maxLifespan_);
+        state.health = 1.0f;
+        state.energy_level = hunger_;
+        state.reproductive_urge = mate_;
+        phenotype_.updateContext(env, state);
+    }
+
     /**
      * @brief Set the organism's age to achieve a target normalized age
      * @param ageNorm Target normalized age (0.0 to 1.0)
@@ -114,6 +139,8 @@ public:
 private:
     GeneRegistry& registry_;
     unsigned int maxLifespan_ = 500000;
+    float hunger_ = 10.0f;
+    float mate_ = 0.0f;
 };
 
 void setupMatureOrganism(MockMatingOrganism& organism) {
@@ -142,8 +169,8 @@ void test_isApplicable_trueWhenReadyToMate() {
     organism.setGene(UniversalGenes::MATE_THRESHOLD, 1.0f);
 
     // Set reproductive urge above MATE_THRESHOLD (0.7) and energy above MIN_HUNGER_TO_BREED (5.0)
-    organism.getNeeds().reproductiveUrge = 5.0f;
-    organism.getNeeds().energy = 8.0f;
+    organism.setMate(5.0f);
+    organism.setHunger(8.0f);
 
     BehaviorContext ctx;
     ctx.currentTick = 100;
@@ -322,12 +349,12 @@ void test_priority_increasesWithMateValue() {
     MockMatingOrganism lowMateOrganism(registry);
     setupMatureOrganism(lowMateOrganism);
     // Set a low reproductive urge (just above MATE_THRESHOLD of 0.7)
-    lowMateOrganism.getNeeds().reproductiveUrge = 1.0f;
+    lowMateOrganism.setMate(1.0f);
 
     MockMatingOrganism highMateOrganism(registry);
     setupMatureOrganism(highMateOrganism);
     // Set a high reproductive urge
-    highMateOrganism.getNeeds().reproductiveUrge = 5.0f;
+    highMateOrganism.setMate(5.0f);
 
     float lowPriority = mating.getPriority(lowMateOrganism);
     float highPriority = mating.getPriority(highMateOrganism);

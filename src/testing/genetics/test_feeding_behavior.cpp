@@ -92,9 +92,21 @@ public:
         setGeneValue(getGenomeMutable(), G::UniversalGenes::PLANT_DIGESTION_EFFICIENCY, value);
         updatePhenotype();
     }
-    
+
+    void setHunger(float value) {
+        hunger_ = value;
+        G::EnvironmentState env;
+        G::OrganismState state;
+        state.age_normalized = 0.5f;
+        state.health = 1.0f;
+        state.energy_level = value;
+        phenotype_.updateContext(env, state);
+    }
+    float getHunger() const { return hunger_; }
+
 private:
     G::Phenotype phenotype_;
+    float hunger_ = 10.0f;
     
     static G::Genome createGenome(G::GeneRegistry& registry, float plantDigestion) {
         G::Genome genome = G::UniversalGenes::createCreatureGenome(registry);
@@ -120,7 +132,7 @@ void test_isApplicable_trueWhenHungry() {
     MockOrganism herbivore(*registry, 0.8f);
 
     // Set energy low so organism is hungry (below threshold of 0.5)
-    herbivore.getNeeds().energy = 0.3f;
+    herbivore.setHunger(0.3f);
 
     // Create dependencies
     G::FeedingInteraction feeding;
@@ -153,7 +165,7 @@ void test_isApplicable_falseWhenFull() {
     MockOrganism herbivore(*registry, 0.8f);
 
     // Set energy high so organism is full (above threshold of 0.5)
-    herbivore.getNeeds().energy = 8.0f;
+    herbivore.setHunger(8.0f);
 
     G::FeedingInteraction feeding;
     G::PerceptionSystem perception;
@@ -205,7 +217,7 @@ void test_getPriority_increasesWithHunger() {
     MockOrganism herbivore(*registry, 0.8f);
 
     // Set energy low so organism is hungry (below threshold of 0.5)
-    herbivore.getNeeds().energy = 0.2f;
+    herbivore.setHunger(0.2f);
 
     G::FeedingInteraction feeding;
     G::PerceptionSystem perception;

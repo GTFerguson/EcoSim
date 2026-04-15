@@ -1,4 +1,5 @@
 #include "../include/window.hpp"
+#include <stdexcept>
 
 using namespace std;
 

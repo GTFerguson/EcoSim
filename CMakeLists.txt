@@ -108,7 +108,6 @@ add_library(ecosim_core STATIC
     src/objects/creature/CreaturePlantInteraction.cpp
     src/objects/creature/CreatureResourceSearch.cpp
     src/objects/creature/CreatureSerialization.cpp
-    src/objects/creature/BehaviorContextImpl.cpp
     src/calendar.cpp
     src/fileHandling.cpp
     ${STATISTICS_SOURCES}

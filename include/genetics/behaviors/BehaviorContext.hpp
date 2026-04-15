@@ -1,7 +1,5 @@
 #pragma once
 
-#include <vector>
-
 // Forward declarations for external types (global namespace)
 class World;
 
@@ -15,7 +13,6 @@ namespace Genetics {
 
 // Forward declarations
 struct OrganismState;
-class Organism;
 
 /**
  * @brief Context passed to behaviors during execution
@@ -35,16 +32,6 @@ struct BehaviorContext {
     unsigned int currentTick = 0;             ///< Current simulation tick
     int worldRows = 0;                        ///< World height in tiles
     int worldCols = 0;                        ///< World width in tiles
-
-    /**
-     * @brief Query nearby organisms via spatial index
-     *
-     * Wraps SpatialIndex::queryRadius() and returns Organism* pointers.
-     * Implemented in ecosim_core (which knows Creature inherits Organism).
-     *
-     * @return Empty vector if creatureIndex is null.
-     */
-    std::vector<Organism*> queryNearbyOrganisms(float x, float y, float radius) const;
 };
 
 } // namespace Genetics

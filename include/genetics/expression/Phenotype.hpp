@@ -154,6 +154,8 @@ public:
      * modulation at use-time (CONSUMER_APPLIED traits).
      */
     float getHealth() const { return organism_state_.health; }
+
+    const OrganismState& getOrganismState() const { return organism_state_; }
     
     /**
      * @brief Calculate emergent diet type from digestion genes

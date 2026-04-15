@@ -194,6 +194,12 @@ class Creature: public GameObject,
     bool _thermalCacheDirty = true;       // Flag to recompute when phenotype changes
     float _lastProcessedTemp = -999.0f;   // Track temp for stress recalc
 
+    //  Creature-owned needs (decoupled from Organism base)
+    float _hunger = 1.0f;
+    float _thirst = 1.0f;
+    float _fatigue = 0.0f;
+    float _mate = 0.0f;
+
     //  How quickly the creature burns through food
     float     _metabolism = 0.001f;
     unsigned  _speed      = 1;
@@ -248,9 +254,9 @@ class Creature: public GameObject,
     static std::unique_ptr<EcoSim::Genetics::SeedDispersal> s_seedDispersal;
 
     //============================================================================
-    //  Behavior System (shared services)
+    //  Behavior System
     //============================================================================
-    // behaviorController_ is inherited from Organism base class
+    std::unique_ptr<EcoSim::Genetics::BehaviorController> _behaviorController;
 
     // Shared services for behavior system
     static std::unique_ptr<EcoSim::Genetics::PerceptionSystem> s_perceptionSystem;
@@ -282,10 +288,10 @@ class Creature: public GameObject,
     // implementation details in the public API. Test fixtures can inherit
     // from Creature to access these methods.
     
-    float getInternalEnergy() const { return needs_.energy; }
-    float getInternalHydration() const { return needs_.hydration; }
-    float getInternalFatigueLevel() const { return needs_.fatigue; }
-    float getInternalMatingUrge() const { return needs_.reproductiveUrge; }
+    float getInternalEnergy() const { return _hunger; }
+    float getInternalHydration() const { return _thirst; }
+    float getInternalFatigueLevel() const { return _fatigue; }
+    float getInternalMatingUrge() const { return _mate; }
     float getInternalHealthValue() const { return health_; }
     bool getInternalCombatFlag() const { return _inCombat; }
     bool getInternalFleeingFlag() const { return _isFleeing; }
@@ -490,14 +496,7 @@ class Creature: public GameObject,
      */
     void grow() override;
     
-    //============================================================================
-    //  Lifecycle Overrides (from Organism::tickLifecycle framework)
-    //============================================================================
-
-    void updatePhenotypeContext(const EcoSim::Genetics::EnvironmentState& env) override;
-    void tickMetabolism(const EcoSim::Genetics::EnvironmentState& env) override;
-    void tickEnvironmentalStress(const EcoSim::Genetics::EnvironmentState& env) override;
-    void tickReproductiveDrive() override;
+    void updatePhenotypeContext(const EcoSim::Genetics::EnvironmentState& env);
 
     //============================================================================
     //  Genetics System - Instance Methods
@@ -932,8 +931,11 @@ class Creature: public GameObject,
     static void initializeInteractionSystems();
 
     //============================================================================
-    //  Behavior System (getBehaviorController() inherited from Organism)
+    //  Behavior System
     //============================================================================
+    EcoSim::Genetics::BehaviorController* getBehaviorController();
+    const EcoSim::Genetics::BehaviorController* getBehaviorController() const;
+
     /**
      * @brief Update creature using the new behavior system.
      * @param ctx Behavior context with world access and timing

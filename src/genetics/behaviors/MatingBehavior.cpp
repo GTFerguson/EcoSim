@@ -5,7 +5,6 @@
 #include "genetics/expression/PhenotypeUtils.hpp"
 #include "genetics/expression/OrganismState.hpp"
 #include "genetics/organisms/Organism.hpp"
-#include "genetics/interfaces/IPositionable.hpp"
 #include "genetics/interfaces/ILifecycle.hpp"
 #include "genetics/defaults/UniversalGenes.hpp"
 #include "genetics/core/Genome.hpp"
@@ -124,7 +123,7 @@ bool MatingBehavior::isReadyToMate(const Organism& organism) const {
 }
 
 float MatingBehavior::getMateValue(const Organism& organism) const {
-    return organism.getNeeds().reproductiveUrge;
+    return organism.getPhenotype().getOrganismState().reproductive_urge;
 }
 
 float MatingBehavior::checkFitness(const Organism& seeker,
@@ -147,34 +146,14 @@ float MatingBehavior::checkFitness(const Organism& seeker,
 
 Organism* MatingBehavior::findMate(const Organism& seeker,
                                            const BehaviorContext& ctx) const {
-    const auto* pos = dynamic_cast<const IPositionable*>(&seeker);
-    if (!pos) {
-        return nullptr;
-    }
-
-    float sightRange = getTraitSafe(seeker.getPhenotype(), UniversalGenes::SIGHT_RANGE, 5.0f);
-
-    auto nearby = ctx.queryNearbyOrganisms(pos->getWorldX(), pos->getWorldY(), sightRange);
-
-    Organism* bestMate = nullptr;
-    float bestFitness = -1.0f;
-
-    for (auto* candidate : nearby) {
-        if (candidate == &seeker) continue;
-        if (!candidate->isAlive()) continue;
-
-        // Candidate must also be ready to mate
-        if (candidate->getNeeds().reproductiveUrge < MATE_THRESHOLD) continue;
-        if (candidate->getNeeds().energy < MIN_HUNGER_TO_BREED) continue;
-
-        float fitness = checkFitness(seeker, *candidate);
-        if (fitness > bestFitness) {
-            bestFitness = fitness;
-            bestMate = candidate;
-        }
-    }
-
-    return bestMate;
+    // @todo Add spatial query through BehaviorContext::creatureIndex
+    // Previously used IPositionable dynamic_cast, ctx.queryNearbyOrganisms(),
+    // and candidate->getNeeds() to check reproductive readiness.
+    // Needs reimplementation once SpatialIndex is wired into BehaviorContext
+    // and candidate state is accessible without getNeeds().
+    (void)seeker;
+    (void)ctx;
+    return nullptr;
 }
 
 bool MatingBehavior::isMature(const Organism& organism) const {
@@ -188,7 +167,7 @@ bool MatingBehavior::isMature(const Organism& organism) const {
 }
 
 bool MatingBehavior::hasResourcesToBread(const Organism& organism) const {
-    return organism.getNeeds().energy >= MIN_HUNGER_TO_BREED;
+    return organism.getPhenotype().getOrganismState().energy_level >= (MIN_HUNGER_TO_BREED / 10.0f);
 }
 
 float MatingBehavior::calculateGeneticSimilarity(const Organism& org1,
@@ -201,15 +180,10 @@ float MatingBehavior::calculateGeneticSimilarity(const Organism& org1,
 
 float MatingBehavior::calculateDistance(const Organism& org1,
                                          const Organism& org2) const {
-    const auto* pos1 = dynamic_cast<const IPositionable*>(&org1);
-    const auto* pos2 = dynamic_cast<const IPositionable*>(&org2);
-    
-    if (pos1 && pos2) {
-        float dx = static_cast<float>(pos1->getX() - pos2->getX());
-        float dy = static_cast<float>(pos1->getY() - pos2->getY());
-        return std::sqrt(dx * dx + dy * dy);
-    }
-    
+    // @todo Needs position data from BehaviorContext or a spatial query.
+    // Previously used IPositionable dynamic_cast to get organism coordinates.
+    (void)org1;
+    (void)org2;
     return 0.0f;
 }
 

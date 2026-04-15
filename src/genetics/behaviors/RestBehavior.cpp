@@ -53,8 +53,9 @@ BehaviorResult RestBehavior::execute(Organism& organism,
     float newFatigue = fatigue - recoveryRate;
     if (newFatigue < 0.0f) newFatigue = 0.0f;
 
-    // Write fatigue back through OrganismNeeds
-    organism.getNeeds().fatigue = newFatigue;
+    // @todo Caller should apply fatigue reduction (newFatigue) to organism
+    // state after execute() returns. Behaviors should not mutate organism
+    // needs directly.
 
     if (newFatigue <= threshold) {
         result.completed = true;
@@ -78,7 +79,7 @@ float RestBehavior::getEnergyCost(const Organism& organism) const {
 }
 
 float RestBehavior::getFatigueLevel(const Organism& organism) const {
-    return organism.getNeeds().fatigue;
+    return organism.getPhenotype().getOrganismState().fatigue;
 }
 
 float RestBehavior::getFatigueThreshold(const Organism& organism) const {
@@ -106,7 +107,7 @@ float RestBehavior::getRecoveryRate(const Organism& organism) const {
 }
 
 bool RestBehavior::isTired(const Organism& organism) const {
-    return organism.getNeeds().fatigue > getFatigueThreshold(organism);
+    return getFatigueLevel(organism) > getFatigueThreshold(organism);
 }
 
 } // namespace Genetics

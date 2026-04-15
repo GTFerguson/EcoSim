@@ -88,9 +88,22 @@ public:
         setGeneValue(getGenomeMutable(), G::UniversalGenes::REGENERATION_RATE, value);
         G::Organism::updatePhenotype();
     }
-    
+
+    void setFatigue(float value) {
+        fatigue_ = value;
+        G::EnvironmentState env;
+        G::OrganismState state;
+        state.age_normalized = 0.5f;
+        state.health = 1.0f;
+        state.energy_level = 0.5f;
+        state.fatigue = value;
+        phenotype_.updateContext(env, state);
+    }
+    float getFatigue() const { return fatigue_; }
+
 private:
     G::GeneRegistry& registry_;
+    float fatigue_ = 0.0f;
 };
 
 // ============================================================================
@@ -104,7 +117,7 @@ void test_isApplicable_trueWhenTired() {
     MockRestOrganism organism(*registry, 3.0f);
 
     // Set fatigue above threshold (3.0) so organism is tired
-    organism.getNeeds().fatigue = 5.0f;
+    organism.setFatigue(5.0f);
 
     G::RestBehavior behavior;
 
@@ -128,7 +141,7 @@ void test_isApplicable_falseWhenRested() {
     MockRestOrganism organism(*registry, 10.0f);
 
     // Fatigue defaults to 0.0 (fully rested), well below any threshold
-    // organism.getNeeds().fatigue == 0.0f
+    // organism.getFatigue() == 0.0f
 
     G::RestBehavior behavior;
 
@@ -276,8 +289,8 @@ void test_fatigueThreshold_fromPhenotype() {
     MockRestOrganism highThreshold(*registry, 10.0f);
 
     // Set same fatigue for both — between the two expressed thresholds
-    lowThreshold.getNeeds().fatigue = 2.0f;
-    highThreshold.getNeeds().fatigue = 2.0f;
+    lowThreshold.setFatigue(2.0f);
+    highThreshold.setFatigue(2.0f);
 
     G::RestBehavior behavior;
 
