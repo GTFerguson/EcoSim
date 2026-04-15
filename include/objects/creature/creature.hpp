@@ -444,41 +444,9 @@ class Creature: public GameObject,
         return thermal_ ? thermal_->currentStress : kDefault;
     }
     
-    /**
-     * @brief Get creature archetype label (e.g., "Herbivore", "Predator").
-     * @return Archetype label string
-     */
-    std::string getArchetypeLabel() const;
-    
-    /**
-     * @brief Get scientific name (species classification).
-     * @return Scientific name string
-     */
-    std::string getScientificName() const;
-    
-    /**
-     * @brief Get biome adaptation (environmental specialization).
-     * @return Pointer to BiomeAdaptation flyweight, or nullptr if temperate
-     */
-    const EcoSim::Genetics::BiomeAdaptation* getBiomeAdaptation() const;
-    
-    /**
-     * @brief Reclassify biome adaptation based on current genome.
-     *
-     * Call this after modifying thermal genes (fur density, fat layer, temp tolerance)
-     * to update the biome classification. Automatically updates population tracking.
-     */
-    void reclassifyBiomeAdaptation();
-    
-    /**
-     * @brief Get full label combining archetype and biome (e.g., "Arctic Pack", "Jungle Titan").
-     * @return Full label string with biome prefix and archetype suffix
-     *
-     * Uses the BiomeAdaptation's getFullLabel() method which combines
-     * the biome prefix with the archetype's role suffix.
-     * Falls back to archetype label alone if no biome adaptation.
-     */
-    std::string getFullLabel() const;
+    // Taxonomy/classification getters now on Organism base:
+    // getArchetypeLabel, getScientificName, getBiomeAdaptation,
+    // reclassifyBiomeAdaptation, getFullLabel
     
     //  Genetics-Derived Getters now on Organism base:
     //  getLifespan, getSightRange, getTHunger/Thirst/Fatigue/Mate,

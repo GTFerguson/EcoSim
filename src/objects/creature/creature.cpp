@@ -1145,59 +1145,34 @@ string Creature::toString () const {
  * Get the scientific name for this creature.
  * Uses CreatureTaxonomy for dynamic scientific name generation.
  */
-std::string Creature::getScientificName() const {
-    // Use CreatureTaxonomy for dynamic scientific name generation
-    // genome_ is always valid (value member inherited from Organism)
+std::string EcoSim::Genetics::Organism::getScientificName() const {
     return EcoSim::Genetics::CreatureTaxonomy::generateScientificName(genome_);
 }
 
-/**
- * Get the archetype label for this creature.
- * Uses ArchetypeIdentity if available, falls back to diet type.
- */
-std::string Creature::getArchetypeLabel() const {
-    // Use archetype label if available
-    if (identity_->archetype) {
+std::string EcoSim::Genetics::Organism::getArchetypeLabel() const {
+    if (identity_ && identity_->archetype) {
         return identity_->archetype->getLabel();
     }
-    // Fallback to diet type if no archetype assigned
     return EcoSim::Genetics::Phenotype::dietTypeToString(getDietType());
 }
 
-/**
- * Get the biome adaptation for this creature.
- * Returns nullptr if no biome adaptation assigned (shouldn't happen normally).
- */
-const EcoSim::Genetics::BiomeAdaptation* Creature::getBiomeAdaptation() const {
-    return identity_->biomeAdaptation;
+const EcoSim::Genetics::BiomeAdaptation* EcoSim::Genetics::Organism::getBiomeAdaptation() const {
+    return identity_ ? identity_->biomeAdaptation : nullptr;
 }
 
-/**
- * Get the full label combining biome and archetype.
- * Examples: "Arctic Pack", "Jungle Tyrant", or "Pack Hunter" (for temperate).
- */
-std::string Creature::getFullLabel() const {
-    if (identity_->biomeAdaptation && identity_->archetype) {
+std::string EcoSim::Genetics::Organism::getFullLabel() const {
+    if (identity_ && identity_->biomeAdaptation && identity_->archetype) {
         return identity_->biomeAdaptation->getFullLabel(identity_->archetype);
     }
     return getArchetypeLabel();
 }
 
-/**
- * Reclassify biome adaptation based on current genome.
- * Call this after modifying thermal genes (fur density, fat layer, temp tolerance)
- * to update the biome classification. Automatically updates population tracking.
- */
-void Creature::reclassifyBiomeAdaptation() {
-    // Decrement old biome adaptation population
+void EcoSim::Genetics::Organism::reclassifyBiomeAdaptation() {
+    if (!identity_) return;
     if (identity_->biomeAdaptation) {
         identity_->biomeAdaptation->decrementPopulation();
     }
-    
-    // Reclassify based on current genome state
     identity_->biomeAdaptation = EcoSim::Genetics::CreatureTaxonomy::classifyBiomeAdaptation(genome_);
-    
-    // Increment new biome adaptation population
     if (identity_->biomeAdaptation) {
         identity_->biomeAdaptation->incrementPopulation();
     }

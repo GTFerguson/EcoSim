@@ -26,6 +26,8 @@ class FeedingInteraction;
 class SeedDispersal;
 class PerceptionSystem;
 class CombatInteraction;
+class ArchetypeIdentity;
+class BiomeAdaptation;
 enum class DietType;
 
 /**
@@ -326,6 +328,13 @@ public:
 
     // Gene expression query
     float getExpressedValue(const std::string& geneId) const;
+
+    // Taxonomy / classification getters (use IdentityComponent)
+    std::string getScientificName() const;
+    std::string getArchetypeLabel() const;
+    std::string getFullLabel() const;
+    const BiomeAdaptation* getBiomeAdaptation() const;
+    void reclassifyBiomeAdaptation();
 
     // Phenotype-derived getters (delegate to phenotype_ + gene traits)
     unsigned  getLifespan   () const;
