@@ -94,16 +94,32 @@ std::string BehaviorController::getStatusString() const {
 std::vector<IBehavior*> BehaviorController::getApplicableBehaviors(
     const Organism& organism,
     const BehaviorContext& ctx) const {
-    
+
     std::vector<IBehavior*> applicable;
-    
+
     for (const auto& behavior : behaviors_) {
         if (behavior && behavior->isApplicable(organism, ctx)) {
             applicable.push_back(behavior.get());
         }
     }
-    
+
     return applicable;
+}
+
+void BehaviorController::addPassiveTick(std::unique_ptr<IPassiveTick> tick) {
+    if (tick) {
+        passiveTicks_.push_back(std::move(tick));
+    }
+}
+
+void BehaviorController::tickPassive(Organism& organism, const EnvironmentState& env) {
+    for (const auto& tick : passiveTicks_) {
+        if (tick) tick->tick(organism, env);
+    }
+}
+
+std::size_t BehaviorController::getPassiveTickCount() const {
+    return passiveTicks_.size();
 }
 
 } // namespace Genetics

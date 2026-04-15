@@ -1,6 +1,7 @@
 #pragma once
 
 #include "genetics/behaviors/IBehavior.hpp"
+#include "genetics/behaviors/IPassiveTick.hpp"
 #include "genetics/behaviors/BehaviorContext.hpp"
 #include <vector>
 #include <memory>
@@ -90,8 +91,30 @@ public:
      */
     std::string getStatusString() const;
 
+    // ========================================================================
+    // Passive ticks (physiology — always run, no priority gating)
+    // ========================================================================
+
+    /** Register a passive tick that runs unconditionally each tickPassive(). */
+    void addPassiveTick(std::unique_ptr<IPassiveTick> tick);
+
+    /**
+     * @brief Run every registered passive tick on the organism.
+     *
+     * Passive ticks mutate state (metabolism, growth, photosynthesis,
+     * fatigue decay). They run in registration order; none are gated.
+     * Call this alongside update() or at a different cadence depending
+     * on the organism type — plants run passive-only, creatures run
+     * both.
+     */
+    void tickPassive(Organism& organism, const EnvironmentState& env);
+
+    /** Number of registered passive ticks. */
+    std::size_t getPassiveTickCount() const;
+
 private:
     std::vector<std::unique_ptr<IBehavior>> behaviors_;
+    std::vector<std::unique_ptr<IPassiveTick>> passiveTicks_;
     std::string currentBehaviorId_;
     
     /**
