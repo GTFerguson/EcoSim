@@ -223,6 +223,11 @@ public:
      * @param size New size value
      */
     void setCurrentSize(float size) { currentSize_ = size; }
+
+    /**
+     * @brief Set maximum size directly (deserialization / testing).
+     */
+    void setMaxSize(float size) { maxSize_ = size; }
     
     /**
      * @brief Rebind phenotype's genome pointer after move

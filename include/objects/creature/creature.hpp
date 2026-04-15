@@ -343,18 +343,9 @@ class Creature: public GameObject,
     //============================================================================
     //  ILifecycle Interface Getters (use Organism's age_)
     //============================================================================
-    unsigned int getAge() const override { return Organism::getAge(); }
-
+    //  getAge, getCurrentSize, isMature, getSizeRatio, getHealth already
+    //  inherited from Organism/ILifecycle base. Trivial forwarders removed.
     //============================================================================
-    //  Growth State (forwards to Organism base)
-    //============================================================================
-    float getCurrentSize() const { return Organism::getCurrentSize(); }
-    bool  isMature() const { return Organism::isMature(); }
-    float getSizeRatio() const { return Organism::getSizeRatio(); }
-    void  setCurrentSize(float s) { currentSize_ = s; }
-    void  setMaxSize(float s) { maxSize_ = s; }
-    void  setMature(bool m) { mature_ = m; }
-    float getHealth() const { return Organism::getHealth(); }
 
     // getWoundState remains here because its return type uses the
     // global Direction/WoundState alias and Organism's signature uses
