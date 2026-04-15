@@ -293,6 +293,12 @@ public:
     // Sequential creature display ID counter (moves to a factory later).
     static int nextCreatureId_;
 
+public:
+    // Static ID counter management — historical Creature statics,
+    // now on Organism so they can be reached without creature.hpp.
+    static void resetIdCounter(int nextId);
+    static int  getNextId();
+
     // Display state: current motivation / action for UI/rendering.
     // Derived from active behavior selection, surfaced here for cheap
     // access by panels and renderers.

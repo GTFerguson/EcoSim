@@ -75,11 +75,11 @@ static const DietInfo& getDietInfo(EcoSim::Genetics::DietType diet) {
 //================================================================================
 static int s_nextCreatureId = 1;
 
-void Creature::resetIdCounter(int nextId) {
+void EcoSim::Genetics::Organism::resetIdCounter(int nextId) {
     s_nextCreatureId = nextId;
 }
 
-int Creature::getNextId() {
+int EcoSim::Genetics::Organism::getNextId() {
     return s_nextCreatureId;
 }
 
