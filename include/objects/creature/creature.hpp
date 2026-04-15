@@ -234,24 +234,10 @@ class Creature: public GameObject,
     ~Creature() noexcept override;  // Decrements archetype and biome population counts
   
     //============================================================================
-    //  New Genetics System - Static Methods
+    //  Static methods (initializeGeneRegistry, getGeneRegistry, resetIdCounter,
+    //  getNextId) all now live on Organism base; Creature inherits them.
     //============================================================================
-    /**
-     * @brief Initialize the shared gene registry with default gene definitions.
-     *        Should be called once at application startup before creating creatures.
-     */
-    static void initializeGeneRegistry();
-    
-    // resetIdCounter + getNextId now live on Organism base;
-    // Creature inherits them via base-class static method lookup.
 
-
-    /**
-     * @brief Get the shared gene registry (initializes if not already done).
-     * @return Reference to the shared GeneRegistry
-     */
-    static EcoSim::Genetics::GeneRegistry& getGeneRegistry();
-    
     /**
      * @brief Get creature-specific sequential ID.
      *        Unlike getId() which is shared by all organisms, this ID
@@ -512,18 +498,11 @@ class Creature: public GameObject,
     void initializeBehaviorController();
 
 public:
-    //============================================================================
-    //  Variable Generators
-    //============================================================================
-    char        generateChar ();
-    [[deprecated("Use CreatureTaxonomy::generateScientificName() instead")]]
-    std::string generateName ();
-    //============================================================================
-    //  To String
-    //============================================================================
-    Direction   stringToDirection (const std::string &str);
-    std::string directionToString () const;
-    std::string toString          () const;
+    //  generateChar, generateName, stringToDirection, directionToString
+    //  now live on Organism base.
+    //  toString stays on Creature because it uses GameObject::toString
+    //  which isn't on the Organism (genetics) base class.
+    virtual std::string toString() const override;
     
     //============================================================================
     //  JSON Serialization

@@ -20,6 +20,7 @@ using Direction  = EcoSim::Genetics::Direction;
 using Motivation = EcoSim::Genetics::Motivation;
 using Action     = EcoSim::Genetics::Action;
 
+namespace EcoSim { namespace Genetics { class Organism; } }
 class Creature;
 
 // Forward declare enums that are still Creature-defined

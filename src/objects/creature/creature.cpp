@@ -454,17 +454,14 @@ unsigned EcoSim::Genetics::Organism::getPursue() const {
  * Initialize the shared gene registry with default gene definitions.
  * Should be called once at application startup before creating creatures.
  */
-void Creature::initializeGeneRegistry() {
+void EcoSim::Genetics::Organism::initializeGeneRegistry() {
     if (!s_geneRegistry) {
         s_geneRegistry = std::make_shared<EcoSim::Genetics::GeneRegistry>();
         EcoSim::Genetics::UniversalGenes::registerDefaults(*s_geneRegistry);
     }
 }
 
-/**
- * Get the shared gene registry (initializes if not already done).
- */
-EcoSim::Genetics::GeneRegistry& Creature::getGeneRegistry() {
+EcoSim::Genetics::GeneRegistry& EcoSim::Genetics::Organism::getGeneRegistry() {
     if (!s_geneRegistry) {
         initializeGeneRegistry();
     }
@@ -988,12 +985,10 @@ std::vector<EcoSim::Genetics::DispersalEvent> EcoSim::Genetics::Organism::proces
  *  @param diet The diet used to generate the character.
  *  @return     The character used to represent the creature.
  */
-char Creature::generateChar () {
-  // Use archetype render character if available
-  if (identity_->archetype) {
+char EcoSim::Genetics::Organism::generateChar () {
+  if (identity_ && identity_->archetype) {
     return identity_->archetype->getRenderChar();
   }
-  // Fallback to diet-based character
   return getDietInfo(getDietType()).character;
 }
 
@@ -1006,7 +1001,7 @@ char Creature::generateChar () {
  *
  *  @return The creatures species name.
  */
-string Creature::generateName () {
+std::string EcoSim::Genetics::Organism::generateName () {
   string name = getDietInfo(getDietType()).namePrefix;
 
   if (ifFlocks()) {
@@ -1049,28 +1044,15 @@ string Creature::generateName () {
 //================================================================================
 //  To String
 //================================================================================
-Direction Creature::stringToDirection (const string &str) {
+Direction EcoSim::Genetics::Organism::stringToDirection (const std::string &str) {
   return CreatureSerialization::stringToDirection(str);
 }
 
-/**
- *  This method converts the direction to a human readable string.
- *  Delegates to CreatureSerialization namespace.
- *
- *  @return A human readable string representation of the profile.
- */
-string Creature::directionToString () const {
-  return CreatureSerialization::directionToString(mobility_->direction);
+std::string EcoSim::Genetics::Organism::directionToString () const {
+  return CreatureSerialization::directionToString(mobility_ ? mobility_->direction : Direction::none);
 }
 
-/**
- *  This converts the creature objects member variables to a string that can
- *  be read by a user or saved to a file.
- *  Delegates to CreatureSerialization namespace.
- *
- *  @return A string representation of the creature.
- */
-string Creature::toString () const {
+std::string Creature::toString () const {
   return CreatureSerialization::toString(*this);
 }
 

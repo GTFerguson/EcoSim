@@ -339,6 +339,18 @@ public:
     // Gene expression query
     float getExpressedValue(const std::string& geneId) const;
 
+    // Shared gene registry (historical Creature statics)
+    static void initializeGeneRegistry();
+    static GeneRegistry& getGeneRegistry();
+
+    // String / serialization helpers (delegate to CreatureSerialization)
+    static Direction stringToDirection(const std::string& str);
+    std::string directionToString() const;
+
+    // Name / character generation
+    char generateChar();
+    std::string generateName();
+
     // Scent detection / signature methods (delegate to CreatureScent helpers)
     bool hasScentDetection() const;
     std::array<float, 8> computeScentSignature() const;
