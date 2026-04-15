@@ -165,7 +165,6 @@ Creature::Creature(const Creature& other)
       _isFleeing(other._isFleeing),
       _targetId(other._targetId),
       _combatCooldown(other._combatCooldown),
-      _metabolism(other._metabolism),
       _speed(other._speed),
       _archetype(other._archetype),
       _biomeAdaptation(other._biomeAdaptation),
@@ -178,10 +177,14 @@ Creature::Creature(const Creature& other)
     currentSize_ = other.currentSize_;
     maxSize_ = other.maxSize_;
     mature_ = other.mature_;
-    _hunger = other._hunger;
-    _thirst = other._thirst;
-    _fatigue = other._fatigue;
-    _mate = other._mate;
+
+    // Deep-copy components (unique_ptr can't be copied, Organism copy is disabled)
+    if (other.heterotrophy_) {
+        attachHeterotrophy(std::make_unique<EcoSim::Genetics::HeterotrophyComponent>(*other.heterotrophy_));
+    }
+    if (other.reproduction_) {
+        attachReproduction(std::make_unique<EcoSim::Genetics::ReproductionComponent>(*other.reproduction_));
+    }
 
     // Increment archetype population for the copy
     if (_archetype) {
@@ -210,7 +213,6 @@ Creature::Creature(Creature&& other) noexcept
       _isFleeing(other._isFleeing),
       _targetId(other._targetId),
       _combatCooldown(other._combatCooldown),
-      _metabolism(other._metabolism),
       _speed(other._speed),
       _archetype(other._archetype),
       _biomeAdaptation(other._biomeAdaptation),
@@ -222,6 +224,7 @@ Creature::Creature(Creature&& other) noexcept
     other._archetype = nullptr;
     // Transfer biome adaptation without incrementing - just null out source
     other._biomeAdaptation = nullptr;
+    // Heterotrophy/Reproduction components moved by Organism base move ctor.
 }
 
 /**
@@ -267,12 +270,17 @@ Creature& Creature::operator=(const Creature& other) {
         _isFleeing = other._isFleeing;
         _targetId = other._targetId;
         _combatCooldown = other._combatCooldown;
-        _metabolism = other._metabolism;
         _speed = other._speed;
-        _hunger = other._hunger;
-        _thirst = other._thirst;
-        _fatigue = other._fatigue;
-        _mate = other._mate;
+
+        // Deep-copy components
+        heterotrophy_.reset();
+        reproduction_.reset();
+        if (other.heterotrophy_) {
+            attachHeterotrophy(std::make_unique<EcoSim::Genetics::HeterotrophyComponent>(*other.heterotrophy_));
+        }
+        if (other.reproduction_) {
+            attachReproduction(std::make_unique<EcoSim::Genetics::ReproductionComponent>(*other.reproduction_));
+        }
 
         // Copy archetype and increment population
         _archetype = other._archetype;
@@ -323,8 +331,8 @@ Creature& Creature::operator=(Creature&& other) noexcept {
         _isFleeing = other._isFleeing;
         _targetId = other._targetId;
         _combatCooldown = other._combatCooldown;
-        _metabolism = other._metabolism;
         _speed = other._speed;
+        // Heterotrophy/Reproduction components moved by Organism::operator=
         
         // Transfer archetype - don't increment, just null source
         _archetype = other._archetype;
@@ -363,10 +371,10 @@ Creature::~Creature() {
 //  Setters
 //================================================================================
 void Creature::setAge     (unsigned age) { age_    = age;    }
-void Creature::setHunger  (float hunger) { _hunger = hunger; }
-void Creature::setThirst  (float thirst) { _thirst = thirst; }
-void Creature::setFatigue (float fatigue) { _fatigue = fatigue; }
-void Creature::setMate    (float mate)   { _mate = mate; }
+void Creature::setHunger  (float hunger)  { if (heterotrophy_) heterotrophy_->hunger  = hunger;  }
+void Creature::setThirst  (float thirst)  { if (heterotrophy_) heterotrophy_->thirst  = thirst;  }
+void Creature::setFatigue (float fatigue) { if (heterotrophy_) heterotrophy_->fatigue = fatigue; }
+void Creature::setMate    (float mate)    { if (reproduction_) reproduction_->mate    = mate;    }
 void Creature::setXY      (int x, int y) { _worldX = static_cast<float>(x); _worldY = static_cast<float>(y); }
 void Creature::setX       (int x)        { _worldX = static_cast<float>(x); }
 void Creature::setY       (int y)        { _worldY = static_cast<float>(y); }
@@ -401,11 +409,11 @@ bool Creature::isAlive() const {
 void Creature::age(unsigned int ticks) {
     age_ += ticks;
 }
-float     Creature::getHunger     () const { return _hunger;           }
-float     Creature::getThirst     () const { return _thirst;       }
-float     Creature::getFatigue    () const { return _fatigue;          }
-float     Creature::getMate       () const { return _mate; }
-float     Creature::getMetabolism () const { return _metabolism;            }
+float     Creature::getHunger     () const { return heterotrophy_ ? heterotrophy_->hunger  : 0.0f; }
+float     Creature::getThirst     () const { return heterotrophy_ ? heterotrophy_->thirst  : 0.0f; }
+float     Creature::getFatigue    () const { return heterotrophy_ ? heterotrophy_->fatigue : 0.0f; }
+float     Creature::getMate       () const { return reproduction_ ? reproduction_->mate    : 0.0f; }
+float     Creature::getMetabolism () const { return heterotrophy_ ? heterotrophy_->metabolism : 0.0f; }
 unsigned  Creature::getSpeed      () const { return _speed;                 }
 
 // Float position getters
@@ -577,8 +585,8 @@ void Creature::updatePhenotypeContext(const EcoSim::Genetics::EnvironmentState& 
     }
     
     // Convert hunger level to energy (higher hunger = lower energy)
-    // _hunger ranges from about -1 to RESOURCE_LIMIT (10.0)
-    orgState.energy_level = std::max(0.0f, std::min(1.0f, _hunger / RESOURCE_LIMIT));
+    // heterotrophy_->hunger ranges from about -1 to RESOURCE_LIMIT (10.0)
+    orgState.energy_level = std::max(0.0f, std::min(1.0f, heterotrophy_->hunger / RESOURCE_LIMIT));
     
     // Health is always 1.0 for now (could be expanded later)
     orgState.health = 1.0f;
@@ -628,7 +636,7 @@ void Creature::grow() {
     if (mature_) return;  // Already fully grown
     
     // Growth rate based on nutrition (energy relative to needs)
-    float nutritionFactor = std::clamp(_hunger / 100.0f, 0.1f, 1.5f);
+    float nutritionFactor = std::clamp(heterotrophy_->hunger / 100.0f, 0.1f, 1.5f);
     
     // Base growth rate from genetics (could use METABOLISM gene)
     float baseGrowthRate = 0.001f;  // Small increment per tick
@@ -666,9 +674,9 @@ void Creature::grow() {
 short Creature::deathCheck () const {
   //  First check creatures age against limit remove if dead
   if      (age_            > getLifespan())      return 1;
-  else if (_hunger   < STARVATION_POINT)   return 2;
-  else if (_thirst < DEHYDRATION_POINT) return 3;
-  else if (_mate < DISCOMFORT_POINT) return 4;
+  else if (heterotrophy_->hunger   < STARVATION_POINT)   return 2;
+  else if (heterotrophy_->thirst < DEHYDRATION_POINT) return 3;
+  else if (reproduction_->mate < DISCOMFORT_POINT) return 4;
   else if (health_         <= 0.0f)              return 5;  // Combat death
 
   return 0;
@@ -696,11 +704,11 @@ float Creature::shareResource (const int& amount, float& resource) {
 }
 
 float Creature::shareFood (const int& amount) {
-  return shareResource (amount, _hunger);
+  return shareResource (amount, heterotrophy_->hunger);
 }
 
 float Creature::shareWater (const int& amount) {
-  return shareResource (amount, _thirst);
+  return shareResource (amount, heterotrophy_->thirst);
 }
 
 //================================================================================
@@ -771,7 +779,7 @@ float Creature::calculateDistance (const int &goalX, const int &goalY) const {
 
 void Creature::movementCost (const float &distance) {
   //  First get non-diagonal movement by getting absolute difference
-  _hunger -= _metabolism * distance;
+  heterotrophy_->hunger -= heterotrophy_->metabolism * distance;
 }
 
 //================================================================================
@@ -820,7 +828,7 @@ float Creature::checkFitness (const Creature &c2) const {
  */
 Creature Creature::breedCreature (Creature &mate) {
   //  Charge the cost to breed to parents
-  _hunger -= Creature::BREED_COST; _thirst -= Creature::BREED_COST;
+  heterotrophy_->hunger -= Creature::BREED_COST; heterotrophy_->thirst -= Creature::BREED_COST;
   mate.setHunger (mate.getHunger() - Creature::BREED_COST);
   mate.setThirst (mate.getThirst() - Creature::BREED_COST);
 
@@ -832,7 +840,7 @@ Creature Creature::breedCreature (Creature &mate) {
   if (thirst > RESOURCE_LIMIT) thirst = RESOURCE_LIMIT;
 
   //  Reset the parents mating levels
-  _mate = 0.0f; mate.setMate (0.0f);
+  reproduction_->mate = 0.0f; mate.setMate (0.0f);
 
   // Create offspring genome using Genome::crossover()
   // genome_ is always valid (value member inherited from Organism)
@@ -866,7 +874,7 @@ Creature Creature::breedCreature (Creature &mate) {
  * Uses existing fitness checks: mature, healthy, sufficient resources.
  */
 bool Creature::canReproduce() const {
-    bool hasResources = _hunger > BREED_COST && _thirst > BREED_COST;
+    bool hasResources = heterotrophy_->hunger > BREED_COST && heterotrophy_->thirst > BREED_COST;
     bool isHealthy = health_ > getMaxHealth() * 0.25f;
     
     return isMature() && hasResources && isHealthy && _motivation == Motivation::Amorous;
@@ -874,12 +882,12 @@ bool Creature::canReproduce() const {
 
 /**
  * Get reproductive urge (normalized 0.0-1.0).
- * Based on internal _mate state normalized to resource limit.
+ * Based on internal reproduction_->mate state normalized to resource limit.
  */
 float Creature::getReproductiveUrge() const {
-    // _mate typically ranges from negative (discomfort) to RESOURCE_LIMIT
+    // reproduction_->mate typically ranges from negative (discomfort) to RESOURCE_LIMIT
     // Normalize to 0.0-1.0 range
-    float urge = (_mate + 3.0f) / (RESOURCE_LIMIT + 3.0f);  // Offset for negative values
+    float urge = (reproduction_->mate + 3.0f) / (RESOURCE_LIMIT + 3.0f);  // Offset for negative values
     return std::max(0.0f, std::min(1.0f, urge));
 }
 
@@ -1461,22 +1469,25 @@ Creature::Creature(int x, int y, std::unique_ptr<EcoSim::Genetics::Genome> genom
       _isFleeing(false),
       _targetId(-1),
       _combatCooldown(0),
-      _metabolism(0.001f),
       _speed(1),
       _archetype(nullptr),
       creatureId_(nextCreatureId_++) {
 
-    // Initialize needs
-    _hunger = 1.0f;
-    _thirst = 1.0f;
-    _fatigue = INIT_FATIGUE;
-    _mate = 0.0f;
+    // Attach heterotrophy + reproduction components (all Creatures are heterotrophs)
+    attachHeterotrophy(std::make_unique<EcoSim::Genetics::HeterotrophyComponent>());
+    attachReproduction(std::make_unique<EcoSim::Genetics::ReproductionComponent>());
+
+    // Initialise needs
+    heterotrophy_->hunger  = 1.0f;
+    heterotrophy_->thirst  = 1.0f;
+    heterotrophy_->fatigue = INIT_FATIGUE;
+    reproduction_->mate    = 0.0f;
 
     // Set metabolism from phenotype (Organism already created phenotype_)
     if (phenotype_.hasTrait(EcoSim::Genetics::UniversalGenes::METABOLISM_RATE)) {
-        _metabolism = phenotype_.getTrait(EcoSim::Genetics::UniversalGenes::METABOLISM_RATE) * 0.001f;
+        heterotrophy_->metabolism = phenotype_.getTrait(EcoSim::Genetics::UniversalGenes::METABOLISM_RATE) * 0.001f;
     } else {
-        _metabolism = 0.001f;
+        heterotrophy_->metabolism = 0.001f;
     }
 
     // Classify archetype from genome (after phenotype is ready)
@@ -1518,22 +1529,25 @@ Creature::Creature(int x, int y, float hunger, float thirst,
       _isFleeing(false),
       _targetId(-1),
       _combatCooldown(0),
-      _metabolism(0.001f),
       _speed(1),
       _archetype(nullptr),
       creatureId_(nextCreatureId_++) {
 
-    // Initialize needs from parameters
-    _hunger = hunger;
-    _thirst = thirst;
-    _fatigue = INIT_FATIGUE;
-    _mate = 0.0f;
+    // Attach heterotrophy + reproduction components (all Creatures are heterotrophs)
+    attachHeterotrophy(std::make_unique<EcoSim::Genetics::HeterotrophyComponent>());
+    attachReproduction(std::make_unique<EcoSim::Genetics::ReproductionComponent>());
+
+    // Initialise needs from parameters
+    heterotrophy_->hunger  = hunger;
+    heterotrophy_->thirst  = thirst;
+    heterotrophy_->fatigue = INIT_FATIGUE;
+    reproduction_->mate    = 0.0f;
 
     // Set metabolism from phenotype (Organism already created phenotype_)
     if (phenotype_.hasTrait(EcoSim::Genetics::UniversalGenes::METABOLISM_RATE)) {
-        _metabolism = phenotype_.getTrait(EcoSim::Genetics::UniversalGenes::METABOLISM_RATE) * 0.001f;
+        heterotrophy_->metabolism = phenotype_.getTrait(EcoSim::Genetics::UniversalGenes::METABOLISM_RATE) * 0.001f;
     } else {
-        _metabolism = 0.001f;
+        heterotrophy_->metabolism = 0.001f;
     }
 
     // Classify archetype from genome (after phenotype is ready)
@@ -1641,10 +1655,10 @@ EcoSim::Genetics::BehaviorContext Creature::buildBehaviorContext(
     // Using thread_local static for safe temporary storage
     thread_local OrganismState tempState;
     tempState.age_normalized = getAgeNormalized();
-    tempState.energy_level = std::max(0.0f, std::min(1.0f, _hunger / RESOURCE_LIMIT));
-    tempState.hydration = std::max(0.0f, std::min(1.0f, _thirst / RESOURCE_LIMIT));
-    tempState.fatigue = _fatigue;
-    tempState.reproductive_urge = _mate;
+    tempState.energy_level = std::max(0.0f, std::min(1.0f, heterotrophy_->hunger / RESOURCE_LIMIT));
+    tempState.hydration = std::max(0.0f, std::min(1.0f, heterotrophy_->thirst / RESOURCE_LIMIT));
+    tempState.fatigue = heterotrophy_->fatigue;
+    tempState.reproductive_urge = reproduction_->mate;
     tempState.health = getHealthPercent();
     
     BehaviorContext ctx;
@@ -1677,7 +1691,7 @@ EcoSim::Genetics::BehaviorResult Creature::updateWithBehaviors(EcoSim::Genetics:
 
     // Apply energy cost from behavior execution
     if (result.executed && result.energyCost > 0.0f) {
-        _hunger -= result.energyCost;
+        heterotrophy_->hunger -= result.energyCost;
     }
 
     // Derive Motivation/Action from the currently active behavior
@@ -1712,13 +1726,13 @@ EcoSim::Genetics::BehaviorResult Creature::updateWithBehaviors(EcoSim::Genetics:
         grow();
 
         // Metabolism: drain energy/hydration, accumulate fatigue
-        float change = _metabolism;
+        float change = heterotrophy_->metabolism;
         bool isResting = (_motivation == Motivation::Tired);
         if (isResting) {
-            _fatigue -= _metabolism;
+            heterotrophy_->fatigue -= heterotrophy_->metabolism;
             change /= 2;
         } else {
-            _fatigue += _metabolism;
+            heterotrophy_->fatigue += heterotrophy_->metabolism;
         }
 
         if (_thermalCacheDirty) {
@@ -1733,8 +1747,8 @@ EcoSim::Genetics::BehaviorResult Creature::updateWithBehaviors(EcoSim::Genetics:
         }
 
         change *= _currentEnvironmentalStress.energyDrainMultiplier;
-        _hunger -= change;
-        _thirst -= change;
+        heterotrophy_->hunger -= change;
+        heterotrophy_->thirst -= change;
 
         // Environmental stress: temperature/stress health damage
         if (_currentEnvironmentalStress.healthDamageRate > 0.0f) {
@@ -1744,9 +1758,9 @@ EcoSim::Genetics::BehaviorResult Creature::updateWithBehaviors(EcoSim::Genetics:
 
         // Reproductive drive adjustment
         if (_motivation == Motivation::Hungry || _motivation == Motivation::Thirsty) {
-            _mate -= getComfDec() * 0.3f;
+            reproduction_->mate -= getComfDec() * 0.3f;
         } else if (_motivation == Motivation::Content) {
-            _mate += getComfInc();
+            reproduction_->mate += getComfInc();
         }
 
         ++age_;

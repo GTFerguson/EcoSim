@@ -194,14 +194,9 @@ class Creature: public GameObject,
     bool _thermalCacheDirty = true;       // Flag to recompute when phenotype changes
     float _lastProcessedTemp = -999.0f;   // Track temp for stress recalc
 
-    //  Creature-owned needs (decoupled from Organism base)
-    float _hunger = 1.0f;
-    float _thirst = 1.0f;
-    float _fatigue = 0.0f;
-    float _mate = 0.0f;
-
-    //  How quickly the creature burns through food
-    float     _metabolism = 0.001f;
+    //  Needs now live on Organism base components:
+    //  - hunger/thirst/fatigue/metabolism: HeterotrophyComponent (heterotrophy_)
+    //  - mate: ReproductionComponent (reproduction_)
     unsigned  _speed      = 1;
 
     //============================================================================
@@ -288,20 +283,20 @@ class Creature: public GameObject,
     // implementation details in the public API. Test fixtures can inherit
     // from Creature to access these methods.
     
-    float getInternalEnergy() const { return _hunger; }
-    float getInternalHydration() const { return _thirst; }
-    float getInternalFatigueLevel() const { return _fatigue; }
-    float getInternalMatingUrge() const { return _mate; }
-    float getInternalHealthValue() const { return health_; }
-    bool getInternalCombatFlag() const { return _inCombat; }
-    bool getInternalFleeingFlag() const { return _isFleeing; }
-    int getInternalTargetCreatureId() const { return _targetId; }
-    int getInternalCombatCooldownTicks() const { return _combatCooldown; }
-    
+    float getInternalEnergy() const        { return heterotrophy_ ? heterotrophy_->hunger  : 0.0f; }
+    float getInternalHydration() const     { return heterotrophy_ ? heterotrophy_->thirst  : 0.0f; }
+    float getInternalFatigueLevel() const  { return heterotrophy_ ? heterotrophy_->fatigue : 0.0f; }
+    float getInternalMatingUrge() const    { return reproduction_ ? reproduction_->mate    : 0.0f; }
+    float getInternalHealthValue() const   { return health_; }
+    bool getInternalCombatFlag() const     { return _inCombat; }
+    bool getInternalFleeingFlag() const    { return _isFleeing; }
+    int getInternalTargetCreatureId() const      { return _targetId; }
+    int getInternalCombatCooldownTicks() const   { return _combatCooldown; }
+
     // Plant interaction state
     const std::vector<std::tuple<int, int, int, int>>& getInternalAttachedBurrs() const { return _attachedBurrs; }
     const std::vector<std::tuple<int, float, int>>& getInternalGutSeeds() const { return _gutSeeds; }
-    
+
     // Allow mutable access for test setup
     std::vector<std::tuple<int, int, int, int>>& getInternalAttachedBurrsMutable() { return _attachedBurrs; }
     std::vector<std::tuple<int, float, int>>& getInternalGutSeedsMutable() { return _gutSeeds; }

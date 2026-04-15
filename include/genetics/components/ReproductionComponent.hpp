@@ -13,7 +13,11 @@ namespace Genetics {
  * is determined at gene-expression time.
  */
 struct ReproductionComponent {
-    float reproductiveUrge = 0.0f;      // 0-1, accumulates toward mating readiness
+    // Raw mating drive accumulator (Creature historically called this _mate).
+    // Scale is implementation-defined but roughly 0-RESOURCE_LIMIT (~10) with
+    // negative values representing discomfort. The normalised 0-1
+    // "reproductive urge" is derived from this via getReproductiveUrge().
+    float mate = 0.0f;
     bool isPregnant = false;
     unsigned gestationTimer = 0;         // Ticks remaining until birth/laying
     int mateTargetId = -1;               // Currently pursued mate, -1 if none
