@@ -455,13 +455,9 @@ class Creature: public GameObject,
     //============================================================================
     //  Core Simulation Methods
     //============================================================================
-    short deathCheck        () const;
-    float shareResource     (const int &amount, float &resource);
-    float shareFood         (const int &amount);
-    float shareWater        (const int &amount);
-    void  changeDirection   (const int &xChange, const int &yChange);
-    float calculateDistance (const int &goalX, const int &goalY) const;
-    void  movementCost      (const float &distance);
+    //  Core simulation helpers (deathCheck, shareResource, shareFood,
+    //  shareWater, changeDirection, calculateDistance, movementCost)
+    //  now live on Organism base.
 
     //============================================================================
     //  Breeding

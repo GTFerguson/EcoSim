@@ -329,6 +329,15 @@ public:
     // Gene expression query
     float getExpressedValue(const std::string& geneId) const;
 
+    // Core simulation helpers
+    short deathCheck() const;
+    float shareResource(const int& amount, float& resource);
+    float shareFood(const int& amount);
+    float shareWater(const int& amount);
+    void  changeDirection(const int& xChange, const int& yChange);
+    float calculateDistance(const int& goalX, const int& goalY) const;
+    void  movementCost(const float& distance);
+
     // Taxonomy / classification getters (use IdentityComponent)
     std::string getScientificName() const;
     std::string getArchetypeLabel() const;

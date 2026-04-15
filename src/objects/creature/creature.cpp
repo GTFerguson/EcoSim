@@ -577,14 +577,13 @@ void Creature::grow() {
  *            3 - Dehydration
  *            4 - Discomfort
  */
-short Creature::deathCheck () const {
-  //  First check creatures age against limit remove if dead
-  if      (age_            > getLifespan())      return 1;
-  else if (heterotrophy_->hunger   < STARVATION_POINT)   return 2;
-  else if (heterotrophy_->thirst < DEHYDRATION_POINT) return 3;
-  else if (reproduction_->mate < DISCOMFORT_POINT) return 4;
-  else if (health_         <= 0.0f)              return 5;  // Combat death
-
+short EcoSim::Genetics::Organism::deathCheck () const {
+  using namespace EcoSim::Genetics::Constants;
+  if      (age_ > getLifespan())                                  return 1;
+  else if (heterotrophy_ && heterotrophy_->hunger  < STARVATION_POINT)  return 2;
+  else if (heterotrophy_ && heterotrophy_->thirst  < DEHYDRATION_POINT) return 3;
+  else if (reproduction_ && reproduction_->mate    < DISCOMFORT_POINT)  return 4;
+  else if (health_ <= 0.0f)                                        return 5;
   return 0;
 }
 
@@ -596,24 +595,25 @@ short Creature::deathCheck () const {
  *  @param amount The lower the value the higher the amount
  *  @return       The amount of a resource given.
  */
-float Creature::shareResource (const int& amount, float& resource) {
+float EcoSim::Genetics::Organism::shareResource (const int& amount, float& resource) {
+  (void)amount;
   float shared;
-
   if (resource > 0.0f) {
-    shared = resource / RESOURCE_SHARED;
+    shared = resource / Constants::RESOURCE_SHARED;
     resource -= shared;
   } else {
     shared = 0.0f;
   }
-
   return shared;
 }
 
-float Creature::shareFood (const int& amount) {
+float EcoSim::Genetics::Organism::shareFood (const int& amount) {
+  if (!heterotrophy_) return 0.0f;
   return shareResource (amount, heterotrophy_->hunger);
 }
 
-float Creature::shareWater (const int& amount) {
+float EcoSim::Genetics::Organism::shareWater (const int& amount) {
+  if (!heterotrophy_) return 0.0f;
   return shareResource (amount, heterotrophy_->thirst);
 }
 
@@ -654,7 +654,8 @@ bool Creature::findFoodScent(const EcoSim::ScentLayer& scentLayer, int& outX, in
  *  @param xChange  Movement made along x-axis
  *  @param yChange  Movement made along y-axis
  */
-void Creature::changeDirection (const int &xChange, const int &yChange) {
+void EcoSim::Genetics::Organism::changeDirection (const int &xChange, const int &yChange) {
+  if (!mobility_) return;
   if (xChange == 1) {
     if      (yChange ==  1) mobility_->direction = Direction::SE;
     else if (yChange == -1) mobility_->direction = Direction::NE;
@@ -676,16 +677,16 @@ void Creature::changeDirection (const int &xChange, const int &yChange) {
  *  @param goalX  The x-coordinate of the destination.
  *  @param goalY  The y-coordinate of the destination.
  */
-float Creature::calculateDistance (const int &goalX, const int &goalY) const {
-  // Phase 1: Float Movement - use tile positions for grid-based distance calculation
+float EcoSim::Genetics::Organism::calculateDistance (const int &goalX, const int &goalY) const {
   float xDist = tileX() - goalX;
   float yDist = tileY() - goalY;
   return sqrt(xDist * xDist + yDist * yDist);
 }
 
-void Creature::movementCost (const float &distance) {
-  //  First get non-diagonal movement by getting absolute difference
-  heterotrophy_->hunger -= heterotrophy_->metabolism * distance;
+void EcoSim::Genetics::Organism::movementCost (const float &distance) {
+  if (heterotrophy_) {
+    heterotrophy_->hunger -= heterotrophy_->metabolism * distance;
+  }
 }
 
 //================================================================================
