@@ -50,3 +50,6 @@ test_saves_temp/
 
 # Generated output files
 output/
+
+# nkrdn knowledge graph (local index, rebuild with `nkrdn rebuild`)
+.nkrdn/
