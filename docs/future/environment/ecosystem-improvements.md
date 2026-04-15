@@ -1,8 +1,8 @@
 ---
 title: Ecosystem & Creature Behavior Improvements
 created: 2025-12-24
-updated: 2025-12-26
-status: planned
+updated: 2026-04-14
+status: partially-shipped
 tags: [ecosystem, creatures, behavior, world, future]
 ---
 
@@ -12,25 +12,31 @@ Improvements to creature behavior, world mechanics, and ecosystem dynamics.
 
 ---
 
+## Already shipped (audit 2026-04-14)
+
+The following items from earlier versions of this doc have been shipped via the unified-organism migration and related work. They are retained here as an audit trail but are no longer "improvements to make."
+
+- ✅ **Health system** — `Organism::getHealth()`, `Creature::takeDamage()`, `WoundState` enum at `include/objects/creature/creature.hpp:98, 637, 677`. Full combat system documented at `docs/technical/systems/combat-system.md`.
+- ✅ **Spatial indexing** — `include/world/SpatialIndex.hpp`, `PlantSpatialIndex.hpp`. Doc at `docs/technical/systems/spatial-index.md`.
+- ✅ **Decomposition / corpse system** — `include/world/Corpse.hpp`, `CorpseManager.hpp` with decay timers, toxicity, freshness.
+- ⚠️ **Plant resource depletion infrastructure** — the `EnergyBudget` system (`include/genetics/expression/EnergyBudget.hpp`), `PlantEnergyCalculator` (`include/genetics/organisms/PlantEnergyCalculator.hpp`), and `Plant::energyState_` are all shipped. Only the feeding-drain connection is missing. See [[../plants/resource-system]] for the concept-match audit and the minimal MVP fix.
+
+---
+
 ## High Priority
 
 Critical for meaningful simulation dynamics.
 
-### Combat & Health
-
-- [ ] **Health system required for combat** - Creatures need health for meaningful interactions
-  - Add `_health` field to `Creature` (like Plant has)
-  - Add damage/healing mechanics
-  - Foundation for predator-prey injury system, non-fatal encounters
-
 ### Resource Management
 
-- [ ] **Plant resource depletion system** - Plants provide unlimited nutrition (CRITICAL)
-  - Track tissue-specific resources (leaves, fruit, stems, roots)
-  - Feeding consumes plant resources
-  - Photosynthesis-leaf dependency for regeneration
-  - Root investment enables regrowth after grazing
-  - **Full design document:** [[plants/resource-system]]
+- [ ] **Connect feeding to plant energy drain** (MVP-blocking) — The `EnergyBudget` / `PlantEnergyCalculator` / `energyState_` plumbing is already built via the unified-organism migration. What's missing is routing `Plant::getNutrientValue()` through `energyState_.currentEnergy` and having `FeedingInteraction` call a new `Plant::consumeEnergy()` method. This is the minimal fix for the "unlimited plant food" issue, probably 1-2 days of work rather than the multi-week scope in the full plan. **Full concept-match audit and minimal fix:** [[../plants/resource-system#whats-already-shipped-concept-match-audit-2026-04-14]]
+
+- [ ] **Tissue-type resource differentiation** (post-MVP) — Full plan proposes per-tissue resource pools (leaves, fruit, stems, seeds, roots), each with different energy density, defense, regeneration, and creature-adaptation access requirements. This is the richer plant economy enhancement layered on top of the minimal MVP fix. Not required for Genesis MVP. **Full design document:** [[../plants/resource-system]]
+
+- [ ] **Unified propagule gene system** - Fruit/seed genes are artificially separated
+  - Single `wrapper_investment` gene creates spectrum: seeds → nuts → drupes → berries
+  - Eating wrapper disperses seeds; eating seeds destroys them
+  - **Full design document:** [[../plants/propagule-genes]]
 
 - [ ] **Unified propagule gene system** - Fruit/seed genes are artificially separated
   - Single `wrapper_investment` gene creates spectrum: seeds → nuts → drupes → berries
@@ -130,7 +136,6 @@ Spatial indexing and decomposition affect:
 
 ## See Also
 
-- [[blocking-issues]] - Critical blocking issues (includes hunting extinction bug)
 - [[genetics/improvements]] - Genetics-specific improvements
 - [[ui/improvements]] - UI and rendering improvements
 - [[README]] - Overall roadmap with phase dependencies

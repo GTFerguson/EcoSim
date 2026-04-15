@@ -1,76 +1,53 @@
 ---
-title: UI & Rendering Improvements
+title: UI & Rendering Polish Backlog
 created: 2025-12-24
-updated: 2025-12-24
-status: planned
-tags: [ui, rendering, improvements, future]
+updated: 2026-04-14
+status: active
+tags: [ui, rendering, polish, backlog]
 ---
 
-# UI & Rendering Improvements
+# UI & Rendering Polish Backlog
 
-User interface and rendering improvements for EcoSim.
+Narrow polish items for the UI and rendering layers. **This is a polish backlog, not the visibility-systems plan** — see [[visibility-systems]] for the real-time world-visibility framework (inspection, population graphs, gene-pool views, family trees, event feeds, map overlays, procedural creature appearance) which is the MVP-blocking scope.
 
----
-
-## High Priority
-
-Issues significantly impacting user experience.
-
-### Inspector Improvements
-
-- [ ] **Click to select creature** - No way to select creatures by clicking in the world view
-  - Add click detection, world-to-screen coordinate mapping
-  - Should work in both ncurses and SDL2 backends
-
-- [ ] **Stress not shown in inspector** - Missing stress display in creature panel
-  - Add stress display to [`renderCreatureInspectorWindow()`](src/rendering/backends/sdl2/ImGuiOverlay.cpp:186)
-
-### Window Management
-
-- [ ] **Fullscreen right pane positioning** - Inspector panel positioned incorrectly in fullscreen
-  - Calculate positions from `ImGui::GetIO().DisplaySize`
-
-- [ ] **Mac fullscreen menu bar collision** - Menu bar overlaps with UI on macOS
-  - Use `SDL_WINDOW_FULLSCREEN_DESKTOP` instead of true fullscreen
+> [!NOTE]
+> **Scope clarification (2026-04-14):** Several items previously on this list have been **promoted to the visibility-systems plan** because they are feature-scope rather than polish-scope: scent/sound layer visualisation toggles (map overlays), size affecting visual appearance (creature appearance), click-to-select creature (inspection framework). This doc is now focused only on narrow tactical polish.
 
 ---
 
-## Medium Priority
+## Already shipped (audit 2026-04-14)
 
-Feature enhancements and usability improvements.
-
-### Camera & Navigation
-
-- [ ] **Zoom center point** - Zoom doesn't center on viewport
-  - Calculate viewport center before zoom, adjust camera position after
-
-### Debug Visualization
-
-- [ ] **Vegetation map layer** - No separate visualization layer for plant distribution
-  - Add toggle in UI to show/hide vegetation density overlay
+- ✅ **Fullscreen right pane positioning** — `io.DisplaySize`-based math at `src/rendering/backends/sdl2/ImGuiOverlay.cpp:852-853`
+- ✅ **Mac fullscreen menu bar collision** — `SDL_WINDOW_FULLSCREEN_DESKTOP` in use at `src/rendering/backends/sdl2/SDL2Renderer.cpp:81`
 
 ---
 
-## Low Priority
+## High priority
 
-Nice-to-have features for later consideration.
+- [ ] **Stress not shown in inspector** — Missing stress display in creature panel. Add to `renderCreatureInspectorWindow()` in `src/rendering/backends/sdl2/ImGuiOverlay.cpp`. Note: `Creature._currentEnvironmentalStress` exists at `include/objects/creature/creature.hpp:190` but is not surfaced.
 
-### Visual Enhancements
+---
 
-- [ ] **Size affecting visual appearance** - SIZE gene doesn't affect rendering
-  - Scale sprite based on SIZE gene (SDL2 only feature)
-  - Could use different characters in ncurses based on size threshold
+## Medium priority
 
-- [ ] **Scent/sound layer visualization toggles** - No way to visualize sensory layers
-  - Toggle buttons in UI
-  - Render colored overlays for scent gradients
-  - Sound visualization (when implemented)
+- [ ] **Zoom center point** — Zoom doesn't center on the viewport. Calculate viewport center before zoom, adjust camera position after.
 
-### Menu System
+---
 
-- [ ] **ESC menu popup** - No escape key menu for pause/settings/quit
-  - Add ESC handler for modal dialog with options
-  - Options: Resume, Settings, Save, Quit
+## Low priority
+
+- [ ] **Vegetation map layer** — A separate visualization layer for plant distribution. This is a narrower sibling of the map overlays in the visibility-systems plan; probably belongs there once that plan starts, but listed here as a polish tracker for now.
+- [ ] **ESC menu popup** — No escape key menu for pause/settings/quit. Add ESC handler for modal dialog with Resume / Settings / Save / Quit options.
+
+---
+
+## Promoted to visibility-systems plan
+
+These items have been moved out of this polish backlog because they are feature-scope, not polish-scope. They are now part of [[visibility-systems]]:
+
+- **Click to select creature** — part of the real-time inspection framework (visibility-systems cluster 1)
+- **Scent / sound layer visualisation toggles** — part of map overlays (visibility-systems cluster 6)
+- **Size affecting visual appearance / creature appearance generally** — part of the procedural creature appearance feature (visibility-systems cross-cutting foundation)
 
 ---
 
@@ -78,13 +55,10 @@ Nice-to-have features for later consideration.
 
 ### Backend Considerations
 
-Most UI improvements should be implemented in the SDL2 backend first:
+Most UI polish items should be implemented in the SDL2 backend first:
+
 - [`ImGuiOverlay.hpp`](include/rendering/backends/sdl2/ImGuiOverlay.hpp)
 - [`ImGuiOverlay.cpp`](src/rendering/backends/sdl2/ImGuiOverlay.cpp)
-
-For click-to-select and camera features, consider:
-- [`SDL2InputHandler`](include/rendering/backends/sdl2/SDL2InputHandler.hpp)
-- [`SDL2Renderer`](include/rendering/backends/sdl2/SDL2Renderer.hpp)
 
 NCurses backend has more limited UI capabilities but should maintain parity where possible.
 
@@ -92,6 +66,6 @@ NCurses backend has more limited UI capabilities but should maintain parity wher
 
 ## See Also
 
-- [[blocking-issues]] - Critical blocking issues (includes inspector selection shift bug)
+- [[visibility-systems]] - **MVP-blocking visibility framework** (distinct from this polish backlog)
 - [[genetics/improvements]] - Genetics-specific improvements
 - [[environment/ecosystem-improvements]] - Creature behavior and world mechanics

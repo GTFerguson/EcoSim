@@ -1,8 +1,10 @@
 # Future Sensory System Development Phases
 
-**Status:** Planned (Not Yet Implemented)  
-**Last Updated:** 2025-12-23  
-**Reference:** [[behavior/mating-behavior-system-design]]
+**Status:** Deferred — post Genesis MVP  
+**Last Updated:** 2026-04-14  
+
+> [!NOTE]
+> Auditory, exploration memory, full mating integration, and predator-prey sensory phases are **not on the Genesis MVP critical path**. Phase 1 (scent) has already shipped — see `docs/technical/systems/scent-system.md`. The phases described below are genuinely valuable engine extensions but should be scheduled after MVP ships. This doc is the consolidated surviving plan for sensory expansion; the earlier `mating-behavior-system-design.md` (1706 lines) was largely duplicative and has been removed in favour of this shorter version.
 
 ---
 
@@ -248,7 +250,7 @@ bool Prey::detectPredators(World& world) {
         Direction threatDir = followScentGradient(...);
         Direction fleeDir = oppositeDirection(threatDir);
         
-        // FleeingBehavior would handle this in the BehaviorController
+        setProfile(Profile::flee);
         Navigator::moveDirection(*this, world, fleeDir);
         
         // Emit alarm scent to warn others
@@ -351,7 +353,6 @@ Predator approaches → Prey A detects via scent
 
 ## References
 
-- **Full Design Document:** `plans/mating-behavior-system-design.md`
-- **Current Scent Implementation:** `docs/technical/genetics/scent-system.md`
+- **Current Scent Implementation:** `docs/technical/systems/scent-system.md`
 - **ScentLayer Source:** `include/world/ScentLayer.hpp`, `src/world/ScentLayer.cpp`
 - **Universal Genes:** `include/genetics/defaults/UniversalGenes.hpp`

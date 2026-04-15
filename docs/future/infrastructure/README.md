@@ -4,6 +4,6 @@ Future improvements and designs for infrastructure and tooling.
 
 ## Documents
 
-- [[logger-statistics]] - Logger and statistics integration plans
+- [[chronicle-and-species-registry]] - Species registry, ancestry chains, persistent event log, and species biology snapshots — **prerequisite for Genesis shipping** and the Dominion-mode pipeline handoff
 - [[multi-threading]] - Multi-threading roadmap for creature updates
-- [[nlp-integration]] - Nonlinear programming for balance optimization
+- [[nlp-integration]] - Nonlinear programming for balance optimization (deferred post-MVP)

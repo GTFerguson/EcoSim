@@ -225,7 +225,6 @@ Consider implementing when:
 ## See Also
 
 **Infrastructure:**
-- [[logger-statistics]] - Logging system improvements
 - [[nlp-integration]] - Balance optimization tools
 
 **Technical:**

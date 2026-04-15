@@ -20,9 +20,11 @@ The creature feeding system, particularly herbivore plant-eating behavior, has m
 When a hungry creature tries to eat a plant, the following checks occur:
 
 ```
-FeedingBehavior::execute()
-└── findNearestEdiblePlant()
-    └── FeedingInteraction::attemptToEatPlant()
+hungryBehavior()
+└── hungryProfile()
+    └── findGeneticsPlants()
+        └── canEatPlant()
+            └── FeedingInteraction::attemptToEatPlant()
                 ├── Phase 1: Detection Check
                 │   └── detectionScore vs DETECTION_THRESHOLD
                 ├── Phase 2: Attraction Check  
@@ -185,4 +187,3 @@ g++ -std=c++17 -I include -o herbivore_diag_v2 \
 
 - [[creature-plant-coevolution]] - Coevolution design
 - [[gene-reference]] - Gene definitions
-- [[blocking-issues]] - Critical issues list

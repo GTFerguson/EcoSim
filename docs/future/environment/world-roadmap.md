@@ -1,8 +1,20 @@
 # World & Environment Systems Roadmap
 
-**Status:** 🎯 Active Roadmap
+**Status:** 🎯 Active Roadmap — **re-scoped post-Genesis-MVP framing 2026-04-14**
 **Created:** 2025-12-23
-**Last Updated:** 2026-01-08
+**Last Updated:** 2026-04-14
+
+---
+
+> [!IMPORTANT]
+> **Re-scoping note (2026-04-14).** This roadmap was originally written assuming Phase A would be a Genesis prerequisite. The roadmap now positions Genesis as **MVP-shippable on the existing engine** (see `docs/game-concepts/genesis-god-sim.md` MVP shipping path and `docs/future/README.md` Game Mode Shipping section). Phases A–F in this doc are **no longer MVP-blocking**; they are **enhancement phases** that progressively upgrade Genesis from "playable" to "rich".
+>
+> **Two concrete corrections:**
+>
+> 1. **Phase A is ~50% already shipped.** The current-state table below overstated the gap. Climate simulation, per-tile environment, `ClimateWorldGenerator`, per-tile temperature/humidity/light, and `SeasonManager` are all implemented and documented at `docs/technical/systems/world-system.md`. The remaining Phase A items are **wind (A2)**, **tile mutability (A6)**, **per-tile water (A7)**, and **event propagation (A8)**.
+> 2. **Line 1492 is wrong.** The old statement *"Genesis can launch after Phase A"* contradicts the new MVP framing. Genesis MVP launches on the **existing engine** plus gene migration, polish, visibility systems, and chronicle infrastructure — not after Phase A. Phase A items become enhancements that upgrade Genesis *after* MVP ships. See the updated MVP shipping path in `docs/future/README.md#genesis-mode--first-shipping-mode` and the Genesis doc's MVP section.
+>
+> **What to do when reading this doc:** treat all Phase A–F content below as **post-MVP enhancement scope**, not MVP prerequisites. The implementation specs themselves remain valid. The ordering (A→B→C→D→E→F) still makes sense as a progression from MVP toward fuller simulation richness.
 
 ---
 
@@ -10,23 +22,25 @@
 
 This roadmap addresses the critical gap between **defined genes** (67+ in UniversalGenes) and **environmental systems** that give those genes meaning. Many genes reference environmental conditions that don't yet exist in the simulation, such as wind for seed dispersal, varying temperatures for tolerance genes, and dynamic light for photosynthesis.
 
-Additionally, this roadmap now includes **Genesis-ready features** (A6-A8) that enable god-game mechanics like terraforming, water manipulation, and disaster events.
+Additionally, this roadmap now includes **Genesis-enhancement features** (A6-A8) that enable god-game mechanics like terraforming, water manipulation, and disaster events. These are post-MVP enhancements, not MVP prerequisites.
 
-### Current State Summary
+### Current State Summary (updated 2026-04-14)
 
 | System | Status | Note |
 |--------|--------|------|
 | **Genes Defined** | ✅ 67+ genes | Comprehensive unified genome |
 | **Basic World** | ✅ Complete | Terrain, elevation, biomes |
-| **Environment Variables** | ⚠️ Static | Single global temp/humidity/light |
-| **Wind System** | ❌ Missing | `SEED_AERODYNAMICS` gene has no effect |
-| **Dynamic Temperature** | ❌ Missing | All tiles are 20°C always |
-| **Varying Light** | ❌ Missing | No shade, no day/night impact |
-| **Seasonal Cycles** | ❌ Missing | Field exists but unused |
-| **Aquatic Genes** | ❌ Missing | Water is just passable/impassable |
+| **Environment Variables** | ✅ **Per-tile** | `EnvironmentSystem` with per-tile temperature, humidity, light. Doc: `docs/technical/systems/world-system.md` |
+| **Climate Simulation** | ✅ **Implemented** | `ClimateWorldGenerator` produces realistic climate zones |
+| **Seasonal Cycles** | ✅ **Infrastructure shipped** | `SeasonManager` exists at `include/world/SeasonManager.hpp:20` with `getBaseSolarIntensity`/`Modifier`. Not yet wired into plant fruiting — see remaining work below. |
+| **Day/Night Cycle** | ⚠️ Partial | `EnvironmentSystem::_cachedDayProgress` and light-level cycle exist at `EnvironmentSystem.hpp:223`, but no global `_timeOfDay` counter as specced |
+| **Wind System** | ❌ Missing | `getWindSpeed`/`getWindDirection` return defaults at `src/world/EnvironmentSystem.cpp:154-168`; headers comment "not yet implemented" |
 | **Tile Mutability** | ❌ Missing | Tiles immutable after generation |
 | **Per-Tile Water** | ❌ Missing | No rivers, lakes, or dynamic flooding |
 | **Event System** | ❌ Missing | No disasters or propagating effects |
+| **Aquatic Genes** | ❌ Missing | Water is just passable/impassable |
+
+**Takeaway:** Phase A is approximately 50% shipped. Day/night needs finishing, wind is entirely missing, tile mutability / per-tile water / events are Phase A6-A8 scope. All remain post-MVP enhancement work per the re-scoping note above.
 
 ### Roadmap Phases
 
@@ -1352,7 +1366,7 @@ public:
     void onActivate(Creature& c) override {
         c.setMetabolismMultiplier(0.1f);
         c.setMovementEnabled(false);
-        c.setMotivation(Motivation::Tired);
+        c.setProfile(Profile::rest);
     }
     
     bool shouldDeactivate(const Creature& c, const EnvironmentState& env) override {
@@ -1489,7 +1503,7 @@ Phase A (Complete) → Genesis Alpha
               Genesis Beta
 ```
 
-**Genesis can launch after Phase A** with god tools built on top. Phases B-F enhance the simulation but aren't required for core Genesis gameplay.
+**~~Genesis can launch after Phase A~~ [OBSOLETE 2026-04-14]** — the MVP shipping path now ships Genesis on the **existing engine** without waiting for Phase A. Phases A–F are post-MVP enhancements. See `docs/game-concepts/genesis-god-sim.md` MVP shipping path section and `docs/future/README.md` Game Mode Shipping for the current framing.
 
 ---
 

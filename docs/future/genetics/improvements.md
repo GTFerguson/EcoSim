@@ -136,7 +136,6 @@ Energy and phenotype optimization:
 
 ## See Also
 
-- [[blocking-issues]] - Critical blocking issues requiring immediate attention
 - [[environment/ecosystem-improvements]] - Creature behavior and world mechanics
 - [[ui/improvements]] - UI and rendering improvements
 - [[genetics/unified-organism-genome]] - Unified genome architecture

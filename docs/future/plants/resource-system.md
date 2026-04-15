@@ -1,13 +1,64 @@
 ---
 title: Plant Resource Depletion System - Implementation Plan
 created: 2025-12-26
-updated: 2025-12-26
-status: proposed
+updated: 2026-04-14
+status: partially-implemented
 priority: critical
 tags: [design, plants, ecosystem-balance, resources, growth-phases]
 ---
 
 # Plant Resource Depletion System
+
+> [!IMPORTANT]
+> **Status update 2026-04-14:** The underlying infrastructure for this plan is **already built** via the unified-organism-genome migration work, under different naming than the plan proposed. The only remaining gap is hooking feeding to the energy drain. See §"What's already shipped" below for the concept-match audit. The full plan (tissue types, growth phases, root/leaf/stem differentiation, targeted feeding by creature adaptation) remains proposed as a post-MVP enhancement.
+
+## What's already shipped (concept-match audit, 2026-04-14)
+
+The `EnergyBudget` system shipped as part of the unified-organism-genome migration implements the "Universal Resource Allocation Framework" that is functionally the same as this plan's core resource model, under different naming:
+
+| This plan's concept | Shipped equivalent | Location |
+|---------------------|--------------------|----------|
+| Plant energy pool with depletion | `EnergyState` struct with `currentEnergy`, `maxEnergy`, `maintenanceCost`, `totalExpenditure` | `include/genetics/expression/EnergyBudget.hpp` |
+| Photosynthesis regenerates resources | `PlantEnergyCalculator::calculatePhotosynthesisGrowth()` | `include/genetics/organisms/PlantEnergyCalculator.hpp` |
+| Metabolic cost scales with size | `PlantEnergyCalculator::calculateMetabolicCost()` | same |
+| Growth energy cost | `PlantEnergyCalculator::calculateGrowthEnergy()` | same |
+| Reproduction energy cost | `PlantEnergyCalculator::calculateReproductionEnergy()` + `Plant::getReproductionEnergyCost() override` | `include/genetics/organisms/Plant.hpp:190-193` |
+| Plant has an energy state | `Plant::energyState_` field with `setEnergyState`/`getEnergyState` accessors | `Plant.hpp:497-516, 621` |
+| Genes drive maintenance cost scaling | `EnergyBudget::calculateMaintenanceCost(genome, registry)` iterates all genes and sums their individual maintenance costs | `EnergyBudget.hpp:73-80` |
+| Starvation pressure | `EnergyBudget::isStarving(state)` | same |
+| Specialist efficiency / generalist penalty | `EnergyBudget::calculateSpecialistBonus()` + `calculateMetabolicOverhead()` — "creates natural selection pressure for specialization without arbitrary caps" (class docstring) | same |
+| Photosynthesis gene | `UniversalGenes::PHOTOSYNTHESIS` | `UniversalGenes.hpp:145-146` |
+| Nutrient value gene | `UniversalGenes::NUTRIENT_VALUE` | `UniversalGenes.hpp:181` |
+| Autotrophic feeding strategy | `FeedingStrategy::Autotrophy` | `UniversalGenes.hpp:18` |
+| Energy persisted in save files | `storedEnergy` key in `Plant` JSON serialization | `Plant.cpp:772, 825` |
+
+**The one missing connection:** `Plant::getNutrientValue()` at `Plant.cpp:224-228` still returns a value based on size ratio, independent of `energyState_`:
+
+```cpp
+float Plant::getNutrientValue() const {
+    float baseValue = getGeneValueFromGenome(PlantGenes::NUTRIENT_VALUE, 25.0f);
+    float sizeRatio = currentSize_ / getMaxSize();
+    return baseValue * sizeRatio;  // Still returns value but never depletes!
+}
+```
+
+`FeedingInteraction` consumes this value but does not drain `energyState_.currentEnergy`, so plants remain effectively "unlimited food" to herbivores — the exact problem the plan's opening statement identifies, but with 95% of the fix already in the codebase.
+
+### Minimal MVP fix (hours, not weeks)
+
+1. Route `Plant::getNutrientValue()` through `energyState_.currentEnergy` so it reports actually-available nutrition.
+2. Add a `Plant::consumeEnergy(float amount)` method that subtracts from `energyState_.currentEnergy`.
+3. Hook `FeedingInteraction` or `FeedingBehavior` to call `consumeEnergy()` on successful feeding.
+4. Verify `Plant::update()` is calling `PlantEnergyCalculator::calculatePhotosynthesisGrowth()` and adding the result to `energyState_.currentEnergy` (likely already done via `setEnergyState`).
+5. Add the "energy below threshold → plant dies or enters dormancy" check.
+
+Steps 1–5 together are probably 1-2 days of careful work, not the multi-week scope the full plan implies. This is **MVP-blocking** because without it, Genesis's divine-favour "cradle a species" arc has no teeth — herbivores cannot meaningfully struggle for food.
+
+### Remains proposed (post-MVP enhancement)
+
+The full plan below — **tissue types** (leaves, fruit, stems, seeds, roots), **growth phases** with per-phase resource allocation, **targeted feeding by creature adaptation**, **root investment as a survival buffer**, and **differential defense per tissue** — is still useful future work but is **not** part of the MVP hookup. These are what turn a "food depletes" mechanic into a rich plant economy. Defer until post-MVP.
+
+---
 
 ## Overview
 
