@@ -21,7 +21,7 @@ namespace CreatureScent {
 //  Scent Signature Generation
 //============================================================================
 
-std::array<float, 8> computeScentSignature(const Creature& creature) {
+std::array<float, 8> computeScentSignature(const EcoSim::Genetics::Organism& creature) {
     std::array<float, 8> signature;
     
     // Use genome traits to create a unique fingerprint
@@ -90,7 +90,7 @@ float calculateSignatureSimilarity(
 //  Scent Deposits
 //============================================================================
 
-void depositBreedingScent(Creature& creature, EcoSim::ScentLayer& layer, unsigned int currentTick) {
+void depositBreedingScent(EcoSim::Genetics::Organism& creature, EcoSim::ScentLayer& layer, unsigned int currentTick) {
     // Only deposit if in breeding profile
     if (creature.getMotivation() != Motivation::Amorous) {
         return;
@@ -136,7 +136,7 @@ void depositBreedingScent(Creature& creature, EcoSim::ScentLayer& layer, unsigne
 //  Scent Detection
 //============================================================================
 
-bool hasScentDetection(const Creature& creature) {
+bool hasScentDetection(const EcoSim::Genetics::Organism& creature) {
     const auto& phenotype = creature.getPhenotype();
     
     // Check if scent_detection trait exists, default to 0.0 if not
@@ -147,7 +147,7 @@ bool hasScentDetection(const Creature& creature) {
     return scentDetection > 0.1f;  // Threshold for meaningful scent ability
 }
 
-int getDetectionRange(const Creature& creature) {
+int getDetectionRange(const EcoSim::Genetics::Organism& creature) {
     const auto& phenotype = creature.getPhenotype();
     
     // Get olfactory acuity from phenotype (default to moderate if not available)
@@ -160,7 +160,7 @@ int getDetectionRange(const Creature& creature) {
     return static_cast<int>(SCENT_DETECTION_BASE_RANGE + olfactoryAcuity * SCENT_DETECTION_ACUITY_MULT);
 }
 
-std::optional<Direction> detectMateDirection(const Creature& creature, const EcoSim::ScentLayer& scentLayer) {
+std::optional<Direction> detectMateDirection(const EcoSim::Genetics::Organism& creature, const EcoSim::ScentLayer& scentLayer) {
     // Only detect if we're in breeding mode
     if (creature.getMotivation() != Motivation::Amorous) {
         return std::nullopt;
@@ -215,7 +215,7 @@ std::optional<Direction> detectMateDirection(const Creature& creature, const Eco
     return result;
 }
 
-bool findMateScent(const Creature& creature, const EcoSim::ScentLayer& scentLayer, int& outX, int& outY) {
+bool findMateScent(const EcoSim::Genetics::Organism& creature, const EcoSim::ScentLayer& scentLayer, int& outX, int& outY) {
     // Only detect if we're in breeding mode
     if (creature.getMotivation() != Motivation::Amorous) {
         return false;
@@ -247,7 +247,7 @@ bool findMateScent(const Creature& creature, const EcoSim::ScentLayer& scentLaye
     return true;
 }
 
-bool findFoodScent(const Creature& creature, const EcoSim::ScentLayer& scentLayer, int& outX, int& outY) {
+bool findFoodScent(const EcoSim::Genetics::Organism& creature, const EcoSim::ScentLayer& scentLayer, int& outX, int& outY) {
     const auto& phenotype = creature.getPhenotype();
     
     // Get scent detection range from phenotype

@@ -465,67 +465,11 @@ class Creature: public GameObject,
     float     checkFitness  (const Creature &c2) const;
 
     //============================================================================
-    //  Sensory System
+    //  Sensory System — all scent/signature methods now on Organism base:
+    //  depositBreedingScent, computeScentSignature, detectMateDirection,
+    //  findMateScent, hasScentDetection, findFoodScent,
+    //  calculateSignatureSimilarity.
     //============================================================================
-    /**
-     * @brief Deposit breeding pheromone when in breeding state.
-     *        Creates a MATE_SEEKING scent deposit based on creature's olfactory genes.
-     * @param layer The world's scent layer to deposit into
-     * @param currentTick Current simulation tick for timestamp
-     */
-    void depositBreedingScent(EcoSim::ScentLayer& layer, unsigned int currentTick);
-    
-    /**
-     * @brief Compute this creature's unique genetic scent signature.
-     *        Used for mate recognition and kin detection.
-     * @return 8-float array representing the creature's genetic fingerprint
-     */
-    std::array<float, 8> computeScentSignature() const;
-    
-    /**
-     * @brief Detect the direction to a potential mate using scent trails.
-     *        Uses OLFACTORY_ACUITY gene to determine detection range.
-     * @param scentLayer The world's scent layer to query
-     * @return Direction toward strongest compatible mate scent, or std::nullopt if none found
-     */
-    std::optional<Direction> detectMateDirection(const EcoSim::ScentLayer& scentLayer) const;
-    
-    /**
-     * @brief Find the coordinates of the strongest mate scent in range.
-     *        Uses OLFACTORY_ACUITY gene to determine detection range.
-     * @param scentLayer The world's scent layer to query
-     * @param outX Output parameter for scent X coordinate
-     * @param outY Output parameter for scent Y coordinate
-     * @return True if a valid scent was found, false otherwise
-     */
-    bool findMateScent(const EcoSim::ScentLayer& scentLayer, int& outX, int& outY) const;
-    
-    /**
-     * @brief Check if creature has meaningful scent detection capability.
-     *        Used to determine if scent-based fallback navigation is available.
-     * @return True if scent_detection trait exceeds threshold (0.1)
-     */
-    bool hasScentDetection() const;
-    
-    /**
-     * @brief Find the coordinates of food scent (plant scent) in range.
-     *        Used as a fallback when visual plant detection fails.
-     * @param scentLayer The world's scent layer to query
-     * @param outX Output parameter for scent X coordinate
-     * @param outY Output parameter for scent Y coordinate
-     * @return True if a valid food scent was found, false otherwise
-     */
-    bool findFoodScent(const EcoSim::ScentLayer& scentLayer, int& outX, int& outY) const;
-    
-    /**
-     * @brief Calculate genetic similarity between two scent signatures.
-     * @param sig1 First signature
-     * @param sig2 Second signature
-     * @return Similarity value [0.0, 1.0] where 1.0 is identical
-     */
-    static float calculateSignatureSimilarity(
-        const std::array<float, 8>& sig1,
-        const std::array<float, 8>& sig2);
 
     //  Plant interaction methods (eatPlant, canEatPlant, attachBurr,
     //  detachBurrs, hasBurrs, getPendingBurrDispersal, consumeSeeds,

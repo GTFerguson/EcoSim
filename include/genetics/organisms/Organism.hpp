@@ -15,9 +15,15 @@
 #include "genetics/components/IdentityComponent.hpp"
 #include "genetics/core/MotivationAction.hpp"
 #include "genetics/behaviors/BehaviorController.hpp"
+#include <array>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
+
+namespace EcoSim {
+class ScentLayer;
+}
 
 namespace EcoSim {
 namespace Genetics {
@@ -332,6 +338,17 @@ public:
 
     // Gene expression query
     float getExpressedValue(const std::string& geneId) const;
+
+    // Scent detection / signature methods (delegate to CreatureScent helpers)
+    bool hasScentDetection() const;
+    std::array<float, 8> computeScentSignature() const;
+    void depositBreedingScent(EcoSim::ScentLayer& layer, unsigned int currentTick);
+    std::optional<Direction> detectMateDirection(const EcoSim::ScentLayer& scentLayer) const;
+    bool findMateScent(const EcoSim::ScentLayer& scentLayer, int& outX, int& outY) const;
+    bool findFoodScent(const EcoSim::ScentLayer& scentLayer, int& outX, int& outY) const;
+    static float calculateSignatureSimilarity(
+        const std::array<float, 8>& sig1,
+        const std::array<float, 8>& sig2);
 
     // Plant interaction (delegate to CreaturePlantInteraction helpers)
     FeedingResult eatPlant(Plant& plant);

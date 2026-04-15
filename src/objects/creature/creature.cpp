@@ -626,7 +626,7 @@ float EcoSim::Genetics::Organism::shareWater (const int& amount) {
  * Used to determine if scent-based fallback navigation is available.
  * @return True if scent_detection trait exceeds threshold (0.1)
  */
-bool Creature::hasScentDetection() const {
+bool EcoSim::Genetics::Organism::hasScentDetection() const {
   return CreatureScent::hasScentDetection(*this);
 }
 
@@ -640,7 +640,7 @@ bool Creature::hasScentDetection() const {
  * @param outY Output parameter for scent Y coordinate
  * @return True if a valid food scent was found, false otherwise
  */
-bool Creature::findFoodScent(const EcoSim::ScentLayer& scentLayer, int& outX, int& outY) const {
+bool EcoSim::Genetics::Organism::findFoodScent(const EcoSim::ScentLayer& scentLayer, int& outX, int& outY) const {
   return CreatureScent::findFoodScent(*this, scentLayer, outX, outY);
 }
 
@@ -875,15 +875,11 @@ std::unique_ptr<EcoSim::Genetics::Organism> Creature::reproduce(
  * Compute this creature's unique genetic scent signature.
  * Delegates to CreatureScent::computeScentSignature.
  */
-std::array<float, 8> Creature::computeScentSignature() const {
+std::array<float, 8> EcoSim::Genetics::Organism::computeScentSignature() const {
   return CreatureScent::computeScentSignature(*this);
 }
 
-/**
- * Deposit breeding pheromone when in breeding state.
- * Delegates to CreatureScent::depositBreedingScent.
- */
-void Creature::depositBreedingScent(EcoSim::ScentLayer& layer, unsigned int currentTick) {
+void EcoSim::Genetics::Organism::depositBreedingScent(EcoSim::ScentLayer& layer, unsigned int currentTick) {
   CreatureScent::depositBreedingScent(*this, layer, currentTick);
 }
 
@@ -895,25 +891,17 @@ void Creature::depositBreedingScent(EcoSim::ScentLayer& layer, unsigned int curr
  * Calculate genetic similarity between two scent signatures.
  * Delegates to CreatureScent::calculateSignatureSimilarity.
  */
-float Creature::calculateSignatureSimilarity(
+float EcoSim::Genetics::Organism::calculateSignatureSimilarity(
     const std::array<float, 8>& sig1,
     const std::array<float, 8>& sig2) {
   return CreatureScent::calculateSignatureSimilarity(sig1, sig2);
 }
 
-/**
- * Detect the direction to a potential mate using scent trails.
- * Delegates to CreatureScent::detectMateDirection.
- */
-std::optional<Direction> Creature::detectMateDirection(const EcoSim::ScentLayer& scentLayer) const {
+std::optional<Direction> EcoSim::Genetics::Organism::detectMateDirection(const EcoSim::ScentLayer& scentLayer) const {
   return CreatureScent::detectMateDirection(*this, scentLayer);
 }
 
-/**
- * Find the coordinates of the strongest mate scent in range.
- * Delegates to CreatureScent::findMateScent.
- */
-bool Creature::findMateScent(const EcoSim::ScentLayer& scentLayer, int& outX, int& outY) const {
+bool EcoSim::Genetics::Organism::findMateScent(const EcoSim::ScentLayer& scentLayer, int& outX, int& outY) const {
   return CreatureScent::findMateScent(*this, scentLayer, outX, outY);
 }
 

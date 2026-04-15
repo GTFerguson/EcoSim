@@ -13,17 +13,18 @@
 #include <optional>
 
 // Forward declarations
-class Creature;
+namespace EcoSim {
+namespace Genetics {
+class Organism;
+}
+class ScentLayer;
+struct ScentDeposit;
+}
 
 // Direction is a using-alias for EcoSim::Genetics::Direction (defined on
 // MobilityComponent). Include rather than forward-declare.
 #include "genetics/components/MobilityComponent.hpp"
 using Direction = EcoSim::Genetics::Direction;
-
-namespace EcoSim {
-class ScentLayer;
-struct ScentDeposit;
-}
 
 namespace CreatureScent {
 
@@ -76,7 +77,7 @@ constexpr float DEFAULT_SCENT_PRODUCTION = 0.5f;
  * @param creature The creature to compute signature for
  * @return 8-float array representing the creature's genetic fingerprint
  */
-std::array<float, 8> computeScentSignature(const Creature& creature);
+std::array<float, 8> computeScentSignature(const EcoSim::Genetics::Organism& creature);
 
 /**
  * @brief Calculate genetic similarity between two scent signatures.
@@ -111,7 +112,7 @@ float calculateSignatureSimilarity(
  * @param layer The world's scent layer to deposit into
  * @param currentTick Current simulation tick for timestamp
  */
-void depositBreedingScent(Creature& creature, EcoSim::ScentLayer& layer, unsigned int currentTick);
+void depositBreedingScent(EcoSim::Genetics::Organism& creature, EcoSim::ScentLayer& layer, unsigned int currentTick);
 
 //============================================================================
 //  Scent Detection
@@ -126,7 +127,7 @@ void depositBreedingScent(Creature& creature, EcoSim::ScentLayer& layer, unsigne
  * @param creature The creature to check
  * @return True if scent_detection trait exceeds threshold
  */
-bool hasScentDetection(const Creature& creature);
+bool hasScentDetection(const EcoSim::Genetics::Organism& creature);
 
 /**
  * @brief Detect the direction to a potential mate using scent trails.
@@ -139,7 +140,7 @@ bool hasScentDetection(const Creature& creature);
  * @param scentLayer The world's scent layer to query
  * @return Direction toward strongest mate scent, or std::nullopt if none found
  */
-std::optional<Direction> detectMateDirection(const Creature& creature, const EcoSim::ScentLayer& scentLayer);
+std::optional<Direction> detectMateDirection(const EcoSim::Genetics::Organism& creature, const EcoSim::ScentLayer& scentLayer);
 
 /**
  * @brief Find the coordinates of the strongest mate scent in range.
@@ -154,7 +155,7 @@ std::optional<Direction> detectMateDirection(const Creature& creature, const Eco
  * @param outY Output parameter for scent Y coordinate
  * @return True if a valid scent was found, false otherwise
  */
-bool findMateScent(const Creature& creature, const EcoSim::ScentLayer& scentLayer, int& outX, int& outY);
+bool findMateScent(const EcoSim::Genetics::Organism& creature, const EcoSim::ScentLayer& scentLayer, int& outX, int& outY);
 
 /**
  * @brief Find the coordinates of food scent (plant scent) in range.
@@ -168,7 +169,7 @@ bool findMateScent(const Creature& creature, const EcoSim::ScentLayer& scentLaye
  * @param outY Output parameter for scent Y coordinate
  * @return True if a valid food scent was found, false otherwise
  */
-bool findFoodScent(const Creature& creature, const EcoSim::ScentLayer& scentLayer, int& outX, int& outY);
+bool findFoodScent(const EcoSim::Genetics::Organism& creature, const EcoSim::ScentLayer& scentLayer, int& outX, int& outY);
 
 /**
  * @brief Calculate scent detection range for a creature.
@@ -179,7 +180,7 @@ bool findFoodScent(const Creature& creature, const EcoSim::ScentLayer& scentLaye
  * @param creature The creature to calculate range for
  * @return Detection range in tiles
  */
-int getDetectionRange(const Creature& creature);
+int getDetectionRange(const EcoSim::Genetics::Organism& creature);
 
 } // namespace CreatureScent
 
