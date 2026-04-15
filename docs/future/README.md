@@ -156,6 +156,43 @@ This directory contains detailed plans for future EcoSim development. The curren
 
 ---
 
+## Game Mode Shipping
+
+The six engine phases above build the **capability substrate** for EcoSim's game modes. Modes are shipped separately once the engine is mature enough to support them, per the unified-engine plan in [[../game-concepts/README|Game Concepts]]. Development is sequential but runtime is unified: once a mode ships it operates alongside every other mode on the same persistent world.
+
+### Genesis Mode — first shipping mode
+
+**What it is:** The god-sim / scenario-based evolution sandbox — the mode closest to the current engine's strengths. See [[../game-concepts/genesis-god-sim|Genesis]].
+
+**Current thinking on shipping path (updated 2026-04-14):** Genesis MVP can begin being built on the **existing engine**, not after Phase A. The real blockers are:
+
+1. **Unified-organism-genome Phase 2** ([[genetics/unified-organism-genome]] — currently in progress) — the gene migration must complete before MVP work starts
+2. **Polish on existing systems** — cleanup pass before new feature work
+3. **Visibility systems** (biggest gap) — the player cannot engage with an invisible simulation. Includes chronicle infrastructure but also real-time inspection UI, population graphs, gene-pool views, family trees, event feeds, map overlays.
+4. **Chronicle infrastructure** ([[infrastructure/chronicle-and-species-registry]]) — a subset of visibility systems, specifically the persistence layer for species/ancestry/events/biology snapshots
+
+**Phases A–F are enhancement, not MVP prerequisite.** They upgrade Genesis from "playable" to "rich" by adding more environmental dynamics to observe, more gene effects to track, more speciation pressure to witness — but Genesis MVP ships without them waiting. The earlier "Phase A minimum / Phase B recommended" framing from this doc's previous version was correct for a *feature-complete* god game; MVP ships earlier.
+
+**Cross-cutting system (grown, not phased):** [[genetics/neurodevelopment|Neurodevelopment]] — the cognitive architecture plan is **not a dedicated phase**. Brain regions are implemented incrementally as specific features need them. Genesis MVP ships with whichever regions the divine-favour mechanic requires (likely Hippocampus + Amygdala minimum) and the rest come online as later features depend on them. See the core design stance at the top of the neurodevelopment doc.
+
+**Phases A–F still matter post-MVP.** Each phase enhances Genesis:
+- Phase A: more environmental dynamics for the chronicle to surface
+- Phase B: coevolution dynamics visible in the chronicle book
+- Phase C (GODk): modder gene authoring
+- Phase D: aquatic lineages
+- Phase E: dynamic world drives observable speciation — biggest Genesis upgrade
+- Phase F: seasonal phenotype polish
+
+MVP → Phase B → Phase E is probably the practical sequencing for making Genesis feel progressively richer across iterations.
+
+### Dominion Mode and Ark Mode
+
+**Timing:** to be decided based on Genesis reception and engine maturity. These modes add new capabilities on top of the shared engine — named individuals and tribal management for Dominion, player avatar and real-time exploration for Ark — rather than replacing anything. Scheduling happens after Genesis ships.
+
+See [[../game-concepts/README#development-path|Game Concepts → Development Path]] for the full mode-level plan.
+
+---
+
 ## Deferred Features
 
 ### Sensory System Phases 3-6
@@ -219,13 +256,22 @@ This directory contains detailed plans for future EcoSim development. The curren
 
 **Parallelization:** Some components within phases can be developed simultaneously with multiple contributors.
 
+**Game mode shipping relative to this timeline:**
+
+| Milestone | Prerequisite | Notes |
+|-----------|-------------|-------|
+| **Genesis MVP** | Gene migration complete + polish + visibility systems | Ships on existing engine without waiting for Phase A. This is the current target. |
+| **Genesis enhanced (coevolution visible)** | MVP + Phase A + Phase B | Adds seasonal/wind/temperature dynamics and coevolution payoff |
+| **Genesis enhanced (speciation-driving)** | MVP + Phase E | Dynamic world drives observable speciation; the full god-sim reward loop |
+| **Dominion** | TBD post-Genesis | Additive mode on shared engine |
+| **Ark** | TBD post-Dominion | Additive mode on shared engine |
+
 ---
 
 ## Document Index
 
 ### Improvement Tracking (by System)
 
-- **[[blocking-issues]]** - 🔴 Critical blocking issues requiring immediate attention
 - **[[genetics/improvements|Genetic Improvements]]** - Genetics-specific improvements
 - **[[environment/ecosystem-improvements|Ecosystem Improvements]]** - Creature behavior and world mechanics
 - **[[ui/improvements|UI Improvements]]** - UI and rendering improvements
@@ -236,12 +282,10 @@ This directory contains detailed plans for future EcoSim development. The curren
 - **[[environment/world-roadmap|World Environment Roadmap]]** - Detailed implementation specifications for all phases
 - **[[genetics/godk|GODk]]** - Full GODk vision (JSON genes, modding API, marketplace)
 - **[[behavior/sensory-phases|Sensory System Phases]]** - Deferred sensory expansion phases
-- **[[infrastructure/logger-statistics|Logger-Statistics Integration]]** - Logger-Statistics integration options (not yet implemented)
 
 ### Implementation Plans
 
 - **[`plans/omnivore-trade-offs-design.md`](../../plans/omnivore-trade-offs-design.md)** - Dietary coevolution mechanics
-- **[[behavior/mating-behavior-system-design|Mating Behavior System Design]]** - Mating behavior with sensory integration
 
 ### Completed/Historical Documents
 
