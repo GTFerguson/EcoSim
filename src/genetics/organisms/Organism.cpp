@@ -37,6 +37,8 @@ Organism::Organism(Organism&& other) noexcept
     , phenotype_(std::move(other.phenotype_))
     , registry_(other.registry_)
     , id_(other.id_)
+    , motivation_(other.motivation_)
+    , action_(other.action_)
     , mobility_(std::move(other.mobility_))
     , heterotrophy_(std::move(other.heterotrophy_))
     , autotrophy_(std::move(other.autotrophy_))
@@ -68,6 +70,8 @@ Organism& Organism::operator=(Organism&& other) noexcept {
         phenotype_ = std::move(other.phenotype_);
         registry_ = other.registry_;
         id_ = other.id_;
+        motivation_ = other.motivation_;
+        action_ = other.action_;
         mobility_     = std::move(other.mobility_);
         heterotrophy_ = std::move(other.heterotrophy_);
         autotrophy_   = std::move(other.autotrophy_);

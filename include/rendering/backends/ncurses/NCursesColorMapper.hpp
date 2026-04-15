@@ -13,9 +13,10 @@
 
 #include "../../../rendering/RenderTypes.hpp"
 
-// Forward declarations to avoid ncurses include in header
-// Motivation enum from creature.hpp (replaces legacy Profile enum)
-enum class Motivation;
+// Motivation now lives in genetics/core/MotivationAction.hpp and is
+// pulled in via a using-alias to the global namespace.
+#include "genetics/core/MotivationAction.hpp"
+using Motivation = EcoSim::Genetics::Motivation;
 
 /**
  * @brief Helper class for ncurses color management

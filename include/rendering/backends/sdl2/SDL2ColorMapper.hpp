@@ -16,7 +16,9 @@
 
 // Forward declarations
 class Creature;
-enum class Motivation;
+
+#include "genetics/core/MotivationAction.hpp"
+using Motivation = EcoSim::Genetics::Motivation;
 
 /**
  * @brief Type of water body for distinct color palettes

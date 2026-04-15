@@ -13,6 +13,7 @@
 #include "genetics/components/CombatComponent.hpp"
 #include "genetics/components/ThermalComponent.hpp"
 #include "genetics/components/IdentityComponent.hpp"
+#include "genetics/core/MotivationAction.hpp"
 #include "genetics/behaviors/BehaviorController.hpp"
 #include <memory>
 
@@ -275,6 +276,12 @@ public:
     // Identity
     int id_;
     static int nextId_;
+
+    // Display state: current motivation / action for UI/rendering.
+    // Derived from active behavior selection, surfaced here for cheap
+    // access by panels and renderers.
+    Motivation motivation_ = Motivation::Content;
+    Action     action_     = Action::Idle;
 
     // Optional runtime-state components (nullptr until attached)
     std::unique_ptr<MobilityComponent>     mobility_;

@@ -74,26 +74,11 @@ using EcoSim::Genetics::DietType;
  //  unqualified name available to existing global-namespace callers.
 using Direction = EcoSim::Genetics::Direction;
 
-//  Motivation enum - what the creature currently wants/needs most
-enum class Motivation { Hungry, Thirsty, Amorous, Tired, Content };
-
-//  Action enum - what the creature is currently doing
-enum class Action {
-    Idle,       // No specific action
-    Wandering,  // Moving randomly
-    Searching,  // Looking for something (food/water/mate)
-    Navigating, // Moving toward a target
-    Eating,     // Consuming food
-    Grazing,    // Eating plants (herbivore)
-    Hunting,    // Pursuing prey (predator)
-    Chasing,    // Actively chasing target
-    Attacking,  // In combat
-    Fleeing,    // Running away from threat
-    Drinking,   // Consuming water
-    Courting,   // Looking for mate
-    Mating,     // Breeding
-    Resting     // Sleeping/recovering
-};
+//  Motivation and Action enums live in genetics/core/MotivationAction.hpp
+//  (included via Organism.hpp). Aliased here so existing unqualified
+//  uses in creature-area code continue to work.
+using Motivation = EcoSim::Genetics::Motivation;
+using Action     = EcoSim::Genetics::Action;
 
 //  Wound state enum for health system
 enum class WoundState { Healthy, Injured, Wounded, Critical, Dead };
@@ -176,16 +161,15 @@ class Creature: public GameObject,
     //============================================================================
     //  World coordinates/direction live on MobilityComponent (mobility_).
     //  Combat flags/target/cooldown live on CombatComponent (combat_).
-    Motivation _motivation = Motivation::Content;  // Current motivation/drive
-    Action    _action = Action::Idle;              // Current action being performed
+    //  Motivation/Action live on Organism base (motivation_, action_).
     
     //  Environmental stress + thermal cache now live on ThermalComponent
     //  (thermal_) on the Organism base. Accessed via thermal_->...
 
     //  Needs now live on Organism base components:
-    //  - hunger/thirst/fatigue/metabolism: HeterotrophyComponent (heterotrophy_)
-    //  - mate: ReproductionComponent (reproduction_)
-    unsigned  _speed      = 1;
+    //  - hunger/thirst/fatigue/metabolism: HeterotrophyComponent
+    //  - mate: ReproductionComponent
+    //  - speed: MobilityComponent (mobility_->speed)
 
     //============================================================================
     //  Genetics System (static registry shared by all creatures)

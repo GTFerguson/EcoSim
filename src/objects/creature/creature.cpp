@@ -157,10 +157,9 @@ const float Creature::DEFAULT_BODY_MASS             = 1.0f;    // Default body m
  */
 Creature::Creature(const Creature& other)
     : GameObject(other),
-      Organism(other.x_, other.y_, other.genome_, getGeneRegistry()),
-      _motivation(other._motivation),
-      _action(other._action),
-      _speed(other._speed) {
+      Organism(other.x_, other.y_, other.genome_, getGeneRegistry()) {
+    motivation_ = other.motivation_;
+    action_ = other.action_;
     // Copy Organism state that isn't set in constructor
     age_ = other.age_;
     health_ = other.health_;
@@ -210,11 +209,11 @@ Creature::Creature(const Creature& other)
  */
 Creature::Creature(Creature&& other) noexcept
     : GameObject(std::move(other)),
-      Organism(std::move(other)),
-      _motivation(other._motivation),
-      _action(other._action),
-      _speed(other._speed)
+      Organism(std::move(other))
 {
+    // motivation_ and action_ moved with Organism base; re-assigning for clarity
+    motivation_ = other.motivation_;
+    action_ = other.action_;
     // All components (including identity_ with its archetype/biome
     // flyweight pointers) transferred by Organism base move constructor.
     // Population counts are unchanged — the pointed-to flyweight still
@@ -255,9 +254,9 @@ Creature& Creature::operator=(const Creature& other) {
         id_ = other.id_;
         
         // Copy Creature-specific state
-        _motivation = other._motivation;
-        _action = other._action;
-        _speed = other._speed;
+        motivation_ = other.motivation_;
+        action_ = other.action_;
+        // speed handled by Organism move of mobility_
 
         // Deep-copy components
         mobility_.reset();
@@ -321,9 +320,9 @@ Creature& Creature::operator=(Creature&& other) noexcept {
         Organism::operator=(std::move(other));
 
         // Move Creature-specific state
-        _motivation = other._motivation;
-        _action = other._action;
-        _speed = other._speed;
+        motivation_ = other.motivation_;
+        action_ = other.action_;
+        // speed handled by Organism move of mobility_
         // All components (mobility/heterotrophy/repro/combat/thermal/identity)
         // transferred by Organism::operator=. Population counts unchanged —
         // the pointed-to flyweight still has the same count.
@@ -360,8 +359,8 @@ void Creature::setMate    (float mate)    { if (reproduction_) reproduction_->ma
 void Creature::setXY      (int x, int y) { mobility_->worldX = static_cast<float>(x); mobility_->worldY = static_cast<float>(y); }
 void Creature::setX       (int x)        { mobility_->worldX = static_cast<float>(x); }
 void Creature::setY       (int y)        { mobility_->worldY = static_cast<float>(y); }
-void Creature::setMotivation(Motivation m) { _motivation = m; }
-void Creature::setAction(Action a)       { _action = a; }
+void Creature::setMotivation(Motivation m) { motivation_ = m; }
+void Creature::setAction(Action a)       { action_ = a; }
 
 // Float position setters
 void Creature::setWorldPosition(float x, float y) { mobility_->worldX = x; mobility_->worldY = y; }
@@ -396,7 +395,7 @@ float     Creature::getThirst     () const { return heterotrophy_ ? heterotrophy
 float     Creature::getFatigue    () const { return heterotrophy_ ? heterotrophy_->fatigue : 0.0f; }
 float     Creature::getMate       () const { return reproduction_ ? reproduction_->mate    : 0.0f; }
 float     Creature::getMetabolism () const { return heterotrophy_ ? heterotrophy_->metabolism : 0.0f; }
-unsigned  Creature::getSpeed      () const { return _speed;                 }
+unsigned  Creature::getSpeed      () const { return mobility_ ? mobility_->speed : 1u; }
 
 // Float position getters
 // getX(), getY(), getWorldX(), getWorldY() are now defined inline in creature.hpp
@@ -859,7 +858,7 @@ bool Creature::canReproduce() const {
     bool hasResources = heterotrophy_->hunger > BREED_COST && heterotrophy_->thirst > BREED_COST;
     bool isHealthy = health_ > getMaxHealth() * 0.25f;
     
-    return isMature() && hasResources && isHealthy && _motivation == Motivation::Amorous;
+    return isMature() && hasResources && isHealthy && motivation_ == Motivation::Amorous;
 }
 
 /**
@@ -1412,14 +1411,14 @@ int Creature::getCombatCooldown() const {
  * Get creature's current motivation state.
  */
 Motivation Creature::getMotivation() const {
-    return _motivation;
+    return motivation_;
 }
 
 /**
  * Get creature's current action state.
  */
 Action Creature::getAction() const {
-    return _action;
+    return action_;
 }
 
 /**
@@ -1441,10 +1440,7 @@ float Creature::getExpressedValue(const std::string& geneId) const {
  */
 Creature::Creature(int x, int y, std::unique_ptr<EcoSim::Genetics::Genome> genome)
     : GameObject(),
-      Organism(x, y, std::move(*genome), getGeneRegistry()),
-      _motivation(Motivation::Content),
-      _action(Action::Idle),
-      _speed(1) {
+      Organism(x, y, std::move(*genome), getGeneRegistry()) {
 
     // Attach mobility + heterotrophy + reproduction + combat + thermal + identity
     attachMobility(std::make_unique<EcoSim::Genetics::MobilityComponent>());
@@ -1500,10 +1496,7 @@ Creature::Creature(int x, int y, std::unique_ptr<EcoSim::Genetics::Genome> genom
 Creature::Creature(int x, int y, float hunger, float thirst,
                    std::unique_ptr<EcoSim::Genetics::Genome> genome)
     : GameObject(),
-      Organism(x, y, std::move(*genome), getGeneRegistry()),
-      _motivation(Motivation::Content),
-      _action(Action::Idle),
-      _speed(1) {
+      Organism(x, y, std::move(*genome), getGeneRegistry()) {
 
     // Attach mobility + heterotrophy + reproduction + combat + thermal
     attachMobility(std::make_unique<EcoSim::Genetics::MobilityComponent>());
@@ -1656,26 +1649,26 @@ EcoSim::Genetics::BehaviorResult Creature::updateWithBehaviors(EcoSim::Genetics:
     // Derive Motivation/Action from the currently active behavior
     std::string behaviorId = _behaviorController->getCurrentBehaviorId();
     if (behaviorId == "feeding") {
-        _motivation = Motivation::Hungry;
-        _action = Action::Grazing;
+        motivation_ = Motivation::Hungry;
+        action_ = Action::Grazing;
     } else if (behaviorId == "hunting") {
-        _motivation = Motivation::Hungry;
-        _action = Action::Hunting;
+        motivation_ = Motivation::Hungry;
+        action_ = Action::Hunting;
     } else if (behaviorId == "thirst") {
-        _motivation = Motivation::Thirsty;
-        _action = result.completed ? Action::Drinking : Action::Searching;
+        motivation_ = Motivation::Thirsty;
+        action_ = result.completed ? Action::Drinking : Action::Searching;
     } else if (behaviorId == "mating") {
-        _motivation = Motivation::Amorous;
-        _action = Action::Courting;
+        motivation_ = Motivation::Amorous;
+        action_ = Action::Courting;
     } else if (behaviorId == "rest") {
-        _motivation = Motivation::Tired;
-        _action = Action::Resting;
+        motivation_ = Motivation::Tired;
+        action_ = Action::Resting;
     } else if (behaviorId == "movement") {
-        _motivation = Motivation::Content;
-        _action = Action::Wandering;
+        motivation_ = Motivation::Content;
+        action_ = Action::Wandering;
     } else {
-        _motivation = Motivation::Content;
-        _action = Action::Idle;
+        motivation_ = Motivation::Content;
+        action_ = Action::Idle;
     }
 
     // Passive lifecycle — inline steps (previously Organism::tickLifecycle framework)
@@ -1686,7 +1679,7 @@ EcoSim::Genetics::BehaviorResult Creature::updateWithBehaviors(EcoSim::Genetics:
 
         // Metabolism: drain energy/hydration, accumulate fatigue
         float change = heterotrophy_->metabolism;
-        bool isResting = (_motivation == Motivation::Tired);
+        bool isResting = (motivation_ == Motivation::Tired);
         if (isResting) {
             heterotrophy_->fatigue -= heterotrophy_->metabolism;
             change /= 2;
@@ -1716,9 +1709,9 @@ EcoSim::Genetics::BehaviorResult Creature::updateWithBehaviors(EcoSim::Genetics:
         }
 
         // Reproductive drive adjustment
-        if (_motivation == Motivation::Hungry || _motivation == Motivation::Thirsty) {
+        if (motivation_ == Motivation::Hungry || motivation_ == Motivation::Thirsty) {
             reproduction_->mate -= getComfDec() * 0.3f;
-        } else if (_motivation == Motivation::Content) {
+        } else if (motivation_ == Motivation::Content) {
             reproduction_->mate += getComfInc();
         }
 
