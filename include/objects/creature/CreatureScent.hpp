@@ -14,7 +14,11 @@
 
 // Forward declarations
 class Creature;
-enum class Direction;
+
+// Direction is a using-alias for EcoSim::Genetics::Direction (defined on
+// MobilityComponent). Include rather than forward-declare.
+#include "genetics/components/MobilityComponent.hpp"
+using Direction = EcoSim::Genetics::Direction;
 
 namespace EcoSim {
 class ScentLayer;

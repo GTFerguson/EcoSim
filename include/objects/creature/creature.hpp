@@ -70,8 +70,9 @@ class World;
 // Import via: using EcoSim::Genetics::DietType;
 using EcoSim::Genetics::DietType;
 
- //  Allows simple 8-direction system
-enum class Direction { N, E, S, W, NE, NW, SE, SW, none };
+ //  8-direction compass lives on MobilityComponent; alias keeps the
+ //  unqualified name available to existing global-namespace callers.
+using Direction = EcoSim::Genetics::Direction;
 
 //  Motivation enum - what the creature currently wants/needs most
 enum class Motivation { Hungry, Thirsty, Amorous, Tired, Content };
@@ -171,9 +172,8 @@ class Creature: public GameObject,
     //============================================================================
     //  Creature-specific State Variables
     //============================================================================
-    //  Float-based world coordinates (precise position)
-    float     _worldX, _worldY;
-    Direction _direction;
+    //  World coordinates and direction live on MobilityComponent (mobility_)
+    //  on the Organism base. Accessed via mobility_->worldX etc.
     Motivation _motivation = Motivation::Content;  // Current motivation/drive
     Action    _action = Action::Idle;              // Current action being performed
     
@@ -392,13 +392,13 @@ class Creature: public GameObject,
      *
      * Creatures have precise float positions for smooth movement.
      */
-    float getWorldX() const override { return _worldX; }
-    
+    float getWorldX() const override { return mobility_ ? mobility_->worldX : static_cast<float>(x_); }
+
     /**
      * @brief Get world Y coordinate (float precision)
      * @return Y position in world coordinates
      */
-    float getWorldY() const override { return _worldY; }
+    float getWorldY() const override { return mobility_ ? mobility_->worldY : static_cast<float>(y_); }
     
     /**
      * @brief Set world position

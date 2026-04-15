@@ -157,8 +157,6 @@ const float Creature::DEFAULT_BODY_MASS             = 1.0f;    // Default body m
 Creature::Creature(const Creature& other)
     : GameObject(other),
       Organism(other.x_, other.y_, other.genome_, getGeneRegistry()),
-      _worldX(other._worldX), _worldY(other._worldY),
-      _direction(other._direction),
       _motivation(other._motivation),
       _action(other._action),
       _inCombat(other._inCombat),
@@ -179,6 +177,9 @@ Creature::Creature(const Creature& other)
     mature_ = other.mature_;
 
     // Deep-copy components (unique_ptr can't be copied, Organism copy is disabled)
+    if (other.mobility_) {
+        attachMobility(std::make_unique<EcoSim::Genetics::MobilityComponent>(*other.mobility_));
+    }
     if (other.heterotrophy_) {
         attachHeterotrophy(std::make_unique<EcoSim::Genetics::HeterotrophyComponent>(*other.heterotrophy_));
     }
@@ -205,8 +206,6 @@ Creature::Creature(const Creature& other)
 Creature::Creature(Creature&& other) noexcept
     : GameObject(std::move(other)),
       Organism(std::move(other)),
-      _worldX(other._worldX), _worldY(other._worldY),
-      _direction(other._direction),
       _motivation(other._motivation),
       _action(other._action),
       _inCombat(other._inCombat),
@@ -261,9 +260,6 @@ Creature& Creature::operator=(const Creature& other) {
         id_ = other.id_;
         
         // Copy Creature-specific state
-        _worldX = other._worldX;
-        _worldY = other._worldY;
-        _direction = other._direction;
         _motivation = other._motivation;
         _action = other._action;
         _inCombat = other._inCombat;
@@ -273,8 +269,12 @@ Creature& Creature::operator=(const Creature& other) {
         _speed = other._speed;
 
         // Deep-copy components
+        mobility_.reset();
         heterotrophy_.reset();
         reproduction_.reset();
+        if (other.mobility_) {
+            attachMobility(std::make_unique<EcoSim::Genetics::MobilityComponent>(*other.mobility_));
+        }
         if (other.heterotrophy_) {
             attachHeterotrophy(std::make_unique<EcoSim::Genetics::HeterotrophyComponent>(*other.heterotrophy_));
         }
@@ -322,9 +322,6 @@ Creature& Creature::operator=(Creature&& other) noexcept {
         Organism::operator=(std::move(other));
         
         // Move Creature-specific state
-        _worldX = other._worldX;
-        _worldY = other._worldY;
-        _direction = other._direction;
         _motivation = other._motivation;
         _action = other._action;
         _inCombat = other._inCombat;
@@ -375,16 +372,16 @@ void Creature::setHunger  (float hunger)  { if (heterotrophy_) heterotrophy_->hu
 void Creature::setThirst  (float thirst)  { if (heterotrophy_) heterotrophy_->thirst  = thirst;  }
 void Creature::setFatigue (float fatigue) { if (heterotrophy_) heterotrophy_->fatigue = fatigue; }
 void Creature::setMate    (float mate)    { if (reproduction_) reproduction_->mate    = mate;    }
-void Creature::setXY      (int x, int y) { _worldX = static_cast<float>(x); _worldY = static_cast<float>(y); }
-void Creature::setX       (int x)        { _worldX = static_cast<float>(x); }
-void Creature::setY       (int y)        { _worldY = static_cast<float>(y); }
+void Creature::setXY      (int x, int y) { mobility_->worldX = static_cast<float>(x); mobility_->worldY = static_cast<float>(y); }
+void Creature::setX       (int x)        { mobility_->worldX = static_cast<float>(x); }
+void Creature::setY       (int y)        { mobility_->worldY = static_cast<float>(y); }
 void Creature::setMotivation(Motivation m) { _motivation = m; }
 void Creature::setAction(Action a)       { _action = a; }
 
 // Float position setters
-void Creature::setWorldPosition(float x, float y) { _worldX = x; _worldY = y; }
-void Creature::setWorldX(float x) { _worldX = x; }
-void Creature::setWorldY(float y) { _worldY = y; }
+void Creature::setWorldPosition(float x, float y) { mobility_->worldX = x; mobility_->worldY = y; }
+void Creature::setWorldX(float x) { mobility_->worldX = x; }
+void Creature::setWorldY(float y) { mobility_->worldY = y; }
 
 //================================================================================
 //  Getters
@@ -418,9 +415,9 @@ unsigned  Creature::getSpeed      () const { return _speed;                 }
 
 // Float position getters
 // getX(), getY(), getWorldX(), getWorldY() are now defined inline in creature.hpp
-// delegating to Organism or using _worldX/_worldY directly
-int       Creature::tileX         () const { return static_cast<int>(_worldX); }
-int       Creature::tileY         () const { return static_cast<int>(_worldY); }
+// delegating to Organism or using mobility_->worldX/mobility_->worldY directly
+int       Creature::tileX         () const { return static_cast<int>(mobility_->worldX); }
+int       Creature::tileY         () const { return static_cast<int>(mobility_->worldY); }
 
 // Movement speed calculation
 float Creature::getMovementSpeed() const {
@@ -449,7 +446,7 @@ float Creature::getMovementSpeed() const {
     // Ensure minimum speed
     return std::max(MIN_MOVEMENT_SPEED, speed);
 }
-Direction Creature::getDirection  () const { return _direction; }
+Direction Creature::getDirection  () const { return mobility_->direction; }
 
 // Genetics-only getters - derive all values from phenotype
 unsigned Creature::getLifespan() const {
@@ -750,17 +747,17 @@ bool Creature::findFoodScent(const EcoSim::ScentLayer& scentLayer, int& outX, in
  */
 void Creature::changeDirection (const int &xChange, const int &yChange) {
   if (xChange == 1) {
-    if      (yChange ==  1) _direction = Direction::SE;
-    else if (yChange == -1) _direction = Direction::NE;
-    else                    _direction = Direction::E;
+    if      (yChange ==  1) mobility_->direction = Direction::SE;
+    else if (yChange == -1) mobility_->direction = Direction::NE;
+    else                    mobility_->direction = Direction::E;
   } else if (xChange == -1) {
-    if      (yChange ==  1) _direction = Direction::SW;
-    else if (yChange == -1) _direction = Direction::NW;
-    else                    _direction = Direction::W;
+    if      (yChange ==  1) mobility_->direction = Direction::SW;
+    else if (yChange == -1) mobility_->direction = Direction::NW;
+    else                    mobility_->direction = Direction::W;
   } else {
-    if      (yChange ==  1) _direction = Direction::S;
-    else if (yChange == -1) _direction = Direction::N;
-    else                    _direction = Direction::none;
+    if      (yChange ==  1) mobility_->direction = Direction::S;
+    else if (yChange == -1) mobility_->direction = Direction::N;
+    else                    mobility_->direction = Direction::none;
   }
 }
 
@@ -1217,7 +1214,7 @@ Direction Creature::stringToDirection (const string &str) {
  *  @return A human readable string representation of the profile.
  */
 string Creature::directionToString () const {
-  return CreatureSerialization::directionToString(_direction);
+  return CreatureSerialization::directionToString(mobility_->direction);
 }
 
 /**
@@ -1460,9 +1457,6 @@ float Creature::getExpressedValue(const std::string& geneId) const {
 Creature::Creature(int x, int y, std::unique_ptr<EcoSim::Genetics::Genome> genome)
     : GameObject(),
       Organism(x, y, std::move(*genome), getGeneRegistry()),
-      _worldX(static_cast<float>(x)),
-      _worldY(static_cast<float>(y)),
-      _direction(Direction::none),
       _motivation(Motivation::Content),
       _action(Action::Idle),
       _inCombat(false),
@@ -1473,7 +1467,11 @@ Creature::Creature(int x, int y, std::unique_ptr<EcoSim::Genetics::Genome> genom
       _archetype(nullptr),
       creatureId_(nextCreatureId_++) {
 
-    // Attach heterotrophy + reproduction components (all Creatures are heterotrophs)
+    // Attach mobility + heterotrophy + reproduction (every Creature is mobile & heterotroph)
+    attachMobility(std::make_unique<EcoSim::Genetics::MobilityComponent>());
+    mobility_->worldX = static_cast<float>(x);
+    mobility_->worldY = static_cast<float>(y);
+    mobility_->direction = Direction::none;
     attachHeterotrophy(std::make_unique<EcoSim::Genetics::HeterotrophyComponent>());
     attachReproduction(std::make_unique<EcoSim::Genetics::ReproductionComponent>());
 
@@ -1520,9 +1518,6 @@ Creature::Creature(int x, int y, float hunger, float thirst,
                    std::unique_ptr<EcoSim::Genetics::Genome> genome)
     : GameObject(),
       Organism(x, y, std::move(*genome), getGeneRegistry()),
-      _worldX(static_cast<float>(x)),
-      _worldY(static_cast<float>(y)),
-      _direction(Direction::none),
       _motivation(Motivation::Content),
       _action(Action::Idle),
       _inCombat(false),
@@ -1533,7 +1528,11 @@ Creature::Creature(int x, int y, float hunger, float thirst,
       _archetype(nullptr),
       creatureId_(nextCreatureId_++) {
 
-    // Attach heterotrophy + reproduction components (all Creatures are heterotrophs)
+    // Attach mobility + heterotrophy + reproduction
+    attachMobility(std::make_unique<EcoSim::Genetics::MobilityComponent>());
+    mobility_->worldX = static_cast<float>(x);
+    mobility_->worldY = static_cast<float>(y);
+    mobility_->direction = Direction::none;
     attachHeterotrophy(std::make_unique<EcoSim::Genetics::HeterotrophyComponent>());
     attachReproduction(std::make_unique<EcoSim::Genetics::ReproductionComponent>());
 
