@@ -201,7 +201,7 @@ Creature::Creature(const Creature& other)
     }
 
     // Behavior controller is NOT copied - use lazy initialization
-    _behaviorController = nullptr;
+    organismBehaviorController_ = nullptr;
 }
 
 /**
@@ -297,7 +297,7 @@ Creature& Creature::operator=(const Creature& other) {
         // Gut seeds / burrs are now inside the deep-copied heterotrophy_ component.
 
         // Reset behavior controller - lazy initialization will recreate it when needed
-        _behaviorController.reset();
+        organismBehaviorController_.reset();
     }
     return *this;
 }
@@ -328,7 +328,7 @@ Creature& Creature::operator=(Creature&& other) noexcept {
         // the pointed-to flyweight still has the same count.
 
         // Move behavior controller from source
-        _behaviorController = std::move(other._behaviorController);
+        organismBehaviorController_ = std::move(other.organismBehaviorController_);
     }
     return *this;
 }
@@ -1555,17 +1555,17 @@ Creature::Creature(int x, int y, float hunger, float thirst,
  * Called once during creature construction or on first use.
  */
 EcoSim::Genetics::BehaviorController* Creature::getBehaviorController() {
-    return _behaviorController.get();
+    return organismBehaviorController_.get();
 }
 
 const EcoSim::Genetics::BehaviorController* Creature::getBehaviorController() const {
-    return _behaviorController.get();
+    return organismBehaviorController_.get();
 }
 
 void Creature::initializeBehaviorController() {
     using namespace EcoSim::Genetics;
 
-    if (_behaviorController) {
+    if (organismBehaviorController_) {
         return;  // Already initialized
     }
 
@@ -1575,7 +1575,7 @@ void Creature::initializeBehaviorController() {
     if (!s_feedingInteraction) s_feedingInteraction = std::make_unique<FeedingInteraction>();
     if (!s_seedDispersal)     s_seedDispersal     = std::make_unique<SeedDispersal>();
 
-    _behaviorController = std::make_unique<BehaviorController>();
+    organismBehaviorController_ = std::make_unique<BehaviorController>();
 
     // Delegate to BehaviorRegistry — gene expression decides which behaviors attach.
     BehaviorServices services;
@@ -1585,7 +1585,7 @@ void Creature::initializeBehaviorController() {
     services.seedDispersal = s_seedDispersal.get();
     services.geneRegistry  = s_geneRegistry.get();
 
-    BehaviorRegistry::attachBehaviorsFor(*_behaviorController, phenotype_, services);
+    BehaviorRegistry::attachBehaviorsFor(*organismBehaviorController_, phenotype_, services);
 }
 
 /**
@@ -1634,12 +1634,12 @@ EcoSim::Genetics::BehaviorResult Creature::updateWithBehaviors(EcoSim::Genetics:
     using namespace EcoSim::Genetics;
 
     // Ensure behavior controller is initialized
-    if (!_behaviorController) {
+    if (!organismBehaviorController_) {
         initializeBehaviorController();
     }
 
     // Update the behavior controller — selects and executes the highest priority behavior
-    BehaviorResult result = _behaviorController->update(*this, ctx);
+    BehaviorResult result = organismBehaviorController_->update(*this, ctx);
 
     // Apply energy cost from behavior execution
     if (result.executed && result.energyCost > 0.0f) {
@@ -1647,7 +1647,7 @@ EcoSim::Genetics::BehaviorResult Creature::updateWithBehaviors(EcoSim::Genetics:
     }
 
     // Derive Motivation/Action from the currently active behavior
-    std::string behaviorId = _behaviorController->getCurrentBehaviorId();
+    std::string behaviorId = organismBehaviorController_->getCurrentBehaviorId();
     if (behaviorId == "feeding") {
         motivation_ = Motivation::Hungry;
         action_ = Action::Grazing;

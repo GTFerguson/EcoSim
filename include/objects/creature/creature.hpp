@@ -198,7 +198,7 @@ class Creature: public GameObject,
     //============================================================================
     //  Behavior System
     //============================================================================
-    std::unique_ptr<EcoSim::Genetics::BehaviorController> _behaviorController;
+    //  BehaviorController lives on Organism base (organismBehaviorController_).
 
     // Shared services for behavior system
     static std::unique_ptr<EcoSim::Genetics::PerceptionSystem> s_perceptionSystem;
