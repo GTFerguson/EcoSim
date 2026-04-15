@@ -21,6 +21,10 @@ namespace EcoSim {
 namespace Genetics {
 
 class GeneRegistry;
+class FeedingInteraction;
+class SeedDispersal;
+class PerceptionSystem;
+class CombatInteraction;
 
 /**
  * @brief Base class for all living organisms (Plant, Creature).
@@ -276,6 +280,18 @@ public:
     // Identity
     int id_;
     static int nextId_;
+
+    // Shared services historically owned by Creature (lazy-init).
+    // Declared here so they're accessible from methods that will move
+    // onto Organism once the Creature/Plant class deletion completes.
+    static std::shared_ptr<GeneRegistry>     s_geneRegistry;
+    static std::unique_ptr<FeedingInteraction>  s_feedingInteraction;
+    static std::unique_ptr<SeedDispersal>       s_seedDispersal;
+    static std::unique_ptr<PerceptionSystem>    s_perceptionSystem;
+    static std::unique_ptr<CombatInteraction>   s_combatInteraction;
+
+    // Sequential creature display ID counter (moves to a factory later).
+    static int nextCreatureId_;
 
     // Display state: current motivation / action for UI/rendering.
     // Derived from active behavior selection, surfaced here for cheap

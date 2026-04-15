@@ -1,5 +1,9 @@
 #include "genetics/organisms/Organism.hpp"
 #include "genetics/core/GeneRegistry.hpp"
+#include "genetics/interactions/FeedingInteraction.hpp"
+#include "genetics/interactions/SeedDispersal.hpp"
+#include "genetics/systems/PerceptionSystem.hpp"
+#include "genetics/interactions/CombatInteraction.hpp"
 #include <algorithm>
 
 namespace EcoSim {
@@ -7,6 +11,13 @@ namespace Genetics {
 
 // Static member initialization
 int Organism::nextId_ = 1;
+int Organism::nextCreatureId_ = 0;
+
+std::shared_ptr<GeneRegistry>     Organism::s_geneRegistry     = nullptr;
+std::unique_ptr<FeedingInteraction>  Organism::s_feedingInteraction = nullptr;
+std::unique_ptr<SeedDispersal>       Organism::s_seedDispersal     = nullptr;
+std::unique_ptr<PerceptionSystem>    Organism::s_perceptionSystem  = nullptr;
+std::unique_ptr<CombatInteraction>   Organism::s_combatInteraction = nullptr;
 
 Organism::Organism(int x, int y, Genome genome, const GeneRegistry& registry)
     : x_(x)

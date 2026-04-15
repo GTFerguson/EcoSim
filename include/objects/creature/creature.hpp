@@ -142,58 +142,11 @@ class Creature: public GameObject,
     //============================================================================
     //  Creature-specific ID Counter
     //============================================================================
-    //  sequentialId now lives on IdentityComponent (identity_).
-    //  The counter itself stays Creature-scoped for now; moves to a
-    //  dedicated factory once Creature/Plant classes are deleted.
-    static int nextCreatureId_;
-    
-    //============================================================================
-    //  Creature-specific State Variables
-    //============================================================================
-    //  World coordinates/direction live on MobilityComponent (mobility_).
-    //  Combat flags/target/cooldown live on CombatComponent (combat_).
-    //  Motivation/Action live on Organism base (motivation_, action_).
-    
-    //  Environmental stress + thermal cache now live on ThermalComponent
-    //  (thermal_) on the Organism base. Accessed via thermal_->...
-
-    //  Needs now live on Organism base components:
-    //  - hunger/thirst/fatigue/metabolism: HeterotrophyComponent
-    //  - mate: ReproductionComponent
-    //  - speed: MobilityComponent (mobility_->speed)
-
-    //============================================================================
-    //  Genetics System (static registry shared by all creatures)
-    //============================================================================
-    // Shared gene registry for all creatures (singleton-like pattern)
-    static std::shared_ptr<EcoSim::Genetics::GeneRegistry> s_geneRegistry;
-    
-    //============================================================================
-    //  Archetype Identity
-    //============================================================================
-    //  Archetype + biome adaptation flyweight pointers now live on
-    //  IdentityComponent (identity_->archetype, identity_->biomeAdaptation).
-    
-    //============================================================================
-    //  Creature-Plant Interaction Data
-    //============================================================================
-    //  Gut seeds and attached burrs now live on HeterotrophyComponent
-    //  (heterotrophy_->gutSeeds, heterotrophy_->attachedBurrs).
-    
-    // Shared feeding interaction calculator
-    static std::unique_ptr<EcoSim::Genetics::FeedingInteraction> s_feedingInteraction;
-    
-    // Shared seed dispersal calculator
-    static std::unique_ptr<EcoSim::Genetics::SeedDispersal> s_seedDispersal;
-
-    //============================================================================
-    //  Behavior System
-    //============================================================================
-    //  BehaviorController lives on Organism base (organismBehaviorController_).
-
-    // Shared services for behavior system
-    static std::unique_ptr<EcoSim::Genetics::PerceptionSystem> s_perceptionSystem;
-    static std::unique_ptr<EcoSim::Genetics::CombatInteraction> s_combatInteraction;
+    //  All per-instance state now lives on Organism base + components.
+    //  Shared services (s_geneRegistry, s_feedingInteraction, s_seedDispersal,
+    //  s_perceptionSystem, s_combatInteraction) and the nextCreatureId_
+    //  counter also live on Organism base. Nothing Creature-specific
+    //  remains on the class except method implementations.
     
     //============================================================================
     //  Private Breeding Implementation

@@ -69,17 +69,9 @@ static const DietInfo& getDietInfo(EcoSim::Genetics::DietType diet) {
 }
 
 //================================================================================
-//  Static Member Initialization - New Genetics System
-//================================================================================
-std::shared_ptr<EcoSim::Genetics::GeneRegistry> Creature::s_geneRegistry = nullptr;
-
-//================================================================================
-//  Static Member Initialization - Creature-specific ID Counter
-//================================================================================
-int Creature::nextCreatureId_ = 0;
-
-//================================================================================
-//  Static Member Initialization - Logging
+//  Shared static services (s_geneRegistry, s_feedingInteraction,
+//  s_seedDispersal, s_perceptionSystem, s_combatInteraction) and the
+//  nextCreatureId_ counter are defined in src/genetics/organisms/Organism.cpp.
 //================================================================================
 static int s_nextCreatureId = 1;
 
@@ -90,18 +82,6 @@ void Creature::resetIdCounter(int nextId) {
 int Creature::getNextId() {
     return s_nextCreatureId;
 }
-
-//================================================================================
-//  Static Member Initialization - Creature-Plant Interactions
-//================================================================================
-std::unique_ptr<EcoSim::Genetics::FeedingInteraction> Creature::s_feedingInteraction = nullptr;
-std::unique_ptr<EcoSim::Genetics::SeedDispersal> Creature::s_seedDispersal = nullptr;
-
-//================================================================================
-//  Static Member Initialization - Behavior System Services
-//================================================================================
-std::unique_ptr<EcoSim::Genetics::PerceptionSystem> Creature::s_perceptionSystem = nullptr;
-std::unique_ptr<EcoSim::Genetics::CombatInteraction> Creature::s_combatInteraction = nullptr;
 
 //================================================================================
 //  Constants — definitions now live inline in
