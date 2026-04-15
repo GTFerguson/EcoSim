@@ -341,34 +341,26 @@ unsigned  EcoSim::Genetics::Organism::getSpeed      () const { return mobility_ 
 // Float position getters
 // getX(), getY(), getWorldX(), getWorldY() are now defined inline in creature.hpp
 // delegating to Organism or using mobility_->worldX/mobility_->worldY directly
-int       Creature::tileX         () const { return static_cast<int>(mobility_->worldX); }
-int       Creature::tileY         () const { return static_cast<int>(mobility_->worldY); }
+int       EcoSim::Genetics::Organism::tileX         () const { return mobility_ ? static_cast<int>(mobility_->worldX) : x_; }
+int       EcoSim::Genetics::Organism::tileY         () const { return mobility_ ? static_cast<int>(mobility_->worldY) : y_; }
 
 // Movement speed calculation
-float Creature::getMovementSpeed() const {
-    // Get gene values from phenotype if available
-    float locomotion = DEFAULT_LEG_LENGTH;  // Base movement capability
-    float legLength = DEFAULT_LEG_LENGTH;   // Stride length
-    float bodyMass = DEFAULT_BODY_MASS;     // Weight affects speed
-    
-    // Use LOCOMOTION gene for movement speed capability
+float EcoSim::Genetics::Organism::getMovementSpeed() const {
+    using namespace EcoSim::Genetics::Constants;
+    float locomotion = DEFAULT_LEG_LENGTH;
+    float legLength  = DEFAULT_LEG_LENGTH;
+    float bodyMass   = DEFAULT_BODY_MASS;
+
     if (phenotype_.hasTrait(EcoSim::Genetics::UniversalGenes::LOCOMOTION)) {
         locomotion = phenotype_.getTrait(EcoSim::Genetics::UniversalGenes::LOCOMOTION);
     }
-    // Use MAX_SIZE as proxy for body mass (larger creatures are heavier)
     if (phenotype_.hasTrait(EcoSim::Genetics::UniversalGenes::MAX_SIZE)) {
         bodyMass = phenotype_.getTrait(EcoSim::Genetics::UniversalGenes::MAX_SIZE);
-        // Normalize max_size - gene value is 0.5-20.0, scale to reasonable mass range
-        bodyMass = 0.5f + (bodyMass / 20.0f) * 1.5f;  // Range: 0.5 to 2.0
+        bodyMass = 0.5f + (bodyMass / 20.0f) * 1.5f;
     }
-    // Leg length could be derived from body morphology genes
-    // For now, use locomotion as a proxy
-    legLength = 0.3f + locomotion * 0.7f;  // Range: 0.3 to 1.0
-    
-    // Speed formula: baseSpeed = (locomotion * legLength) / sqrt(mass)
+    legLength = 0.3f + locomotion * 0.7f;
+
     float speed = (BASE_MOVEMENT_SPEED * locomotion * legLength) / std::sqrt(bodyMass);
-    
-    // Ensure minimum speed
     return std::max(MIN_MOVEMENT_SPEED, speed);
 }
 Direction EcoSim::Genetics::Organism::getDirection  () const { return mobility_ ? mobility_->direction : Direction::none; }
@@ -1227,69 +1219,44 @@ void Creature::reclassifyBiomeAdaptation() {
  * Get maximum health value.
  * Based on MAX_SIZE gene for creature mass scaling.
  */
-float Creature::getMaxHealth() const {
-    if (phenotype_.hasTrait(EcoSim::Genetics::UniversalGenes::MAX_SIZE)) {
-        return phenotype_.getTrait(EcoSim::Genetics::UniversalGenes::MAX_SIZE) * 10.0f;
-    }
-    return RESOURCE_LIMIT * 10.0f;  // 100.0f default
-}
+// Creature::getMaxHealth removed — Organism::getMaxHealth is the single
+// canonical implementation (MAX_SIZE gene based).
 
-/**
- * Apply damage to creature's health.
- */
-void Creature::takeDamage(float amount) {
+void EcoSim::Genetics::Organism::takeDamage(float amount) {
     if (amount <= 0.0f) return;
     health_ = std::max(0.0f, health_ - amount);
 }
 
-/**
- * Heal creature's health.
- */
 void Creature::heal(float amount) {
     if (amount <= 0.0f) return;
     health_ = std::min(getMaxHealth(), health_ + amount);
 }
 
-/**
- * Set combat state.
- */
-void Creature::setInCombat(bool combat) {
+void EcoSim::Genetics::Organism::setInCombat(bool combat) {
     if (combat_) combat_->inCombat = combat;
 }
 
-/**
- * Set combat target ID.
- */
-void Creature::setTargetId(int targetId) {
+void EcoSim::Genetics::Organism::setTargetId(int targetId) {
     if (combat_) combat_->targetId = targetId;
 }
 
-/**
- * Set combat cooldown ticks.
- */
-void Creature::setCombatCooldown(int cooldown) {
+void EcoSim::Genetics::Organism::setCombatCooldown(int cooldown) {
     if (combat_) combat_->combatCooldown = cooldown;
 }
 
-/**
- * Set fleeing state.
- */
-void Creature::setFleeing(bool fleeing) {
+void EcoSim::Genetics::Organism::setFleeing(bool fleeing) {
     if (combat_) combat_->isFleeing = fleeing;
 }
 
-/**
- * Get health as percentage (0.0 to 1.0).
- */
-float Creature::getHealthPercent() const {
+float EcoSim::Genetics::Organism::getHealthPercent() const {
     float maxHealth = getMaxHealth();
     if (maxHealth <= 0.0f) return 0.0f;
     return std::max(0.0f, std::min(1.0f, getHealth() / maxHealth));
 }
 
-/**
- * Get wound state based on health percentage.
- */
+// getWoundState stays on Creature for now — its return type is
+// ::WoundState (global alias) and the Organism signature uses
+// EcoSim::Genetics::WoundState. Untangling that is a separate step.
 WoundState Creature::getWoundState() const {
     float percent = getHealthPercent();
     if (percent > 0.75f) return WoundState::Healthy;
@@ -1299,52 +1266,30 @@ WoundState Creature::getWoundState() const {
     return WoundState::Dead;
 }
 
-/**
- * Get wound severity (0.0 to 1.0).
- */
-float Creature::getWoundSeverity() const {
+float EcoSim::Genetics::Organism::getWoundSeverity() const {
     return 1.0f - getHealthPercent();
 }
 
-/**
- * Get healing rate per tick.
- */
-float Creature::getHealingRate() const {
+float EcoSim::Genetics::Organism::getHealingRate() const {
     if (phenotype_.hasTrait(EcoSim::Genetics::UniversalGenes::REGENERATION_RATE)) {
         return phenotype_.getTrait(EcoSim::Genetics::UniversalGenes::REGENERATION_RATE) * 0.001f;
     }
     return 0.001f;  // Default healing rate
 }
 
-//================================================================================
-//  Combat System (Stub implementations for ImGui compatibility)
-//================================================================================
-
-/**
- * Check if creature is currently in combat.
- */
-bool Creature::isInCombat() const {
+bool EcoSim::Genetics::Organism::isInCombat() const {
     return combat_ && combat_->inCombat;
 }
 
-/**
- * Check if creature is currently fleeing.
- */
-bool Creature::isFleeing() const {
+bool EcoSim::Genetics::Organism::isFleeing() const {
     return combat_ && combat_->isFleeing;
 }
 
-/**
- * Get current combat target ID.
- */
-int Creature::getTargetId() const {
+int EcoSim::Genetics::Organism::getTargetId() const {
     return combat_ ? combat_->targetId : -1;
 }
 
-/**
- * Get remaining combat cooldown ticks.
- */
-int Creature::getCombatCooldown() const {
+int EcoSim::Genetics::Organism::getCombatCooldown() const {
     return combat_ ? combat_->combatCooldown : 0;
 }
 
@@ -1365,7 +1310,7 @@ Action EcoSim::Genetics::Organism::getAction() const {
 /**
  * Get expressed value of a gene from the phenotype.
  */
-float Creature::getExpressedValue(const std::string& geneId) const {
+float EcoSim::Genetics::Organism::getExpressedValue(const std::string& geneId) const {
     if (phenotype_.hasTrait(geneId)) {
         return phenotype_.getTrait(geneId);
     }

@@ -394,11 +394,22 @@ class Creature: public GameObject,
      * @param geneId The gene ID to look up
      * @return The expressed trait value, or 0.0 if not found or not using new genetics
      */
-    float getExpressedValue(const std::string& geneId) const;
+    //  getExpressedValue now lives on Organism base.
 
     //============================================================================
-    //  Setters, getters for needs/position/motivation/action/speed/direction
-    //  now live on Organism base. Inherited here.
+    //  Creature overrides heal to cap at organism getMaxHealth
+    //============================================================================
+    void  heal(float amount);
+
+    //============================================================================
+    //  Inherited from Organism base:
+    //  - tile coordinates (tileX, tileY)
+    //  - movement speed (getMovementSpeed)
+    //  - health percent / wound severity / healing rate
+    //  - damage (takeDamage)
+    //  - combat state (setInCombat, setTargetId, setCombatCooldown, setFleeing,
+    //                  isInCombat, isFleeing, getTargetId, getCombatCooldown)
+    //  - expressed gene query (getExpressedValue)
     //============================================================================
     float     getTMate      () const;
 
@@ -408,173 +419,23 @@ class Creature: public GameObject,
     unsigned int getAge() const override { return Organism::getAge(); }
     float getAgeNormalized() const override;
     void age(unsigned int ticks = 1) override;
-    
+
     //============================================================================
-    //  Float Position Getters
+    //  Growth State (forwards to Organism base)
     //============================================================================
-    /**
-     * @brief Get tile X coordinate (integer, for rendering/collision).
-     *        Derives from world coordinates via truncation.
-     * @return Integer tile x-coordinate
-     */
-    int tileX() const;
-    
-    /**
-     * @brief Get tile Y coordinate (integer, for rendering/collision).
-     *        Derives from world coordinates via truncation.
-     * @return Integer tile y-coordinate
-     */
-    int tileY() const;
-    
-    /**
-     * @brief Calculate movement speed based on genes.
-     *        Formula: baseSpeed = (MOVEMENT_SPEED * LEG_LENGTH) / sqrt(MASS)
-     * @return Calculated movement speed (tiles per tick)
-     */
-    float getMovementSpeed() const;
-    
-    //============================================================================
-    //  Growth State Getters (use Organism's members)
-    //============================================================================
-    /**
-     * @brief Get current physical size.
-     * @return Current size (0.0 to maxSize_)
-     */
     float getCurrentSize() const { return Organism::getCurrentSize(); }
-    
-    /**
-     * @brief Check if creature has reached maturity.
-     * @return True if creature has reached 50% of max size
-     */
-    bool isMature() const { return Organism::isMature(); }
-    
-    /**
-     * @brief Get ratio of current size to max size.
-     * @return Size ratio (0.0 to 1.0)
-     */
+    bool  isMature() const { return Organism::isMature(); }
     float getSizeRatio() const { return Organism::getSizeRatio(); }
-    
-    /**
-     * @brief Set current size (for deserialization).
-     * @param size New current size value
-     */
-    void setCurrentSize(float s) { currentSize_ = s; }
-    
-    /**
-     * @brief Set maximum size (for deserialization).
-     * @param size New maximum size value
-     */
-    void setMaxSize(float s) { maxSize_ = s; }
-    
-    /**
-     * @brief Set maturity state (for deserialization).
-     * @param mature New maturity state
-     */
-    void setMature(bool m) { mature_ = m; }
-    
-    /**
-     * @brief Get maximum health based on genetics.
-     *        Uses MASS gene as proxy (larger creatures have more health).
-     * @return Maximum health value
-     */
-    float getMaxHealth() const;
-    
-    /**
-     * @brief Get current health.
-     * @return Current health value
-     */
+    void  setCurrentSize(float s) { currentSize_ = s; }
+    void  setMaxSize(float s) { maxSize_ = s; }
+    void  setMature(bool m) { mature_ = m; }
     float getHealth() const { return Organism::getHealth(); }
-    
-    /**
-     * @brief Get health as percentage (0.0 to 1.0).
-     * @return Health percentage
-     */
-    float getHealthPercent() const;
-    
-    /**
-     * @brief Get current wound state.
-     * @return WoundState enum value
-     */
+
+    // getWoundState remains here because its return type uses the
+    // global Direction/WoundState alias and Organism's signature uses
+    // EcoSim::Genetics::WoundState — they're the same type via alias
+    // but the declaration syntax differs; untangled later.
     WoundState getWoundState() const;
-    
-    /**
-     * @brief Get wound severity (0.0 = healthy, 1.0 = critical).
-     * @return Wound severity value
-     */
-    float getWoundSeverity() const;
-    
-    /**
-     * @brief Get healing rate per tick.
-     * @return Healing rate
-     */
-    float getHealingRate() const;
-    
-    /**
-     * @brief Apply damage to creature's health.
-     * @param amount Damage to apply (positive value)
-     *
-     * - Reduces health_ directly
-     * - Floors health at 0 (never negative)
-     * - Zero/negative amounts are no-ops
-     */
-    void takeDamage(float amount);
-    
-    /**
-     * @brief Heal creature's health.
-     * @param amount Health to restore (positive value)
-     *
-     * - Caps at getMaxHealth()
-     * - Zero/negative amounts are no-ops
-     */
-    void heal(float amount);
-    
-    /**
-     * @brief Set combat state.
-     * @param combat True if entering combat
-     */
-    void setInCombat(bool combat);
-    
-    /**
-     * @brief Set combat target ID.
-     * @param targetId Target creature's ID, or -1 for none
-     */
-    void setTargetId(int targetId);
-    
-    /**
-     * @brief Set combat cooldown ticks.
-     * @param cooldown Ticks until next attack
-     */
-    void setCombatCooldown(int cooldown);
-    
-    /**
-     * @brief Set fleeing state.
-     * @param fleeing True if fleeing
-     */
-    void setFleeing(bool fleeing);
-    
-    /**
-     * @brief Check if creature is currently in combat.
-     * @return True if in combat
-     */
-    bool isInCombat() const;
-    
-    /**
-     * @brief Check if creature is currently fleeing.
-     * @return True if fleeing
-     */
-    bool isFleeing() const;
-    
-    /**
-     * @brief Get ID of current combat target.
-     * @return Target creature ID, or -1 if none
-     */
-    int getTargetId() const;
-    
-    /**
-     * @brief Get remaining combat cooldown ticks.
-     * @return Cooldown ticks remaining
-     */
-    int getCombatCooldown() const;
     
     /**
      * @brief Get current environmental stress state.

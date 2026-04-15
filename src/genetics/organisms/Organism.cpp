@@ -126,8 +126,12 @@ void Organism::updatePhenotype() {
 }
 
 float Organism::getMaxHealth() const {
-    // Default max health is 1.0, subclasses may override based on genes
-    return 1.0f;
+    // MAX_SIZE-based scaling — larger organisms have more health.
+    // Historical Creature override, now the single canonical version.
+    if (phenotype_.hasTrait("max_size")) {
+        return phenotype_.getTrait("max_size") * 10.0f;
+    }
+    return 100.0f;  // Fallback default
 }
 
 void Organism::setHealth(float health) {

@@ -16,6 +16,7 @@
 #include "genetics/core/MotivationAction.hpp"
 #include "genetics/behaviors/BehaviorController.hpp"
 #include <memory>
+#include <string>
 
 namespace EcoSim {
 namespace Genetics {
@@ -301,6 +302,30 @@ public:
 
     // Simple getters and setters that delegate to components.
     // Historically lived on Creature; inherited by Creature via base.
+    // Tile coordinates (derived from world float position)
+    int tileX() const;
+    int tileY() const;
+    float getMovementSpeed() const;
+
+    // Health / wound / healing (getMaxHealth / heal already on base above)
+    float getHealthPercent() const;
+    float getWoundSeverity() const;
+    float getHealingRate() const;
+    void  takeDamage(float amount);
+
+    // Combat state setters/getters (delegate to CombatComponent)
+    void setInCombat(bool combat);
+    void setTargetId(int targetId);
+    void setCombatCooldown(int cooldown);
+    void setFleeing(bool fleeing);
+    bool isInCombat() const;
+    bool isFleeing() const;
+    int  getTargetId() const;
+    int  getCombatCooldown() const;
+
+    // Gene expression query
+    float getExpressedValue(const std::string& geneId) const;
+
     void setAge        (unsigned age);
     void setHunger     (float hunger);
     void setThirst     (float thirst);
