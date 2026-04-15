@@ -6,6 +6,11 @@
 #include "genetics/interfaces/IReproducible.hpp"
 #include "genetics/core/Genome.hpp"
 #include "genetics/expression/Phenotype.hpp"
+#include "genetics/components/MobilityComponent.hpp"
+#include "genetics/components/HeterotrophyComponent.hpp"
+#include "genetics/components/AutotrophyComponent.hpp"
+#include "genetics/components/ReproductionComponent.hpp"
+#include "genetics/components/CombatComponent.hpp"
 #include <memory>
 
 namespace EcoSim {
@@ -194,35 +199,69 @@ public:
     
     /**
      * @brief Rebind phenotype's genome pointer after move
-     * 
+     *
      * The Phenotype holds a pointer to the Genome for trait expression.
      * After moving, this pointer must be updated to point to THIS
      * organism's genome, not the moved-from organism's genome.
      */
     void rebindPhenotypeGenome();
-    
+
+    // ========================================================================
+    // Optional components (attached at construction based on gene expression)
+    //
+    // A component is present only when the organism's genes justify it —
+    // sessile photosynthesisers skip MobilityComponent, inert fruit skips
+    // HeterotrophyComponent, etc. Accessors return nullptr when absent,
+    // callers null-check before use.
+    // ========================================================================
+
+    MobilityComponent*     mobility()     { return mobility_.get(); }
+    HeterotrophyComponent* heterotrophy() { return heterotrophy_.get(); }
+    AutotrophyComponent*   autotrophy()   { return autotrophy_.get(); }
+    ReproductionComponent* reproduction() { return reproduction_.get(); }
+    CombatComponent*       combat()       { return combat_.get(); }
+
+    const MobilityComponent*     mobility()     const { return mobility_.get(); }
+    const HeterotrophyComponent* heterotrophy() const { return heterotrophy_.get(); }
+    const AutotrophyComponent*   autotrophy()   const { return autotrophy_.get(); }
+    const ReproductionComponent* reproduction() const { return reproduction_.get(); }
+    const CombatComponent*       combat()       const { return combat_.get(); }
+
+    void attachMobility(std::unique_ptr<MobilityComponent> c)         { mobility_     = std::move(c); }
+    void attachHeterotrophy(std::unique_ptr<HeterotrophyComponent> c) { heterotrophy_ = std::move(c); }
+    void attachAutotrophy(std::unique_ptr<AutotrophyComponent> c)     { autotrophy_   = std::move(c); }
+    void attachReproduction(std::unique_ptr<ReproductionComponent> c) { reproduction_ = std::move(c); }
+    void attachCombat(std::unique_ptr<CombatComponent> c)             { combat_       = std::move(c); }
+
     // Position (tile coordinates)
     int x_;
     int y_;
-    
+
     // Lifecycle state
     unsigned int age_ = 0;
     bool alive_ = true;
     float health_;
-    
+
     // Growth state
     float currentSize_;
     float maxSize_;
     bool mature_ = false;
-    
+
     // Genetics
     Genome genome_;
     Phenotype phenotype_;
     const GeneRegistry* registry_;
-    
+
     // Identity
     int id_;
     static int nextId_;
+
+    // Optional runtime-state components (nullptr until attached)
+    std::unique_ptr<MobilityComponent>     mobility_;
+    std::unique_ptr<HeterotrophyComponent> heterotrophy_;
+    std::unique_ptr<AutotrophyComponent>   autotrophy_;
+    std::unique_ptr<ReproductionComponent> reproduction_;
+    std::unique_ptr<CombatComponent>       combat_;
 };
 
 } // namespace Genetics

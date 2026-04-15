@@ -1,5 +1,7 @@
 #pragma once
 
+#include "genetics/systems/HealthSystem.hpp"
+
 namespace EcoSim {
 namespace Genetics {
 
@@ -7,18 +9,12 @@ namespace Genetics {
  * Runtime state for organisms that participate in combat — both
  * aggressors and defenders. Present when the organism has attack or
  * defense gene expression. Purely passive organisms (e.g. most plants)
- * may still have WoundState for damage tracking but no combat target.
+ * may still track wound state via HealthSystem but carry no combat
+ * target.
  *
- * WoundState values match the existing Creature enum to ease migration.
+ * Reuses the canonical WoundState from HealthSystem rather than
+ * redeclaring, to keep a single source of truth.
  */
-enum class WoundState : int {
-    Healthy  = 0,
-    Injured  = 1,
-    Wounded  = 2,
-    Critical = 3,
-    Dead     = 4,
-};
-
 struct CombatComponent {
     WoundState woundState = WoundState::Healthy;
     bool inCombat = false;

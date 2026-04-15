@@ -37,10 +37,15 @@ Organism::Organism(Organism&& other) noexcept
     , phenotype_(std::move(other.phenotype_))
     , registry_(other.registry_)
     , id_(other.id_)
+    , mobility_(std::move(other.mobility_))
+    , heterotrophy_(std::move(other.heterotrophy_))
+    , autotrophy_(std::move(other.autotrophy_))
+    , reproduction_(std::move(other.reproduction_))
+    , combat_(std::move(other.combat_))
 {
     // Rebind phenotype to point to THIS organism's genome
     rebindPhenotypeGenome();
-    
+
     // Invalidate moved-from object
     other.alive_ = false;
     other.registry_ = nullptr;
@@ -60,10 +65,15 @@ Organism& Organism::operator=(Organism&& other) noexcept {
         phenotype_ = std::move(other.phenotype_);
         registry_ = other.registry_;
         id_ = other.id_;
-        
+        mobility_     = std::move(other.mobility_);
+        heterotrophy_ = std::move(other.heterotrophy_);
+        autotrophy_   = std::move(other.autotrophy_);
+        reproduction_ = std::move(other.reproduction_);
+        combat_       = std::move(other.combat_);
+
         // Rebind phenotype to point to THIS organism's genome
         rebindPhenotypeGenome();
-        
+
         // Invalidate moved-from object
         other.alive_ = false;
         other.registry_ = nullptr;
