@@ -166,8 +166,10 @@ class Creature: public GameObject,
     //============================================================================
     //  Creature-specific ID Counter
     //============================================================================
-    static int nextCreatureId_;  // Creature-specific sequential counter
-    int creatureId_;             // This creature's sequential ID (0, 1, 2...)
+    //  sequentialId now lives on IdentityComponent (identity_).
+    //  The counter itself stays Creature-scoped for now; moves to a
+    //  dedicated factory once Creature/Plant classes are deleted.
+    static int nextCreatureId_;
     
     //============================================================================
     //  Creature-specific State Variables
@@ -194,30 +196,8 @@ class Creature: public GameObject,
     //============================================================================
     //  Archetype Identity
     //============================================================================
-    /**
-     * @brief Shared archetype flyweight (non-owning)
-     *
-     * Points to one of the ArchetypeIdentity singleton objects.
-     * Lifetime: The pointed-to object lives for program duration.
-     * Never null after construction completes (unless legacy creature).
-     *
-     * @note Do NOT delete this pointer - it's a shared flyweight.
-     */
-    const EcoSim::Genetics::ArchetypeIdentity* _archetype = nullptr;
-    
-    //============================================================================
-    //  Biome Adaptation
-    //============================================================================
-    /**
-     * @brief Shared biome adaptation flyweight (non-owning)
-     *
-     * Points to one of the BiomeAdaptation singleton objects (Temperate, Tundra, etc.).
-     * Orthogonal to archetype - represents environmental specialization.
-     * Lifetime: The pointed-to object lives for program duration.
-     *
-     * @note Do NOT delete this pointer - it's a shared flyweight.
-     */
-    const EcoSim::Genetics::BiomeAdaptation* _biomeAdaptation = nullptr;
+    //  Archetype + biome adaptation flyweight pointers now live on
+    //  IdentityComponent (identity_->archetype, identity_->biomeAdaptation).
     
     //============================================================================
     //  Creature-Plant Interaction Data
@@ -359,14 +339,14 @@ class Creature: public GameObject,
      *        is sequential only among creatures (0, 1, 2...).
      * @return Creature-specific ID
      */
-    int getCreatureId() const { return creatureId_; }
-    
+    int getCreatureId() const { return identity_ ? identity_->sequentialId : -1; }
+
     /**
      * @brief Set creature-specific ID (for deserialization only).
      *        WARNING: Only use when loading saved games.
      * @param id The creature ID to set
      */
-    void setCreatureId(int id) { creatureId_ = id; }
+    void setCreatureId(int id) { if (identity_) identity_->sequentialId = id; }
     
     /**
      * @brief Reset the creature-specific ID counter.

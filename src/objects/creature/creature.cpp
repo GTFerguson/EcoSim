@@ -160,10 +160,7 @@ Creature::Creature(const Creature& other)
       Organism(other.x_, other.y_, other.genome_, getGeneRegistry()),
       _motivation(other._motivation),
       _action(other._action),
-      _speed(other._speed),
-      _archetype(other._archetype),
-      _biomeAdaptation(other._biomeAdaptation),
-      creatureId_(nextCreatureId_++) {
+      _speed(other._speed) {
     // Copy Organism state that isn't set in constructor
     age_ = other.age_;
     health_ = other.health_;
@@ -187,14 +184,21 @@ Creature::Creature(const Creature& other)
     if (other.thermal_) {
         attachThermal(std::make_unique<EcoSim::Genetics::ThermalComponent>(*other.thermal_));
     }
+    // Identity: new copy gets a fresh sequentialId but inherits archetype/biome
+    attachIdentity(std::make_unique<EcoSim::Genetics::IdentityComponent>());
+    identity_->sequentialId = nextCreatureId_++;
+    if (other.identity_) {
+        identity_->archetype       = other.identity_->archetype;
+        identity_->biomeAdaptation = other.identity_->biomeAdaptation;
+    }
 
     // Increment archetype population for the copy
-    if (_archetype) {
-        _archetype->incrementPopulation();
+    if (identity_->archetype) {
+        identity_->archetype->incrementPopulation();
     }
     // Increment biome adaptation population for the copy
-    if (_biomeAdaptation) {
-        _biomeAdaptation->incrementPopulation();
+    if (identity_->biomeAdaptation) {
+        identity_->biomeAdaptation->incrementPopulation();
     }
 
     // Behavior controller is NOT copied - use lazy initialization
@@ -209,16 +213,12 @@ Creature::Creature(Creature&& other) noexcept
       Organism(std::move(other)),
       _motivation(other._motivation),
       _action(other._action),
-      _speed(other._speed),
-      _archetype(other._archetype),
-      _biomeAdaptation(other._biomeAdaptation),
-      creatureId_(other.creatureId_)
+      _speed(other._speed)
 {
-    // Transfer archetype without incrementing - just null out source
-    other._archetype = nullptr;
-    // Transfer biome adaptation without incrementing - just null out source
-    other._biomeAdaptation = nullptr;
-    // Heterotrophy/Reproduction components moved by Organism base move ctor.
+    // All components (including identity_ with its archetype/biome
+    // flyweight pointers) transferred by Organism base move constructor.
+    // Population counts are unchanged — the pointed-to flyweight still
+    // has the same count; this organism instance just moved address.
 }
 
 /**
@@ -230,12 +230,12 @@ Creature::Creature(Creature&& other) noexcept
 Creature& Creature::operator=(const Creature& other) {
     if (this != &other) {
         // Decrement old archetype population before reassignment
-        if (_archetype) {
-            _archetype->decrementPopulation();
+        if (identity_ && identity_->archetype) {
+            identity_->archetype->decrementPopulation();
         }
         // Decrement old biome adaptation population before reassignment
-        if (_biomeAdaptation) {
-            _biomeAdaptation->decrementPopulation();
+        if (identity_ && identity_->biomeAdaptation) {
+            identity_->biomeAdaptation->decrementPopulation();
         }
         
         GameObject::operator=(other);
@@ -281,16 +281,18 @@ Creature& Creature::operator=(const Creature& other) {
             attachThermal(std::make_unique<EcoSim::Genetics::ThermalComponent>(*other.thermal_));
         }
 
-        // Copy archetype and increment population
-        _archetype = other._archetype;
-        if (_archetype) {
-            _archetype->incrementPopulation();
+        // Attach a fresh identity with a new sequentialId, copying flyweights
+        attachIdentity(std::make_unique<EcoSim::Genetics::IdentityComponent>());
+        identity_->sequentialId = nextCreatureId_++;
+        if (other.identity_) {
+            identity_->archetype       = other.identity_->archetype;
+            identity_->biomeAdaptation = other.identity_->biomeAdaptation;
         }
-
-        // Copy biome adaptation and increment population
-        _biomeAdaptation = other._biomeAdaptation;
-        if (_biomeAdaptation) {
-            _biomeAdaptation->incrementPopulation();
+        if (identity_->archetype) {
+            identity_->archetype->incrementPopulation();
+        }
+        if (identity_->biomeAdaptation) {
+            identity_->biomeAdaptation->incrementPopulation();
         }
 
         // Gut seeds / burrs are now inside the deep-copied heterotrophy_ component.
@@ -307,32 +309,24 @@ Creature& Creature::operator=(const Creature& other) {
 Creature& Creature::operator=(Creature&& other) noexcept {
     if (this != &other) {
         // Decrement old archetype population before reassignment
-        if (_archetype) {
-            _archetype->decrementPopulation();
+        if (identity_ && identity_->archetype) {
+            identity_->archetype->decrementPopulation();
         }
         // Decrement old biome adaptation population before reassignment
-        if (_biomeAdaptation) {
-            _biomeAdaptation->decrementPopulation();
+        if (identity_ && identity_->biomeAdaptation) {
+            identity_->biomeAdaptation->decrementPopulation();
         }
-        
+
         GameObject::operator=(std::move(other));
         Organism::operator=(std::move(other));
-        
+
         // Move Creature-specific state
         _motivation = other._motivation;
         _action = other._action;
         _speed = other._speed;
-        // Heterotrophy/Reproduction components moved by Organism::operator=
-        
-        // Transfer archetype - don't increment, just null source
-        _archetype = other._archetype;
-        other._archetype = nullptr;
-        
-        // Transfer biome adaptation - don't increment, just null source
-        _biomeAdaptation = other._biomeAdaptation;
-        other._biomeAdaptation = nullptr;
-        
-        // Gut seeds / burrs moved with heterotrophy_ via Organism::operator=
+        // All components (mobility/heterotrophy/repro/combat/thermal/identity)
+        // transferred by Organism::operator=. Population counts unchanged —
+        // the pointed-to flyweight still has the same count.
 
         // Move behavior controller from source
         _behaviorController = std::move(other._behaviorController);
@@ -347,11 +341,11 @@ Creature& Creature::operator=(Creature&& other) noexcept {
  * Destructor - decrements archetype population when creature dies
  */
 Creature::~Creature() {
-    if (_archetype) {
-        _archetype->decrementPopulation();
+    if (identity_ && identity_->archetype) {
+        identity_->archetype->decrementPopulation();
     }
-    if (_biomeAdaptation) {
-        _biomeAdaptation->decrementPopulation();
+    if (identity_ && identity_->biomeAdaptation) {
+        identity_->biomeAdaptation->decrementPopulation();
     }
 }
 
@@ -1135,8 +1129,8 @@ std::vector<EcoSim::Genetics::DispersalEvent> Creature::processGutSeeds(int tick
  */
 char Creature::generateChar () {
   // Use archetype render character if available
-  if (_archetype) {
-    return _archetype->getRenderChar();
+  if (identity_->archetype) {
+    return identity_->archetype->getRenderChar();
   }
   // Fallback to diet-based character
   return getDietInfo(getDietType()).character;
@@ -1239,8 +1233,8 @@ std::string Creature::getScientificName() const {
  */
 std::string Creature::getArchetypeLabel() const {
     // Use archetype label if available
-    if (_archetype) {
-        return _archetype->getLabel();
+    if (identity_->archetype) {
+        return identity_->archetype->getLabel();
     }
     // Fallback to diet type if no archetype assigned
     return EcoSim::Genetics::Phenotype::dietTypeToString(getDietType());
@@ -1251,7 +1245,7 @@ std::string Creature::getArchetypeLabel() const {
  * Returns nullptr if no biome adaptation assigned (shouldn't happen normally).
  */
 const EcoSim::Genetics::BiomeAdaptation* Creature::getBiomeAdaptation() const {
-    return _biomeAdaptation;
+    return identity_->biomeAdaptation;
 }
 
 /**
@@ -1259,8 +1253,8 @@ const EcoSim::Genetics::BiomeAdaptation* Creature::getBiomeAdaptation() const {
  * Examples: "Arctic Pack", "Jungle Tyrant", or "Pack Hunter" (for temperate).
  */
 std::string Creature::getFullLabel() const {
-    if (_biomeAdaptation && _archetype) {
-        return _biomeAdaptation->getFullLabel(_archetype);
+    if (identity_->biomeAdaptation && identity_->archetype) {
+        return identity_->biomeAdaptation->getFullLabel(identity_->archetype);
     }
     return getArchetypeLabel();
 }
@@ -1272,16 +1266,16 @@ std::string Creature::getFullLabel() const {
  */
 void Creature::reclassifyBiomeAdaptation() {
     // Decrement old biome adaptation population
-    if (_biomeAdaptation) {
-        _biomeAdaptation->decrementPopulation();
+    if (identity_->biomeAdaptation) {
+        identity_->biomeAdaptation->decrementPopulation();
     }
     
     // Reclassify based on current genome state
-    _biomeAdaptation = EcoSim::Genetics::CreatureTaxonomy::classifyBiomeAdaptation(genome_);
+    identity_->biomeAdaptation = EcoSim::Genetics::CreatureTaxonomy::classifyBiomeAdaptation(genome_);
     
     // Increment new biome adaptation population
-    if (_biomeAdaptation) {
-        _biomeAdaptation->incrementPopulation();
+    if (identity_->biomeAdaptation) {
+        identity_->biomeAdaptation->incrementPopulation();
     }
 }
 
@@ -1450,11 +1444,9 @@ Creature::Creature(int x, int y, std::unique_ptr<EcoSim::Genetics::Genome> genom
       Organism(x, y, std::move(*genome), getGeneRegistry()),
       _motivation(Motivation::Content),
       _action(Action::Idle),
-      _speed(1),
-      _archetype(nullptr),
-      creatureId_(nextCreatureId_++) {
+      _speed(1) {
 
-    // Attach mobility + heterotrophy + reproduction + combat + thermal
+    // Attach mobility + heterotrophy + reproduction + combat + thermal + identity
     attachMobility(std::make_unique<EcoSim::Genetics::MobilityComponent>());
     mobility_->worldX = static_cast<float>(x);
     mobility_->worldY = static_cast<float>(y);
@@ -1463,6 +1455,8 @@ Creature::Creature(int x, int y, std::unique_ptr<EcoSim::Genetics::Genome> genom
     attachReproduction(std::make_unique<EcoSim::Genetics::ReproductionComponent>());
     attachCombat(std::make_unique<EcoSim::Genetics::CombatComponent>());
     attachThermal(std::make_unique<EcoSim::Genetics::ThermalComponent>());
+    attachIdentity(std::make_unique<EcoSim::Genetics::IdentityComponent>());
+    identity_->sequentialId = nextCreatureId_++;
 
     // Initialise needs
     heterotrophy_->hunger  = 1.0f;
@@ -1478,15 +1472,15 @@ Creature::Creature(int x, int y, std::unique_ptr<EcoSim::Genetics::Genome> genom
     }
 
     // Classify archetype from genome (after phenotype is ready)
-    _archetype = EcoSim::Genetics::CreatureTaxonomy::classifyArchetype(genome_);
-    if (_archetype) {
-        _archetype->incrementPopulation();
+    identity_->archetype = EcoSim::Genetics::CreatureTaxonomy::classifyArchetype(genome_);
+    if (identity_->archetype) {
+        identity_->archetype->incrementPopulation();
     }
 
     // Classify biome adaptation from genome
-    _biomeAdaptation = EcoSim::Genetics::CreatureTaxonomy::classifyBiomeAdaptation(genome_);
-    if (_biomeAdaptation) {
-        _biomeAdaptation->incrementPopulation();
+    identity_->biomeAdaptation = EcoSim::Genetics::CreatureTaxonomy::classifyBiomeAdaptation(genome_);
+    if (identity_->biomeAdaptation) {
+        identity_->biomeAdaptation->incrementPopulation();
     }
 
     _character = generateChar();
@@ -1509,9 +1503,7 @@ Creature::Creature(int x, int y, float hunger, float thirst,
       Organism(x, y, std::move(*genome), getGeneRegistry()),
       _motivation(Motivation::Content),
       _action(Action::Idle),
-      _speed(1),
-      _archetype(nullptr),
-      creatureId_(nextCreatureId_++) {
+      _speed(1) {
 
     // Attach mobility + heterotrophy + reproduction + combat + thermal
     attachMobility(std::make_unique<EcoSim::Genetics::MobilityComponent>());
@@ -1522,6 +1514,8 @@ Creature::Creature(int x, int y, float hunger, float thirst,
     attachReproduction(std::make_unique<EcoSim::Genetics::ReproductionComponent>());
     attachCombat(std::make_unique<EcoSim::Genetics::CombatComponent>());
     attachThermal(std::make_unique<EcoSim::Genetics::ThermalComponent>());
+    attachIdentity(std::make_unique<EcoSim::Genetics::IdentityComponent>());
+    identity_->sequentialId = nextCreatureId_++;
 
     // Initialise needs from parameters
     heterotrophy_->hunger  = hunger;
@@ -1537,15 +1531,15 @@ Creature::Creature(int x, int y, float hunger, float thirst,
     }
 
     // Classify archetype from genome (after phenotype is ready)
-    _archetype = EcoSim::Genetics::CreatureTaxonomy::classifyArchetype(genome_);
-    if (_archetype) {
-        _archetype->incrementPopulation();
+    identity_->archetype = EcoSim::Genetics::CreatureTaxonomy::classifyArchetype(genome_);
+    if (identity_->archetype) {
+        identity_->archetype->incrementPopulation();
     }
 
     // Classify biome adaptation from genome
-    _biomeAdaptation = EcoSim::Genetics::CreatureTaxonomy::classifyBiomeAdaptation(genome_);
-    if (_biomeAdaptation) {
-        _biomeAdaptation->incrementPopulation();
+    identity_->biomeAdaptation = EcoSim::Genetics::CreatureTaxonomy::classifyBiomeAdaptation(genome_);
+    if (identity_->biomeAdaptation) {
+        identity_->biomeAdaptation->incrementPopulation();
     }
 
     _character = generateChar();
