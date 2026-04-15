@@ -178,6 +178,25 @@ Defense values come from three genes:
 
 At maximum defense (1.0), damage is reduced by 50%.
 
+### Defense Default Balancing Rationale
+
+The defense gene defaults in `src/genetics/defaults/UniversalGenes.cpp` are **intentionally asymmetric** to match the distribution of damage types that actually appear in combat:
+
+| Defense Type | Default Value | Rationale |
+|--------------|--------------|-----------|
+| ThickHide | 0.3f | Counters Pierce (~31% of damage) |
+| Scales | 0.3f | Counters Slash (~22% of damage) |
+| FatLayer | 0.4f | Counters Blunt (~48% of damage) |
+
+The weapon damage type distribution is derived from the `WEAPON_BASE_STATS[]` array and the shape-gene → damage-distribution mapping earlier in this doc. Summary:
+
+- **Blunt** — ~48% of damage (tails, horns with low pointiness)
+- **Pierce** — ~31% (teeth, claws with high curvature)
+- **Slash** — ~22% (claws, serrated teeth)
+
+> [!IMPORTANT]
+> These defense defaults are intentionally balanced against this distribution. **Do not "equalize" them without re-running the damage-type prevalence analysis.** If a new damage type is added, the distribution must be recalculated and all defense defaults re-balanced. See the extensibility considerations in `docs/future/combat/extensibility.md` for why this becomes painful at scale.
+
 ---
 
 ## Combat Resolution

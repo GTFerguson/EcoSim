@@ -389,7 +389,7 @@ See `docs/future/sensory-system-phases.md` for planned expansions including:
 
 ## References
 
-- **Design Document**: `plans/mating-behavior-system-design.md`
+- **Future Sensory Phases**: [[../../future/behavior/sensory-phases]]
 - **Source Files**: `include/world/ScentLayer.hpp`, `src/world/ScentLayer.cpp`
 - **Gene Definitions**: `include/genetics/defaults/UniversalGenes.hpp`
 - **Tests**: `src/testing/genetics/test_scent_layer.cpp`, `test_scent_navigation.cpp`
