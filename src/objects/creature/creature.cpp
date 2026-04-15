@@ -159,10 +159,6 @@ Creature::Creature(const Creature& other)
       Organism(other.x_, other.y_, other.genome_, getGeneRegistry()),
       _motivation(other._motivation),
       _action(other._action),
-      _inCombat(other._inCombat),
-      _isFleeing(other._isFleeing),
-      _targetId(other._targetId),
-      _combatCooldown(other._combatCooldown),
       _speed(other._speed),
       _archetype(other._archetype),
       _biomeAdaptation(other._biomeAdaptation),
@@ -186,6 +182,9 @@ Creature::Creature(const Creature& other)
     if (other.reproduction_) {
         attachReproduction(std::make_unique<EcoSim::Genetics::ReproductionComponent>(*other.reproduction_));
     }
+    if (other.combat_) {
+        attachCombat(std::make_unique<EcoSim::Genetics::CombatComponent>(*other.combat_));
+    }
 
     // Increment archetype population for the copy
     if (_archetype) {
@@ -208,10 +207,6 @@ Creature::Creature(Creature&& other) noexcept
       Organism(std::move(other)),
       _motivation(other._motivation),
       _action(other._action),
-      _inCombat(other._inCombat),
-      _isFleeing(other._isFleeing),
-      _targetId(other._targetId),
-      _combatCooldown(other._combatCooldown),
       _speed(other._speed),
       _archetype(other._archetype),
       _biomeAdaptation(other._biomeAdaptation),
@@ -262,16 +257,13 @@ Creature& Creature::operator=(const Creature& other) {
         // Copy Creature-specific state
         _motivation = other._motivation;
         _action = other._action;
-        _inCombat = other._inCombat;
-        _isFleeing = other._isFleeing;
-        _targetId = other._targetId;
-        _combatCooldown = other._combatCooldown;
         _speed = other._speed;
 
         // Deep-copy components
         mobility_.reset();
         heterotrophy_.reset();
         reproduction_.reset();
+        combat_.reset();
         if (other.mobility_) {
             attachMobility(std::make_unique<EcoSim::Genetics::MobilityComponent>(*other.mobility_));
         }
@@ -280,6 +272,9 @@ Creature& Creature::operator=(const Creature& other) {
         }
         if (other.reproduction_) {
             attachReproduction(std::make_unique<EcoSim::Genetics::ReproductionComponent>(*other.reproduction_));
+        }
+        if (other.combat_) {
+            attachCombat(std::make_unique<EcoSim::Genetics::CombatComponent>(*other.combat_));
         }
 
         // Copy archetype and increment population
@@ -324,10 +319,6 @@ Creature& Creature::operator=(Creature&& other) noexcept {
         // Move Creature-specific state
         _motivation = other._motivation;
         _action = other._action;
-        _inCombat = other._inCombat;
-        _isFleeing = other._isFleeing;
-        _targetId = other._targetId;
-        _combatCooldown = other._combatCooldown;
         _speed = other._speed;
         // Heterotrophy/Reproduction components moved by Organism::operator=
         
@@ -1329,28 +1320,28 @@ void Creature::heal(float amount) {
  * Set combat state.
  */
 void Creature::setInCombat(bool combat) {
-    _inCombat = combat;
+    if (combat_) combat_->inCombat = combat;
 }
 
 /**
  * Set combat target ID.
  */
 void Creature::setTargetId(int targetId) {
-    _targetId = targetId;
+    if (combat_) combat_->targetId = targetId;
 }
 
 /**
  * Set combat cooldown ticks.
  */
 void Creature::setCombatCooldown(int cooldown) {
-    _combatCooldown = cooldown;
+    if (combat_) combat_->combatCooldown = cooldown;
 }
 
 /**
  * Set fleeing state.
  */
 void Creature::setFleeing(bool fleeing) {
-    _isFleeing = fleeing;
+    if (combat_) combat_->isFleeing = fleeing;
 }
 
 /**
@@ -1399,28 +1390,28 @@ float Creature::getHealingRate() const {
  * Check if creature is currently in combat.
  */
 bool Creature::isInCombat() const {
-    return _inCombat;
+    return combat_ && combat_->inCombat;
 }
 
 /**
  * Check if creature is currently fleeing.
  */
 bool Creature::isFleeing() const {
-    return _isFleeing;
+    return combat_ && combat_->isFleeing;
 }
 
 /**
  * Get current combat target ID.
  */
 int Creature::getTargetId() const {
-    return _targetId;
+    return combat_ ? combat_->targetId : -1;
 }
 
 /**
  * Get remaining combat cooldown ticks.
  */
 int Creature::getCombatCooldown() const {
-    return _combatCooldown;
+    return combat_ ? combat_->combatCooldown : 0;
 }
 
 /**
@@ -1459,21 +1450,19 @@ Creature::Creature(int x, int y, std::unique_ptr<EcoSim::Genetics::Genome> genom
       Organism(x, y, std::move(*genome), getGeneRegistry()),
       _motivation(Motivation::Content),
       _action(Action::Idle),
-      _inCombat(false),
-      _isFleeing(false),
-      _targetId(-1),
-      _combatCooldown(0),
       _speed(1),
       _archetype(nullptr),
       creatureId_(nextCreatureId_++) {
 
-    // Attach mobility + heterotrophy + reproduction (every Creature is mobile & heterotroph)
+    // Attach mobility + heterotrophy + reproduction + combat (every Creature is
+    // mobile, heterotrophic, capable of reproduction, and combat-capable)
     attachMobility(std::make_unique<EcoSim::Genetics::MobilityComponent>());
     mobility_->worldX = static_cast<float>(x);
     mobility_->worldY = static_cast<float>(y);
     mobility_->direction = Direction::none;
     attachHeterotrophy(std::make_unique<EcoSim::Genetics::HeterotrophyComponent>());
     attachReproduction(std::make_unique<EcoSim::Genetics::ReproductionComponent>());
+    attachCombat(std::make_unique<EcoSim::Genetics::CombatComponent>());
 
     // Initialise needs
     heterotrophy_->hunger  = 1.0f;
@@ -1520,21 +1509,18 @@ Creature::Creature(int x, int y, float hunger, float thirst,
       Organism(x, y, std::move(*genome), getGeneRegistry()),
       _motivation(Motivation::Content),
       _action(Action::Idle),
-      _inCombat(false),
-      _isFleeing(false),
-      _targetId(-1),
-      _combatCooldown(0),
       _speed(1),
       _archetype(nullptr),
       creatureId_(nextCreatureId_++) {
 
-    // Attach mobility + heterotrophy + reproduction
+    // Attach mobility + heterotrophy + reproduction + combat
     attachMobility(std::make_unique<EcoSim::Genetics::MobilityComponent>());
     mobility_->worldX = static_cast<float>(x);
     mobility_->worldY = static_cast<float>(y);
     mobility_->direction = Direction::none;
     attachHeterotrophy(std::make_unique<EcoSim::Genetics::HeterotrophyComponent>());
     attachReproduction(std::make_unique<EcoSim::Genetics::ReproductionComponent>());
+    attachCombat(std::make_unique<EcoSim::Genetics::CombatComponent>());
 
     // Initialise needs from parameters
     heterotrophy_->hunger  = hunger;

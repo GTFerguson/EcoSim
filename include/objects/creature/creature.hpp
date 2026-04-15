@@ -172,16 +172,10 @@ class Creature: public GameObject,
     //============================================================================
     //  Creature-specific State Variables
     //============================================================================
-    //  World coordinates and direction live on MobilityComponent (mobility_)
-    //  on the Organism base. Accessed via mobility_->worldX etc.
+    //  World coordinates/direction live on MobilityComponent (mobility_).
+    //  Combat flags/target/cooldown live on CombatComponent (combat_).
     Motivation _motivation = Motivation::Content;  // Current motivation/drive
     Action    _action = Action::Idle;              // Current action being performed
-    
-    //  Combat System (extends Organism's health)
-    bool      _inCombat = false;   // Currently in combat
-    bool      _isFleeing = false;  // Currently fleeing from threat
-    int       _targetId = -1;      // ID of combat/pursuit target (-1 = none)
-    int       _combatCooldown = 0; // Ticks until can attack again
     
     //  Environmental Stress System
     EcoSim::Genetics::TemperatureStress _currentEnvironmentalStress;  // Current stress state (for UI/debugging)
@@ -288,10 +282,10 @@ class Creature: public GameObject,
     float getInternalFatigueLevel() const  { return heterotrophy_ ? heterotrophy_->fatigue : 0.0f; }
     float getInternalMatingUrge() const    { return reproduction_ ? reproduction_->mate    : 0.0f; }
     float getInternalHealthValue() const   { return health_; }
-    bool getInternalCombatFlag() const     { return _inCombat; }
-    bool getInternalFleeingFlag() const    { return _isFleeing; }
-    int getInternalTargetCreatureId() const      { return _targetId; }
-    int getInternalCombatCooldownTicks() const   { return _combatCooldown; }
+    bool getInternalCombatFlag() const           { return combat_ && combat_->inCombat; }
+    bool getInternalFleeingFlag() const          { return combat_ && combat_->isFleeing; }
+    int getInternalTargetCreatureId() const      { return combat_ ? combat_->targetId : -1; }
+    int getInternalCombatCooldownTicks() const   { return combat_ ? combat_->combatCooldown : 0; }
 
     // Plant interaction state
     const std::vector<std::tuple<int, int, int, int>>& getInternalAttachedBurrs() const { return _attachedBurrs; }
