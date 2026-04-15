@@ -162,8 +162,6 @@ Creature::Creature(const Creature& other)
       _speed(other._speed),
       _archetype(other._archetype),
       _biomeAdaptation(other._biomeAdaptation),
-      _attachedBurrs(other._attachedBurrs),
-      _gutSeeds(other._gutSeeds),
       creatureId_(nextCreatureId_++) {
     // Copy Organism state that isn't set in constructor
     age_ = other.age_;
@@ -210,8 +208,6 @@ Creature::Creature(Creature&& other) noexcept
       _speed(other._speed),
       _archetype(other._archetype),
       _biomeAdaptation(other._biomeAdaptation),
-      _attachedBurrs(std::move(other._attachedBurrs)),
-      _gutSeeds(std::move(other._gutSeeds)),
       creatureId_(other.creatureId_)
 {
     // Transfer archetype without incrementing - just null out source
@@ -289,9 +285,7 @@ Creature& Creature::operator=(const Creature& other) {
             _biomeAdaptation->incrementPopulation();
         }
 
-        // Copy vector members
-        _attachedBurrs = other._attachedBurrs;
-        _gutSeeds = other._gutSeeds;
+        // Gut seeds / burrs are now inside the deep-copied heterotrophy_ component.
 
         // Reset behavior controller - lazy initialization will recreate it when needed
         _behaviorController.reset();
@@ -330,10 +324,8 @@ Creature& Creature::operator=(Creature&& other) noexcept {
         _biomeAdaptation = other._biomeAdaptation;
         other._biomeAdaptation = nullptr;
         
-        // Move vector members
-        _attachedBurrs = std::move(other._attachedBurrs);
-        _gutSeeds = std::move(other._gutSeeds);
-        
+        // Gut seeds / burrs moved with heterotrophy_ via Organism::operator=
+
         // Move behavior controller from source
         _behaviorController = std::move(other._behaviorController);
     }
@@ -1033,11 +1025,11 @@ EcoSim::Genetics::FeedingResult Creature::eatPlant(EcoSim::Genetics::Plant& plan
 	       *this, plant, *s_feedingInteraction
 	   );
 	   
-	   // Handle seed consumption (requires access to _gutSeeds member)
+	   // Handle seed consumption (requires access to heterotrophy_->gutSeeds member)
 	   if (result.success && result.seedsConsumed && result.seedsToDisperse > 0) {
 	       CreaturePlantInteraction::consumeSeeds(
 	           *this, plant, static_cast<int>(result.seedsToDisperse),
-	           1.0f - (result.seedsDestroyed ? 0.5f : 0.0f), _gutSeeds
+	           1.0f - (result.seedsDestroyed ? 0.5f : 0.0f), heterotrophy_->gutSeeds
 	       );
 	   }
 	   
@@ -1076,7 +1068,7 @@ void Creature::attachBurr(const EcoSim::Genetics::Plant& plant) {
 	   }
 	   
 	   
-	   CreaturePlantInteraction::attachBurr(*this, plant, *s_seedDispersal, _attachedBurrs);
+	   CreaturePlantInteraction::attachBurr(*this, plant, *s_seedDispersal, heterotrophy_->attachedBurrs);
 }
 
 /**
@@ -1088,7 +1080,7 @@ std::vector<EcoSim::Genetics::DispersalEvent> Creature::detachBurrs() {
 	       return {};
 	   }
 	   
-	   return CreaturePlantInteraction::detachBurrs(*this, *s_seedDispersal, _attachedBurrs);
+	   return CreaturePlantInteraction::detachBurrs(*this, *s_seedDispersal, heterotrophy_->attachedBurrs);
 }
 
 /**
@@ -1096,7 +1088,7 @@ std::vector<EcoSim::Genetics::DispersalEvent> Creature::detachBurrs() {
 	* Delegates to CreaturePlantInteraction namespace.
 	*/
 bool Creature::hasBurrs() const {
-	   return CreaturePlantInteraction::hasBurrs(_attachedBurrs);
+	   return CreaturePlantInteraction::hasBurrs(heterotrophy_->attachedBurrs);
 }
 
 /**
@@ -1104,7 +1096,7 @@ bool Creature::hasBurrs() const {
 	* Delegates to CreaturePlantInteraction namespace.
 	*/
 std::vector<EcoSim::Genetics::DispersalEvent> Creature::getPendingBurrDispersal() const {
-	   return CreaturePlantInteraction::getPendingBurrDispersal(*this, _attachedBurrs);
+	   return CreaturePlantInteraction::getPendingBurrDispersal(*this, heterotrophy_->attachedBurrs);
 }
 
 /**
@@ -1112,7 +1104,7 @@ std::vector<EcoSim::Genetics::DispersalEvent> Creature::getPendingBurrDispersal(
 	* Delegates to CreaturePlantInteraction namespace.
 	*/
 void Creature::consumeSeeds(const EcoSim::Genetics::Plant& plant, int count, float viability) {
-	   CreaturePlantInteraction::consumeSeeds(*this, plant, count, viability, _gutSeeds);
+	   CreaturePlantInteraction::consumeSeeds(*this, plant, count, viability, heterotrophy_->gutSeeds);
 }
 
 /**
@@ -1120,7 +1112,7 @@ void Creature::consumeSeeds(const EcoSim::Genetics::Plant& plant, int count, flo
 	* Delegates to CreaturePlantInteraction namespace.
 	*/
 std::vector<EcoSim::Genetics::DispersalEvent> Creature::processGutSeeds(int ticksElapsed) {
-	   return CreaturePlantInteraction::processGutSeeds(*this, ticksElapsed, _gutSeeds);
+	   return CreaturePlantInteraction::processGutSeeds(*this, ticksElapsed, heterotrophy_->gutSeeds);
 }
 
 //================================================================================

@@ -230,11 +230,8 @@ class Creature: public GameObject,
     //============================================================================
     //  Creature-Plant Interaction Data
     //============================================================================
-    // Attached burrs: (plant dispersal strategy, origin X, origin Y, ticks attached)
-    std::vector<std::tuple<int, int, int, int>> _attachedBurrs;
-    
-    // Gut seeds: (origin X*10000+Y encoded, viability, ticks remaining)
-    std::vector<std::tuple<int, float, int>> _gutSeeds;
+    //  Gut seeds and attached burrs now live on HeterotrophyComponent
+    //  (heterotrophy_->gutSeeds, heterotrophy_->attachedBurrs).
     
     // Shared feeding interaction calculator
     static std::unique_ptr<EcoSim::Genetics::FeedingInteraction> s_feedingInteraction;
@@ -287,13 +284,23 @@ class Creature: public GameObject,
     int getInternalTargetCreatureId() const      { return combat_ ? combat_->targetId : -1; }
     int getInternalCombatCooldownTicks() const   { return combat_ ? combat_->combatCooldown : 0; }
 
-    // Plant interaction state
-    const std::vector<std::tuple<int, int, int, int>>& getInternalAttachedBurrs() const { return _attachedBurrs; }
-    const std::vector<std::tuple<int, float, int>>& getInternalGutSeeds() const { return _gutSeeds; }
+    // Plant interaction state (lives on HeterotrophyComponent)
+    static inline const std::vector<std::tuple<int, int, int, int>> kEmptyBurrs{};
+    static inline const std::vector<std::tuple<int, float, int>> kEmptyGutSeeds{};
+    const std::vector<std::tuple<int, int, int, int>>& getInternalAttachedBurrs() const {
+        return heterotrophy_ ? heterotrophy_->attachedBurrs : kEmptyBurrs;
+    }
+    const std::vector<std::tuple<int, float, int>>& getInternalGutSeeds() const {
+        return heterotrophy_ ? heterotrophy_->gutSeeds : kEmptyGutSeeds;
+    }
 
-    // Allow mutable access for test setup
-    std::vector<std::tuple<int, int, int, int>>& getInternalAttachedBurrsMutable() { return _attachedBurrs; }
-    std::vector<std::tuple<int, float, int>>& getInternalGutSeedsMutable() { return _gutSeeds; }
+    // Allow mutable access for test setup (requires heterotrophy_ to exist)
+    std::vector<std::tuple<int, int, int, int>>& getInternalAttachedBurrsMutable() {
+        return heterotrophy_->attachedBurrs;
+    }
+    std::vector<std::tuple<int, float, int>>& getInternalGutSeedsMutable() {
+        return heterotrophy_->gutSeeds;
+    }
 
   public:
     //============================================================================
