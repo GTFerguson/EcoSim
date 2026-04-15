@@ -421,6 +421,35 @@ bool takeTurn(World& w, GeneralStats& gs, std::vector<Creature>& c,
         auto ctx = activeC->buildBehaviorContext(w, w.getScentLayer(), w.getCurrentTick());
         activeC->updateWithBehaviors(ctx);
 
+        // Post-update death check: metabolism drain or environmental damage
+        // during updateWithBehaviors may have pushed the creature below a
+        // death threshold. Count and mark those deaths here so the category
+        // counters don't silently miss them.
+        short postDc = activeC->deathCheck();
+        if (postDc != 0) {
+            std::string deathCause;
+            switch (postDc) {
+                case 1: gs.deaths.oldAge++;     deathCause = "old_age";     break;
+                case 2: gs.deaths.starved++;    deathCause = "starvation";  break;
+                case 3: gs.deaths.dehydrated++; deathCause = "dehydration"; break;
+                case 4: gs.deaths.discomfort++; deathCause = "discomfort";  break;
+                case 5: gs.deaths.predator++;   deathCause = "combat";      break;
+                default: deathCause = "unknown"; break;
+            }
+            if (config.verbose) {
+                std::cout << "  [Death-post] Creature " << activeC->getId()
+                          << " died from " << deathCause << std::endl;
+            }
+            float creatureSize = activeC->getMaxHealth() / 50.0f;
+            if (creatureSize > 0.1f) {
+                float bodyCondition = std::max(0.0f, std::min(1.0f, activeC->getHunger() / 10.0f));
+                w.addCorpse(activeC->getWorldX(), activeC->getWorldY(),
+                           creatureSize, activeC->generateName(), bodyCondition);
+            }
+            activeC->setHealth(-1.0f);
+            return true;
+        }
+
         return false;
     }
 }
@@ -451,10 +480,11 @@ void advanceSimulation(World& w, std::vector<Creature>& c, GeneralStats& gs,
         }
     }
     
-    // Main creature loop
+    // Main creature loop — always call takeTurn so it can detect and
+    // count deaths. Skipping dead creatures here causes silent death
+    // removal without category counting.
     g_lastAction = "processing creature turns";
     for (size_t i = 0; i < c.size(); ++i) {
-        if (!c[i].isAlive()) continue;
         takeTurn(w, gs, c, static_cast<unsigned int>(i), config);
     }
     
@@ -579,20 +609,39 @@ int main(int argc, char* argv[]) {
     
     // Main simulation loop
     GeneralStats gs = { calendar, 0, 0, 0, 0 };
-    
+    // Cumulative totals across all ticks (GeneralStats.deaths / .births
+    // get reset each tick by advanceSimulation, so we accumulate here).
+    unsigned totalOldAge = 0, totalStarved = 0, totalDehydrated = 0;
+    unsigned totalDiscomfort = 0, totalPredator = 0, totalBirths = 0;
+
     for (int tick = 0; tick < config.maxTicks; ++tick) {
         g_currentTick = tick;
         logger.setCurrentTick(tick);
-        
+
         // Reset per-tick stats
         gs = { calendar, static_cast<unsigned>(creatures.size()), 0, 0, 0 };
         
         // Advance simulation
         advanceSimulation(world, creatures, gs, config);
-        
-        // Status report
+
+        // Accumulate into cumulative totals
+        totalOldAge     += gs.deaths.oldAge;
+        totalStarved    += gs.deaths.starved;
+        totalDehydrated += gs.deaths.dehydrated;
+        totalDiscomfort += gs.deaths.discomfort;
+        totalPredator   += gs.deaths.predator;
+        totalBirths     += gs.births;
+
+        // Status report — show cumulative totals
         if (tick % config.statusInterval == 0) {
-            printStatus(tick, creatures, gs, config);
+            GeneralStats cumulative = gs;
+            cumulative.deaths.oldAge     = totalOldAge;
+            cumulative.deaths.starved    = totalStarved;
+            cumulative.deaths.dehydrated = totalDehydrated;
+            cumulative.deaths.discomfort = totalDiscomfort;
+            cumulative.deaths.predator   = totalPredator;
+            cumulative.births            = totalBirths;
+            printStatus(tick, creatures, cumulative, config);
         }
         
         // Check for extinction
@@ -650,12 +699,12 @@ int main(int argc, char* argv[]) {
               << (g_currentTick * 1000.0 / duration.count()) << "\n";
     std::cout << "  Final pop:      " << creatures.size() << "\n";
     std::cout << "  Total deaths:\n";
-    std::cout << "    Old age:      " << gs.deaths.oldAge << "\n";
-    std::cout << "    Starvation:   " << gs.deaths.starved << "\n";
-    std::cout << "    Dehydration:  " << gs.deaths.dehydrated << "\n";
-    std::cout << "    Discomfort:   " << gs.deaths.discomfort << "\n";
-    std::cout << "    Predator:     " << gs.deaths.predator << "\n";
-    std::cout << "  Total births:   " << gs.births << "\n";
+    std::cout << "    Old age:      " << totalOldAge << "\n";
+    std::cout << "    Starvation:   " << totalStarved << "\n";
+    std::cout << "    Dehydration:  " << totalDehydrated << "\n";
+    std::cout << "    Discomfort:   " << totalDiscomfort << "\n";
+    std::cout << "    Predator:     " << totalPredator << "\n";
+    std::cout << "  Total births:   " << totalBirths << "\n";
     std::cout << "────────────────────────────────────────────────────────────\n";
     
     if (!creatures.empty()) {

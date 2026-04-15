@@ -1310,9 +1310,12 @@ EcoSim::Genetics::BehaviorResult EcoSim::Genetics::Organism::updateWithBehaviors
     // Update the behavior controller — selects and executes the highest priority behavior
     BehaviorResult result = organismBehaviorController_->update(*this, ctx);
 
-    // Apply energy cost from behavior execution
-    if (result.executed && result.energyCost > 0.0f) {
+    // Apply energy cost from behavior execution. Negative energy cost
+    // (e.g. FeedingBehavior reports -nutritionGained on successful feed)
+    // flows through as a hunger refill.
+    if (result.executed && heterotrophy_) {
         heterotrophy_->hunger -= result.energyCost;
+        heterotrophy_->hunger = std::min(heterotrophy_->hunger, Constants::RESOURCE_LIMIT);
     }
 
     // Derive Motivation/Action from the currently active behavior

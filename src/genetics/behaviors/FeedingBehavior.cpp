@@ -8,7 +8,10 @@
 #include "genetics/expression/OrganismState.hpp"
 #include "world/world.hpp"
 #include "world/tile.hpp"
+#include "world/PlantManager.hpp"
+#include "world/PlantSpatialIndex.hpp"
 #include <cmath>
+#include <limits>
 #include <vector>
 #include <sstream>
 
@@ -83,7 +86,7 @@ BehaviorResult FeedingBehavior::execute(Organism& organism,
     
     // Find nearest edible plant
     Plant* targetPlant = findNearestEdiblePlant(organism, ctx);
-    
+
     if (!targetPlant) {
         result.executed = true;
         result.completed = false;
@@ -114,10 +117,6 @@ BehaviorResult FeedingBehavior::execute(Organism& organism,
     
     if (feedingResult.success) {
         targetPlant->takeDamage(feedingResult.plantDamage);
-
-        // @todo Caller should apply nutrition gain (feedingResult.nutritionGained)
-        // to organism state after execute() returns. Behaviors should not mutate
-        // organism needs directly.
 
         result.executed = true;
         result.completed = true;
@@ -157,13 +156,33 @@ bool FeedingBehavior::canEatPlants(const Organism& organism) const {
 
 Plant* FeedingBehavior::findNearestEdiblePlant(const Organism& organism,
                                                 const BehaviorContext& ctx) const {
-    // @todo Add spatial query through BehaviorContext::creatureIndex
-    // Previously used IPositionable dynamic_cast and direct grid iteration.
-    // Needs reimplementation using ctx.creatureIndex or a plant-specific
-    // spatial query once the spatial index supports plant lookups.
-    (void)organism;
-    (void)ctx;
-    return nullptr;
+    if (!ctx.world) return nullptr;
+
+    const int ix = static_cast<int>(organism.getWorldX());
+    const int iy = static_cast<int>(organism.getWorldY());
+    const float detectionRange = getDetectionRange(organism);
+
+    // Use PlantManager::queryPlantsInRadius which triggers a rebuild
+    // of the spatial index if it's dirty. Direct getPlantIndex() skips
+    // the rebuild and returns stale or empty data.
+    auto candidates = ctx.world->plants().queryPlantsInRadius(ix, iy, detectionRange);
+    if (candidates.empty()) return nullptr;
+
+    const float cx = static_cast<float>(ix);
+    const float cy = static_cast<float>(iy);
+    Plant* best = nullptr;
+    float bestDist2 = std::numeric_limits<float>::max();
+    for (Plant* p : candidates) {
+        if (!p || !p->isAlive()) continue;
+        float dx = static_cast<float>(p->getX()) - cx;
+        float dy = static_cast<float>(p->getY()) - cy;
+        float d2 = dx * dx + dy * dy;
+        if (d2 < bestDist2) {
+            bestDist2 = d2;
+            best = p;
+        }
+    }
+    return best;
 }
 
 float FeedingBehavior::getHungerLevel(const Organism& organism) const {
