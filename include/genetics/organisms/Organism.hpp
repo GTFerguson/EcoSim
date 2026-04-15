@@ -11,6 +11,7 @@
 #include "genetics/components/AutotrophyComponent.hpp"
 #include "genetics/components/ReproductionComponent.hpp"
 #include "genetics/components/CombatComponent.hpp"
+#include "genetics/behaviors/BehaviorController.hpp"
 #include <memory>
 
 namespace EcoSim {
@@ -233,6 +234,17 @@ public:
     void attachReproduction(std::unique_ptr<ReproductionComponent> c) { reproduction_ = std::move(c); }
     void attachCombat(std::unique_ptr<CombatComponent> c)             { combat_       = std::move(c); }
 
+    // ========================================================================
+    // Behavior controller (shared between creatures and plants)
+    // ========================================================================
+
+    BehaviorController* getOrganismBehaviorController()             { return organismBehaviorController_.get(); }
+    const BehaviorController* getOrganismBehaviorController() const { return organismBehaviorController_.get(); }
+    void setOrganismBehaviorController(std::unique_ptr<BehaviorController> bc) {
+        organismBehaviorController_ = std::move(bc);
+    }
+    bool hasOrganismBehaviorController() const { return organismBehaviorController_ != nullptr; }
+
     // Position (tile coordinates)
     int x_;
     int y_;
@@ -262,6 +274,12 @@ public:
     std::unique_ptr<AutotrophyComponent>   autotrophy_;
     std::unique_ptr<ReproductionComponent> reproduction_;
     std::unique_ptr<CombatComponent>       combat_;
+
+    // Shared behavior controller — holds IBehavior (active decisions) and
+    // IPassiveTick (physiology). Named organismBehaviorController_ to avoid
+    // shadowing Creature's legacy _behaviorController during the transition;
+    // merged into the sole controller once Creature/Plant are collapsed.
+    std::unique_ptr<BehaviorController> organismBehaviorController_;
 };
 
 } // namespace Genetics

@@ -15,6 +15,8 @@
 #include "genetics/expression/EnvironmentalStress.hpp"
 #include "genetics/core/RandomEngine.hpp"
 #include "genetics/core/GeneRegistry.hpp"
+#include "genetics/behaviors/BehaviorController.hpp"
+#include "genetics/behaviors/PlantLifecycleTick.hpp"
 #include "logging/Logger.hpp"
 #include <algorithm>
 #include <cmath>
@@ -33,10 +35,27 @@ unsigned int Plant::nextId_ = 1;
 // Constructors
 // ============================================================================
 
+namespace {
+
+// Attach autotrophy/reproduction components + a BehaviorController with
+// the monolithic PlantLifecycleTick registered as a passive tick. Shared
+// by all Plant constructors so the attachment is single-source-of-truth.
+void attachPlantComponents(Plant& plant) {
+    plant.attachAutotrophy(std::make_unique<AutotrophyComponent>());
+    plant.attachReproduction(std::make_unique<ReproductionComponent>());
+
+    auto bc = std::make_unique<BehaviorController>();
+    bc->addPassiveTick(std::make_unique<PlantLifecycleTick>());
+    plant.setOrganismBehaviorController(std::move(bc));
+}
+
+} // namespace
+
 Plant::Plant(int x, int y, const GeneRegistry& registry)
     : Organism(x, y, PlantGenes::createRandomGenome(registry), registry)
 {
     updatePhenotype();
+    attachPlantComponents(*this);
 
     logging::Logger::getInstance().plantSpawned(
         static_cast<unsigned int>(getId()), "random", x_, y_);
@@ -46,6 +65,7 @@ Plant::Plant(int x, int y, const Genome& genome, const GeneRegistry& registry)
     : Organism(x, y, genome, registry)
 {
     updatePhenotype();
+    attachPlantComponents(*this);
 
     logging::Logger::getInstance().plantSpawned(
         static_cast<unsigned int>(getId()), "offspring", x_, y_);
