@@ -314,22 +314,12 @@ void EcoSim::Genetics::Organism::setWorldY(float y) { if (mobility_) mobility_->
 //================================================================================
 //  ILifecycle Interface Implementation
 //================================================================================
-unsigned int Creature::getMaxLifespan() const {
-    return getLifespan();
-}
-
-float Creature::getAgeNormalized() const {
-    unsigned int lifespan = getLifespan();
-    if (lifespan == 0) return 0.0f;
-    return static_cast<float>(age_) / static_cast<float>(lifespan);
-}
-
+// getMaxLifespan, getAgeNormalized, age — Organism defaults handle these.
+// isAlive stays on Creature because it uses deathCheck() which includes
+// environmental death triggers (starvation, dehydration, discomfort)
+// that the Organism base's simpler alive_ flag doesn't capture.
 bool Creature::isAlive() const {
     return deathCheck() == 0;
-}
-
-void Creature::age(unsigned int ticks) {
-    age_ += ticks;
 }
 float     EcoSim::Genetics::Organism::getHunger     () const { return heterotrophy_ ? heterotrophy_->hunger  : 0.0f; }
 float     EcoSim::Genetics::Organism::getThirst     () const { return heterotrophy_ ? heterotrophy_->thirst  : 0.0f; }
@@ -365,14 +355,8 @@ float EcoSim::Genetics::Organism::getMovementSpeed() const {
 }
 Direction EcoSim::Genetics::Organism::getDirection  () const { return mobility_ ? mobility_->direction : Direction::none; }
 
-// Genetics-only getters - derive all values from phenotype
-unsigned EcoSim::Genetics::Organism::getLifespan() const {
-    if (phenotype_.hasTrait(UniversalGenes::LIFESPAN)) {
-        return static_cast<unsigned>(phenotype_.getTrait(UniversalGenes::LIFESPAN));
-    }
-    return 500000;
-}
-
+// getLifespan moved to Organism.cpp (needed by Organism::getMaxLifespan which
+// lives in the genetics library).
 unsigned EcoSim::Genetics::Organism::getSightRange() const {
     if (phenotype_.hasTrait(UniversalGenes::SIGHT_RANGE)) {
         return static_cast<unsigned>(phenotype_.getTrait(UniversalGenes::SIGHT_RANGE));

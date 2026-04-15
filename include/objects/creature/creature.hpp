@@ -288,19 +288,10 @@ class Creature: public GameObject,
     void setWorldPosition(float x, float y) override;
     
     //============================================================================
-    //  ILifecycle overrides - Gene-dependent lifespan
+    //  ILifecycle overrides
+    //  getMaxLifespan, age, getAgeNormalized now use Organism defaults.
+    //  isAlive overridden here because it needs deathCheck().
     //============================================================================
-    
-    /**
-     * @brief Get maximum lifespan based on genome
-     * @return Maximum age before natural death
-     */
-    unsigned int getMaxLifespan() const override;
-    
-    /**
-     * @brief Check if creature is alive
-     * @return True if alive (considers hunger, thirst, health, age)
-     */
     bool isAlive() const override;
     
     //============================================================================
@@ -401,8 +392,6 @@ class Creature: public GameObject,
     //  ILifecycle Interface Getters (use Organism's age_)
     //============================================================================
     unsigned int getAge() const override { return Organism::getAge(); }
-    float getAgeNormalized() const override;
-    void age(unsigned int ticks = 1) override;
 
     //============================================================================
     //  Growth State (forwards to Organism base)

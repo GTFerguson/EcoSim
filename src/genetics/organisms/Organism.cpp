@@ -1,5 +1,6 @@
 #include "genetics/organisms/Organism.hpp"
 #include "genetics/core/GeneRegistry.hpp"
+#include "genetics/defaults/UniversalGenes.hpp"
 #include "genetics/interactions/FeedingInteraction.hpp"
 #include "genetics/interactions/SeedDispersal.hpp"
 #include "genetics/systems/PerceptionSystem.hpp"
@@ -123,6 +124,17 @@ void Organism::updatePhenotype() {
     if (registry_) {
         phenotype_.invalidateCache();
     }
+}
+
+unsigned int Organism::getMaxLifespan() const {
+    return getLifespan();
+}
+
+unsigned Organism::getLifespan() const {
+    if (phenotype_.hasTrait(UniversalGenes::LIFESPAN)) {
+        return static_cast<unsigned>(phenotype_.getTrait(UniversalGenes::LIFESPAN));
+    }
+    return 500000;
 }
 
 float Organism::getMaxHealth() const {

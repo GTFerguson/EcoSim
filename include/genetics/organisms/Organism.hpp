@@ -115,7 +115,7 @@ public:
     bool isAlive() const override { return alive_; }
     unsigned int getAge() const override { return age_; }
     float getAgeNormalized() const override;
-    unsigned int getMaxLifespan() const override = 0;  // Gene-dependent
+    unsigned int getMaxLifespan() const override;  // Default: phenotype LIFESPAN
     
     // ========================================================================
     // IGenetic - Fully implemented
