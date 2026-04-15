@@ -184,6 +184,9 @@ Creature::Creature(const Creature& other)
     if (other.combat_) {
         attachCombat(std::make_unique<EcoSim::Genetics::CombatComponent>(*other.combat_));
     }
+    if (other.thermal_) {
+        attachThermal(std::make_unique<EcoSim::Genetics::ThermalComponent>(*other.thermal_));
+    }
 
     // Increment archetype population for the copy
     if (_archetype) {
@@ -261,6 +264,7 @@ Creature& Creature::operator=(const Creature& other) {
         heterotrophy_.reset();
         reproduction_.reset();
         combat_.reset();
+        thermal_.reset();
         if (other.mobility_) {
             attachMobility(std::make_unique<EcoSim::Genetics::MobilityComponent>(*other.mobility_));
         }
@@ -272,6 +276,9 @@ Creature& Creature::operator=(const Creature& other) {
         }
         if (other.combat_) {
             attachCombat(std::make_unique<EcoSim::Genetics::CombatComponent>(*other.combat_));
+        }
+        if (other.thermal_) {
+            attachThermal(std::make_unique<EcoSim::Genetics::ThermalComponent>(*other.thermal_));
         }
 
         // Copy archetype and increment population
@@ -575,7 +582,7 @@ void Creature::updatePhenotypeContext(const EcoSim::Genetics::EnvironmentState& 
     phenotype_.updateContext(env, orgState);
     
     // Mark thermal cache dirty when phenotype context changes
-    _thermalCacheDirty = true;
+    thermal_->cacheDirty = true;
     
     // Clamp health when maxHealth changes due to modulation
     // This ensures health_ never exceeds current maxHealth
@@ -592,12 +599,12 @@ void Creature::updatePhenotypeContext(const EcoSim::Genetics::EnvironmentState& 
 void Creature::updateThermalCache() {
     using namespace EcoSim::Genetics;
     
-    _cachedThermalAdaptations = EnvironmentalStressCalculator::extractThermalAdaptations(phenotype_);
-    _cachedBaseTempLow = phenotype_.getTrait(UniversalGenes::TEMP_TOLERANCE_LOW);
-    _cachedBaseTempHigh = phenotype_.getTrait(UniversalGenes::TEMP_TOLERANCE_HIGH);
-    _cachedToleranceRange = EnvironmentalStressCalculator::calculateEffectiveTempRange(
-        _cachedBaseTempLow, _cachedBaseTempHigh, _cachedThermalAdaptations);
-    _thermalCacheDirty = false;
+    thermal_->adaptations = EnvironmentalStressCalculator::extractThermalAdaptations(phenotype_);
+    thermal_->baseTempLow = phenotype_.getTrait(UniversalGenes::TEMP_TOLERANCE_LOW);
+    thermal_->baseTempHigh = phenotype_.getTrait(UniversalGenes::TEMP_TOLERANCE_HIGH);
+    thermal_->toleranceRange = EnvironmentalStressCalculator::calculateEffectiveTempRange(
+        thermal_->baseTempLow, thermal_->baseTempHigh, thermal_->adaptations);
+    thermal_->cacheDirty = false;
 }
 
 /**
@@ -1447,8 +1454,7 @@ Creature::Creature(int x, int y, std::unique_ptr<EcoSim::Genetics::Genome> genom
       _archetype(nullptr),
       creatureId_(nextCreatureId_++) {
 
-    // Attach mobility + heterotrophy + reproduction + combat (every Creature is
-    // mobile, heterotrophic, capable of reproduction, and combat-capable)
+    // Attach mobility + heterotrophy + reproduction + combat + thermal
     attachMobility(std::make_unique<EcoSim::Genetics::MobilityComponent>());
     mobility_->worldX = static_cast<float>(x);
     mobility_->worldY = static_cast<float>(y);
@@ -1456,6 +1462,7 @@ Creature::Creature(int x, int y, std::unique_ptr<EcoSim::Genetics::Genome> genom
     attachHeterotrophy(std::make_unique<EcoSim::Genetics::HeterotrophyComponent>());
     attachReproduction(std::make_unique<EcoSim::Genetics::ReproductionComponent>());
     attachCombat(std::make_unique<EcoSim::Genetics::CombatComponent>());
+    attachThermal(std::make_unique<EcoSim::Genetics::ThermalComponent>());
 
     // Initialise needs
     heterotrophy_->hunger  = 1.0f;
@@ -1506,7 +1513,7 @@ Creature::Creature(int x, int y, float hunger, float thirst,
       _archetype(nullptr),
       creatureId_(nextCreatureId_++) {
 
-    // Attach mobility + heterotrophy + reproduction + combat
+    // Attach mobility + heterotrophy + reproduction + combat + thermal
     attachMobility(std::make_unique<EcoSim::Genetics::MobilityComponent>());
     mobility_->worldX = static_cast<float>(x);
     mobility_->worldY = static_cast<float>(y);
@@ -1514,6 +1521,7 @@ Creature::Creature(int x, int y, float hunger, float thirst,
     attachHeterotrophy(std::make_unique<EcoSim::Genetics::HeterotrophyComponent>());
     attachReproduction(std::make_unique<EcoSim::Genetics::ReproductionComponent>());
     attachCombat(std::make_unique<EcoSim::Genetics::CombatComponent>());
+    attachThermal(std::make_unique<EcoSim::Genetics::ThermalComponent>());
 
     // Initialise needs from parameters
     heterotrophy_->hunger  = hunger;
@@ -1692,24 +1700,24 @@ EcoSim::Genetics::BehaviorResult Creature::updateWithBehaviors(EcoSim::Genetics:
             heterotrophy_->fatigue += heterotrophy_->metabolism;
         }
 
-        if (_thermalCacheDirty) {
+        if (thermal_->cacheDirty) {
             updateThermalCache();
         }
 
         float currentTemp = phenotype_.getEnvironment().temperature;
-        if (std::abs(currentTemp - _lastProcessedTemp) > 0.1f) {
-            _currentEnvironmentalStress = EnvironmentalStressCalculator::calculateTemperatureStress(
-                currentTemp, _cachedBaseTempLow, _cachedBaseTempHigh, _cachedThermalAdaptations);
-            _lastProcessedTemp = currentTemp;
+        if (std::abs(currentTemp - thermal_->lastProcessedTemp) > 0.1f) {
+            thermal_->currentStress = EnvironmentalStressCalculator::calculateTemperatureStress(
+                currentTemp, thermal_->baseTempLow, thermal_->baseTempHigh, thermal_->adaptations);
+            thermal_->lastProcessedTemp = currentTemp;
         }
 
-        change *= _currentEnvironmentalStress.energyDrainMultiplier;
+        change *= thermal_->currentStress.energyDrainMultiplier;
         heterotrophy_->hunger -= change;
         heterotrophy_->thirst -= change;
 
         // Environmental stress: temperature/stress health damage
-        if (_currentEnvironmentalStress.healthDamageRate > 0.0f) {
-            float damage = _currentEnvironmentalStress.healthDamageRate * getMaxHealth();
+        if (thermal_->currentStress.healthDamageRate > 0.0f) {
+            float damage = thermal_->currentStress.healthDamageRate * getMaxHealth();
             takeDamage(damage);
         }
 

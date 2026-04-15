@@ -42,6 +42,7 @@ Organism::Organism(Organism&& other) noexcept
     , autotrophy_(std::move(other.autotrophy_))
     , reproduction_(std::move(other.reproduction_))
     , combat_(std::move(other.combat_))
+    , thermal_(std::move(other.thermal_))
     , organismBehaviorController_(std::move(other.organismBehaviorController_))
 {
     // Rebind phenotype to point to THIS organism's genome
@@ -71,6 +72,7 @@ Organism& Organism::operator=(Organism&& other) noexcept {
         autotrophy_   = std::move(other.autotrophy_);
         reproduction_ = std::move(other.reproduction_);
         combat_       = std::move(other.combat_);
+        thermal_      = std::move(other.thermal_);
         organismBehaviorController_ = std::move(other.organismBehaviorController_);
 
         // Rebind phenotype to point to THIS organism's genome

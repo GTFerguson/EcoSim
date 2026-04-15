@@ -11,6 +11,7 @@
 #include "genetics/components/AutotrophyComponent.hpp"
 #include "genetics/components/ReproductionComponent.hpp"
 #include "genetics/components/CombatComponent.hpp"
+#include "genetics/components/ThermalComponent.hpp"
 #include "genetics/behaviors/BehaviorController.hpp"
 #include <memory>
 
@@ -221,18 +222,21 @@ public:
     AutotrophyComponent*   autotrophy()   { return autotrophy_.get(); }
     ReproductionComponent* reproduction() { return reproduction_.get(); }
     CombatComponent*       combat()       { return combat_.get(); }
+    ThermalComponent*      thermal()      { return thermal_.get(); }
 
     const MobilityComponent*     mobility()     const { return mobility_.get(); }
     const HeterotrophyComponent* heterotrophy() const { return heterotrophy_.get(); }
     const AutotrophyComponent*   autotrophy()   const { return autotrophy_.get(); }
     const ReproductionComponent* reproduction() const { return reproduction_.get(); }
     const CombatComponent*       combat()       const { return combat_.get(); }
+    const ThermalComponent*      thermal()      const { return thermal_.get(); }
 
     void attachMobility(std::unique_ptr<MobilityComponent> c)         { mobility_     = std::move(c); }
     void attachHeterotrophy(std::unique_ptr<HeterotrophyComponent> c) { heterotrophy_ = std::move(c); }
     void attachAutotrophy(std::unique_ptr<AutotrophyComponent> c)     { autotrophy_   = std::move(c); }
     void attachReproduction(std::unique_ptr<ReproductionComponent> c) { reproduction_ = std::move(c); }
     void attachCombat(std::unique_ptr<CombatComponent> c)             { combat_       = std::move(c); }
+    void attachThermal(std::unique_ptr<ThermalComponent> c)           { thermal_      = std::move(c); }
 
     // ========================================================================
     // Behavior controller (shared between creatures and plants)
@@ -274,6 +278,7 @@ public:
     std::unique_ptr<AutotrophyComponent>   autotrophy_;
     std::unique_ptr<ReproductionComponent> reproduction_;
     std::unique_ptr<CombatComponent>       combat_;
+    std::unique_ptr<ThermalComponent>      thermal_;
 
     // Shared behavior controller — holds IBehavior (active decisions) and
     // IPassiveTick (physiology). Named organismBehaviorController_ to avoid

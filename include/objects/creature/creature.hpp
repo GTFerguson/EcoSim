@@ -177,16 +177,8 @@ class Creature: public GameObject,
     Motivation _motivation = Motivation::Content;  // Current motivation/drive
     Action    _action = Action::Idle;              // Current action being performed
     
-    //  Environmental Stress System
-    EcoSim::Genetics::TemperatureStress _currentEnvironmentalStress;  // Current stress state (for UI/debugging)
-    
-    //  Cached thermal calculation data - uses existing structs from EnvironmentalStress.hpp
-    EcoSim::Genetics::ThermalAdaptations _cachedThermalAdaptations;
-    EcoSim::Genetics::EffectiveToleranceRange _cachedToleranceRange;
-    float _cachedBaseTempLow = -999.0f;   // Base tolerance from genes
-    float _cachedBaseTempHigh = -999.0f;
-    bool _thermalCacheDirty = true;       // Flag to recompute when phenotype changes
-    float _lastProcessedTemp = -999.0f;   // Track temp for stress recalc
+    //  Environmental stress + thermal cache now live on ThermalComponent
+    //  (thermal_) on the Organism base. Accessed via thermal_->...
 
     //  Needs now live on Organism base components:
     //  - hunger/thirst/fatigue/metabolism: HeterotrophyComponent (heterotrophy_)
@@ -728,7 +720,8 @@ class Creature: public GameObject,
      * @return Reference to current temperature stress for UI/debugging
      */
     const EcoSim::Genetics::TemperatureStress& getEnvironmentalStress() const {
-        return _currentEnvironmentalStress;
+        static const EcoSim::Genetics::TemperatureStress kDefault{};
+        return thermal_ ? thermal_->currentStress : kDefault;
     }
     
     /**
