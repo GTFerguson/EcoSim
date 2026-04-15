@@ -104,49 +104,10 @@ std::unique_ptr<EcoSim::Genetics::PerceptionSystem> Creature::s_perceptionSystem
 std::unique_ptr<EcoSim::Genetics::CombatInteraction> Creature::s_combatInteraction = nullptr;
 
 //================================================================================
-//  Constants
+//  Constants — definitions now live inline in
+//  include/genetics/core/OrganismConstants.hpp. Creature::FOO aliases
+//  re-expose them so existing callers compile unchanged.
 //================================================================================
-const float Creature::DIAG_ADJUST       = 1.4f;
-const float Creature::RESOURCE_LIMIT    = 10.0f;
-const float Creature::BREED_COST        = 3.0f;
-const float Creature::IDEAL_SIMILARITY  = 0.8f;
-const float Creature::PENALTY_EXPONENT  = 1.5f;
-const float Creature::INIT_FATIGUE      = 0.0f;
-const float Creature::PREY_CALORIES     = 3.0f;
-//  Constants for managing creature death
-const float Creature::STARVATION_POINT  = -0.1f;
-const float Creature::DEHYDRATION_POINT = -0.1f;
-const float Creature::DISCOMFORT_POINT  = -3.0f;  // Increased from -1.0f to allow starvation to occur first
-//  What fraction of resources is shared
-const unsigned Creature::RESOURCE_SHARED = 4;
-
-//  Scent detection constants (extracted from duplicated magic numbers)
-const float Creature::SCENT_DETECTION_BASE_RANGE    = 100.0f;  // Base scent detection range
-const float Creature::SCENT_DETECTION_ACUITY_MULT   = 100.0f;  // Multiplier for olfactory acuity bonus
-const float Creature::DEFAULT_OLFACTORY_ACUITY      = 0.5f;    // Default detection ability
-const float Creature::DEFAULT_SCENT_PRODUCTION      = 0.5f;    // Default pheromone production rate
-
-//  Seed dispersal constants
-const float Creature::BURR_SEED_VIABILITY           = 0.85f;   // Viability for burr-dispersed seeds
-const float Creature::GUT_SEED_SCARIFICATION_BONUS  = 1.15f;   // Bonus for optimal gut transit
-const float Creature::GUT_SEED_ACID_DAMAGE          = 0.9f;    // Penalty for prolonged gut transit
-const float Creature::DEFAULT_GUT_TRANSIT_HOURS     = 6.0f;    // Default seed transit time
-const float Creature::TICKS_PER_HOUR                = 10.0f;   // Conversion factor for time
-
-//  Feeding interaction constants
-const float Creature::FEEDING_MATE_BOOST            = 2.0f;    // Mate (comfort) boost from successful feeding
-const float Creature::DAMAGE_HUNGER_COST            = 0.5f;    // Hunger cost per point of damage
-const float Creature::SEEKING_FOOD_MATE_PENALTY     = 0.5f;    // Comfort reduction while seeking food (multiplied by comfDec)
-
-//  Sense enhancement constants
-const float Creature::COLOR_VISION_RANGE_BONUS      = 0.3f;    // Range bonus from color vision
-const float Creature::SCENT_DETECTION_RANGE_BONUS   = 0.5f;    // Range bonus from scent detection
-
-//  Movement system constants
-const float Creature::BASE_MOVEMENT_SPEED           = 0.5f;    // Base speed multiplier (tiles per tick)
-const float Creature::MIN_MOVEMENT_SPEED            = 0.1f;    // Minimum speed floor
-const float Creature::DEFAULT_LEG_LENGTH            = 0.5f;    // Default leg length for creatures without gene
-const float Creature::DEFAULT_BODY_MASS             = 1.0f;    // Default body mass for creatures without gene
 
 
 //================================================================================

@@ -25,6 +25,7 @@
 
 // New genetics system includes
 #include "genetics/organisms/Organism.hpp"
+#include "genetics/core/OrganismConstants.hpp"
 #include "genetics/core/Genome.hpp"
 #include "genetics/core/GeneRegistry.hpp"
 #include "genetics/expression/Phenotype.hpp"
@@ -101,52 +102,42 @@ class Creature: public GameObject,
                 public EcoSim::Genetics::Organism {
   public:
     //============================================================================
-    //  Public Constants (for balance analysis and external tools)
+    //  Constants live in genetics/core/OrganismConstants.hpp in the
+    //  EcoSim::Genetics::Constants namespace. Imported at the top of
+    //  this header for backward-compat access via Creature::FOO, which
+    //  is re-exposed as static constexpr members below.
     //============================================================================
-    const static float RESOURCE_LIMIT;
-    const static float BREED_COST;
-    
+    static constexpr float RESOURCE_LIMIT            = EcoSim::Genetics::Constants::RESOURCE_LIMIT;
+    static constexpr float BREED_COST                = EcoSim::Genetics::Constants::BREED_COST;
+    static constexpr float DIAG_ADJUST               = EcoSim::Genetics::Constants::DIAG_ADJUST;
+    static constexpr float IDEAL_SIMILARITY          = EcoSim::Genetics::Constants::IDEAL_SIMILARITY;
+    static constexpr float PENALTY_EXPONENT          = EcoSim::Genetics::Constants::PENALTY_EXPONENT;
+    static constexpr float INIT_FATIGUE              = EcoSim::Genetics::Constants::INIT_FATIGUE;
+    static constexpr float PREY_CALORIES             = EcoSim::Genetics::Constants::PREY_CALORIES;
+    static constexpr float STARVATION_POINT          = EcoSim::Genetics::Constants::STARVATION_POINT;
+    static constexpr float DEHYDRATION_POINT         = EcoSim::Genetics::Constants::DEHYDRATION_POINT;
+    static constexpr float DISCOMFORT_POINT          = EcoSim::Genetics::Constants::DISCOMFORT_POINT;
+    static constexpr unsigned RESOURCE_SHARED        = EcoSim::Genetics::Constants::RESOURCE_SHARED;
+    static constexpr float SCENT_DETECTION_BASE_RANGE  = EcoSim::Genetics::Constants::SCENT_DETECTION_BASE_RANGE;
+    static constexpr float SCENT_DETECTION_ACUITY_MULT = EcoSim::Genetics::Constants::SCENT_DETECTION_ACUITY_MULT;
+    static constexpr float DEFAULT_OLFACTORY_ACUITY    = EcoSim::Genetics::Constants::DEFAULT_OLFACTORY_ACUITY;
+    static constexpr float DEFAULT_SCENT_PRODUCTION    = EcoSim::Genetics::Constants::DEFAULT_SCENT_PRODUCTION;
+    static constexpr float BURR_SEED_VIABILITY          = EcoSim::Genetics::Constants::BURR_SEED_VIABILITY;
+    static constexpr float GUT_SEED_SCARIFICATION_BONUS = EcoSim::Genetics::Constants::GUT_SEED_SCARIFICATION_BONUS;
+    static constexpr float GUT_SEED_ACID_DAMAGE         = EcoSim::Genetics::Constants::GUT_SEED_ACID_DAMAGE;
+    static constexpr float DEFAULT_GUT_TRANSIT_HOURS    = EcoSim::Genetics::Constants::DEFAULT_GUT_TRANSIT_HOURS;
+    static constexpr float TICKS_PER_HOUR               = EcoSim::Genetics::Constants::TICKS_PER_HOUR;
+    static constexpr float FEEDING_MATE_BOOST        = EcoSim::Genetics::Constants::FEEDING_MATE_BOOST;
+    static constexpr float DAMAGE_HUNGER_COST        = EcoSim::Genetics::Constants::DAMAGE_HUNGER_COST;
+    static constexpr float SEEKING_FOOD_MATE_PENALTY = EcoSim::Genetics::Constants::SEEKING_FOOD_MATE_PENALTY;
+    static constexpr float COLOR_VISION_RANGE_BONUS    = EcoSim::Genetics::Constants::COLOR_VISION_RANGE_BONUS;
+    static constexpr float SCENT_DETECTION_RANGE_BONUS = EcoSim::Genetics::Constants::SCENT_DETECTION_RANGE_BONUS;
+    static constexpr float BASE_MOVEMENT_SPEED = EcoSim::Genetics::Constants::BASE_MOVEMENT_SPEED;
+    static constexpr float MIN_MOVEMENT_SPEED  = EcoSim::Genetics::Constants::MIN_MOVEMENT_SPEED;
+    static constexpr float DEFAULT_LEG_LENGTH  = EcoSim::Genetics::Constants::DEFAULT_LEG_LENGTH;
+    static constexpr float DEFAULT_BODY_MASS   = EcoSim::Genetics::Constants::DEFAULT_BODY_MASS;
+
   private:
-    // Adjustment to cost for diagonal movements
-    const static float DIAG_ADJUST;
-    const static float INIT_FATIGUE;
-    const static float IDEAL_SIMILARITY;
-    const static float PENALTY_EXPONENT;
-    const static float PREY_CALORIES;
-    //  Values for death thresholds
-    const static float STARVATION_POINT;
-    const static float DEHYDRATION_POINT;
-    const static float DISCOMFORT_POINT;
-    //  What fraction of resources is shared
-    const static unsigned RESOURCE_SHARED;
-    
-    //  Scent detection constants
-    const static float SCENT_DETECTION_BASE_RANGE;
-    const static float SCENT_DETECTION_ACUITY_MULT;
-    const static float DEFAULT_OLFACTORY_ACUITY;
-    const static float DEFAULT_SCENT_PRODUCTION;
-    
-    //  Seed dispersal constants
-    const static float BURR_SEED_VIABILITY;
-    const static float GUT_SEED_SCARIFICATION_BONUS;
-    const static float GUT_SEED_ACID_DAMAGE;
-    const static float DEFAULT_GUT_TRANSIT_HOURS;
-    const static float TICKS_PER_HOUR;
-    
-    //  Feeding interaction constants
-    const static float FEEDING_MATE_BOOST;
-    const static float DAMAGE_HUNGER_COST;
-    const static float SEEKING_FOOD_MATE_PENALTY;
-    
-    //  Sense enhancement constants
-    const static float COLOR_VISION_RANGE_BONUS;
-    const static float SCENT_DETECTION_RANGE_BONUS;
-    
-    //  Movement system constants
-    const static float BASE_MOVEMENT_SPEED;   // Base speed multiplier
-    const static float MIN_MOVEMENT_SPEED;    // Minimum speed floor
-    const static float DEFAULT_LEG_LENGTH;    // Default leg length for creatures without gene
-    const static float DEFAULT_BODY_MASS;     // Default body mass for creatures without gene
     
     //============================================================================
     //  Creature-specific ID Counter
