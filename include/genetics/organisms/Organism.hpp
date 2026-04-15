@@ -17,6 +17,7 @@
 #include "genetics/behaviors/BehaviorController.hpp"
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace EcoSim {
 namespace Genetics {
@@ -28,6 +29,9 @@ class PerceptionSystem;
 class CombatInteraction;
 class ArchetypeIdentity;
 class BiomeAdaptation;
+class Plant;
+struct FeedingResult;
+struct DispersalEvent;
 enum class DietType;
 
 /**
@@ -328,6 +332,18 @@ public:
 
     // Gene expression query
     float getExpressedValue(const std::string& geneId) const;
+
+    // Plant interaction (delegate to CreaturePlantInteraction helpers)
+    FeedingResult eatPlant(Plant& plant);
+    bool canEatPlant(const Plant& plant) const;
+    float getPlantDetectionRange() const;
+    void attachBurr(const Plant& plant);
+    std::vector<DispersalEvent> detachBurrs();
+    bool hasBurrs() const;
+    std::vector<DispersalEvent> getPendingBurrDispersal() const;
+    void consumeSeeds(const Plant& plant, int count, float viability);
+    std::vector<DispersalEvent> processGutSeeds(int ticksElapsed);
+    static void initializeInteractionSystems();
 
     // Core simulation helpers
     short deathCheck() const;

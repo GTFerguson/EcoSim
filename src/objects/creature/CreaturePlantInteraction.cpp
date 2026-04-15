@@ -24,7 +24,7 @@ namespace CreaturePlantInteraction {
 //============================================================================
 
 EcoSim::Genetics::FeedingResult eatPlant(
-    Creature& creature,
+    EcoSim::Genetics::Organism& creature,
     EcoSim::Genetics::Plant& plant,
     EcoSim::Genetics::FeedingInteraction& feedingInteraction) {
     
@@ -64,7 +64,7 @@ EcoSim::Genetics::FeedingResult eatPlant(
 }
 
 bool canEatPlant(
-    const Creature& creature,
+    const EcoSim::Genetics::Organism& creature,
     const EcoSim::Genetics::Plant& plant,
     EcoSim::Genetics::FeedingInteraction& feedingInteraction) {
     
@@ -88,7 +88,7 @@ bool canEatPlant(
     return feedingInteraction.canOvercomeDefenses(phenotype, plant);
 }
 
-float getPlantDetectionRange(const Creature& creature) {
+float getPlantDetectionRange(const EcoSim::Genetics::Organism& creature) {
     using namespace EcoSim::Genetics;
     
     const auto& phenotype = creature.getPhenotype();
@@ -112,7 +112,7 @@ float getPlantDetectionRange(const Creature& creature) {
 //============================================================================
 
 void attachBurr(
-    Creature& creature,
+    EcoSim::Genetics::Organism& creature,
     const EcoSim::Genetics::Plant& plant,
     EcoSim::Genetics::SeedDispersal& seedDispersal,
     std::vector<std::tuple<int, int, int, int>>& attachedBurrs) {
@@ -132,7 +132,7 @@ void attachBurr(
 }
 
 std::vector<EcoSim::Genetics::DispersalEvent> detachBurrs(
-    const Creature& creature,
+    const EcoSim::Genetics::Organism& creature,
     EcoSim::Genetics::SeedDispersal& seedDispersal,
     std::vector<std::tuple<int, int, int, int>>& attachedBurrs) {
     
@@ -174,7 +174,7 @@ bool hasBurrs(const std::vector<std::tuple<int, int, int, int>>& attachedBurrs) 
 }
 
 std::vector<EcoSim::Genetics::DispersalEvent> getPendingBurrDispersal(
-    const Creature& creature,
+    const EcoSim::Genetics::Organism& creature,
     const std::vector<std::tuple<int, int, int, int>>& attachedBurrs) {
     
     using namespace EcoSim::Genetics;
@@ -202,7 +202,7 @@ std::vector<EcoSim::Genetics::DispersalEvent> getPendingBurrDispersal(
 //============================================================================
 
 void consumeSeeds(
-    const Creature& creature,
+    const EcoSim::Genetics::Organism& creature,
     const EcoSim::Genetics::Plant& plant,
     int count,
     float viability,
@@ -230,7 +230,7 @@ void consumeSeeds(
 }
 
 std::vector<EcoSim::Genetics::DispersalEvent> processGutSeeds(
-    const Creature& creature,
+    const EcoSim::Genetics::Organism& creature,
     int ticksElapsed,
     std::vector<std::tuple<int, float, int>>& gutSeeds) {
     

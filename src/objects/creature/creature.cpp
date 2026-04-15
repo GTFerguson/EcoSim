@@ -925,121 +925,69 @@ bool Creature::findMateScent(const EcoSim::ScentLayer& scentLayer, int& outX, in
 	* Initialize shared interaction calculators.
 	* Should be called once at application startup.
 	*/
-void Creature::initializeInteractionSystems() {
-	   if (!s_feedingInteraction) {
-	       s_feedingInteraction = std::make_unique<EcoSim::Genetics::FeedingInteraction>();
-	   }
-	   if (!s_seedDispersal) {
-	       s_seedDispersal = std::make_unique<EcoSim::Genetics::SeedDispersal>();
-	   }
+void EcoSim::Genetics::Organism::initializeInteractionSystems() {
+    if (!s_feedingInteraction) {
+        s_feedingInteraction = std::make_unique<EcoSim::Genetics::FeedingInteraction>();
+    }
+    if (!s_seedDispersal) {
+        s_seedDispersal = std::make_unique<EcoSim::Genetics::SeedDispersal>();
+    }
 }
 
 /**
 	* Attempt to eat a plant using genetics-based feeding calculations.
 	* Delegates core logic to CreaturePlantInteraction namespace.
 	*/
-EcoSim::Genetics::FeedingResult Creature::eatPlant(EcoSim::Genetics::Plant& plant) {
-	   using namespace EcoSim::Genetics;
-	   
-	   // Ensure interaction systems are initialized
-	   if (!s_feedingInteraction) {
-	       initializeInteractionSystems();
-	   }
-	   
-	   
-	   // Delegate to namespace function for core feeding logic
-	   FeedingResult result = CreaturePlantInteraction::eatPlant(
-	       *this, plant, *s_feedingInteraction
-	   );
-	   
-	   // Handle seed consumption (requires access to heterotrophy_->gutSeeds member)
-	   if (result.success && result.seedsConsumed && result.seedsToDisperse > 0) {
-	       CreaturePlantInteraction::consumeSeeds(
-	           *this, plant, static_cast<int>(result.seedsToDisperse),
-	           1.0f - (result.seedsDestroyed ? 0.5f : 0.0f), heterotrophy_->gutSeeds
-	       );
-	   }
-	   
-	   return result;
+EcoSim::Genetics::FeedingResult EcoSim::Genetics::Organism::eatPlant(EcoSim::Genetics::Plant& plant) {
+    using namespace EcoSim::Genetics;
+    if (!s_feedingInteraction) initializeInteractionSystems();
+    FeedingResult result = CreaturePlantInteraction::eatPlant(*this, plant, *s_feedingInteraction);
+    if (result.success && result.seedsConsumed && result.seedsToDisperse > 0 && heterotrophy_) {
+        CreaturePlantInteraction::consumeSeeds(
+            *this, plant, static_cast<int>(result.seedsToDisperse),
+            1.0f - (result.seedsDestroyed ? 0.5f : 0.0f), heterotrophy_->gutSeeds);
+    }
+    return result;
 }
 
-/**
-	* Check if creature can eat the given plant.
-	* Delegates to CreaturePlantInteraction namespace.
-	*/
-bool Creature::canEatPlant(const EcoSim::Genetics::Plant& plant) const {
-	   if (!s_feedingInteraction) {
-	       const_cast<Creature*>(this)->initializeInteractionSystems();
-	   }
-	   
-	   
-	   return CreaturePlantInteraction::canEatPlant(*this, plant, *s_feedingInteraction);
+bool EcoSim::Genetics::Organism::canEatPlant(const EcoSim::Genetics::Plant& plant) const {
+    if (!s_feedingInteraction) const_cast<Organism*>(this)->initializeInteractionSystems();
+    return CreaturePlantInteraction::canEatPlant(*this, plant, *s_feedingInteraction);
 }
 
-/**
-	* Get maximum plant detection range based on creature's senses.
-	* Delegates to CreaturePlantInteraction namespace.
-	*/
-float Creature::getPlantDetectionRange() const {
-	   
-	   return CreaturePlantInteraction::getPlantDetectionRange(*this);
+float EcoSim::Genetics::Organism::getPlantDetectionRange() const {
+    return CreaturePlantInteraction::getPlantDetectionRange(*this);
 }
 
-/**
-	* Attach a burr from a plant to this creature.
-	* Delegates to CreaturePlantInteraction namespace.
-	*/
-void Creature::attachBurr(const EcoSim::Genetics::Plant& plant) {
-	   if (!s_seedDispersal) {
-	       initializeInteractionSystems();
-	   }
-	   
-	   
-	   CreaturePlantInteraction::attachBurr(*this, plant, *s_seedDispersal, heterotrophy_->attachedBurrs);
+void EcoSim::Genetics::Organism::attachBurr(const EcoSim::Genetics::Plant& plant) {
+    if (!s_seedDispersal) initializeInteractionSystems();
+    if (heterotrophy_) {
+        CreaturePlantInteraction::attachBurr(*this, plant, *s_seedDispersal, heterotrophy_->attachedBurrs);
+    }
 }
 
-/**
-	* Process burr detachment and return dispersal events.
-	* Delegates to CreaturePlantInteraction namespace.
-	*/
-std::vector<EcoSim::Genetics::DispersalEvent> Creature::detachBurrs() {
-	   if (!s_seedDispersal) {
-	       return {};
-	   }
-	   
-	   return CreaturePlantInteraction::detachBurrs(*this, *s_seedDispersal, heterotrophy_->attachedBurrs);
+std::vector<EcoSim::Genetics::DispersalEvent> EcoSim::Genetics::Organism::detachBurrs() {
+    if (!s_seedDispersal || !heterotrophy_) return {};
+    return CreaturePlantInteraction::detachBurrs(*this, *s_seedDispersal, heterotrophy_->attachedBurrs);
 }
 
-/**
-	* Check if creature has burrs attached.
-	* Delegates to CreaturePlantInteraction namespace.
-	*/
-bool Creature::hasBurrs() const {
-	   return CreaturePlantInteraction::hasBurrs(heterotrophy_->attachedBurrs);
+bool EcoSim::Genetics::Organism::hasBurrs() const {
+    return heterotrophy_ && CreaturePlantInteraction::hasBurrs(heterotrophy_->attachedBurrs);
 }
 
-/**
-	* Get pending dispersal events from attached burrs.
-	* Delegates to CreaturePlantInteraction namespace.
-	*/
-std::vector<EcoSim::Genetics::DispersalEvent> Creature::getPendingBurrDispersal() const {
-	   return CreaturePlantInteraction::getPendingBurrDispersal(*this, heterotrophy_->attachedBurrs);
+std::vector<EcoSim::Genetics::DispersalEvent> EcoSim::Genetics::Organism::getPendingBurrDispersal() const {
+    if (!heterotrophy_) return {};
+    return CreaturePlantInteraction::getPendingBurrDispersal(*this, heterotrophy_->attachedBurrs);
 }
 
-/**
-	* Add seeds to gut for digestion and dispersal.
-	* Delegates to CreaturePlantInteraction namespace.
-	*/
-void Creature::consumeSeeds(const EcoSim::Genetics::Plant& plant, int count, float viability) {
-	   CreaturePlantInteraction::consumeSeeds(*this, plant, count, viability, heterotrophy_->gutSeeds);
+void EcoSim::Genetics::Organism::consumeSeeds(const EcoSim::Genetics::Plant& plant, int count, float viability) {
+    if (!heterotrophy_) return;
+    CreaturePlantInteraction::consumeSeeds(*this, plant, count, viability, heterotrophy_->gutSeeds);
 }
 
-/**
-	* Process gut seed passage and return dispersal events.
-	* Delegates to CreaturePlantInteraction namespace.
-	*/
-std::vector<EcoSim::Genetics::DispersalEvent> Creature::processGutSeeds(int ticksElapsed) {
-	   return CreaturePlantInteraction::processGutSeeds(*this, ticksElapsed, heterotrophy_->gutSeeds);
+std::vector<EcoSim::Genetics::DispersalEvent> EcoSim::Genetics::Organism::processGutSeeds(int ticksElapsed) {
+    if (!heterotrophy_) return {};
+    return CreaturePlantInteraction::processGutSeeds(*this, ticksElapsed, heterotrophy_->gutSeeds);
 }
 
 //================================================================================

@@ -527,72 +527,10 @@ class Creature: public GameObject,
         const std::array<float, 8>& sig1,
         const std::array<float, 8>& sig2);
 
-    //============================================================================
-    //  Plant Interaction
-    //============================================================================
-    /**
-     * @brief Attempt to eat a plant using the new genetics-based feeding system.
-     * @param plant The plant to eat (will be damaged)
-     * @return FeedingResult with nutrition gained, damage taken, and seed info
-     */
-    EcoSim::Genetics::FeedingResult eatPlant(EcoSim::Genetics::Plant& plant);
-    
-    /**
-     * @brief Check if creature can eat the given plant based on detection and access.
-     * @param plant The plant to check
-     * @return True if creature can detect and access the plant
-     */
-    bool canEatPlant(const EcoSim::Genetics::Plant& plant) const;
-    
-    /**
-     * @brief Get the maximum range at which this creature can detect plants.
-     * @return Detection range in world units
-     */
-    float getPlantDetectionRange() const;
-    
-    /**
-     * @brief Attach a burr from a plant to this creature's fur/hide.
-     * @param plant The plant providing the burr seeds
-     */
-    void attachBurr(const EcoSim::Genetics::Plant& plant);
-    
-    /**
-     * @brief Process burr detachment based on grooming and time.
-     * @return Vector of dispersal events for any detached burrs
-     */
-    std::vector<EcoSim::Genetics::DispersalEvent> detachBurrs();
-    
-    /**
-     * @brief Check if creature has any burrs attached.
-     * @return True if burrs are present
-     */
-    bool hasBurrs() const;
-    
-    /**
-     * @brief Get pending dispersal events from attached burrs.
-     * @return Vector of potential dispersal locations
-     */
-    std::vector<EcoSim::Genetics::DispersalEvent> getPendingBurrDispersal() const;
-    
-    /**
-     * @brief Add seeds to gut for digestion and potential dispersal.
-     * @param plant Source plant for the seeds
-     * @param count Number of seeds consumed
-     * @param viability Initial seed viability (0-1)
-     */
-    void consumeSeeds(const EcoSim::Genetics::Plant& plant, int count, float viability);
-    
-    /**
-     * @brief Process gut seed passage over time.
-     * @param ticksElapsed Number of ticks since last processing
-     * @return Vector of dispersal events for any seeds passing through
-     */
-    std::vector<EcoSim::Genetics::DispersalEvent> processGutSeeds(int ticksElapsed);
-    
-    /**
-     * @brief Initialize shared interaction calculators (call once at startup).
-     */
-    static void initializeInteractionSystems();
+    //  Plant interaction methods (eatPlant, canEatPlant, attachBurr,
+    //  detachBurrs, hasBurrs, getPendingBurrDispersal, consumeSeeds,
+    //  processGutSeeds, getPlantDetectionRange, initializeInteractionSystems)
+    //  now live on Organism base.
 
     //============================================================================
     //  Behavior System

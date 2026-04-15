@@ -12,10 +12,9 @@
 #include <vector>
 
 // Forward declarations
-class Creature;
-
 namespace EcoSim {
 namespace Genetics {
+class Organism;
 class Plant;
 class Phenotype;
 class FeedingInteraction;
@@ -25,6 +24,11 @@ struct DispersalEvent;
 enum class DispersalStrategy;
 }
 }
+
+// Legacy name retained for this header's signatures — Creature used to be
+// a distinct class, now it's an alias for Organism. Consumers include
+// creature.hpp which brings in the global Creature class declaration.
+class Creature;
 
 namespace CreaturePlantInteraction {
 
@@ -102,7 +106,7 @@ constexpr float SCENT_DETECTION_RANGE_BONUS = 0.5f;
  * @return FeedingResult with nutrition gained, damage taken, and seed info
  */
 EcoSim::Genetics::FeedingResult eatPlant(
-    Creature& creature,
+    EcoSim::Genetics::Organism& creature,
     EcoSim::Genetics::Plant& plant,
     EcoSim::Genetics::FeedingInteraction& feedingInteraction);
 
@@ -118,7 +122,7 @@ EcoSim::Genetics::FeedingResult eatPlant(
  * @return True if creature can detect and access the plant
  */
 bool canEatPlant(
-    const Creature& creature,
+    const EcoSim::Genetics::Organism& creature,
     const EcoSim::Genetics::Plant& plant,
     EcoSim::Genetics::FeedingInteraction& feedingInteraction);
 
@@ -131,7 +135,7 @@ bool canEatPlant(
  * @param creature The creature to calculate range for
  * @return Detection range in world units
  */
-float getPlantDetectionRange(const Creature& creature);
+float getPlantDetectionRange(const EcoSim::Genetics::Organism& creature);
 
 //============================================================================
 //  Burr Management (External Seed Dispersal)
@@ -149,7 +153,7 @@ float getPlantDetectionRange(const Creature& creature);
  * @param attachedBurrs The creature's burr storage vector
  */
 void attachBurr(
-    Creature& creature,
+    EcoSim::Genetics::Organism& creature,
     const EcoSim::Genetics::Plant& plant,
     EcoSim::Genetics::SeedDispersal& seedDispersal,
     std::vector<std::tuple<int, int, int, int>>& attachedBurrs);
@@ -167,7 +171,7 @@ void attachBurr(
  * @return Vector of dispersal events for detached burrs
  */
 std::vector<EcoSim::Genetics::DispersalEvent> detachBurrs(
-    const Creature& creature,
+    const EcoSim::Genetics::Organism& creature,
     EcoSim::Genetics::SeedDispersal& seedDispersal,
     std::vector<std::tuple<int, int, int, int>>& attachedBurrs);
 
@@ -190,7 +194,7 @@ bool hasBurrs(const std::vector<std::tuple<int, int, int, int>>& attachedBurrs);
  * @return Vector of potential dispersal events
  */
 std::vector<EcoSim::Genetics::DispersalEvent> getPendingBurrDispersal(
-    const Creature& creature,
+    const EcoSim::Genetics::Organism& creature,
     const std::vector<std::tuple<int, int, int, int>>& attachedBurrs);
 
 //============================================================================
@@ -211,7 +215,7 @@ std::vector<EcoSim::Genetics::DispersalEvent> getPendingBurrDispersal(
  * @param gutSeeds The creature's gut seed storage vector
  */
 void consumeSeeds(
-    const Creature& creature,
+    const EcoSim::Genetics::Organism& creature,
     const EcoSim::Genetics::Plant& plant,
     int count,
     float viability,
@@ -231,7 +235,7 @@ void consumeSeeds(
  * @return Vector of dispersal events for passed seeds
  */
 std::vector<EcoSim::Genetics::DispersalEvent> processGutSeeds(
-    const Creature& creature,
+    const EcoSim::Genetics::Organism& creature,
     int ticksElapsed,
     std::vector<std::tuple<int, float, int>>& gutSeeds);
 
