@@ -740,40 +740,8 @@ Creature Creature::breedCreature (Creature &mate) {
  * Check if creature can reproduce.
  * Uses existing fitness checks: mature, healthy, sufficient resources.
  */
-bool Creature::canReproduce() const {
-    bool hasResources = heterotrophy_->hunger > BREED_COST && heterotrophy_->thirst > BREED_COST;
-    bool isHealthy = health_ > getMaxHealth() * 0.25f;
-    
-    return isMature() && hasResources && isHealthy && motivation_ == Motivation::Amorous;
-}
-
-/**
- * Get reproductive urge (normalized 0.0-1.0).
- * Based on internal reproduction_->mate state normalized to resource limit.
- */
-float Creature::getReproductiveUrge() const {
-    // reproduction_->mate typically ranges from negative (discomfort) to RESOURCE_LIMIT
-    // Normalize to 0.0-1.0 range
-    float urge = (reproduction_->mate + 3.0f) / (RESOURCE_LIMIT + 3.0f);  // Offset for negative values
-    return std::max(0.0f, std::min(1.0f, urge));
-}
-
-/**
- * Get energy cost of reproduction.
- * Returns BREED_COST, potentially adjusted by genetics in the future.
- */
-float Creature::getReproductionEnergyCost() const {
-    // Currently uses static BREED_COST; could be gene-driven in future
-    return BREED_COST;
-}
-
-/**
- * Get reproduction mode.
- * Creatures always reproduce sexually.
- */
-EcoSim::Genetics::ReproductionMode Creature::getReproductionMode() const {
-    return EcoSim::Genetics::ReproductionMode::SEXUAL;
-}
+// canReproduce, getReproductiveUrge, getReproductionEnergyCost,
+// getReproductionMode moved to Organism.cpp for linker visibility.
 
 /**
  * Check compatibility with another organism for mating.

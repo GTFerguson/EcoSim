@@ -1,5 +1,6 @@
 #include "genetics/organisms/Organism.hpp"
 #include "genetics/core/GeneRegistry.hpp"
+#include "genetics/core/OrganismConstants.hpp"
 #include "genetics/defaults/UniversalGenes.hpp"
 #include "genetics/interactions/FeedingInteraction.hpp"
 #include "genetics/interactions/SeedDispersal.hpp"
@@ -128,6 +129,27 @@ void Organism::updatePhenotype() {
 
 unsigned int Organism::getMaxLifespan() const {
     return getLifespan();
+}
+
+bool Organism::canReproduce() const {
+    if (!heterotrophy_) return false;
+    bool hasResources = heterotrophy_->hunger > Constants::BREED_COST && heterotrophy_->thirst > Constants::BREED_COST;
+    bool isHealthy = health_ > getMaxHealth() * 0.25f;
+    return isMature() && hasResources && isHealthy && motivation_ == Motivation::Amorous;
+}
+
+float Organism::getReproductiveUrge() const {
+    if (!reproduction_) return 0.0f;
+    float urge = (reproduction_->mate + 3.0f) / (Constants::RESOURCE_LIMIT + 3.0f);
+    return std::max(0.0f, std::min(1.0f, urge));
+}
+
+float Organism::getReproductionEnergyCost() const {
+    return Constants::BREED_COST;
+}
+
+ReproductionMode Organism::getReproductionMode() const {
+    return ReproductionMode::SEXUAL;
 }
 
 unsigned Organism::getLifespan() const {

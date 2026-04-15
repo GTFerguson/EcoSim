@@ -135,10 +135,10 @@ public:
     // IReproducible - Subclasses implement (highly type-specific)
     // ========================================================================
     
-    bool canReproduce() const override = 0;
-    float getReproductiveUrge() const override = 0;
-    float getReproductionEnergyCost() const override = 0;
-    ReproductionMode getReproductionMode() const override = 0;
+    bool canReproduce() const override;
+    float getReproductiveUrge() const override;
+    float getReproductionEnergyCost() const override;
+    ReproductionMode getReproductionMode() const override;
     bool isCompatibleWith(const Organism& other) const override = 0;
     std::unique_ptr<Organism> reproduce(
         const Organism* partner = nullptr) override = 0;

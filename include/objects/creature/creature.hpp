@@ -298,43 +298,12 @@ class Creature: public GameObject,
     //============================================================================
     //  IReproducible overrides - Sexual reproduction
     //============================================================================
-    
-    /**
-     * @brief Check if creature can reproduce
-     * @return true if mature, healthy, and has sufficient resources
-     */
-    bool canReproduce() const override;
-    
-    /**
-     * @brief Get reproductive urge (normalized 0.0-1.0)
-     * @return Mating drive based on _mate internal state
-     */
-    float getReproductiveUrge() const override;
-    
-    /**
-     * @brief Get energy cost of reproduction
-     * @return BREED_COST adjusted by genetics
-     */
-    float getReproductionEnergyCost() const override;
-    
-    /**
-     * @brief Get reproduction mode
-     * @return Always SEXUAL for creatures
-     */
-    EcoSim::Genetics::ReproductionMode getReproductionMode() const override;
-    
-    /**
-     * @brief Check compatibility with another organism for mating
-     * @param other The other organism
-     * @return true if compatible based on species/archetype
-     */
+
+    //  canReproduce, getReproductiveUrge, getReproductionEnergyCost,
+    //  getReproductionMode now have Organism base implementations.
+    //  isCompatibleWith + reproduce still override here to delegate to
+    //  checkFitness / breedCreature.
     bool isCompatibleWith(const EcoSim::Genetics::Organism& other) const override;
-    
-    /**
-     * @brief Reproduce to create offspring
-     * @param partner Partner for sexual reproduction (required for creatures)
-     * @return Offspring as Organism pointer, or nullptr if reproduction fails
-     */
     std::unique_ptr<EcoSim::Genetics::Organism> reproduce(
         const EcoSim::Genetics::Organism* partner = nullptr) override;
     
