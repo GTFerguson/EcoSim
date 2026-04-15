@@ -411,8 +411,6 @@ class Creature: public GameObject,
     //                  isInCombat, isFleeing, getTargetId, getCombatCooldown)
     //  - expressed gene query (getExpressedValue)
     //============================================================================
-    float     getTMate      () const;
-
     //============================================================================
     //  ILifecycle Interface Getters (use Organism's age_)
     //============================================================================
@@ -482,18 +480,9 @@ class Creature: public GameObject,
      */
     std::string getFullLabel() const;
     
-    //  Genetics-Derived Getters (derived from new genetics system)
-    unsigned  getLifespan   () const;
-    unsigned  getSightRange () const;
-    float     getTHunger    () const;
-    float     getTThirst    () const;
-    float     getTFatigue   () const;
-    float     getComfInc    () const;
-    float     getComfDec    () const;
-    DietType  getDietType   () const;  // Derived from calculateDietType()
-    bool      ifFlocks      () const;
-    unsigned  getFlee       () const;
-    unsigned  getPursue     () const;
+    //  Genetics-Derived Getters now on Organism base:
+    //  getLifespan, getSightRange, getTHunger/Thirst/Fatigue/Mate,
+    //  getComfInc/Dec, getDietType, ifFlocks, getFlee, getPursue
 
     //============================================================================
     //  Core Simulation Methods

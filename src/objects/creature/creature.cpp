@@ -366,93 +366,85 @@ float EcoSim::Genetics::Organism::getMovementSpeed() const {
 Direction EcoSim::Genetics::Organism::getDirection  () const { return mobility_ ? mobility_->direction : Direction::none; }
 
 // Genetics-only getters - derive all values from phenotype
-unsigned Creature::getLifespan() const {
-    if (phenotype_.hasTrait(EcoSim::Genetics::UniversalGenes::LIFESPAN)) {
-        return static_cast<unsigned>(
-            phenotype_.getTrait(EcoSim::Genetics::UniversalGenes::LIFESPAN)
-        );
+unsigned EcoSim::Genetics::Organism::getLifespan() const {
+    if (phenotype_.hasTrait(UniversalGenes::LIFESPAN)) {
+        return static_cast<unsigned>(phenotype_.getTrait(UniversalGenes::LIFESPAN));
     }
-    return 500000;  // Default lifespan
+    return 500000;
 }
 
-unsigned Creature::getSightRange() const {
-    if (phenotype_.hasTrait(EcoSim::Genetics::UniversalGenes::SIGHT_RANGE)) {
-        return static_cast<unsigned>(
-            phenotype_.getTrait(EcoSim::Genetics::UniversalGenes::SIGHT_RANGE)
-        );
+unsigned EcoSim::Genetics::Organism::getSightRange() const {
+    if (phenotype_.hasTrait(UniversalGenes::SIGHT_RANGE)) {
+        return static_cast<unsigned>(phenotype_.getTrait(UniversalGenes::SIGHT_RANGE));
     }
-    return 100;  // Default sight range
+    return 100;
 }
 
-// Phenotype-derived behavioral thresholds
-float Creature::getTHunger() const {
-    if (phenotype_.hasTrait(EcoSim::Genetics::UniversalGenes::HUNGER_THRESHOLD)) {
-        return phenotype_.getTrait(EcoSim::Genetics::UniversalGenes::HUNGER_THRESHOLD);
+float EcoSim::Genetics::Organism::getTHunger() const {
+    if (phenotype_.hasTrait(UniversalGenes::HUNGER_THRESHOLD)) {
+        return phenotype_.getTrait(UniversalGenes::HUNGER_THRESHOLD);
     }
-    return 3.0f;  // Default hunger threshold
+    return 3.0f;
 }
 
-float Creature::getTThirst() const {
-    if (phenotype_.hasTrait(EcoSim::Genetics::UniversalGenes::THIRST_THRESHOLD)) {
-        return phenotype_.getTrait(EcoSim::Genetics::UniversalGenes::THIRST_THRESHOLD);
+float EcoSim::Genetics::Organism::getTThirst() const {
+    if (phenotype_.hasTrait(UniversalGenes::THIRST_THRESHOLD)) {
+        return phenotype_.getTrait(UniversalGenes::THIRST_THRESHOLD);
     }
-    return 3.0f;  // Default thirst threshold
+    return 3.0f;
 }
 
-float Creature::getTFatigue() const {
-    if (phenotype_.hasTrait(EcoSim::Genetics::UniversalGenes::FATIGUE_THRESHOLD)) {
-        return phenotype_.getTrait(EcoSim::Genetics::UniversalGenes::FATIGUE_THRESHOLD);
+float EcoSim::Genetics::Organism::getTFatigue() const {
+    if (phenotype_.hasTrait(UniversalGenes::FATIGUE_THRESHOLD)) {
+        return phenotype_.getTrait(UniversalGenes::FATIGUE_THRESHOLD);
     }
-    return 3.0f;  // Default fatigue threshold
+    return 3.0f;
 }
 
-float Creature::getTMate() const {
-    if (phenotype_.hasTrait(EcoSim::Genetics::UniversalGenes::MATE_THRESHOLD)) {
-        return phenotype_.getTrait(EcoSim::Genetics::UniversalGenes::MATE_THRESHOLD);
+float EcoSim::Genetics::Organism::getTMate() const {
+    if (phenotype_.hasTrait(UniversalGenes::MATE_THRESHOLD)) {
+        return phenotype_.getTrait(UniversalGenes::MATE_THRESHOLD);
     }
-    return 3.0f;  // Default mate threshold
+    return 3.0f;
 }
 
-float Creature::getComfInc() const {
-    if (phenotype_.hasTrait(EcoSim::Genetics::UniversalGenes::COMFORT_INCREASE)) {
-        return phenotype_.getTrait(EcoSim::Genetics::UniversalGenes::COMFORT_INCREASE);
+float EcoSim::Genetics::Organism::getComfInc() const {
+    if (phenotype_.hasTrait(UniversalGenes::COMFORT_INCREASE)) {
+        return phenotype_.getTrait(UniversalGenes::COMFORT_INCREASE);
     }
-    return 0.01f;  // Default comfort increase
+    return 0.01f;
 }
 
-float Creature::getComfDec() const {
-    if (phenotype_.hasTrait(EcoSim::Genetics::UniversalGenes::COMFORT_DECREASE)) {
-        return phenotype_.getTrait(EcoSim::Genetics::UniversalGenes::COMFORT_DECREASE);
+float EcoSim::Genetics::Organism::getComfDec() const {
+    if (phenotype_.hasTrait(UniversalGenes::COMFORT_DECREASE)) {
+        return phenotype_.getTrait(UniversalGenes::COMFORT_DECREASE);
     }
-    return 0.01f;  // Default comfort decrease
+    return 0.01f;
 }
 
-// Diet is now emergent from digestion genes
-DietType Creature::getDietType() const {
+DietType EcoSim::Genetics::Organism::getDietType() const {
     return phenotype_.calculateDietType();
 }
 
-bool Creature::ifFlocks() const {
-    // Flocking behavior derived from social genes
-    if (phenotype_.hasTrait(EcoSim::Genetics::UniversalGenes::HUNT_INSTINCT)) {
-        // Low hunt instinct means more social/flocking tendency
-        return phenotype_.getTrait(EcoSim::Genetics::UniversalGenes::HUNT_INSTINCT) < 0.5f;
+bool EcoSim::Genetics::Organism::ifFlocks() const {
+    if (phenotype_.hasTrait(UniversalGenes::HUNT_INSTINCT)) {
+        return phenotype_.getTrait(UniversalGenes::HUNT_INSTINCT) < 0.5f;
     }
-    return true;  // Default to flocking
+    return true;
 }
 
-unsigned Creature::getFlee() const {
-    if (phenotype_.hasTrait(EcoSim::Genetics::UniversalGenes::FLEE_THRESHOLD)) {
-        return static_cast<unsigned>(phenotype_.getTrait(EcoSim::Genetics::UniversalGenes::FLEE_THRESHOLD));
+unsigned EcoSim::Genetics::Organism::getFlee() const {
+    if (phenotype_.hasTrait(UniversalGenes::FLEE_THRESHOLD)) {
+        return static_cast<unsigned>(phenotype_.getTrait(UniversalGenes::FLEE_THRESHOLD));
     }
-    return 10;  // Default flee distance
+    return 10;
 }
 
-unsigned Creature::getPursue() const {
-    if (phenotype_.hasTrait(EcoSim::Genetics::UniversalGenes::PURSUE_THRESHOLD)) {
-        return static_cast<unsigned>(phenotype_.getTrait(EcoSim::Genetics::UniversalGenes::PURSUE_THRESHOLD));
+unsigned EcoSim::Genetics::Organism::getPursue() const {
+    if (phenotype_.hasTrait(UniversalGenes::PURSUE_THRESHOLD)) {
+        return static_cast<unsigned>(phenotype_.getTrait(UniversalGenes::PURSUE_THRESHOLD));
     }
-    return 20;  // Default pursue distance
+    return 20;
 }
 
 //================================================================================

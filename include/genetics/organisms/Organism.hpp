@@ -26,6 +26,7 @@ class FeedingInteraction;
 class SeedDispersal;
 class PerceptionSystem;
 class CombatInteraction;
+enum class DietType;
 
 /**
  * @brief Base class for all living organisms (Plant, Creature).
@@ -325,6 +326,20 @@ public:
 
     // Gene expression query
     float getExpressedValue(const std::string& geneId) const;
+
+    // Phenotype-derived getters (delegate to phenotype_ + gene traits)
+    unsigned  getLifespan   () const;
+    unsigned  getSightRange () const;
+    float     getTHunger    () const;
+    float     getTThirst    () const;
+    float     getTFatigue   () const;
+    float     getTMate      () const;
+    float     getComfInc    () const;
+    float     getComfDec    () const;
+    DietType  getDietType   () const;
+    bool      ifFlocks      () const;
+    unsigned  getFlee       () const;
+    unsigned  getPursue     () const;
 
     void setAge        (unsigned age);
     void setHunger     (float hunger);
