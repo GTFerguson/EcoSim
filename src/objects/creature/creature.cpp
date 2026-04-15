@@ -30,6 +30,7 @@
 #endif
 
 #include "genetics/behaviors/BehaviorController.hpp"
+#include "genetics/behaviors/BehaviorRegistry.hpp"
 #include "genetics/behaviors/BehaviorContext.hpp"
 #include "genetics/behaviors/FeedingBehavior.hpp"
 #include "genetics/behaviors/HuntingBehavior.hpp"
@@ -1568,49 +1569,28 @@ const EcoSim::Genetics::BehaviorController* Creature::getBehaviorController() co
 
 void Creature::initializeBehaviorController() {
     using namespace EcoSim::Genetics;
-    
+
     if (_behaviorController) {
         return;  // Already initialized
     }
-    
-    // Initialize static services if needed (following existing pattern with s_feedingInteraction)
-    if (!s_perceptionSystem) {
-        s_perceptionSystem = std::make_unique<PerceptionSystem>();
-    }
-    if (!s_combatInteraction) {
-        s_combatInteraction = std::make_unique<CombatInteraction>();
-    }
-    if (!s_feedingInteraction) {
-        s_feedingInteraction = std::make_unique<FeedingInteraction>();
-    }
-    if (!s_seedDispersal) {
-        s_seedDispersal = std::make_unique<SeedDispersal>();
-    }
-    
+
+    // Lazy-init shared services (same pattern as before)
+    if (!s_perceptionSystem)  s_perceptionSystem  = std::make_unique<PerceptionSystem>();
+    if (!s_combatInteraction) s_combatInteraction = std::make_unique<CombatInteraction>();
+    if (!s_feedingInteraction) s_feedingInteraction = std::make_unique<FeedingInteraction>();
+    if (!s_seedDispersal)     s_seedDispersal     = std::make_unique<SeedDispersal>();
+
     _behaviorController = std::make_unique<BehaviorController>();
-    
-    // Register behaviors in priority order
-    // RestBehavior - CRITICAL priority when exhausted (no dependencies)
-    _behaviorController->addBehavior(std::make_unique<RestBehavior>());
 
-    // HuntingBehavior - HIGH priority for carnivores
-    _behaviorController->addBehavior(std::make_unique<HuntingBehavior>(
-        *s_combatInteraction, *s_perceptionSystem));
+    // Delegate to BehaviorRegistry — gene expression decides which behaviors attach.
+    BehaviorServices services;
+    services.perception    = s_perceptionSystem.get();
+    services.combat        = s_combatInteraction.get();
+    services.feeding       = s_feedingInteraction.get();
+    services.seedDispersal = s_seedDispersal.get();
+    services.geneRegistry  = s_geneRegistry.get();
 
-    // FeedingBehavior - NORMAL priority for herbivores
-    _behaviorController->addBehavior(std::make_unique<FeedingBehavior>(
-        *s_feedingInteraction, *s_perceptionSystem));
-
-    // MatingBehavior - NORMAL priority when ready to mate
-    _behaviorController->addBehavior(std::make_unique<MatingBehavior>(
-        *s_perceptionSystem, *s_geneRegistry));
-
-    // ZoochoryBehavior - LOW priority for seed dispersal
-    _behaviorController->addBehavior(std::make_unique<ZoochoryBehavior>(
-        *s_seedDispersal));
-
-    // MovementBehavior - IDLE priority as default fallback (no dependencies)
-    _behaviorController->addBehavior(std::make_unique<MovementBehavior>());
+    BehaviorRegistry::attachBehaviorsFor(*_behaviorController, phenotype_, services);
 }
 
 /**
