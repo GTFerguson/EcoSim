@@ -158,13 +158,7 @@ class Creature: public GameObject,
      */
     Creature  breedCreature (Creature &mate);
     
-    /**
-     * @brief Update thermal adaptation cache from phenotype.
-     *
-     * Extracts ThermalAdaptations and calculates EffectiveToleranceRange
-     * from phenotype traits. Called when _thermalCacheDirty is true.
-     */
-    void updateThermalCache();
+    // updateThermalCache now on Organism base.
 
   protected:
     //============================================================================
@@ -299,7 +293,7 @@ class Creature: public GameObject,
     //============================================================================
     
     /// Recalculate expressed traits from genome
-    void updatePhenotype() override;
+    //  updatePhenotype uses Organism base default (just invalidates cache).
     
     //============================================================================
     //  IReproducible overrides - Sexual reproduction
@@ -359,8 +353,7 @@ class Creature: public GameObject,
      * Growth depends on nutrition and age factors.
      */
     void grow() override;
-    
-    void updatePhenotypeContext(const EcoSim::Genetics::EnvironmentState& env);
+    // updatePhenotypeContext now on Organism base.
 
     //============================================================================
     //  Genetics System - Instance Methods
@@ -452,39 +445,11 @@ class Creature: public GameObject,
     //  now live on Organism base.
 
     //============================================================================
-    //  Behavior System
+    //  Behavior system methods (getBehaviorController, updateWithBehaviors,
+    //  buildBehaviorContext, initializeBehaviorController) now live on
+    //  Organism base. Use getOrganismBehaviorController() to access the
+    //  controller directly.
     //============================================================================
-    EcoSim::Genetics::BehaviorController* getBehaviorController();
-    const EcoSim::Genetics::BehaviorController* getBehaviorController() const;
-
-    /**
-     * @brief Update creature using the new behavior system.
-     * @param ctx Behavior context with world access and timing
-     * @return Result of behavior execution
-     *
-     * The BehaviorController selects and executes the highest priority
-     * applicable behavior.
-     */
-    EcoSim::Genetics::BehaviorResult updateWithBehaviors(EcoSim::Genetics::BehaviorContext& ctx);
-    
-    /**
-     * @brief Build a behavior context from current creature and world state.
-     * @param world Reference to the world
-     * @param scentLayer Reference to the scent layer
-     * @param currentTick Current simulation tick
-     * @return BehaviorContext populated with current state
-     */
-    EcoSim::Genetics::BehaviorContext buildBehaviorContext(
-        World& world,
-        EcoSim::ScentLayer& scentLayer,
-        unsigned int currentTick) const;
-    
-    /**
-     * @brief Initialize the behavior controller with default behaviors.
-     *
-     * Registers all standard behaviors (feeding, hunting, mating, rest, movement, zoochory).
-     */
-    void initializeBehaviorController();
 
 public:
     //  generateChar, generateName, stringToDirection, directionToString

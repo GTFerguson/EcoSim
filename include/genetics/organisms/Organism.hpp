@@ -1,5 +1,8 @@
 #pragma once
 
+// Forward declaration for global-namespace World class
+class World;
+
 #include "genetics/interfaces/IPositionable.hpp"
 #include "genetics/interfaces/ILifecycle.hpp"
 #include "genetics/interfaces/IGenetic.hpp"
@@ -38,6 +41,8 @@ class BiomeAdaptation;
 class Plant;
 struct FeedingResult;
 struct DispersalEvent;
+struct BehaviorContext;
+struct BehaviorResult;
 enum class DietType;
 
 /**
@@ -342,6 +347,17 @@ public:
     // Shared gene registry (historical Creature statics)
     static void initializeGeneRegistry();
     static GeneRegistry& getGeneRegistry();
+
+    // Phenotype context / thermal cache refresh
+    void updatePhenotypeContext(const EnvironmentState& env);
+    void updateThermalCache();
+
+    // Behavior system — initializes and ticks the BehaviorController
+    void initializeBehaviorController();
+    BehaviorContext buildBehaviorContext(World& world,
+                                          EcoSim::ScentLayer& scentLayer,
+                                          unsigned int currentTick) const;
+    BehaviorResult updateWithBehaviors(BehaviorContext& ctx);
 
     // String / serialization helpers (delegate to CreatureSerialization)
     static Direction stringToDirection(const std::string& str);

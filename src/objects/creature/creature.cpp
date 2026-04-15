@@ -460,44 +460,26 @@ EcoSim::Genetics::GeneRegistry& EcoSim::Genetics::Organism::getGeneRegistry() {
  * Update phenotype context with current environment and organism state.
  * Should be called each tick or when environment changes significantly.
  */
-void Creature::updatePhenotypeContext(const EcoSim::Genetics::EnvironmentState& env) {
+void EcoSim::Genetics::Organism::updatePhenotypeContext(const EcoSim::Genetics::EnvironmentState& env) {
     EcoSim::Genetics::OrganismState orgState;
-    
-    // Calculate normalized age (0.0 = birth, 1.0 = max lifespan)
-    unsigned lifespan = getLifespan();  // Use phenotype-derived value
-    if (lifespan > 0) {
-        orgState.age_normalized = static_cast<float>(age_) / static_cast<float>(lifespan);
-    } else {
-        orgState.age_normalized = 0.0f;
+    unsigned lifespan = getLifespan();
+    orgState.age_normalized = (lifespan > 0) ? static_cast<float>(age_) / static_cast<float>(lifespan) : 0.0f;
+    if (heterotrophy_) {
+        orgState.energy_level = std::max(0.0f, std::min(1.0f, heterotrophy_->hunger / Constants::RESOURCE_LIMIT));
     }
-    
-    // Convert hunger level to energy (higher hunger = lower energy)
-    // heterotrophy_->hunger ranges from about -1 to RESOURCE_LIMIT (10.0)
-    orgState.energy_level = std::max(0.0f, std::min(1.0f, heterotrophy_->hunger / RESOURCE_LIMIT));
-    
-    // Health is always 1.0 for now (could be expanded later)
     orgState.health = 1.0f;
-    
     phenotype_.updateContext(env, orgState);
-    
-    // Mark thermal cache dirty when phenotype context changes
-    thermal_->cacheDirty = true;
-    
-    // Clamp health when maxHealth changes due to modulation
-    // This ensures health_ never exceeds current maxHealth
+
+    if (thermal_) thermal_->cacheDirty = true;
+
     float maxHP = getMaxHealth();
     if (health_ > maxHP) {
         health_ = maxHP;
     }
 }
 
-/**
- * Update thermal adaptation cache from phenotype.
- * Extracts ThermalAdaptations and calculates EffectiveToleranceRange.
- */
-void Creature::updateThermalCache() {
-    using namespace EcoSim::Genetics;
-    
+void EcoSim::Genetics::Organism::updateThermalCache() {
+    if (!thermal_) return;
     thermal_->adaptations = EnvironmentalStressCalculator::extractThermalAdaptations(phenotype_);
     thermal_->baseTempLow = phenotype_.getTrait(UniversalGenes::TEMP_TOLERANCE_LOW);
     thermal_->baseTempHigh = phenotype_.getTrait(UniversalGenes::TEMP_TOLERANCE_HIGH);
@@ -506,14 +488,11 @@ void Creature::updateThermalCache() {
     thermal_->cacheDirty = false;
 }
 
-/**
- * Recalculate phenotype from genome (Organism interface).
- * Simple wrapper that calls updatePhenotypeContext with default environment.
- */
-void Creature::updatePhenotype() {
-    EcoSim::Genetics::EnvironmentState defaultEnv;
-    updatePhenotypeContext(defaultEnv);
-}
+// updatePhenotype is virtual override on Organism already — Creature's used
+// to just call updatePhenotypeContext with default env. Leave the simpler
+// Organism::updatePhenotype (which just invalidates the phenotype cache)
+// in place; callers that need the full context refresh call
+// updatePhenotypeContext directly. Creature's own override removed.
 
 //================================================================================
 //  Behaviours (legacy Profile methods removed — now handled by BehaviorController)
@@ -1310,15 +1289,9 @@ Creature::Creature(int x, int y, float hunger, float thirst,
  * Initialize the behavior controller with all behaviors.
  * Called once during creature construction or on first use.
  */
-EcoSim::Genetics::BehaviorController* Creature::getBehaviorController() {
-    return organismBehaviorController_.get();
-}
+// getBehaviorController is inherited via Organism::getOrganismBehaviorController.
 
-const EcoSim::Genetics::BehaviorController* Creature::getBehaviorController() const {
-    return organismBehaviorController_.get();
-}
-
-void Creature::initializeBehaviorController() {
+void EcoSim::Genetics::Organism::initializeBehaviorController() {
     using namespace EcoSim::Genetics;
 
     if (organismBehaviorController_) {
@@ -1352,7 +1325,7 @@ void Creature::initializeBehaviorController() {
  * a static local, which is valid for the duration of the behavior
  * update cycle. Do not store the pointer beyond a single tick.
  */
-EcoSim::Genetics::BehaviorContext Creature::buildBehaviorContext(
+EcoSim::Genetics::BehaviorContext EcoSim::Genetics::Organism::buildBehaviorContext(
     World& world,
     EcoSim::ScentLayer& scentLayer,
     unsigned int currentTick) const {
@@ -1363,8 +1336,8 @@ EcoSim::Genetics::BehaviorContext Creature::buildBehaviorContext(
     // Using thread_local static for safe temporary storage
     thread_local OrganismState tempState;
     tempState.age_normalized = getAgeNormalized();
-    tempState.energy_level = std::max(0.0f, std::min(1.0f, heterotrophy_->hunger / RESOURCE_LIMIT));
-    tempState.hydration = std::max(0.0f, std::min(1.0f, heterotrophy_->thirst / RESOURCE_LIMIT));
+    tempState.energy_level = std::max(0.0f, std::min(1.0f, heterotrophy_->hunger / Constants::RESOURCE_LIMIT));
+    tempState.hydration = std::max(0.0f, std::min(1.0f, heterotrophy_->thirst / Constants::RESOURCE_LIMIT));
     tempState.fatigue = heterotrophy_->fatigue;
     tempState.reproductive_urge = reproduction_->mate;
     tempState.health = getHealthPercent();
@@ -1386,7 +1359,7 @@ EcoSim::Genetics::BehaviorContext Creature::buildBehaviorContext(
  * Execute behavior update using the BehaviorController.
  * Replaces legacy decideBehaviour() + profile-based execution.
  */
-EcoSim::Genetics::BehaviorResult Creature::updateWithBehaviors(EcoSim::Genetics::BehaviorContext& ctx) {
+EcoSim::Genetics::BehaviorResult EcoSim::Genetics::Organism::updateWithBehaviors(EcoSim::Genetics::BehaviorContext& ctx) {
     using namespace EcoSim::Genetics;
 
     // Ensure behavior controller is initialized
