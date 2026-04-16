@@ -17,7 +17,6 @@
 #include "../../statistics/statistics.hpp"
 #include "../../world/world.hpp"
 #include "../../world/tile.hpp"
-#include "../gameObject.hpp"
 #include "navigator.hpp"
 
 // Sensory system includes
@@ -101,8 +100,7 @@ using WoundState = EcoSim::Genetics::WoundState;
  * - Creatures reproduce sexually
  * - Creatures have complex behaviors via BehaviorController
  */
-class Creature: public GameObject,
-                public EcoSim::Genetics::Organism {
+class Creature: public EcoSim::Genetics::Organism {
   public:
     //============================================================================
     //  Constants live in genetics/core/OrganismConstants.hpp in the
@@ -218,9 +216,12 @@ class Creature: public GameObject,
    // Copy/Move constructors and assignment operators (required due to unique_ptr members)
     Creature(const Creature& other);
     Creature(Creature&& other) noexcept;
-    Creature& operator=(const Creature& other);
+    // Copy assignment is deleted because Organism's is (complex ownership);
+    // move assignment defers entirely to Organism::operator=. The
+    // destructor is Organism's — no Creature-specific cleanup remains.
+    Creature& operator=(const Creature& other) = delete;
     Creature& operator=(Creature&& other) noexcept;
-    ~Creature() noexcept override;  // Decrements archetype and biome population counts
+    ~Creature() noexcept override = default;
   
     //============================================================================
     //  Static methods (initializeGeneRegistry, getGeneRegistry, resetIdCounter,
@@ -253,30 +254,18 @@ class Creature: public GameObject,
     //  IPositionable overrides - Creatures have precise float movement
     //============================================================================
     
-    /**
-     * @brief Get world X coordinate (float precision)
-     * @return X position in world coordinates
-     *
-     * Creatures have precise float positions for smooth movement.
-     */
-    float getWorldX() const override { return mobility_ ? mobility_->worldX : static_cast<float>(x_); }
-
-    /**
-     * @brief Get world Y coordinate (float precision)
-     * @return Y position in world coordinates
-     */
-    float getWorldY() const override { return mobility_ ? mobility_->worldY : static_cast<float>(y_); }
-    
-    // setWorldPosition now on Organism base.
+    // getWorldX / getWorldY / setWorldPosition now all live on Organism.
+    // The base reads mobility_ when present (creatures, future mobile
+    // plants) and falls back to tile-center otherwise — one code path
+    // covers precise-position movers and sessile organisms.
     
     //============================================================================
     //  ILifecycle overrides
-    //  getMaxLifespan, age, getAgeNormalized now use Organism defaults.
-    //  isAlive overridden here because it needs deathCheck() — Organism's
-    //  base impl can't fold deathCheck globally because plants spuriously
-    //  trip the reproduction.mate < DISCOMFORT_POINT branch under stress.
+    //  All ILifecycle methods (isAlive, getMaxLifespan, age, getAgeNormalized)
+    //  now use Organism defaults. Organism::isAlive folds in deathCheck,
+    //  which is safe for plants after gating the heterotroph-specific
+    //  branches on component presence.
     //============================================================================
-    bool isAlive() const override;
 
     //============================================================================
     //  IGenetic overrides
@@ -299,19 +288,14 @@ public:
     //============================================================================
     //  Organism overrides - Growth system
     //============================================================================
-    
-    /**
-     * @brief Get maximum size from phenotype
-     * @return Maximum size the creature can reach
-     */
-    float getMaxSize() const override { return maxSize_; }
-    
-    /**
-     * @brief Perform growth for this tick
-     * Growth depends on nutrition and age factors.
-     */
-    // grow now on Organism base. Plant keeps its own override.
-    // updatePhenotypeContext now on Organism base.
+    //
+    //  getMaxSize is Organism's default (returns maxSize_) — creatures keep
+    //  maxSize_ at the 1.0 default and derive gene-scaled sizing via
+    //  phenotype at the subsystems that need it. Plant overrides
+    //  getMaxSize to read PlantGenes::MAX_SIZE directly.
+    //
+    //  grow and updatePhenotypeContext live on Organism. Plant overrides
+    //  grow to add photosynthesis-driven growth.
 
     //============================================================================
     //  Genetics System - Instance Methods
@@ -394,37 +378,17 @@ public:
 
 public:
     //  generateChar, generateName, stringToDirection, directionToString
-    //  now live on Organism base.
-    //  toString stays on Creature because it uses GameObject::toString
-    //  which isn't on the Organism (genetics) base class.
-    virtual std::string toString() const override;
-    
+    //  now live on Organism base. CreatureSerialization::toString is a
+    //  free function; call it directly at the (one) production call site
+    //  and test sites rather than going through a member forwarder.
+
     //============================================================================
     //  JSON Serialization
     //============================================================================
-    /**
-     * @brief Serialize creature state to JSON.
-     * @return JSON object containing all serializable creature state
-     *
-     * Includes identity, state, position, health, combat, behavior, and genome.
-     * Phenotype is regenerated from genome on load, not serialized.
-     */
-    nlohmann::json toJson() const;
-    
-    /**
-     * @brief Deserialize creature from JSON.
-     * @param j JSON object containing creature state
-     * @param mapWidth World width for position validation
-     * @param mapHeight World height for position validation
-     * @return Reconstructed Creature
-     *
-     * Genome is loaded from JSON and phenotype is regenerated.
-     * Invalid positions are clamped to world bounds.
-     */
-    static Creature fromJson(const nlohmann::json& j, int mapWidth, int mapHeight);
-    
-    //  Enum<->string converters live in CreatureSerialization (free
-    //  functions); the previous Creature:: static forwarders were unused.
+    //  Creature serialization is free-function only, lives in
+    //  CreatureSerialization.hpp (toJson / fromJson / toString +
+    //  enum<->string helpers). Member forwarders were removed during the
+    //  class collapse — callers invoke the free functions directly.
 };
 
 #endif

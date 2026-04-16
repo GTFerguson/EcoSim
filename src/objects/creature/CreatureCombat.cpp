@@ -24,7 +24,7 @@ namespace CreatureCombat {
 //  Combat Hunting
 //============================================================================
 
-bool findPrey(Creature& creature,
+bool findPrey(Organism& creature,
               std::vector<std::vector<Tile>>& map,
               const int& rows,
               const int& cols,
@@ -174,41 +174,41 @@ bool findPrey(Creature& creature,
 //  Combat State Management
 //============================================================================
 
-bool isInCombat(const Creature& creature) {
+bool isInCombat(const Organism& creature) {
     return creature.isInCombat();
 }
 
-bool isFleeing(const Creature& creature) {
+bool isFleeing(const Organism& creature) {
     return creature.isFleeing();
 }
 
-int getTargetId(const Creature& creature) {
+int getTargetId(const Organism& creature) {
     return creature.getTargetId();
 }
 
-int getCombatCooldown(const Creature& creature) {
+int getCombatCooldown(const Organism& creature) {
     return creature.getCombatCooldown();
 }
 
-void enterCombat(Creature& creature, int targetId) {
+void enterCombat(Organism& creature, int targetId) {
     creature.setInCombat(true);
     creature.setTargetId(targetId);
 }
 
-void exitCombat(Creature& creature) {
+void exitCombat(Organism& creature) {
     creature.setInCombat(false);
     creature.setTargetId(-1);
 }
 
-void startFleeing(Creature& creature) {
+void startFleeing(Organism& creature) {
     creature.setFleeing(true);
 }
 
-void stopFleeing(Creature& creature) {
+void stopFleeing(Organism& creature) {
     creature.setFleeing(false);
 }
 
-void updateCombatCooldown(Creature& creature) {
+void updateCombatCooldown(Organism& creature) {
     int cooldown = creature.getCombatCooldown();
     if (cooldown > 0) {
         creature.setCombatCooldown(cooldown - 1);
@@ -219,27 +219,27 @@ void updateCombatCooldown(Creature& creature) {
 //  Health System (Combat-Related)
 //============================================================================
 
-float getHealth(const Creature& creature) {
+float getHealth(const Organism& creature) {
     return creature.getHealth();
 }
 
-float getMaxHealth(const Creature& creature) {
+float getMaxHealth(const Organism& creature) {
     return creature.getMaxHealth();
 }
 
-float getHealthPercent(const Creature& creature) {
+float getHealthPercent(const Organism& creature) {
     return creature.getHealthPercent();
 }
 
-void takeDamage(Creature& creature, float amount) {
+void takeDamage(Organism& creature, float amount) {
     creature.takeDamage(amount);
 }
 
-void heal(Creature& creature, float amount) {
+void heal(Organism& creature, float amount) {
     creature.heal(amount);
 }
 
-float getHealingRate(const Creature& creature) {
+float getHealingRate(const Organism& creature) {
     return creature.getHealingRate();
 }
 

@@ -28,6 +28,7 @@
 #include "genetics/organisms/Plant.hpp"
 #include "genetics/organisms/PlantFactory.hpp"
 #include "objects/creature/creature.hpp"
+#include "objects/creature/CreatureSerialization.hpp"
 #include "fileHandling.hpp"
 #include "calendar.hpp"
 #include "world/world.hpp"
@@ -438,10 +439,10 @@ void testCreatureRoundtrip() {
     creature->setAction(Action::Searching);
     
     // Serialize
-    json j = creature->toJson();
+    json j = CreatureSerialization::toJson(*creature);
     
     // Deserialize
-    Creature restored = Creature::fromJson(j, 200, 200);
+    Creature restored = CreatureSerialization::fromJson(j, 200, 200);
     
     // Verify state
     TEST_ASSERT_EQ(creature->getX(), restored.getX());
@@ -458,10 +459,10 @@ void testCreaturePositionBounds() {
     // Create creature
     auto creature = createTestCreature(150, 180, 0.5f, 0.5f);
     
-    json j = creature->toJson();
+    json j = CreatureSerialization::toJson(*creature);
     
     // Load with smaller map - position should be clamped
-    Creature restored = Creature::fromJson(j, 100, 100);
+    Creature restored = CreatureSerialization::fromJson(j, 100, 100);
     
     // Position should be clamped to map bounds
     TEST_ASSERT_LT(restored.getX(), 100);
@@ -479,8 +480,8 @@ void testCreatureWithCombatState() {
     creature->setCombatCooldown(5);
     creature->setFleeing(true);
     
-    json j = creature->toJson();
-    Creature restored = Creature::fromJson(j, 100, 100);
+    json j = CreatureSerialization::toJson(*creature);
+    Creature restored = CreatureSerialization::fromJson(j, 100, 100);
     
     TEST_ASSERT(restored.isInCombat());
     TEST_ASSERT_EQ(42, restored.getTargetId());
@@ -495,8 +496,8 @@ void testCreatureWithDamage() {
     float maxHealth = creature->getMaxHealth();
     creature->takeDamage(maxHealth * 0.3f);  // 30% damage
     
-    json j = creature->toJson();
-    Creature restored = Creature::fromJson(j, 100, 100);
+    json j = CreatureSerialization::toJson(*creature);
+    Creature restored = CreatureSerialization::fromJson(j, 100, 100);
     
     // Health should be restored
     TEST_ASSERT_NEAR(creature->getHealth(), restored.getHealth(), 0.1f);
@@ -508,8 +509,8 @@ void testCreaturePhenotypeRegenerated() {
     
     auto creature = createTestCreature(10, 10, 0.5f, 0.5f);
     
-    json j = creature->toJson();
-    Creature restored = Creature::fromJson(j, 100, 100);
+    json j = CreatureSerialization::toJson(*creature);
+    Creature restored = CreatureSerialization::fromJson(j, 100, 100);
     
     // Phenotype should be regenerated and functional
     const auto& phenotype = restored.getPhenotype();
@@ -525,8 +526,8 @@ void testCreatureWorldPosition() {
     auto creature = createTestCreature(10, 10, 0.5f, 0.5f);
     creature->setWorldPosition(10.5f, 10.7f);
     
-    json j = creature->toJson();
-    Creature restored = Creature::fromJson(j, 100, 100);
+    json j = CreatureSerialization::toJson(*creature);
+    Creature restored = CreatureSerialization::fromJson(j, 100, 100);
     
     // World position should be preserved
     TEST_ASSERT_NEAR(creature->getWorldX(), restored.getWorldX(), 0.01f);

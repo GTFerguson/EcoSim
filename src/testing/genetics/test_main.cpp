@@ -16,6 +16,7 @@ extern void runUniversalGenesTests();
 extern void runEnergyBudgetTests();
 extern void runPlantTests();
 extern void runInteractionTests();
+extern void runOrganismFactoryTests();
 
 // Behavior integration test runners
 extern void runBehaviorPlantTests();
@@ -130,6 +131,11 @@ int main() {
     // Phase 2.3: Plant System
     std::cout << "=== Phase 2.3: Plant System ===" << std::endl;
     runPlantTests();
+    std::cout << std::endl;
+
+    // Gene-driven organism factory (Step B.1)
+    std::cout << "=== OrganismFactory: gene → component attachment ===" << std::endl;
+    runOrganismFactoryTests();
     std::cout << std::endl;
     
     // Phase 2.4: Creature-Plant Interactions

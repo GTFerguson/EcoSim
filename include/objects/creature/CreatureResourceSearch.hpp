@@ -21,10 +21,13 @@ class Tile;
 namespace EcoSim {
 namespace Genetics {
 class Plant;
+class Organism;
 }
 }
 
 namespace CreatureResourceSearch {
+
+using Organism = EcoSim::Genetics::Organism;
 
 //============================================================================
 //  Water Finding
@@ -45,7 +48,7 @@ namespace CreatureResourceSearch {
  * @return True if water found and path initiated
  */
 bool waterCheck(
-    Creature& creature,
+    Organism& creature,
     const std::vector<std::vector<Tile>>& map,
     unsigned rows,
     unsigned cols,
@@ -66,7 +69,7 @@ bool waterCheck(
  * @return True if water found and action taken (drinking or navigating)
  */
 bool findWater(
-    Creature& creature,
+    Organism& creature,
     const std::vector<std::vector<Tile>>& map,
     int rows,
     int cols);
@@ -88,7 +91,7 @@ bool findWater(
  * @return True if an action was taken (eating or moving toward plant)
  */
 bool findGeneticsPlants(
-    Creature& creature,
+    Organism& creature,
     World& world,
     unsigned& feedingCounter);
 
@@ -108,7 +111,7 @@ bool findGeneticsPlants(
  * @return Pointer to best mate, or nullptr if none found
  */
 Creature* findBestMate(
-    const Creature& creature,
+    const Organism& creature,
     std::vector<Creature>& creatures);
 
 /**
@@ -125,11 +128,11 @@ Creature* findBestMate(
  * @return True if mate is adjacent or navigation started
  */
 bool navigateToMate(
-    Creature& creature,
+    Organism& creature,
     const std::vector<std::vector<Tile>>& map,
     int rows,
     int cols,
-    const Creature& mate);
+    const Organism& mate);
 
 /**
  * @brief Check if mate is adjacent (within 1 tile).
@@ -139,8 +142,8 @@ bool navigateToMate(
  * @return True if within 1 tile in both X and Y
  */
 bool isMateAdjacent(
-    const Creature& creature,
-    const Creature& mate);
+    const Organism& creature,
+    const Organism& mate);
 
 } // namespace CreatureResourceSearch
 

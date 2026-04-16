@@ -127,19 +127,29 @@ void PlantGenes::registerDefaults(GeneRegistry& registry) {
 
 Genome PlantGenes::createRandomGenome(const GeneRegistry& registry) {
     Genome genome;
-    
-    // Get all definitions and create random genes for each
-    const auto& definitions = registry.getAllDefinitions();
-    
-    for (const auto& [id, definition] : definitions) {
-        // Only add plant genes (those starting with "plant_")
-        if (id.find("plant_") == 0) {
+
+    // Explicit whitelist of plant-specific gene IDs. A naive "id starts
+    // with plant_" filter would also match universal genes like
+    // plant_digestion_efficiency (herbivore digestion), which belongs to
+    // the heterotrophy suite and would accidentally make plants classify
+    // as heterotrophs.
+    static const char* const PLANT_IDS[] = {
+        GROWTH_RATE, WATER_NEED, LIGHT_NEED, NUTRIENT_VALUE,
+        MAX_SIZE, HARDINESS, COLOR_HUE,
+        SEED_PRODUCTION, SPREAD_DISTANCE,
+        TEMP_TOLERANCE_LOW, TEMP_TOLERANCE_HIGH,
+        LIFESPAN,
+    };
+
+    for (const char* id : PLANT_IDS) {
+        if (registry.hasGene(id)) {
+            const auto& definition = registry.getDefinition(id);
             GeneValue randomValue = definition.createRandomValue();
             Gene gene(id, randomValue);
             genome.addGene(gene, definition.getChromosome());
         }
     }
-    
+
     return genome;
 }
 

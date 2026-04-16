@@ -18,6 +18,7 @@ class World;
 #include "genetics/components/IdentityComponent.hpp"
 #include "genetics/core/MotivationAction.hpp"
 #include "genetics/behaviors/BehaviorController.hpp"
+#include "rendering/RenderTypes.hpp"
 #include <array>
 #include <memory>
 #include <optional>
@@ -78,7 +79,7 @@ public:
      */
     Organism(int x, int y, Genome genome, const GeneRegistry& registry);
     
-    virtual ~Organism() = default;
+    virtual ~Organism();
     
     // Disable copy (complex ownership with phenotype->genome pointer)
     Organism(const Organism&) = delete;
@@ -102,9 +103,12 @@ public:
      */
     void setPosition(int x, int y) { x_ = x; y_ = y; }
     
-    // World coordinates depend on subclass (Plant: tile center, Creature: precise)
-    float getWorldX() const override = 0;
-    float getWorldY() const override = 0;
+    // World coordinates: precise if a MobilityComponent is attached
+    // (creatures navigate within-tile), else tile-center (sessile
+    // organisms — plants, sessile creatures). Single impl covers both;
+    // subclasses don't override.
+    float getWorldX() const override;
+    float getWorldY() const override;
     void setWorldPosition(float x, float y) override;
     
     // ========================================================================
@@ -117,7 +121,12 @@ public:
      */
     void age(unsigned int ticks = 1) override;
     
-    bool isAlive() const override { return alive_; }
+    // alive_ flag is the persistent "has died" marker (set by die()).
+    // deathCheck() folds in live conditions (old age, starvation,
+    // dehydration, discomfort, zero health) that a tick-driver may not
+    // have processed yet this frame. Callers get "is this organism
+    // currently viable" across both paths without needing to override.
+    bool isAlive() const override { return alive_ && deathCheck() == 0; }
     unsigned int getAge() const override { return age_; }
     float getAgeNormalized() const override;
     unsigned int getMaxLifespan() const override;  // Default: phenotype LIFESPAN
@@ -156,9 +165,16 @@ protected:
     // concrete type at (x, y) carrying the supplied genome. Called by
     // sexualBreed/asexualBreed once the genome has been crossed and
     // mutated. The only step in reproduction that genuinely depends on
-    // the concrete subclass.
+    // the concrete subclass during the transitional period.
+    //
+    // Default implementation delegates to OrganismFactory::fromGenome,
+    // which reads the offspring genome's expressed capabilities and
+    // attaches the right component set. Creature and Plant currently
+    // override to construct their concrete subtype; once call sites
+    // migrate to Organism + OrganismFactory directly (Step B.4), those
+    // overrides disappear and the default becomes the only path.
     virtual std::unique_ptr<Organism> makeOffspring(
-        std::unique_ptr<Genome> offspringGenome, int x, int y) = 0;
+        std::unique_ptr<Genome> offspringGenome, int x, int y);
 
     // Shared sexual breeding pipeline: charges parental cost, shares
     // resources where applicable, resets mate drive, performs genome
@@ -182,7 +198,11 @@ public:
     // ========================================================================
     
     float getCurrentSize() const { return currentSize_; }
-    virtual float getMaxSize() const = 0;  // Gene-dependent
+    // Default returns the maxSize_ field. Plant overrides to read the
+    // PlantGenes::MAX_SIZE gene directly (the cached gene-derived value).
+    // Creature leaves maxSize_ at the Organism default (1.0) — subsystems
+    // that need gene-based scaling read MAX_SIZE via phenotype directly.
+    virtual float getMaxSize() const { return maxSize_; }
     bool isMature() const { return mature_; }
     
     /**
@@ -203,7 +223,32 @@ public:
 
     int getId() const { return id_; }
     unsigned int getUnsignedId() const { return static_cast<unsigned int>(id_); }
-    
+
+    /**
+     * @brief Sequential user-facing display ID ("#42" in UI panels).
+     *        Distinct from getId() which is the global numeric ID used
+     *        internally for targeting/spatial indices. Seeded by whatever
+     *        factory created this organism; -1 if no identity component.
+     */
+    int getSequentialId() const {
+        return identity_ ? identity_->sequentialId : -1;
+    }
+    void setSequentialId(int id) {
+        if (identity_) identity_->sequentialId = id;
+    }
+
+    // Display / identity getters — read through IdentityComponent->archetype
+    // flyweight. Replaces the former GameObject base class API; renderers,
+    // tests and serialization call these on Organism without caring about
+    // the concrete subtype.
+    const std::string& getName() const;      // speciesName if cached, else archetype label
+    char               getChar() const;      // archetype renderChar, fallback '?'
+    EntityType         getEntityType() const;// archetype entity type, fallback CREATURE
+    bool               getPassable() const;  // archetype passable, fallback true
+    const std::string& getDesc() const;      // archetype desc, fallback ""
+    unsigned int       getColour() const;    // phenotype color_hue, fallback 1
+    virtual std::string toString() const;    // "<name>","<desc>","<char>",<colour>,<passable>
+
     // ========================================================================
     // Health System (shared)
     // ========================================================================

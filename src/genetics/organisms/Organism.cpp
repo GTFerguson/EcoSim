@@ -1,4 +1,7 @@
 #include "genetics/organisms/Organism.hpp"
+#include "genetics/organisms/OrganismFactory.hpp"
+#include "genetics/classification/ArchetypeIdentity.hpp"
+#include "genetics/classification/BiomeAdaptation.hpp"
 #include "genetics/core/GeneRegistry.hpp"
 #include "genetics/core/OrganismConstants.hpp"
 #include "genetics/core/RandomEngine.hpp"
@@ -9,6 +12,7 @@
 #include "genetics/interactions/CombatInteraction.hpp"
 #include <algorithm>
 #include <cmath>
+#include <sstream>
 
 namespace EcoSim {
 namespace Genetics {
@@ -37,6 +41,27 @@ Organism::Organism(int x, int y, Genome genome, const GeneRegistry& registry)
     , registry_(&registry)
     , id_(nextId_++)
 {
+}
+
+std::unique_ptr<Organism> Organism::makeOffspring(
+    std::unique_ptr<Genome> offspringGenome, int x, int y) {
+    if (!offspringGenome || !registry_) return nullptr;
+    return OrganismFactory::fromGenome(
+        std::move(*offspringGenome), x, y, *registry_);
+}
+
+Organism::~Organism() {
+    // Release archetype / biome flyweight population counts this
+    // organism was holding. Moved-from organisms have identity_ reset
+    // to nullptr by the move ctor/assignment, so they skip this path.
+    if (identity_) {
+        if (identity_->archetype) {
+            identity_->archetype->decrementPopulation();
+        }
+        if (identity_->biomeAdaptation) {
+            identity_->biomeAdaptation->decrementPopulation();
+        }
+    }
 }
 
 Organism::Organism(Organism&& other) noexcept
@@ -74,6 +99,18 @@ Organism::Organism(Organism&& other) noexcept
 
 Organism& Organism::operator=(Organism&& other) noexcept {
     if (this != &other) {
+        // The identity we're about to overwrite holds a live reference to
+        // an ArchetypeIdentity (and optional BiomeAdaptation) flyweight.
+        // Release those population counts before the move replaces the
+        // pointer; the identity coming in from `other` carries its own
+        // live reference that stays valid on this object post-move.
+        if (identity_ && identity_->archetype) {
+            identity_->archetype->decrementPopulation();
+        }
+        if (identity_ && identity_->biomeAdaptation) {
+            identity_->biomeAdaptation->decrementPopulation();
+        }
+
         x_ = other.x_;
         y_ = other.y_;
         age_ = other.age_;
@@ -279,6 +316,14 @@ void Organism::setWorldPosition(float x, float y) {
     y_ = static_cast<int>(y);
 }
 
+float Organism::getWorldX() const {
+    return mobility_ ? mobility_->worldX : (static_cast<float>(x_) + 0.5f);
+}
+
+float Organism::getWorldY() const {
+    return mobility_ ? mobility_->worldY : (static_cast<float>(y_) + 0.5f);
+}
+
 void Organism::grow() {
     if (mature_) return;
     float nutritionFactor = 0.5f;  // baseline for unfed organisms
@@ -339,6 +384,61 @@ void Organism::rebindPhenotypeGenome() {
     // The Phenotype needs to reference this organism's genome after move
     // Phenotype::setGenome() updates the internal genome pointer
     phenotype_.setGenome(&genome_);
+}
+
+// ============================================================================
+// Display / identity getters — flyweight-backed replacement for the former
+// GameObject base class API.
+// ============================================================================
+
+const std::string& Organism::getName() const {
+    if (identity_) {
+        if (!identity_->speciesName.empty()) return identity_->speciesName;
+        if (identity_->archetype) return identity_->archetype->getLabel();
+    }
+    static const std::string empty;
+    return empty;
+}
+
+char Organism::getChar() const {
+    if (identity_ && identity_->archetype) return identity_->archetype->getRenderChar();
+    return '?';
+}
+
+EntityType Organism::getEntityType() const {
+    if (identity_ && identity_->archetype) return identity_->archetype->getEntityType();
+    return EntityType::CREATURE;
+}
+
+bool Organism::getPassable() const {
+    if (identity_ && identity_->archetype) return identity_->archetype->getPassable();
+    return true;
+}
+
+const std::string& Organism::getDesc() const {
+    if (identity_ && identity_->archetype) return identity_->archetype->getDesc();
+    static const std::string empty;
+    return empty;
+}
+
+unsigned int Organism::getColour() const {
+    // Plants and creatures both drive their rendering colour from the
+    // color_hue trait via phenotype. When the gene is absent (defensive
+    // path during construction), fall back to the legacy default.
+    if (phenotype_.hasTrait(UniversalGenes::COLOR_HUE)) {
+        return static_cast<unsigned int>(phenotype_.getTrait(UniversalGenes::COLOR_HUE));
+    }
+    return 1;
+}
+
+std::string Organism::toString() const {
+    std::ostringstream ss;
+    ss  << "\"" << getName()  << "\","
+        << "\"" << getDesc()  << "\","
+        << "\"" << getChar()  << "\","
+        << getColour()   << ","
+        << getPassable();
+    return ss.str();
 }
 
 } // namespace Genetics

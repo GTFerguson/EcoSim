@@ -11,7 +11,6 @@
  */
 
 #include "objects/creature/creature.hpp"
-#include "objects/gameObject.hpp"
 #include "world/world.hpp"
 #include "calendar.hpp"
 #include "genetics/organisms/Plant.hpp"
@@ -155,9 +154,6 @@ class FileHandling {
     //============================================================================
     //  Loading - Legacy CSV (deprecated)
     //============================================================================
-    [[deprecated("Use loadGameJson() instead")]]
-    GameObject loadGameObject  (const std::vector<std::string> &str,
-                                unsigned int &start);
     [[deprecated("Use loadGameJson() instead")]]
     Calendar   loadCalendar    (const std::vector<std::string> &str, unsigned &start);
     [[deprecated("Use loadGameJson() instead")]]

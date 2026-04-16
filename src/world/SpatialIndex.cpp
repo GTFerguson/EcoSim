@@ -22,7 +22,7 @@ SpatialIndex::SpatialIndex(int worldWidth, int worldHeight, int cellSize)
 // Core Operations
 //==============================================================================
 
-void SpatialIndex::insert(Creature* creature) {
+void SpatialIndex::insert(EcoSim::Genetics::Organism* creature) {
     if (!creature) return;
     
     auto [cellX, cellY] = getCellCoords(creature->getWorldX(), creature->getWorldY());
@@ -31,7 +31,7 @@ void SpatialIndex::insert(Creature* creature) {
     ++creatureCount_;
 }
 
-void SpatialIndex::remove(Creature* creature) {
+void SpatialIndex::remove(EcoSim::Genetics::Organism* creature) {
     if (!creature) return;
     
     auto [cellX, cellY] = getCellCoords(creature->getWorldX(), creature->getWorldY());
@@ -53,7 +53,7 @@ void SpatialIndex::remove(Creature* creature) {
     }
 }
 
-void SpatialIndex::update(Creature* creature, float oldX, float oldY) {
+void SpatialIndex::update(EcoSim::Genetics::Organism* creature, float oldX, float oldY) {
     if (!creature) return;
     
     auto [oldCellX, oldCellY] = getCellCoords(oldX, oldY);
@@ -99,8 +99,8 @@ void SpatialIndex::rebuild(std::vector<Creature>& creatures) {
 // Query Operations
 //==============================================================================
 
-std::vector<Creature*> SpatialIndex::queryRadius(float x, float y, float radius) const {
-    std::vector<Creature*> results;
+std::vector<EcoSim::Genetics::Organism*> SpatialIndex::queryRadius(float x, float y, float radius) const {
+    std::vector<EcoSim::Genetics::Organism*> results;
     
     if (radius <= 0) return results;
     
@@ -125,7 +125,7 @@ std::vector<Creature*> SpatialIndex::queryRadius(float x, float y, float radius)
             if (it == grid_.end()) continue;
             
             // Check each creature in cell
-            for (Creature* c : it->second) {
+            for (EcoSim::Genetics::Organism* c : it->second) {
                 float dx = c->getWorldX() - x;
                 float dy = c->getWorldY() - y;
                 if (dx * dx + dy * dy <= radiusSq) {
@@ -138,7 +138,7 @@ std::vector<Creature*> SpatialIndex::queryRadius(float x, float y, float radius)
     return results;
 }
 
-std::vector<Creature*> SpatialIndex::queryCell(int cellX, int cellY) const {
+std::vector<EcoSim::Genetics::Organism*> SpatialIndex::queryCell(int cellX, int cellY) const {
     CellKey key = clampCell(cellX, cellY);
     auto it = grid_.find(key);
     if (it != grid_.end()) {
@@ -147,8 +147,8 @@ std::vector<Creature*> SpatialIndex::queryCell(int cellX, int cellY) const {
     return {};
 }
 
-std::vector<Creature*> SpatialIndex::queryNearbyCells(float x, float y) const {
-    std::vector<Creature*> results;
+std::vector<EcoSim::Genetics::Organism*> SpatialIndex::queryNearbyCells(float x, float y) const {
+    std::vector<EcoSim::Genetics::Organism*> results;
     
     auto [centerCellX, centerCellY] = getCellCoords(x, y);
     
@@ -173,11 +173,11 @@ std::vector<Creature*> SpatialIndex::queryNearbyCells(float x, float y) const {
     return results;
 }
 
-std::vector<Creature*> SpatialIndex::queryWithFilter(
+std::vector<EcoSim::Genetics::Organism*> SpatialIndex::queryWithFilter(
     float x, float y, float radius,
-    std::function<bool(const Creature*)> predicate) const 
+    std::function<bool(const EcoSim::Genetics::Organism*)> predicate) const 
 {
-    std::vector<Creature*> results;
+    std::vector<EcoSim::Genetics::Organism*> results;
     
     if (radius <= 0 || !predicate) return results;
     
@@ -202,7 +202,7 @@ std::vector<Creature*> SpatialIndex::queryWithFilter(
             if (it == grid_.end()) continue;
             
             // Check each creature in cell
-            for (Creature* c : it->second) {
+            for (EcoSim::Genetics::Organism* c : it->second) {
                 float dx = c->getWorldX() - x;
                 float dy = c->getWorldY() - y;
                 if (dx * dx + dy * dy <= radiusSq && predicate(c)) {
@@ -215,13 +215,13 @@ std::vector<Creature*> SpatialIndex::queryWithFilter(
     return results;
 }
 
-Creature* SpatialIndex::findNearest(
+EcoSim::Genetics::Organism* SpatialIndex::findNearest(
     float x, float y, float maxRadius,
-    std::function<bool(const Creature*)> predicate) const 
+    std::function<bool(const EcoSim::Genetics::Organism*)> predicate) const 
 {
     if (maxRadius <= 0 || !predicate) return nullptr;
     
-    Creature* nearest = nullptr;
+    EcoSim::Genetics::Organism* nearest = nullptr;
     float nearestDistSq = std::numeric_limits<float>::max();
     
     // Calculate cell range to check
@@ -245,7 +245,7 @@ Creature* SpatialIndex::findNearest(
             if (it == grid_.end()) continue;
             
             // Check each creature in cell
-            for (Creature* c : it->second) {
+            for (EcoSim::Genetics::Organism* c : it->second) {
                 float dx = c->getWorldX() - x;
                 float dy = c->getWorldY() - y;
                 float distSq = dx * dx + dy * dy;

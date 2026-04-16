@@ -27,7 +27,7 @@ namespace CreatureResourceSearch {
 //============================================================================
 
 bool waterCheck(
-    Creature& creature,
+    Organism& creature,
     const std::vector<std::vector<Tile>>& map,
     unsigned rows,
     unsigned cols,
@@ -45,7 +45,7 @@ bool waterCheck(
 }
 
 bool findWater(
-    Creature& creature,
+    Organism& creature,
     const std::vector<std::vector<Tile>>& map,
     int rows,
     int cols) {
@@ -95,7 +95,7 @@ bool findWater(
  * in creature.cpp to use this legacy implementation for performance testing.
  */
 bool findGeneticsPlants(
-    Creature& creature,
+    Organism& creature,
     World& world,
     unsigned& feedingCounter) {
     
@@ -271,7 +271,7 @@ bool findGeneticsPlants(
 //============================================================================
 
 Creature* findBestMate(
-    const Creature& creature,
+    const Organism& creature,
     std::vector<Creature>& creatures) {
     
     float bestDesirability = -1.0f;
@@ -306,11 +306,11 @@ Creature* findBestMate(
 }
 
 bool navigateToMate(
-    Creature& creature,
+    Organism& creature,
     const std::vector<std::vector<Tile>>& map,
     int rows,
     int cols,
-    const Creature& mate) {
+    const Organism& mate) {
     
     int mateX = mate.getX();
     int mateY = mate.getY();
@@ -325,8 +325,8 @@ bool navigateToMate(
 }
 
 bool isMateAdjacent(
-    const Creature& creature,
-    const Creature& mate) {
+    const Organism& creature,
+    const Organism& mate) {
     
     unsigned diffX = abs(creature.tileX() - mate.getX());
     unsigned diffY = abs(creature.tileY() - mate.getY());

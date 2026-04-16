@@ -89,7 +89,8 @@ public:
     Plant(int x, int y, const Genome& genome, const GeneRegistry& registry);
     
     /**
-     * @brief Destructor
+     * @brief Destructor — Organism's ~Organism handles population-count
+     * decrement. No plant-specific cleanup remains.
      */
     ~Plant() override = default;
     
@@ -518,29 +519,11 @@ public:
     // ========================================================================
     // Rendering Support
     // ========================================================================
-    
-    /**
-     * @brief Get entity type for rendering
-     * @return EntityType appropriate for this plant species
-     *
-     * Returns based on plant characteristics (to be set by PlantFactory).
-     */
-    EntityType getEntityType() const;
-    
-    /**
-     * @brief Set entity type (used by PlantFactory for species templates)
-     * @param type The entity type for this plant
-     */
-    void setEntityType(EntityType type);
-    
-    /**
-     * @brief Get character for ASCII/text rendering
-     * @return Character representing this plant type
-     *
-     * Examples: 'B' for berry bush, 'T' for tree, '"' for grass
-     */
-    char getRenderCharacter() const;
-    
+
+    // Entity type and render character come from the Organism base via the
+    // ArchetypeIdentity flyweight (Organism::getEntityType, Organism::getChar).
+    // Plant only supplies per-instance gene-driven colour.
+
     /**
      * @brief Get render color based on COLOR_HUE gene
      * @return RGB color for rendering
@@ -622,10 +605,7 @@ protected:
     
     // Fruit production timing
     unsigned int fruitTimer_ = 0;
-    
-    // Rendering
-    EntityType entityType_ = EntityType::PLANT_GENERIC;
-    
+
     // Static ID generator for unique plant IDs
     static unsigned int nextId_;
 

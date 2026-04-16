@@ -21,6 +21,12 @@ class Creature;
 namespace EcoSim {
     class EnvironmentSystem;
     namespace Genetics {
+        class Organism;
+    }
+}
+
+namespace EcoSim {
+    namespace Genetics {
         class Phenotype;
     }
 }
@@ -269,28 +275,28 @@ class Navigator {
                                  const int &endX,
                                  const int &endY,
                                  const PathfindingContext* ctx = nullptr);
-    static void movementCost    (Creature &c, const int &x,const int &y);
+    static void movementCost    (EcoSim::Genetics::Organism &c, const int &x,const int &y);
 
 
     //============================================================================
     //  Movement methods
     //============================================================================
-    static bool astarSearch     (Creature &c,
+    static bool astarSearch     (EcoSim::Genetics::Organism &c,
                                  const std::vector<std::vector<Tile>> &map,
                                  const int &rows,
                                  const int &cols,
                                  const int &endX,
                                  const int &endY,
                                  const PathfindingContext* ctx = nullptr);
-    static bool wander          (Creature &c, const std::vector<std::vector<Tile>> &map,
+    static bool wander          (EcoSim::Genetics::Organism &c, const std::vector<std::vector<Tile>> &map,
                                  const unsigned rows, const unsigned cols);
-    static bool moveTowards     (Creature &c,
+    static bool moveTowards     (EcoSim::Genetics::Organism &c,
                                  const std::vector<std::vector<Tile>> &map,
                                  const int &rows,
                                  const int &cols,
                                  const int &goalX,
                                  const int &goalY);
-    static bool moveAway        (Creature &c,
+    static bool moveAway        (EcoSim::Genetics::Organism &c,
                                  const std::vector<std::vector<Tile>> &map,
                                  const int &rows,
                                  const int &cols,
@@ -314,7 +320,7 @@ class Navigator {
      * @param deltaTime Time elapsed since last update (in ticks, typically 1.0)
      * @return true if creature reached target (within small epsilon)
      */
-    static bool move            (Creature &c,
+    static bool move            (EcoSim::Genetics::Organism &c,
                                  const std::vector<std::vector<Tile>> &map,
                                  const int &rows,
                                  const int &cols,

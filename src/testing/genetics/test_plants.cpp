@@ -303,29 +303,78 @@ void testPlantRenderCharacters() {
     factory.registerDefaultTemplates();
     
     G::Plant berryBush = factory.createFromTemplate("berry_bush", 0, 0);
-    TEST_ASSERT_EQ('B', berryBush.getRenderCharacter());
+    TEST_ASSERT_EQ('B', berryBush.getChar());
     
     G::Plant oakTree = factory.createFromTemplate("oak_tree", 0, 0);
-    TEST_ASSERT_EQ('T', oakTree.getRenderCharacter());
+    TEST_ASSERT_EQ('T', oakTree.getChar());
     
     G::Plant grass = factory.createFromTemplate("grass", 0, 0);
-    TEST_ASSERT_EQ('"', grass.getRenderCharacter());
+    TEST_ASSERT_EQ('"', grass.getChar());
     
     G::Plant thornBush = factory.createFromTemplate("thorn_bush", 0, 0);
-    TEST_ASSERT_EQ('*', thornBush.getRenderCharacter());
+    TEST_ASSERT_EQ('*', thornBush.getChar());
 }
 
 void testPlantUniqueIds() {
     auto registry = std::make_shared<G::GeneRegistry>();
     G::UniversalGenes::registerDefaults(*registry);
-    
+
     G::PlantFactory factory(registry);
     factory.registerDefaultTemplates();
-    
+
     G::Plant plant1 = factory.createFromTemplate("berry_bush", 0, 0);
     G::Plant plant2 = factory.createFromTemplate("oak_tree", 0, 0);
-    
+
     TEST_ASSERT(plant1.getId() != plant2.getId());
+}
+
+// ============================================================================
+// Plant deathCheck semantics
+//
+// deathCheck's "discomfort" branch (reproduction.mate < DISCOMFORT_POINT) is
+// a creature-specific cause: it tracks reproductive drive collapsing under
+// starvation/dehydration. Plants carry a ReproductionComponent too (for
+// mature/fruitTimer tracking), but their `mate` field has no analogous
+// semantics and may legally sit negative. deathCheck must therefore only
+// apply the discomfort branch when the organism is a heterotroph.
+//
+// These tests lock that invariant in before the isAlive unification so a
+// future Organism::isAlive = deathCheck() == 0 is safe for plants.
+// ============================================================================
+
+void testPlantDeathCheckIgnoresMateDiscomfort() {
+    G::GeneRegistry registry;
+    G::UniversalGenes::registerDefaults(registry);
+
+    G::Plant plant(10, 20, registry);
+
+    // Drive mate well below DISCOMFORT_POINT (-3.0). For a creature this
+    // would be a death condition; for a plant it must be ignored.
+    plant.setMate(-10.0f);
+
+    TEST_ASSERT_EQ(static_cast<short>(0), plant.deathCheck());
+    TEST_ASSERT(plant.isAlive());
+}
+
+void testPlantDeathCheckTripsOnHealthZero() {
+    G::GeneRegistry registry;
+    G::UniversalGenes::registerDefaults(registry);
+
+    G::Plant plant(10, 20, registry);
+    plant.setHealth(0.0f);
+
+    // Code 5 = health depleted. Plants must still reach this branch.
+    TEST_ASSERT_EQ(static_cast<short>(5), plant.deathCheck());
+}
+
+void testPlantDeathCheckTripsOnOldAge() {
+    G::GeneRegistry registry;
+    G::UniversalGenes::registerDefaults(registry);
+
+    G::Plant plant(10, 20, registry);
+    plant.setAge(plant.getMaxLifespan() + 1);
+
+    TEST_ASSERT_EQ(static_cast<short>(1), plant.deathCheck());
 }
 
 // ============================================================================
@@ -372,6 +421,12 @@ void runPlantTests() {
     BEGIN_TEST_GROUP("Plant Rendering Tests");
     RUN_TEST(testPlantRenderCharacters);
     RUN_TEST(testPlantUniqueIds);
+    END_TEST_GROUP();
+
+    BEGIN_TEST_GROUP("Plant Death Check Semantics");
+    RUN_TEST(testPlantDeathCheckIgnoresMateDiscomfort);
+    RUN_TEST(testPlantDeathCheckTripsOnHealthZero);
+    RUN_TEST(testPlantDeathCheckTripsOnOldAge);
     END_TEST_GROUP();
 }
 

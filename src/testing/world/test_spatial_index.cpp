@@ -535,7 +535,7 @@ void test_findNearest_basic() {
     }
     
     auto nearest = index.findNearest(50.0f, 50.0f, 100.0f, 
-        [](const Creature*) { return true; });
+        [](const EcoSim::Genetics::Organism*) { return true; });
     
     TEST_ASSERT(nearest != nullptr);
     TEST_ASSERT_EQ(creatures[0].get(), nearest);
@@ -555,7 +555,7 @@ void test_findNearest_with_predicate() {
     
     // Find nearest that is NOT the closest one
     auto nearest = index.findNearest(50.0f, 50.0f, 100.0f, 
-        [&](const Creature* c) { return c != creatures[0].get(); });
+        [&](const EcoSim::Genetics::Organism* c) { return c != creatures[0].get(); });
     
     TEST_ASSERT(nearest != nullptr);
     TEST_ASSERT_EQ(creatures[1].get(), nearest);
@@ -568,7 +568,7 @@ void test_findNearest_none_matching() {
     
     // Predicate that matches nothing
     auto nearest = index.findNearest(50.0f, 50.0f, 100.0f, 
-        [](const Creature*) { return false; });
+        [](const EcoSim::Genetics::Organism*) { return false; });
     
     TEST_ASSERT(nearest == nullptr);
 }
@@ -580,7 +580,7 @@ void test_findNearest_beyond_radius() {
     
     // Search with small radius
     auto nearest = index.findNearest(50.0f, 50.0f, 10.0f, 
-        [](const Creature*) { return true; });
+        [](const EcoSim::Genetics::Organism*) { return true; });
     
     TEST_ASSERT(nearest == nullptr);
 }
@@ -594,7 +594,7 @@ void test_findNearest_boundary_precision() {
     index.insert(creature.get());
     
     auto nearest = index.findNearest(50.0f, 50.0f, maxRadius, 
-        [](const Creature*) { return true; });
+        [](const EcoSim::Genetics::Organism*) { return true; });
     
     TEST_ASSERT_MSG(nearest != nullptr,
         "Creature exactly at max radius should be found");
@@ -615,7 +615,7 @@ void test_queryWithFilter_basic() {
     
     // Filter to find only specific creatures
     auto results = index.queryWithFilter(50.0f, 50.0f, 20.0f,
-        [&](const Creature* c) { 
+        [&](const EcoSim::Genetics::Organism* c) { 
             return c == creatures[0].get() || c == creatures[2].get(); 
         });
     
@@ -709,7 +709,7 @@ void test_large_radius_query() {
     TEST_ASSERT(!results.empty());
     
     // Verify all returned creatures are actually within radius
-    for (Creature* c : results) {
+    for (EcoSim::Genetics::Organism* c : results) {
         float dist = distance(250.0f, 250.0f, c->getWorldX(), c->getWorldY());
         TEST_ASSERT_LE(dist, 200.0f);
     }

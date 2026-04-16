@@ -11,6 +11,7 @@
 
 #include "../include/fileHandling.hpp"
 #include "../include/genetics/defaults/PlantGenes.hpp"
+#include "../include/objects/creature/CreatureSerialization.hpp"
 #include <stdexcept>
 #include <algorithm>
 #include <iomanip>
@@ -265,7 +266,7 @@ bool FileHandling::saveState (const World &w,
   if (file.is_open()) {
     vector<Creature>::const_iterator it = creatures.begin();
     while (it != creatures.end()) {
-      file << it++->toString();
+      file << CreatureSerialization::toString(*it++);
       if (it != creatures.end()) file << endl;
     }
     file.close ();
@@ -378,7 +379,7 @@ bool FileHandling::saveGameJson(
     // Serialize all creatures
     json creaturesArray = json::array();
     for (const auto& creature : creatures) {
-      creaturesArray.push_back(creature.toJson());
+      creaturesArray.push_back(CreatureSerialization::toJson(creature));
     }
     saveData["creatures"] = creaturesArray;
     
@@ -448,48 +449,6 @@ bool FileHandling::saveGameJson(
 /**
  *  Loads the member variables of a general object into the parameters given.
  *
- *  @param str    The string to be parsed.
- *  @param start  Starting position for loading.
- *  @return       The game object parsed from the strings given.
- *
- *  @deprecated Use loadGameJson() instead.
- */
-GameObject FileHandling::loadGameObject (const vector<string> &str,
-                                         unsigned &start) {
-  string   name   = str.at  (start++);
-  string   desc   = str.at  (start++);
-  
-  //  Safe character extraction with bounds checking
-  char ch = ' ';
-  const string& charStr = str.at(start++);
-  if (charStr.size() >= 2) {
-    ch = charStr.at(1);
-  } else if (charStr.size() == 1) {
-    ch = charStr.at(0);
-  } else {
-    throw std::runtime_error("Invalid character field in save file");
-  }
-  
-  unsigned colour = stoul   (str.at(start++));
-
-  bool passable;
-  //  Will set to false on invalid input
-  istringstream (str.at(start++)) >> passable;
-
-  // TODO better trimming
-  //  Trimming whitespace and quotation marks
-  if (name.size() >= 2) {
-    name.erase (name.end()-1); name.erase(name.begin());
-  }
-
-  if (desc.size() >= 2) {
-    desc.erase (desc.end()-1); desc.erase(desc.begin());
-  }
-
-  return GameObject (name, desc, passable, ch, colour);
-}
-
-/**
  *  @deprecated Use loadGameJson() instead.
  */
 Calendar FileHandling::loadCalendar (const vector<string> &str, unsigned &start) {
@@ -597,7 +556,7 @@ bool FileHandling::loadCreatures (vector<Creature> &c) {
       if (result.size() == CREATURE_FIELDS) {
         unsigned int index = 0;
 
-        [[maybe_unused]] GameObject tempGO = loadGameObject (result, index);
+        index += 5;  // skip legacy name, desc, char, colour, passable fields
 
         int       x           = stoi  (result.at(index++));
         int       y           = stoi  (result.at(index++));
@@ -860,7 +819,7 @@ bool FileHandling::loadGameJson(
     const auto& creaturesArray = saveData["creatures"];
     for (const auto& creatureJson : creaturesArray) {
       try {
-        Creature creature = Creature::fromJson(creatureJson, mapWidth, mapHeight);
+        Creature creature = CreatureSerialization::fromJson(creatureJson, mapWidth, mapHeight);
         creatures.push_back(std::move(creature));
       } catch (const std::exception& e) {
         std::cerr << "Warning: Failed to load creature: " << e.what() << std::endl;

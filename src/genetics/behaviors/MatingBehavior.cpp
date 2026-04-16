@@ -172,12 +172,10 @@ Organism* MatingBehavior::findMate(const Organism& seeker,
     const float cx = seeker.getWorldX();
     const float cy = seeker.getWorldY();
 
-    // Query nearby creatures via the spatial index. Returns Creature*
-    // which we up-cast to Organism* through the public inheritance.
+    // Query nearby organisms via the spatial index.
     auto candidates = ctx.creatureIndex->queryRadius(cx, cy, sightRange);
-    for (::Creature* c : candidates) {
-        if (!c) continue;
-        Organism* candidate = static_cast<Organism*>(c);
+    for (Organism* candidate : candidates) {
+        if (!candidate) continue;
         if (candidate == &seeker) continue;
         if (!candidate->isAlive()) continue;
         if (!candidate->canReproduce()) continue;

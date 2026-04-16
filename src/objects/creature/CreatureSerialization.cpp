@@ -24,7 +24,7 @@ namespace CreatureSerialization {
 
 std::string toString(const Creature& creature) {
     std::ostringstream ss;
-    ss  << creature.GameObject::toString()  << ","
+    ss  << creature.Organism::toString()    << ","
         << creature.tileX() << "," << creature.tileY() << "," << creature.getAge() << ","
         << directionToString(creature.getDirection()) << ","
         << motivationToString(creature.getMotivation()) << ","

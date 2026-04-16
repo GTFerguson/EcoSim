@@ -10,7 +10,6 @@
  *            information on the tile and it's contents.
  */
 
-#include "../objects/gameObject.hpp"
 #include "../rendering/RenderTypes.hpp"
 
 // Genetics system integration (Phase 2.4)

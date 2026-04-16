@@ -100,7 +100,6 @@ add_compiler_warnings(ecosim_world)
 file(GLOB STATISTICS_SOURCES src/statistics/*.cpp)
 
 add_library(ecosim_core STATIC
-    src/objects/gameObject.cpp
     src/objects/creature/creature.cpp
     src/objects/creature/navigator.cpp
     src/objects/creature/CreatureCombat.cpp

@@ -171,7 +171,7 @@ void NCursesRenderer::renderWorld(const World& world, const Viewport& viewport) 
                 if (plant && plant->isAlive()) {
                     int plantColor = NCursesColorMapper::entityToColorPair(plant->getEntityType());
                     attron(COLOR_PAIR(plantColor));
-                    mvaddch(yScreen + y, xScreen + x, plant->getRenderCharacter());
+                    mvaddch(yScreen + y, xScreen + x, plant->getChar());
                     attroff(COLOR_PAIR(plantColor));
                 }
             }
@@ -215,7 +215,7 @@ void NCursesRenderer::renderTile(const Tile& tile, int screenX, int screenY) {
         if (plant && plant->isAlive()) {
             int plantColor = NCursesColorMapper::entityToColorPair(plant->getEntityType());
             attron(COLOR_PAIR(plantColor));
-            mvaddch(screenY, screenX, plant->getRenderCharacter());
+            mvaddch(screenY, screenX, plant->getChar());
             attroff(COLOR_PAIR(plantColor));
         }
     }

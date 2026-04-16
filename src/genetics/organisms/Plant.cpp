@@ -17,6 +17,10 @@
 #include "genetics/core/GeneRegistry.hpp"
 #include "genetics/behaviors/BehaviorController.hpp"
 #include "genetics/behaviors/PlantLifecycleTick.hpp"
+#include "genetics/classification/ArchetypeIdentity.hpp"
+#include "genetics/classification/PlantTaxonomy.hpp"
+#include "genetics/components/IdentityComponent.hpp"
+#include "genetics/organisms/OrganismFactory.hpp"
 #include "logging/Logger.hpp"
 #include <algorithm>
 #include <cmath>
@@ -35,27 +39,22 @@ unsigned int Plant::nextId_ = 1;
 // Constructors
 // ============================================================================
 
-namespace {
-
-// Attach autotrophy/reproduction components + a BehaviorController with
-// the monolithic PlantLifecycleTick registered as a passive tick. Shared
-// by all Plant constructors so the attachment is single-source-of-truth.
-void attachPlantComponents(Plant& plant) {
-    plant.attachAutotrophy(std::make_unique<AutotrophyComponent>());
-    plant.attachReproduction(std::make_unique<ReproductionComponent>());
-
-    auto bc = std::make_unique<BehaviorController>();
-    bc->addPassiveTick(std::make_unique<PlantLifecycleTick>());
-    plant.setOrganismBehaviorController(std::move(bc));
-}
-
-} // namespace
+// Plant constructors delegate all component attachment + archetype
+// classification + behavior-controller wiring to OrganismFactory. For
+// plant-flavoured genomes this produces Autotrophy + Reproduction +
+// Identity (plus BehaviorController with PlantLifecycleTick) — the same
+// component set the legacy attachPlantComponents helper produced.
+//
+// Once call sites migrate to OrganismFactory::fromGenome directly (B.4),
+// these constructors disappear and PlantFactory likewise routes through
+// the Organism factory.
 
 Plant::Plant(int x, int y, const GeneRegistry& registry)
     : Organism(x, y, PlantGenes::createRandomGenome(registry), registry)
 {
     updatePhenotype();
-    attachPlantComponents(*this);
+    auto sig = OrganismFactory::classifyComponentSet(genome_);
+    OrganismFactory::attachComponents(*this, sig);
 
     logging::Logger::getInstance().plantSpawned(
         static_cast<unsigned int>(getId()), "random", x_, y_);
@@ -65,7 +64,8 @@ Plant::Plant(int x, int y, const Genome& genome, const GeneRegistry& registry)
     : Organism(x, y, genome, registry)
 {
     updatePhenotype();
-    attachPlantComponents(*this);
+    auto sig = OrganismFactory::classifyComponentSet(genome_);
+    OrganismFactory::attachComponents(*this, sig);
 
     logging::Logger::getInstance().plantSpawned(
         static_cast<unsigned int>(getId()), "offspring", x_, y_);
@@ -79,7 +79,6 @@ Plant::Plant(const Plant& other)
     : Organism(other.x_, other.y_, other.genome_, *other.registry_)
     , energyState_(other.energyState_)
     , fruitTimer_(other.fruitTimer_)
-    , entityType_(other.entityType_)
 {
     // Copy lifecycle state
     if (!other.alive_) {
@@ -90,20 +89,30 @@ Plant::Plant(const Plant& other)
     if (other.mature_) {
         setMature(true);
     }
-    
+
     // Copy age manually since it's not passed through base constructor
     for (unsigned int i = 0; i < other.age_; ++i) {
         incrementAge();
     }
-    
+
     updatePhenotype();
+
+    // Attach a fresh identity with the same archetype classification; the
+    // copy is a distinct living instance, so bump the archetype population.
+    attachIdentity(std::make_unique<IdentityComponent>());
+    if (other.identity_) {
+        identity_->archetype = other.identity_->archetype;
+        identity_->biomeAdaptation = other.identity_->biomeAdaptation;
+    }
+    if (identity_->archetype) {
+        identity_->archetype->incrementPopulation();
+    }
 }
 
 Plant::Plant(Plant&& other) noexcept
     : Organism(std::move(other))
     , energyState_(std::move(other.energyState_))
     , fruitTimer_(other.fruitTimer_)
-    , entityType_(other.entityType_)
 {
     // Invalidate moved-from object
     other.fruitTimer_ = 0;
@@ -111,26 +120,40 @@ Plant::Plant(Plant&& other) noexcept
 
 Plant& Plant::operator=(const Plant& other) {
     if (this != &other) {
+        // Decrement old archetype population before reassignment
+        if (identity_ && identity_->archetype) {
+            identity_->archetype->decrementPopulation();
+        }
+
         // Copy position (set directly on base class protected members)
         x_ = other.x_;
         y_ = other.y_;
-        
+
         // Copy genetics
         genome_ = other.genome_;
         registry_ = other.registry_;
-        
+
         // Copy lifecycle state
         age_ = other.age_;
         alive_ = other.alive_;
         health_ = other.health_;
         currentSize_ = other.currentSize_;
         mature_ = other.mature_;
-        
+
         // Copy Plant-specific state
         energyState_ = other.energyState_;
         fruitTimer_ = other.fruitTimer_;
-        entityType_ = other.entityType_;
-        
+
+        // Attach a fresh identity, copying the archetype flyweight pointer
+        attachIdentity(std::make_unique<IdentityComponent>());
+        if (other.identity_) {
+            identity_->archetype = other.identity_->archetype;
+            identity_->biomeAdaptation = other.identity_->biomeAdaptation;
+        }
+        if (identity_->archetype) {
+            identity_->archetype->incrementPopulation();
+        }
+
         // Rebind phenotype to THIS plant's genome
         rebindPhenotypeGenome();
         updatePhenotype();
@@ -140,19 +163,19 @@ Plant& Plant::operator=(const Plant& other) {
 
 Plant& Plant::operator=(Plant&& other) noexcept {
     if (this != &other) {
-        // Move base class
+        // Organism::operator=(&&) decrements the outgoing archetype/biome
+        // populations before moving identity_ in from `other`.
         Organism::operator=(std::move(other));
-        
-        // Move Plant-specific state
+
         energyState_ = std::move(other.energyState_);
         fruitTimer_ = other.fruitTimer_;
-        entityType_ = other.entityType_;
-        
-        // Invalidate moved-from object
         other.fruitTimer_ = 0;
     }
     return *this;
 }
+
+// ~Plant is Organism's — ~Organism decrements archetype/biome populations
+// for any organism holding an identity component.
 
 // ============================================================================
 // ILifecycle implementation
@@ -594,33 +617,6 @@ const EnergyState& Plant::getEnergyState() const {
 // Rendering Support
 // ============================================================================
 
-EntityType Plant::getEntityType() const {
-    return entityType_;
-}
-
-void Plant::setEntityType(EntityType type) {
-    entityType_ = type;
-}
-
-char Plant::getRenderCharacter() const {
-    switch (entityType_) {
-        case EntityType::PLANT_BERRY_BUSH:
-            return 'B';
-        case EntityType::PLANT_OAK_TREE:
-            return 'T';
-        case EntityType::PLANT_GRASS:
-            return '"';
-        case EntityType::PLANT_THORN_BUSH:
-            return '*';
-        case EntityType::PLANT_GENERIC:
-        default:
-            if (currentSize_ < 1.0f) return '.';
-            else if (currentSize_ < 3.0f) return 'p';
-            else if (currentSize_ < 7.0f) return 'P';
-            else return 'T';
-    }
-}
-
 Color Plant::getRenderColor() const {
     float hue = getColorHue();
     
@@ -717,21 +713,12 @@ DispersalStrategy Plant::stringToDispersalStrategy(const std::string& str) {
 
 nlohmann::json Plant::toJson() const {
     nlohmann::json j;
-    
+
     // Identity
     j["id"] = getId();
-    
-    // Species name derived from entity type
-    std::string speciesName;
-    switch (entityType_) {
-        case EntityType::PLANT_BERRY_BUSH: speciesName = "Berry Bush"; break;
-        case EntityType::PLANT_OAK_TREE:   speciesName = "Oak Tree"; break;
-        case EntityType::PLANT_GRASS:      speciesName = "Grass"; break;
-        case EntityType::PLANT_THORN_BUSH: speciesName = "Thorn Bush"; break;
-        case EntityType::PLANT_GENERIC:
-        default:                           speciesName = "Generic Plant"; break;
-    }
-    j["speciesName"] = speciesName;
+
+    // Species name and entity type come from the archetype flyweight.
+    j["speciesName"] = getName();
     
     // Position
     j["position"] = {
@@ -778,9 +765,10 @@ nlohmann::json Plant::toJson() const {
         {"mature", mature_}
     };
     
-    // Entity type for rendering restoration
-    j["entityType"] = static_cast<int>(entityType_);
-    
+    // Entity type stored for debugging / legacy readers; canonical value on
+    // load is re-derived by PlantTaxonomy from the saved genome.
+    j["entityType"] = static_cast<int>(getEntityType());
+
     // Genome
     j["genome"] = genome_.toJson();
     
@@ -827,11 +815,10 @@ Plant Plant::fromJson(const nlohmann::json& j, const GeneRegistry& registry) {
         }
     }
     
-    // Restore entity type
-    if (j.contains("entityType")) {
-        plant.entityType_ = static_cast<EntityType>(j.at("entityType").get<int>());
-    }
-    
+    // Entity type and archetype are re-derived from the genome by
+    // attachPlantComponents(); the saved "entityType" field is retained
+    // in the JSON for legacy/diagnostic readers but not consumed here.
+
     plant.updatePhenotype();
     
     return plant;

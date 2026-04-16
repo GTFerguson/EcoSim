@@ -282,7 +282,7 @@ void Navigator::checkNeighbours (const vector<vector<Tile>> &map,
   }
 }
 
-void Navigator::movementCost (Creature &c, const int &x, const int &y) {
+void Navigator::movementCost (EcoSim::Genetics::Organism &c, const int &x, const int &y) {
   if(x != 0 || y != 0) {
     //  First get non-diagonal movement by getting absolute difference
     int nondiag = abs (x - y);
@@ -307,7 +307,7 @@ void Navigator::movementCost (Creature &c, const int &x, const int &y) {
  *  @param endY   End y pos.
  *  @return       Whether a path could be found or not.
  */
-bool Navigator::astarSearch (Creature &c,
+bool Navigator::astarSearch (EcoSim::Genetics::Organism &c,
                              const vector<vector<Tile>> &map,
                              const int &rows,
                              const int &cols,
@@ -456,7 +456,7 @@ bool Navigator::astarSearch (Creature &c,
  *  @param cols Number of columns on the map.
  *  @return     True if movement succeeded, false if blocked.
  */
-bool Navigator::wander (Creature &c,
+bool Navigator::wander (EcoSim::Genetics::Organism &c,
                         const vector<vector<Tile>> &map,
                         const unsigned rows,
                         const unsigned cols) {
@@ -516,7 +516,7 @@ bool Navigator::wander (Creature &c,
  *  @param goalY  Y pos of the target tile.
  *  @return       True if movement succeeded, false if blocked.
  */
-bool Navigator::moveTowards (Creature &c,
+bool Navigator::moveTowards (EcoSim::Genetics::Organism &c,
                              const vector<vector<Tile>> &map,
                              const int &rows,
                              const int &cols,
@@ -538,7 +538,7 @@ bool Navigator::moveTowards (Creature &c,
  *  @param avoidY Y-position to move away from.
  *  @return       True if movement succeeded, false if blocked.
  */
-bool Navigator::moveAway (Creature &c,
+bool Navigator::moveAway (EcoSim::Genetics::Organism &c,
                           const vector<vector<Tile>> &map,
                           const int &rows,
                           const int &cols,
@@ -595,7 +595,7 @@ bool Navigator::moveAway (Creature &c,
  *  @param deltaTime Time elapsed since last update (typically 1.0 per tick)
  *  @return         true if creature reached target (within arrival threshold)
  */
-bool Navigator::move(Creature &c,
+bool Navigator::move(EcoSim::Genetics::Organism &c,
                            const vector<vector<Tile>> &map,
                            const int &rows,
                            const int &cols,

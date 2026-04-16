@@ -16,7 +16,15 @@ class World;
 class Tile;
 struct GeneralStats;
 
+namespace EcoSim {
+namespace Genetics {
+class Organism;
+} // namespace Genetics
+} // namespace EcoSim
+
 namespace CreatureCombat {
+
+using Organism = EcoSim::Genetics::Organism;
 
 //============================================================================
 //  Combat Hunting
@@ -37,7 +45,7 @@ namespace CreatureCombat {
  * @param preyAte Counter incremented when prey is killed
  * @return true if action was taken (attacking, chasing, or hunting)
  */
-bool findPrey(Creature& creature,
+bool findPrey(Organism& creature,
               std::vector<std::vector<Tile>>& map,
               const int& rows,
               const int& cols,
@@ -53,28 +61,28 @@ bool findPrey(Creature& creature,
  * @param creature The creature to check
  * @return true if in combat
  */
-bool isInCombat(const Creature& creature);
+bool isInCombat(const Organism& creature);
 
 /**
  * @brief Check if creature is currently fleeing.
  * @param creature The creature to check
  * @return true if fleeing
  */
-bool isFleeing(const Creature& creature);
+bool isFleeing(const Organism& creature);
 
 /**
  * @brief Get the ID of creature's current combat target.
  * @param creature The creature to check
  * @return Target ID, or -1 if no target
  */
-int getTargetId(const Creature& creature);
+int getTargetId(const Organism& creature);
 
 /**
  * @brief Get remaining combat cooldown ticks.
  * @param creature The creature to check
  * @return Cooldown ticks remaining
  */
-int getCombatCooldown(const Creature& creature);
+int getCombatCooldown(const Organism& creature);
 
 /**
  * @brief Enter combat state with a specific target.
@@ -84,7 +92,7 @@ int getCombatCooldown(const Creature& creature);
  * @param creature The creature entering combat
  * @param targetId ID of the creature being attacked
  */
-void enterCombat(Creature& creature, int targetId);
+void enterCombat(Organism& creature, int targetId);
 
 /**
  * @brief Exit combat state.
@@ -93,7 +101,7 @@ void enterCombat(Creature& creature, int targetId);
  *
  * @param creature The creature exiting combat
  */
-void exitCombat(Creature& creature);
+void exitCombat(Organism& creature);
 
 /**
  * @brief Start fleeing from a threat.
@@ -102,7 +110,7 @@ void exitCombat(Creature& creature);
  *
  * @param creature The creature starting to flee
  */
-void startFleeing(Creature& creature);
+void startFleeing(Organism& creature);
 
 /**
  * @brief Stop fleeing.
@@ -111,7 +119,7 @@ void startFleeing(Creature& creature);
  *
  * @param creature The creature stopping fleeing
  */
-void stopFleeing(Creature& creature);
+void stopFleeing(Organism& creature);
 
 /**
  * @brief Decrement combat cooldown if active.
@@ -120,7 +128,7 @@ void stopFleeing(Creature& creature);
  *
  * @param creature The creature to update
  */
-void updateCombatCooldown(Creature& creature);
+void updateCombatCooldown(Organism& creature);
 
 //============================================================================
 //  Health System (Combat-Related)
@@ -131,21 +139,21 @@ void updateCombatCooldown(Creature& creature);
  * @param creature The creature to check
  * @return Current health
  */
-float getHealth(const Creature& creature);
+float getHealth(const Organism& creature);
 
 /**
  * @brief Get maximum health based on genetics.
  * @param creature The creature to check
  * @return Maximum health value
  */
-float getMaxHealth(const Creature& creature);
+float getMaxHealth(const Organism& creature);
 
 /**
  * @brief Get health as percentage (0.0 to 1.0).
  * @param creature The creature to check
  * @return Health percentage
  */
-float getHealthPercent(const Creature& creature);
+float getHealthPercent(const Organism& creature);
 
 /**
  * @brief Apply damage to creature.
@@ -155,7 +163,7 @@ float getHealthPercent(const Creature& creature);
  * @param creature The creature taking damage
  * @param amount Damage amount (positive)
  */
-void takeDamage(Creature& creature, float amount);
+void takeDamage(Organism& creature, float amount);
 
 /**
  * @brief Heal creature.
@@ -165,14 +173,14 @@ void takeDamage(Creature& creature, float amount);
  * @param creature The creature being healed
  * @param amount Heal amount (positive)
  */
-void heal(Creature& creature, float amount);
+void heal(Organism& creature, float amount);
 
 /**
  * @brief Get healing rate per tick.
  * @param creature The creature to check
  * @return Healing rate (health per tick)
  */
-float getHealingRate(const Creature& creature);
+float getHealingRate(const Organism& creature);
 
 } // namespace CreatureCombat
 

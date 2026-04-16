@@ -33,6 +33,7 @@ set(GENETICS_TEST_SOURCES
     genetics/test_creature_breeding.cpp
     genetics/test_creature_state_machine.cpp
     genetics/test_creature_movement.cpp
+    genetics/test_organism_factory.cpp
     genetics/test_health_system.cpp
     genetics/test_feeding_behavior.cpp
     genetics/test_scent_layer.cpp

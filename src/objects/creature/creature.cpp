@@ -18,6 +18,7 @@
 #include "genetics/classification/ArchetypeIdentity.hpp"
 #include "genetics/classification/BiomeAdaptation.hpp"
 #include "genetics/classification/CreatureTaxonomy.hpp"
+#include "genetics/organisms/OrganismFactory.hpp"
 #include "genetics/interactions/CombatInteraction.hpp"
 #include "genetics/systems/PerceptionSystem.hpp"
 #include "logging/Logger.hpp"
@@ -97,8 +98,7 @@ int EcoSim::Genetics::Organism::getNextId() {
  * Copy constructor - performs deep copy of unique_ptr members
  */
 Creature::Creature(const Creature& other)
-    : GameObject(other),
-      Organism(other.x_, other.y_, other.genome_, getGeneRegistry()) {
+    : Organism(other.x_, other.y_, other.genome_, getGeneRegistry()) {
     motivation_ = other.motivation_;
     action_ = other.action_;
     // Copy Organism state that isn't set in constructor
@@ -148,146 +148,16 @@ Creature::Creature(const Creature& other)
 /**
  * Move constructor
  */
-Creature::Creature(Creature&& other) noexcept
-    : GameObject(std::move(other)),
-      Organism(std::move(other))
-{
-    // motivation_ and action_ moved with Organism base; re-assigning for clarity
-    motivation_ = other.motivation_;
-    action_ = other.action_;
-    // All components (including identity_ with its archetype/biome
-    // flyweight pointers) transferred by Organism base move constructor.
-    // Population counts are unchanged — the pointed-to flyweight still
-    // has the same count; this organism instance just moved address.
-}
+// Move constructor and move assignment are Organism's — defaulted on Creature.
+// Organism's move operators handle motivation/action, all components (including
+// identity with its archetype/biome flyweight pointers), BehaviorController,
+// and pending offspring. Organism::operator= also decrements the outgoing
+// archetype/biome populations before the move.
+Creature::Creature(Creature&& other) noexcept = default;
+Creature& Creature::operator=(Creature&& other) noexcept = default;
 
-/**
- * Copy assignment operator
- *
- * Since Organism has copy disabled, we must manually copy all state.
- * This creates a new genome/phenotype rather than using Organism's copy assignment.
- */
-Creature& Creature::operator=(const Creature& other) {
-    if (this != &other) {
-        // Decrement old archetype population before reassignment
-        if (identity_ && identity_->archetype) {
-            identity_->archetype->decrementPopulation();
-        }
-        // Decrement old biome adaptation population before reassignment
-        if (identity_ && identity_->biomeAdaptation) {
-            identity_->biomeAdaptation->decrementPopulation();
-        }
-        
-        GameObject::operator=(other);
-        
-        // Copy Organism state manually (Organism has copy disabled)
-        x_ = other.x_;
-        y_ = other.y_;
-        age_ = other.age_;
-        alive_ = other.alive_;
-        health_ = other.health_;
-        currentSize_ = other.currentSize_;
-        maxSize_ = other.maxSize_;
-        mature_ = other.mature_;
-        genome_ = other.genome_;  // Genome has copy constructor
-        phenotype_ = EcoSim::Genetics::Phenotype(&genome_, &getGeneRegistry());
-        registry_ = other.registry_;
-        id_ = other.id_;
-        
-        // Copy Creature-specific state
-        motivation_ = other.motivation_;
-        action_ = other.action_;
-        // speed handled by Organism move of mobility_
-
-        // Deep-copy components
-        mobility_.reset();
-        heterotrophy_.reset();
-        reproduction_.reset();
-        combat_.reset();
-        thermal_.reset();
-        if (other.mobility_) {
-            attachMobility(std::make_unique<EcoSim::Genetics::MobilityComponent>(*other.mobility_));
-        }
-        if (other.heterotrophy_) {
-            attachHeterotrophy(std::make_unique<EcoSim::Genetics::HeterotrophyComponent>(*other.heterotrophy_));
-        }
-        if (other.reproduction_) {
-            attachReproduction(std::make_unique<EcoSim::Genetics::ReproductionComponent>(*other.reproduction_));
-        }
-        if (other.combat_) {
-            attachCombat(std::make_unique<EcoSim::Genetics::CombatComponent>(*other.combat_));
-        }
-        if (other.thermal_) {
-            attachThermal(std::make_unique<EcoSim::Genetics::ThermalComponent>(*other.thermal_));
-        }
-
-        // Attach a fresh identity with a new sequentialId, copying flyweights
-        attachIdentity(std::make_unique<EcoSim::Genetics::IdentityComponent>());
-        identity_->sequentialId = nextCreatureId_++;
-        if (other.identity_) {
-            identity_->archetype       = other.identity_->archetype;
-            identity_->biomeAdaptation = other.identity_->biomeAdaptation;
-        }
-        if (identity_->archetype) {
-            identity_->archetype->incrementPopulation();
-        }
-        if (identity_->biomeAdaptation) {
-            identity_->biomeAdaptation->incrementPopulation();
-        }
-
-        // Gut seeds / burrs are now inside the deep-copied heterotrophy_ component.
-
-        // Reset behavior controller - lazy initialization will recreate it when needed
-        organismBehaviorController_.reset();
-    }
-    return *this;
-}
-
-/**
- * Move assignment operator
- */
-Creature& Creature::operator=(Creature&& other) noexcept {
-    if (this != &other) {
-        // Decrement old archetype population before reassignment
-        if (identity_ && identity_->archetype) {
-            identity_->archetype->decrementPopulation();
-        }
-        // Decrement old biome adaptation population before reassignment
-        if (identity_ && identity_->biomeAdaptation) {
-            identity_->biomeAdaptation->decrementPopulation();
-        }
-
-        GameObject::operator=(std::move(other));
-        Organism::operator=(std::move(other));
-
-        // Move Creature-specific state
-        motivation_ = other.motivation_;
-        action_ = other.action_;
-        // speed handled by Organism move of mobility_
-        // All components (mobility/heterotrophy/repro/combat/thermal/identity)
-        // transferred by Organism::operator=. Population counts unchanged —
-        // the pointed-to flyweight still has the same count.
-
-        // Move behavior controller from source
-        organismBehaviorController_ = std::move(other.organismBehaviorController_);
-    }
-    return *this;
-}
-
-//================================================================================
-//  Destructor
-//================================================================================
-/**
- * Destructor - decrements archetype population when creature dies
- */
-Creature::~Creature() {
-    if (identity_ && identity_->archetype) {
-        identity_->archetype->decrementPopulation();
-    }
-    if (identity_ && identity_->biomeAdaptation) {
-        identity_->biomeAdaptation->decrementPopulation();
-    }
-}
+// Destructor is Organism's — ~Organism decrements archetype/biome
+// populations for any organism holding an identity component.
 
 //================================================================================
 //  Setters
@@ -313,14 +183,10 @@ void EcoSim::Genetics::Organism::setWorldY(float y) { if (mobility_) mobility_->
 //================================================================================
 //  ILifecycle Interface Implementation
 //================================================================================
-// getMaxLifespan, getAgeNormalized, age — Organism defaults handle these.
-// isAlive stays on Creature because plants spuriously fail deathCheck's
-// reproduction.mate < DISCOMFORT_POINT branch under environmental stress
-// (passive ticks let the field drift). Untangle by giving plants a
-// separate "alive" pathway later.
-bool Creature::isAlive() const {
-    return deathCheck() == 0;
-}
+// isAlive, getMaxLifespan, getAgeNormalized, age — Organism defaults handle
+// all of these. Organism::isAlive folds in deathCheck() which is now safe
+// for plants (heterotroph-specific branches are gated on component presence).
+
 float     EcoSim::Genetics::Organism::getHunger     () const { return heterotrophy_ ? heterotrophy_->hunger  : 0.0f; }
 float     EcoSim::Genetics::Organism::getThirst     () const { return heterotrophy_ ? heterotrophy_->thirst  : 0.0f; }
 float     EcoSim::Genetics::Organism::getFatigue    () const { return heterotrophy_ ? heterotrophy_->fatigue : 0.0f; }
@@ -520,11 +386,22 @@ void EcoSim::Genetics::Organism::updateThermalCache() {
  */
 short EcoSim::Genetics::Organism::deathCheck () const {
   using namespace EcoSim::Genetics::Constants;
-  if      (age_ > getLifespan())                                  return 1;
-  else if (heterotrophy_ && heterotrophy_->hunger  < STARVATION_POINT)  return 2;
-  else if (heterotrophy_ && heterotrophy_->thirst  < DEHYDRATION_POINT) return 3;
-  else if (reproduction_ && reproduction_->mate    < DISCOMFORT_POINT)  return 4;
-  else if (health_ <= 0.0f)                                        return 5;
+
+  // getMaxLifespan is virtual — Plant overrides to read PlantGenes::LIFESPAN
+  // when the universal gene isn't present in the genome. getLifespan reads
+  // only the universal trait, which returns the 500000 fallback for plants
+  // and breaks plant old-age death. deathCheck must use the virtual form.
+  if (age_ > getMaxLifespan())                                         return 1;
+  if (heterotrophy_ && heterotrophy_->hunger  < STARVATION_POINT)      return 2;
+  if (heterotrophy_ && heterotrophy_->thirst  < DEHYDRATION_POINT)     return 3;
+  // Discomfort is a heterotroph-specific cause: reproductive drive
+  // collapsing alongside starvation/dehydration. Plants also carry a
+  // ReproductionComponent (for maturity / fruit-timer bookkeeping) but
+  // their `mate` field has no analogous semantics — it may legally sit
+  // negative without meaning the plant is dying.
+  if (heterotrophy_ && reproduction_
+      && reproduction_->mate < DISCOMFORT_POINT)                       return 4;
+  if (health_ <= 0.0f)                                                 return 5;
   return 0;
 }
 
@@ -815,10 +692,6 @@ std::string EcoSim::Genetics::Organism::directionToString () const {
   return CreatureSerialization::directionToString(mobility_ ? mobility_->direction : Direction::none);
 }
 
-std::string Creature::toString () const {
-  return CreatureSerialization::toString(*this);
-}
-
 //================================================================================
 //  New Genetics System Getters
 //================================================================================
@@ -966,64 +839,22 @@ float EcoSim::Genetics::Organism::getExpressedValue(const std::string& geneId) c
 //================================================================================
 
 /**
- * Constructor with new genetics genome only.
+ * Constructor with new genetics genome only — delegates to OrganismFactory.
  */
 Creature::Creature(int x, int y, std::unique_ptr<EcoSim::Genetics::Genome> genome)
-    : GameObject(),
-      Organism(x, y, std::move(*genome), getGeneRegistry()) {
+    : Organism(x, y, std::move(*genome), getGeneRegistry()) {
 
-    // Attach mobility + heterotrophy + reproduction + combat + thermal + identity
-    attachMobility(std::make_unique<EcoSim::Genetics::MobilityComponent>());
-    mobility_->worldX = static_cast<float>(x);
-    mobility_->worldY = static_cast<float>(y);
-    mobility_->direction = Direction::none;
-    attachHeterotrophy(std::make_unique<EcoSim::Genetics::HeterotrophyComponent>());
-    attachReproduction(std::make_unique<EcoSim::Genetics::ReproductionComponent>());
-    attachCombat(std::make_unique<EcoSim::Genetics::CombatComponent>());
-    attachThermal(std::make_unique<EcoSim::Genetics::ThermalComponent>());
-    attachIdentity(std::make_unique<EcoSim::Genetics::IdentityComponent>());
+    // Classify + attach via the factory. For creature-flavoured genomes
+    // this produces the same component set the legacy ctor did
+    // (mobility + heterotrophy + combat + thermal + reproduction + identity)
+    // plus archetype/biome classification, speciesName, initial needs,
+    // and phenotype context. Once B.4 migrates call sites, these ctors
+    // disappear and OrganismFactory::fromGenome is called directly.
+    auto sig = EcoSim::Genetics::OrganismFactory::classifyComponentSet(genome_);
+    EcoSim::Genetics::OrganismFactory::attachComponents(*this, sig);
+
+    // Creature-specific post-attach: sequential display ID for the UI.
     identity_->sequentialId = nextCreatureId_++;
-
-    // Initialise needs at full capacity. Spawning at 1.0 (10% on the
-    // 0-RESOURCE_LIMIT scale) effectively means creatures are born
-    // starving and dying — they rarely live long enough to reproduce.
-    heterotrophy_->hunger  = EcoSim::Genetics::Constants::RESOURCE_LIMIT;
-    heterotrophy_->thirst  = EcoSim::Genetics::Constants::RESOURCE_LIMIT;
-    heterotrophy_->fatigue = INIT_FATIGUE;
-    reproduction_->mate    = 0.0f;
-
-    // Set metabolism from phenotype (Organism already created phenotype_)
-    if (phenotype_.hasTrait(EcoSim::Genetics::UniversalGenes::METABOLISM_RATE)) {
-        heterotrophy_->metabolism = phenotype_.getTrait(EcoSim::Genetics::UniversalGenes::METABOLISM_RATE) * 0.001f;
-    } else {
-        heterotrophy_->metabolism = 0.001f;
-    }
-
-    // Keep maxSize_ = 1.0 (Organism default) — gene-driven scaling causes
-    // growth/metabolism imbalance. Just ensure juveniles start small.
-    currentSize_ = 0.1f;
-
-    // Classify archetype from genome (after phenotype is ready)
-    identity_->archetype = EcoSim::Genetics::CreatureTaxonomy::classifyArchetype(genome_);
-    if (identity_->archetype) {
-        identity_->archetype->incrementPopulation();
-    }
-
-    // Classify biome adaptation from genome
-    identity_->biomeAdaptation = EcoSim::Genetics::CreatureTaxonomy::classifyBiomeAdaptation(genome_);
-    if (identity_->biomeAdaptation) {
-        identity_->biomeAdaptation->incrementPopulation();
-    }
-
-    _character = generateChar();
-    _name = generateName();
-
-    // Initialize health to max health (phenotype must be ready)
-    health_ = getMaxHealth();
-
-    // Initialize phenotype context
-    EcoSim::Genetics::EnvironmentState defaultEnv;
-    updatePhenotypeContext(defaultEnv);
 }
 
 /**
@@ -1031,58 +862,19 @@ Creature::Creature(int x, int y, std::unique_ptr<EcoSim::Genetics::Genome> genom
  */
 Creature::Creature(int x, int y, float hunger, float thirst,
                    std::unique_ptr<EcoSim::Genetics::Genome> genome)
-    : GameObject(),
-      Organism(x, y, std::move(*genome), getGeneRegistry()) {
+    : Organism(x, y, std::move(*genome), getGeneRegistry()) {
 
-    // Attach mobility + heterotrophy + reproduction + combat + thermal
-    attachMobility(std::make_unique<EcoSim::Genetics::MobilityComponent>());
-    mobility_->worldX = static_cast<float>(x);
-    mobility_->worldY = static_cast<float>(y);
-    mobility_->direction = Direction::none;
-    attachHeterotrophy(std::make_unique<EcoSim::Genetics::HeterotrophyComponent>());
-    attachReproduction(std::make_unique<EcoSim::Genetics::ReproductionComponent>());
-    attachCombat(std::make_unique<EcoSim::Genetics::CombatComponent>());
-    attachThermal(std::make_unique<EcoSim::Genetics::ThermalComponent>());
-    attachIdentity(std::make_unique<EcoSim::Genetics::IdentityComponent>());
+    auto sig = EcoSim::Genetics::OrganismFactory::classifyComponentSet(genome_);
+    EcoSim::Genetics::OrganismFactory::attachComponents(*this, sig);
+
     identity_->sequentialId = nextCreatureId_++;
 
-    // Initialise needs from parameters
-    heterotrophy_->hunger  = hunger;
-    heterotrophy_->thirst  = thirst;
-    heterotrophy_->fatigue = INIT_FATIGUE;
-    reproduction_->mate    = 0.0f;
-
-    // Set metabolism from phenotype (Organism already created phenotype_)
-    if (phenotype_.hasTrait(EcoSim::Genetics::UniversalGenes::METABOLISM_RATE)) {
-        heterotrophy_->metabolism = phenotype_.getTrait(EcoSim::Genetics::UniversalGenes::METABOLISM_RATE) * 0.001f;
-    } else {
-        heterotrophy_->metabolism = 0.001f;
+    // Override starting hunger/thirst with caller-supplied values. Factory
+    // seeded them at RESOURCE_LIMIT by default.
+    if (heterotrophy_) {
+        heterotrophy_->hunger = hunger;
+        heterotrophy_->thirst = thirst;
     }
-
-    // Keep maxSize_ = 1.0 default. Juveniles start small.
-    currentSize_ = 0.1f;
-
-    // Classify archetype from genome (after phenotype is ready)
-    identity_->archetype = EcoSim::Genetics::CreatureTaxonomy::classifyArchetype(genome_);
-    if (identity_->archetype) {
-        identity_->archetype->incrementPopulation();
-    }
-
-    // Classify biome adaptation from genome
-    identity_->biomeAdaptation = EcoSim::Genetics::CreatureTaxonomy::classifyBiomeAdaptation(genome_);
-    if (identity_->biomeAdaptation) {
-        identity_->biomeAdaptation->incrementPopulation();
-    }
-
-    _character = generateChar();
-    _name = generateName();
-
-    // Initialize health to max health (phenotype must be ready)
-    health_ = getMaxHealth();
-
-    // Initialize phenotype context
-    EcoSim::Genetics::EnvironmentState defaultEnv;
-    updatePhenotypeContext(defaultEnv);
 }
 
 //================================================================================
@@ -1275,10 +1067,5 @@ EcoSim::Genetics::BehaviorResult EcoSim::Genetics::Organism::updateWithBehaviors
 //  forwarders had no callers and were removed during the class collapse.)
 //================================================================================
 
-nlohmann::json Creature::toJson() const {
-    return CreatureSerialization::toJson(*this);
-}
-
-Creature Creature::fromJson(const nlohmann::json& j, int mapWidth, int mapHeight) {
-    return CreatureSerialization::fromJson(j, mapWidth, mapHeight);
-}
+// Creature::toJson / fromJson forwarders removed — call sites use
+// CreatureSerialization::toJson / fromJson directly.

@@ -51,12 +51,12 @@ Plant PlantFactory::createFromTemplate(const std::string& templateName, int x, i
     // Apply template gene ranges (species-specific values)
     applyTemplate(genome, *tmpl);
     
-    // Create plant with customized genome
+    // Create plant with customized genome. PlantTaxonomy derives the
+    // archetype (and hence entity type / render char) from the genome
+    // inside Plant's constructor, so the template's entityType field is
+    // only a documentation hint now — not authoritative.
     Plant plant(x, y, genome, *registry_);
-    
-    // Set entity type from template
-    plant.setEntityType(tmpl->entityType);
-    
+
     return plant;
 }
 
@@ -71,12 +71,11 @@ Plant PlantFactory::createOffspring(const Plant& parent1, const Plant& parent2, 
     float mutationRate = 0.05f;  // 5% mutation rate
     offspringGenome.mutate(mutationRate, registry_->getAllDefinitions());
     
-    // Create offspring
+    // Create offspring. Archetype is classified from the crossed genome
+    // inside the Plant ctor, which naturally picks up parent traits; no
+    // explicit setEntityType call needed.
     Plant offspring(x, y, offspringGenome, *registry_);
-    
-    // Inherit entity type from parent1 (primary parent)
-    offspring.setEntityType(parent1.getEntityType());
-    
+
     return offspring;
 }
 
