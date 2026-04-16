@@ -151,16 +151,8 @@ class Creature: public GameObject,
     //  counter also live on Organism base. Nothing Creature-specific
     //  remains on the class except method implementations.
     
-    //============================================================================
-    //  Private Breeding Implementation
-    //============================================================================
-    /**
-     * @brief Internal breeding implementation (use reproduce() for public interface)
-     * @param mate The mating partner
-     * @return New offspring creature
-     */
-    Creature  breedCreature (Creature &mate);
-    
+    // Reproduction lives on Organism base — Creature only supplies the
+    // factory hook below to construct the concrete subtype.
     // updateThermalCache now on Organism base.
 
   protected:
@@ -294,16 +286,15 @@ class Creature: public GameObject,
     //  updatePhenotype uses Organism base default (just invalidates cache).
     
     //============================================================================
-    //  IReproducible overrides - Sexual reproduction
+    //  IReproducible — fully on Organism base now. Creature only supplies
+    //  makeOffspring (below) to construct the concrete subtype.
     //============================================================================
 
-    //  canReproduce, getReproductiveUrge, getReproductionEnergyCost,
-    //  getReproductionMode now have Organism base implementations.
-    //  isCompatibleWith + reproduce still override here to delegate to
-    //  checkFitness / breedCreature.
-    bool isCompatibleWith(const EcoSim::Genetics::Organism& other) const override;
-    std::unique_ptr<EcoSim::Genetics::Organism> reproduce(
-        const EcoSim::Genetics::Organism* partner = nullptr) override;
+protected:
+    std::unique_ptr<EcoSim::Genetics::Organism> makeOffspring(
+        std::unique_ptr<EcoSim::Genetics::Genome> offspringGenome,
+        int x, int y) override;
+public:
     
     //============================================================================
     //  Organism overrides - Growth system
@@ -379,10 +370,8 @@ class Creature: public GameObject,
     //  shareWater, changeDirection, calculateDistance, movementCost)
     //  now live on Organism base.
 
-    //============================================================================
-    //  Breeding
-    //============================================================================
-    float     checkFitness  (const Creature &c2) const;
+    // checkFitness folded into Organism::isCompatibleWith default
+    // (Genome::compare > 0.3 threshold matches the historical impl).
 
     //============================================================================
     //  Sensory System — all scent/signature methods now on Organism base:

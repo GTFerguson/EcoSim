@@ -290,7 +290,10 @@ Creature* findBestMate(
             unsigned diffY = abs(creature.tileY() - other.getY());
             
             if (diffX < sightRange && diffY < sightRange) {
-                float desirability = creature.checkFitness(other);
+                // Genetic-similarity score (0..1). MatingBehavior already
+                // filters compatibility via Organism::isCompatibleWith;
+                // here we only need a ranking signal for "best" mate.
+                float desirability = creature.getGenome().compare(other.getGenome());
                 if (desirability > bestDesirability) {
                     bestMate = &other;
                     bestDesirability = desirability;

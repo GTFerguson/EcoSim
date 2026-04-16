@@ -91,35 +91,29 @@ Creature createModifiedCreature(int x, int y, float geneModifier) {
     return creature;
 }
 
+// Compatibility / fitness now lives on Organism::isCompatibleWith, which
+// uses pure genetic similarity (Genome::compare > 0.3). Distance is
+// already handled by the spatial query in MatingBehavior::findMate, so
+// the old "distance affects fitness" coupling has been removed.
+
 void test_checkFitness_similarCreatures_highScore() {
     Creature c1 = createBreedingTestCreature(10, 10);
     Creature c2 = createBreedingTestCreature(11, 10);
-    
-    float fitness = c1.checkFitness(c2);
-    
-    TEST_ASSERT_GT(fitness, 0.0f);
-    TEST_ASSERT_LE(fitness, 1.5f);
+
+    float similarity = c1.getGenome().compare(c2.getGenome());
+
+    TEST_ASSERT_GT(similarity, 0.0f);
+    TEST_ASSERT_LE(similarity, 1.0f);
+    TEST_ASSERT(c1.isCompatibleWith(c2));
 }
 
 void test_checkFitness_differentCreatures_lowScore() {
     Creature c1 = createModifiedCreature(10, 10, 0.1f);
     Creature c2 = createModifiedCreature(11, 10, 0.9f);
-    
-    float similarFitness = c1.checkFitness(createBreedingTestCreature(11, 10));
-    float differentFitness = c1.checkFitness(c2);
-    
-    TEST_ASSERT_GT(differentFitness, 0.0f);
-}
 
-void test_checkFitness_distanceAffectsScore() {
-    Creature c1 = createBreedingTestCreature(10, 10);
-    Creature closeCreature = createBreedingTestCreature(11, 10);
-    Creature farCreature = createBreedingTestCreature(50, 50);
-    
-    float closeFitness = c1.checkFitness(closeCreature);
-    float farFitness = c1.checkFitness(farCreature);
-    
-    TEST_ASSERT_GT(closeFitness, farFitness);
+    float differentSimilarity = c1.getGenome().compare(c2.getGenome());
+
+    TEST_ASSERT_GE(differentSimilarity, 0.0f);
 }
 
 void test_reproduce_producesViableOffspring() {
@@ -220,13 +214,16 @@ void test_reproduce_offspringAtParentLocation() {
 }
 
 void test_checkFitness_penalizesTooSimilar() {
+    // The IDEAL_SIMILARITY penalty was part of checkFitness's combined
+    // proximity+similarity score. With pure similarity-based compatibility
+    // there's no separate "too similar" penalty path to test in isolation —
+    // identical genomes still compare as similar=1.0 and remain compatible.
     Creature c1 = createBreedingTestCreature(10, 10);
     Creature c2 = createBreedingTestCreature(11, 10);
-    
-    float fitness = c1.checkFitness(c2);
-    
-    TEST_ASSERT_GT(fitness, 0.0f);
-    TEST_ASSERT_LT(fitness, 1.5f);
+
+    float similarity = c1.getGenome().compare(c2.getGenome());
+    TEST_ASSERT_GT(similarity, 0.0f);
+    TEST_ASSERT_LE(similarity, 1.0f);
 }
 
 void test_reproduce_offspringStartsYoung() {
@@ -294,7 +291,6 @@ void run_creature_breeding_tests() {
     
     RUN_TEST(test_checkFitness_similarCreatures_highScore);
     RUN_TEST(test_checkFitness_differentCreatures_lowScore);
-    RUN_TEST(test_checkFitness_distanceAffectsScore);
     RUN_TEST(test_checkFitness_penalizesTooSimilar);
     
     RUN_TEST(test_reproduce_producesViableOffspring);

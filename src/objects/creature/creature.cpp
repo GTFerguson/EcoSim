@@ -528,35 +528,8 @@ short EcoSim::Genetics::Organism::deathCheck () const {
   return 0;
 }
 
-/**
- *  This method allows a creature to share a resource with another.
- *  It is given variable to divide it's current amount by to work out
- *  what is to be given.
- *  
- *  @param amount The lower the value the higher the amount
- *  @return       The amount of a resource given.
- */
-float EcoSim::Genetics::Organism::shareResource (const int& amount, float& resource) {
-  (void)amount;
-  float shared;
-  if (resource > 0.0f) {
-    shared = resource / Constants::RESOURCE_SHARED;
-    resource -= shared;
-  } else {
-    shared = 0.0f;
-  }
-  return shared;
-}
-
-float EcoSim::Genetics::Organism::shareFood (const int& amount) {
-  if (!heterotrophy_) return 0.0f;
-  return shareResource (amount, heterotrophy_->hunger);
-}
-
-float EcoSim::Genetics::Organism::shareWater (const int& amount) {
-  if (!heterotrophy_) return 0.0f;
-  return shareResource (amount, heterotrophy_->thirst);
-}
+// shareResource / shareFood / shareWater moved to Organism.cpp so the
+// genetics library can link sexualBreed without depending on ecosim_core.
 
 //================================================================================
 //  Scent Detection Helper
@@ -632,151 +605,26 @@ void EcoSim::Genetics::Organism::movementCost (const float &distance) {
 
 //================================================================================
 //  Breeding
+//
+//  Pipeline (sexualBreed / asexualBreed / reproduce / isCompatibleWith)
+//  lives on Organism. Creature only supplies the factory hook below.
+//  checkFitness folded into Organism::isCompatibleWith — proximity is no
+//  longer factored in (MatingBehavior::findMate already gates by sight
+//  range, so re-weighting by distance was double counting). Pure genetic
+//  similarity threshold remains.
 //================================================================================
-/**
- *  The fitness is calculated as a float value between 0 and 1.5. The higher the
- *  value returned the better the fitness, and therefore the more likely it is to
- *  breed. The proximity is given half the weight of the similarity.
- *
- *  desirability = proximity / 2 + similarity
- *
- *  GENETICS-MIGRATION: Now uses new genetics genome comparison instead of legacy genome.
- *  Compares genome allele values to determine genetic similarity.
- *
- *  @param c2 The creature who's fitness is being calculated.
- *  @return   The desirability of this pairing.
- */
-float Creature::checkFitness (const Creature &c2) const {
-  float distance   = calculateDistance(c2.getX(), c2.getY());
-  unsigned sight = getSightRange();
-  float proximity  = 1.0f - distance / static_cast<float>(sight);
-  
-  // Calculate genetic similarity using Genome::compare()
-  // genome_ is always valid (value member inherited from Organism)
-  float similarity = genome_.compare(c2.getGenome());
-
-  //  Penalise if too similar
-  if (similarity > IDEAL_SIMILARITY) {
-    similarity -= pow (similarity - IDEAL_SIMILARITY, PENALTY_EXPONENT);
-  }
-
-  return proximity / 2 + similarity;
-}
-
-/**
- *  This method takes two creatures and splices their DNA together to
- *  create offspring based on them.
- *
- *  GENETICS-MIGRATION: Now uses new genetics system for breeding.
- *  Performs gene-by-gene crossover with random selection from each parent.
- *
- *  @param c1   First parent of the new creature.
- *  @param c2   Second parent of the new creature.
- *  @return     Offspring created from the parents combined DNA.
- */
-Creature Creature::breedCreature (Creature &mate) {
-  //  Charge the cost to breed to parents. Use a fractional cost so
-  //  creatures hovering near minimum resources can still reproduce
-  //  without immediately starving post-breed.
-  const float breedCost = Creature::BREED_COST * 0.3f;  // ~0.9 per parent per resource
-  heterotrophy_->hunger -= breedCost; heterotrophy_->thirst -= breedCost;
-  mate.setHunger (mate.getHunger() - breedCost);
-  mate.setThirst (mate.getThirst() - breedCost);
-
-  //  Give the offspring a quarter of each parents resources
-  float hunger = shareFood(RESOURCE_SHARED)  + mate.shareFood(RESOURCE_SHARED);
-  float thirst = shareWater(RESOURCE_SHARED) + mate.shareWater(RESOURCE_SHARED);
-  //  Erroneous value check to be safe
-  if (hunger > RESOURCE_LIMIT) hunger = RESOURCE_LIMIT;
-  if (thirst > RESOURCE_LIMIT) thirst = RESOURCE_LIMIT;
-
-  //  Reset the parents mating levels
-  reproduction_->mate = 0.0f; mate.setMate (0.0f);
-
-  // Create offspring genome using Genome::crossover()
-  // genome_ is always valid (value member inherited from Organism)
-  EcoSim::Genetics::Genome crossed = EcoSim::Genetics::Genome::crossover(genome_, mate.getGenome(), 0.5f);
-  
-  // Apply mutation (5% rate)
-  crossed.mutate(0.05f, getGeneRegistry().getAllDefinitions());
-  
-  std::unique_ptr<EcoSim::Genetics::Genome> offspringGenome =
-      std::make_unique<EcoSim::Genetics::Genome>(std::move(crossed));
-
-  Creature offspring(tileX(), tileY(), hunger, thirst, std::move(offspringGenome));
-  
-  // Log the birth event
-  logging::Logger::getInstance().creatureBorn(
-    offspring.getId(),
-    offspring.generateName(),
-    id_,
-    mate.getId()
-  );
-  
-  return offspring;
-}
-
-//================================================================================
-//  IReproducible Interface Implementation
-//================================================================================
-
-/**
- * Check if creature can reproduce.
- * Uses existing fitness checks: mature, healthy, sufficient resources.
- */
-// canReproduce, getReproductiveUrge, getReproductionEnergyCost,
-// getReproductionMode moved to Organism.cpp for linker visibility.
-
-/**
- * Check compatibility with another organism for mating.
- * Uses existing checkFitness logic based on genetic similarity.
- */
-bool Creature::isCompatibleWith(const EcoSim::Genetics::Organism& other) const {
-    // Try to cast to Creature (only creatures can mate with creatures)
-    const Creature* otherCreature = dynamic_cast<const Creature*>(&other);
-    if (!otherCreature) {
-        return false;  // Can't mate with non-creatures
-    }
-    
-    // Use existing fitness check - returns desirability score
-    // Consider compatible if fitness is above a threshold
-    float fitness = checkFitness(*otherCreature);
-    return fitness > 0.3f;  // Minimum compatibility threshold
-}
-
-/**
- * Reproduce to create offspring.
- * Wraps existing breedCreature logic but returns Organism pointer.
- *
- * @todo Return concrete Creature type once Creature/Plant are unified into Organism
- */
-std::unique_ptr<EcoSim::Genetics::Organism> Creature::reproduce(
-    const EcoSim::Genetics::Organism* partner) {
-    
-    // Sexual reproduction requires a partner
-    if (!partner) {
-        return nullptr;
-    }
-    
-    // Partner must be a Creature
-    // @todo Remove dynamic_cast once Creature/Plant are unified into Organism
-    Creature* mateCreature = const_cast<Creature*>(
-        dynamic_cast<const Creature*>(partner)
+std::unique_ptr<EcoSim::Genetics::Organism> Creature::makeOffspring(
+    std::unique_ptr<EcoSim::Genetics::Genome> offspringGenome,
+    int x, int y) {
+    if (!offspringGenome) return nullptr;
+    auto offspring = std::make_unique<Creature>(x, y, std::move(offspringGenome));
+    logging::Logger::getInstance().creatureBorn(
+        offspring->getId(),
+        offspring->generateName(),
+        id_,
+        -1   // mate id not threaded through the factory yet — improve later
     );
-    if (!mateCreature) {
-        return nullptr;  // Can't mate with non-creatures
-    }
-    
-    // Check if we can actually reproduce
-    if (!canReproduce()) {
-        return nullptr;
-    }
-    
-    // Use existing breedCreature logic
-    Creature offspring = breedCreature(*mateCreature);
-    
-    // Return as unique_ptr<Organism>
-    return std::make_unique<Creature>(std::move(offspring));
+    return offspring;
 }
 
 //================================================================================

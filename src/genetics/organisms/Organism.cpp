@@ -1,12 +1,14 @@
 #include "genetics/organisms/Organism.hpp"
 #include "genetics/core/GeneRegistry.hpp"
 #include "genetics/core/OrganismConstants.hpp"
+#include "genetics/core/RandomEngine.hpp"
 #include "genetics/defaults/UniversalGenes.hpp"
 #include "genetics/interactions/FeedingInteraction.hpp"
 #include "genetics/interactions/SeedDispersal.hpp"
 #include "genetics/systems/PerceptionSystem.hpp"
 #include "genetics/interactions/CombatInteraction.hpp"
 #include <algorithm>
+#include <cmath>
 
 namespace EcoSim {
 namespace Genetics {
@@ -159,6 +161,116 @@ float Organism::getReproductionEnergyCost() const {
 
 ReproductionMode Organism::getReproductionMode() const {
     return ReproductionMode::SEXUAL;
+}
+
+bool Organism::isCompatibleWith(const Organism& other) const {
+    if (getReproductionMode() != other.getReproductionMode()) return false;
+    if (getReproductionMode() == ReproductionMode::ASEXUAL)   return false;
+    // Sexual partners need non-trivial genetic similarity. Threshold 0.3
+    // matches the historical Creature::isCompatibleWith behaviour.
+    return genome_.compare(other.genome_) > 0.3f;
+}
+
+std::unique_ptr<Organism> Organism::reproduce(const Organism* partner) {
+    if (!canReproduce()) return nullptr;
+    // Dispatch by reproduction mode rather than partner presence:
+    // sexual organisms require a partner (no asexual fallback), and
+    // asexual organisms ignore any partner that's passed in.
+    if (getReproductionMode() == ReproductionMode::SEXUAL) {
+        if (!partner) return nullptr;
+        return sexualBreed(const_cast<Organism&>(*partner));
+    }
+    return asexualBreed();
+}
+
+std::unique_ptr<Organism> Organism::sexualBreed(Organism& mate) {
+    if (!registry_) return nullptr;
+
+    // Charge breeding cost to both parents (heterotrophs only). The
+    // reduced-fraction cost matches the previous Creature::breedCreature
+    // tuning — full BREED_COST starves creatures hovering at minimum.
+    const float cost = Constants::BREED_COST * 0.3f;
+    if (heterotrophy_) {
+        heterotrophy_->hunger -= cost;
+        heterotrophy_->thirst -= cost;
+    }
+    if (mate.heterotrophy_) {
+        mate.heterotrophy_->hunger -= cost;
+        mate.heterotrophy_->thirst -= cost;
+    }
+
+    // Seed offspring's hunger/thirst from a share of each parent's
+    // current resources. Plants don't carry these so the totals stay 0
+    // and the offspring uses its constructor defaults.
+    float hunger = 0.0f, thirst = 0.0f;
+    if (heterotrophy_) {
+        hunger += shareResource(Constants::RESOURCE_SHARED, heterotrophy_->hunger);
+        thirst += shareResource(Constants::RESOURCE_SHARED, heterotrophy_->thirst);
+    }
+    if (mate.heterotrophy_) {
+        hunger += shareResource(Constants::RESOURCE_SHARED, mate.heterotrophy_->hunger);
+        thirst += shareResource(Constants::RESOURCE_SHARED, mate.heterotrophy_->thirst);
+    }
+    hunger = std::min(hunger, Constants::RESOURCE_LIMIT);
+    thirst = std::min(thirst, Constants::RESOURCE_LIMIT);
+
+    // Reset mate drive on both parents so they don't immediately re-mate.
+    if (reproduction_)      reproduction_->mate = 0.0f;
+    if (mate.reproduction_) mate.reproduction_->mate = 0.0f;
+
+    // Genome crossover + mutation.
+    Genome crossed = Genome::crossover(genome_, mate.genome_, 0.5f);
+    crossed.mutate(0.05f, registry_->getAllDefinitions());
+
+    auto offspring = makeOffspring(
+        std::make_unique<Genome>(std::move(crossed)), x_, y_);
+
+    if (offspring && offspring->heterotrophy()) {
+        offspring->heterotrophy()->hunger = hunger;
+        offspring->heterotrophy()->thirst = thirst;
+    }
+    return offspring;
+}
+
+// Resource-sharing helpers — used by sexualBreed and (historically) by
+// the legacy creature plant-feeding/seeding paths. Lifted here so the
+// genetics library can link them without depending on ecosim_core.
+float Organism::shareResource(const int& amount, float& resource) {
+    (void)amount;  // legacy parameter — divisor is fixed at RESOURCE_SHARED
+    if (resource <= 0.0f) return 0.0f;
+    float shared = resource / Constants::RESOURCE_SHARED;
+    resource -= shared;
+    return shared;
+}
+
+float Organism::shareFood(const int& amount) {
+    if (!heterotrophy_) return 0.0f;
+    return shareResource(amount, heterotrophy_->hunger);
+}
+
+float Organism::shareWater(const int& amount) {
+    if (!heterotrophy_) return 0.0f;
+    return shareResource(amount, heterotrophy_->thirst);
+}
+
+std::unique_ptr<Organism> Organism::asexualBreed() {
+    if (!registry_) return nullptr;
+
+    Genome offspring = genome_;
+    offspring.mutate(0.05f, registry_->getAllDefinitions());
+
+    int childX = x_;
+    int childY = y_;
+    float spread = getOffspringSpreadDistance();
+    if (spread > 0.0f) {
+        float angle = RandomEngine::randomFloat(0.0f, 2.0f * 3.14159265f);
+        float distance = RandomEngine::randomFloat(1.0f, spread);
+        childX = x_ + static_cast<int>(std::cos(angle) * distance);
+        childY = y_ + static_cast<int>(std::sin(angle) * distance);
+    }
+
+    return makeOffspring(
+        std::make_unique<Genome>(std::move(offspring)), childX, childY);
 }
 
 void Organism::setWorldPosition(float x, float y) {

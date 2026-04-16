@@ -424,31 +424,10 @@ ReproductionMode Plant::getReproductionMode() const {
     return ReproductionMode::ASEXUAL;
 }
 
-bool Plant::isCompatibleWith(const Organism& /* other */) const {
-    return false;
-}
-
-std::unique_ptr<Organism> Plant::reproduce(const Organism* /* partner */) {
-    if (!canReproduce() || !registry_) {
-        return nullptr;
-    }
-    
-    // Create offspring genome through mutation (asexual reproduction for plants)
-    Genome offspringGenome = genome_;
-    
-    // Apply mutation
-    float mutationRate = 0.05f;  // 5% mutation rate
-    offspringGenome.mutate(mutationRate, registry_->getAllDefinitions());
-    
-    // Calculate offspring position based on spread distance
-    float spread = getSpreadDistance();
-    float angle = RandomEngine::randomFloat(0.0f, 2.0f * 3.14159f);
-    float distance = RandomEngine::randomFloat(1.0f, spread);
-    
-    int offspringX = x_ + static_cast<int>(std::cos(angle) * distance);
-    int offspringY = y_ + static_cast<int>(std::sin(angle) * distance);
-    
-    return std::make_unique<Plant>(offspringX, offspringY, offspringGenome, *registry_);
+std::unique_ptr<Organism> Plant::makeOffspring(
+    std::unique_ptr<Genome> offspringGenome, int x, int y) {
+    if (!offspringGenome || !registry_) return nullptr;
+    return std::make_unique<Plant>(x, y, *offspringGenome, *registry_);
 }
 
 // ============================================================================

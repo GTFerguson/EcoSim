@@ -132,16 +132,50 @@ public:
     void updatePhenotype() override;
     
     // ========================================================================
-    // IReproducible - Subclasses implement (highly type-specific)
+    // IReproducible — pipeline lives here. Subclasses only override the
+    // factory hook (makeOffspring) that constructs the concrete subtype.
     // ========================================================================
-    
+
     bool canReproduce() const override;
     float getReproductiveUrge() const override;
     float getReproductionEnergyCost() const override;
     ReproductionMode getReproductionMode() const override;
-    bool isCompatibleWith(const Organism& other) const override = 0;
+
+    // Default compatibility: same reproduction mode + non-trivial genetic
+    // similarity. Subclasses can still override if they have stricter rules.
+    bool isCompatibleWith(const Organism& other) const override;
+
+    // Final dispatch: routes to sexual (with partner) or asexual (without)
+    // breeding. Both share the body in this class; only construction is
+    // delegated to the subclass via makeOffspring.
     std::unique_ptr<Organism> reproduce(
-        const Organism* partner = nullptr) override = 0;
+        const Organism* partner = nullptr) override final;
+
+protected:
+    // Subclass-specific factory hook: construct a fresh organism of this
+    // concrete type at (x, y) carrying the supplied genome. Called by
+    // sexualBreed/asexualBreed once the genome has been crossed and
+    // mutated. The only step in reproduction that genuinely depends on
+    // the concrete subclass.
+    virtual std::unique_ptr<Organism> makeOffspring(
+        std::unique_ptr<Genome> offspringGenome, int x, int y) = 0;
+
+    // Shared sexual breeding pipeline: charges parental cost, shares
+    // resources where applicable, resets mate drive, performs genome
+    // crossover + mutation, delegates construction to makeOffspring.
+    std::unique_ptr<Organism> sexualBreed(Organism& mate);
+
+    // Shared asexual breeding pipeline: copies + mutates the genome,
+    // picks an offset position based on spread distance, delegates
+    // construction to makeOffspring.
+    std::unique_ptr<Organism> asexualBreed();
+
+    // Distance an asexual offspring may be placed from the parent.
+    // Defaults to 0 (in-place reproduction). Plants override to use
+    // their seed-spread gene.
+    virtual float getOffspringSpreadDistance() const { return 0.0f; }
+
+public:
     
     // ========================================================================
     // Growth System (shared by Plant and Creature)

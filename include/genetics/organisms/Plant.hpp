@@ -199,21 +199,19 @@ public:
      * @return Always ASEXUAL for plants (clonal with mutation)
      */
     ReproductionMode getReproductionMode() const override;
-    
-    /**
-     * @brief Check compatibility with another organism
-     * @param other The other organism
-     * @return Always false for plants (asexual reproduction)
-     */
-    bool isCompatibleWith(const Organism& other) const override;
-    
-    /**
-     * @brief Reproduce to create offspring
-     * @param partner Unused for asexual plant reproduction (should be nullptr)
-     * @return Offspring as Organism pointer
-     */
-    std::unique_ptr<Organism> reproduce(
-        const Organism* partner = nullptr) override;
+
+    // isCompatibleWith inherits Organism's default — plants are ASEXUAL
+    // so the base impl already returns false for them.
+    // reproduce() inherits Organism's final dispatch which routes to
+    // asexualBreed() for plants (no partner).
+
+    // Asexual offspring placement: use the plant's seed-spread gene.
+    float getOffspringSpreadDistance() const override { return getSpreadDistance(); }
+
+protected:
+    std::unique_ptr<Organism> makeOffspring(
+        std::unique_ptr<Genome> offspringGenome, int x, int y) override;
+public:
     
     // ========================================================================
     // IGenetic overrides

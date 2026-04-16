@@ -99,7 +99,7 @@ public:
     float getReproductionEnergyCost() const override { return 10.0f; }
     ReproductionMode getReproductionMode() const override { return ReproductionMode::SEXUAL; }
     bool isCompatibleWith(const Organism&) const override { return false; }
-    std::unique_ptr<Organism> reproduce(const Organism* = nullptr) override { return nullptr; }
+    std::unique_ptr<Organism> makeOffspring(std::unique_ptr<Genome>, int, int) override { return nullptr; }
     
     // Organism abstract methods
     float getMaxSize() const override { return 1.0f; }
