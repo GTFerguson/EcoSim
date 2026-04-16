@@ -3,38 +3,34 @@
 **Author:** Gary Ferguson
 **Date:** 2025-12-22
 **Updated:** 2026-04-16
-**Status:** Cut 1 (DisplayComponent flyweight) landed. `GameObject` deleted. Creature's two `operator=` and three serialization forwarders folded. Remaining on Creature: 4 ctors + copy ctor + destructor + `isAlive` + `makeOffspring`. Cut 2 (plant tick split) and class collapse still to go.
+**Status:** `OrganismFactory` lives and gates component attachment on gene expression (commit `bdea841`). Creature and Plant ctors both route through it; `Organism::makeOffspring` default delegates to it. `GameObject` deleted; `isAlive` unified; `~Organism` owns population bookkeeping; SpatialIndex and four behaviour-helper namespaces take `Organism&`. Remaining work: `std::vector<Creature>` → `std::vector<std::unique_ptr<Organism>>`, then delete the Creature and Plant classes and drop their `makeOffspring` overrides.
 
-## Current State Summary (2026-04-16, post-Cut-1)
+## Current State Summary (2026-04-16, post-factory)
 
 **What works end-to-end:**
 
 - All per-instance state on both Creature and Plant lives in components on the `Organism` base (`MobilityComponent`, `HeterotrophyComponent`, `AutotrophyComponent`, `ReproductionComponent`, `CombatComponent`, `ThermalComponent`, `IdentityComponent`), attached via `std::unique_ptr`.
 - `BehaviorController` + seven active behaviors (Feeding, Hunting, Mating, Rest, Thirst, Zoochory, Movement) + `PlantLifecycleTick` passive tick. Gene-threshold-gated attachment via `BehaviorRegistry::attachBehaviorsFor`.
-- **Reproduction pipeline unified on Organism** (`076da56`). `Organism::sexualBreed` / `asexualBreed` / `reproduce` / `isCompatibleWith` hold the shared body. Subclasses only supply `makeOffspring`.
-- **Display / identity unified on Organism** (Cut 1). `GameObject` class deleted. `ArchetypeIdentity` now carries `entityType / desc / passable` alongside the existing `id / label / renderChar`. 5 plant archetypes added. `PlantTaxonomy::classifyArchetype` mirrors `CreatureTaxonomy`. `Organism::getName/getChar/getEntityType/getPassable/getDesc/getColour/toString` read the flyweight. `IdentityComponent.speciesName` caches `generateName()` per-creature (plants fall through to archetype label).
-- **Move semantics consolidated.** `Organism::operator=(&&)` handles archetype/biome population decrement + all components; Creature's move ctor / move assignment are `= default`. Creature's copy assignment is `= delete` (had no callers).
-- **Serialization collapsed.** `Creature::toString`, `toJson`, `fromJson` member forwarders removed; call sites invoke `CreatureSerialization::toString/toJson/fromJson` free functions directly. `Plant::toJson` still lives on `Plant` pending the same treatment.
-- Headless sim produces **compounding births** across generations (14 births per 1000 ticks at last check).
-- 671 tests green; `HeadlessSimulation` runs to completion without crash.
+- **Reproduction pipeline unified on Organism** (`076da56`). Sexual/asexual pipelines on base. `Organism::makeOffspring` default implementation delegates to `OrganismFactory::fromGenome` so offspring are built from gene expression; Creature/Plant still override for concrete-subtype preservation until containers migrate.
+- **Display / identity unified on Organism** (Cut 1). `GameObject` class deleted. `ArchetypeIdentity` now carries `entityType / desc / passable`. 5 plant archetypes added. `PlantTaxonomy::classifyArchetype` mirrors `CreatureTaxonomy`. `Organism::getName/getChar/getEntityType/getPassable/getDesc/getColour/toString` read the flyweight. `IdentityComponent.speciesName` caches `generateName()` per-heterotroph.
+- **Gene-driven construction** (`bdea841`). `OrganismFactory::classifyComponentSet(genome)` reads raw gene values and returns a `ComponentSignature{mobility,heterotrophy,autotrophy,combat,thermal,...}`. `OrganismFactory::attachComponents(organism, sig)` does the full attach + archetype classification + initial-state seeding. Creature and Plant ctors delegate to this. Tests cover creature-/plant-/hybrid-genome shapes and threshold edges.
+- **Move semantics consolidated.** `Organism::operator=(&&)` handles archetype/biome population decrement + all components. Creature move ctor/assignment are `= default`; copy assignment is `= delete`. Plant's move assignment no longer double-decrements population.
+- **Destructor consolidated.** `~Organism` decrements archetype/biome population counts. Creature/Plant destructors are `= default`.
+- **`isAlive` unified** on Organism as `alive_ && deathCheck() == 0`. `deathCheck` branch 4 (discomfort) gated on `heterotrophy_` presence; branch 1 (old age) uses virtual `getMaxLifespan` so Plant's override takes effect.
+- **Serialization collapsed.** `Creature::toString / toJson / fromJson` member forwarders removed; callers invoke `CreatureSerialization::` free functions directly.
+- **`SpatialIndex` holds `Organism*`** (not Creature*). `CreatureCombat`, `Navigator`, `CreatureResourceSearch` signatures migrated to `Organism&`.
+- **Pre-existing `PlantGenes::createRandomGenome` bug fixed:** it used a naive `"plant_"` prefix match that accidentally pulled `UniversalGenes::PLANT_DIGESTION_EFFICIENCY` (a heterotrophy trait) into plant genomes. Replaced with an explicit whitelist.
+- Headless sim produces **compounding births** across generations (11–16 births per 1000 ticks at last checks). 688 tests green.
 
-**What's left on Creature** (6 items):
+**What's left on Creature** (the class itself): copy ctor, two new-genetics ctors, `makeOffspring` override. Copy ctor constructs components via the factory; ctors are thin wrappers around `classifyComponentSet` + `attachComponents` plus `sequentialId++`. `creature.hpp` now ~394 lines (was ~920 pre-Phase-3); `creature.cpp` ~1147 lines.
 
-| Item | Blocked by |
-|---|---|
-| 2 new-genetics ctors | Specific component-set attachment (`mobility+heterotrophy+combat+thermal+identity`) + sequentialId + archetype classification. Natural home is a factory. |
-| copy ctor | `Organism` copy is deleted; `push_back(c)` in tests relies on Creature copy ctor. Could move to a factory clone helper. |
-| destructor | Decrements archetype/biome populations — now duplicated with `Plant::~Plant`; fold into `Organism::~Organism` once both are ready. |
-| `isAlive()` | Plants spuriously trip `deathCheck`'s `reproduction->mate < DISCOMFORT_POINT` under env stress; Organism's default can't absorb deathCheck until plant path decoupled. |
-| `makeOffspring` | Intrinsic factory hook for the reproduction pipeline — stays while Creature is a distinct type. |
-
-`creature.hpp`: 410 lines (was ~920 pre-Phase-3). `creature.cpp`: 1152 lines (was ~1760).
+**What's left on Plant** (the class itself): copy ctor, two new-genetics ctors (random / templated genome), `makeOffspring` override, plant-specific getters (`getGrowthRate`, `getFruitAppeal`, `getToxicity`, `canSpreadSeeds`, `getScentSignature`, etc.) that haven't migrated to `AutotrophyComponent` yet, `Plant::toJson / fromJson` on the class, `Plant::update` + `checkDeathConditions` env-driven lifecycle. Plant is chunkier than Creature because it hasn't had the same level of trimming.
 
 **Research grounding:** [[../../reference/ecs-vs-oo-for-agent-sims]] — OO composition with `std::unique_ptr<Component>` chosen over archetype ECS for the 1k-100k organism scale. The `ArchetypeIdentity` flyweight is an *identity* flyweight (per dominant-gene classification), not an ECS iteration archetype — the research explicitly warns against dynamic-capability-indexed archetypes at this scale.
 
 ## Remaining Cuts
 
-Both Plant and Creature should collapse to a single `Organism` class so that gene expression — not class identity — determines what an organism is and does. Post-Cut-1, the remaining type distinctions are: `dynamic_cast<Plant*>` / `dynamic_cast<Creature*>` in behaviours, Plant's monolithic `PlantLifecycleTick`, and Creature's ctor / destructor / makeOffspring hooks.
+The factory is proven. Gene expression chooses the component set for every organism built. The remaining barrier to Creature / Plant deletion is the `std::vector<Creature>` containers that hold concrete-type values and pin offspring to the parent's subtype.
 
 ### Cut 2 — Plant lifecycle tick split (LOW priority)
 
@@ -46,20 +42,70 @@ Both Plant and Creature should collapse to a single `Organism` class so that gen
 - `PhotosynthesisTick` — autotroph-specific, ~60 lines
 - Phenotype refresh + age + death already live on Organism
 
-Focused session of work, not days.
+Focused session of work, not days. Can land independently of Cut 3.
 
-### Cut 3 — Class collapse (main remaining structural work)
+### Cut 3 — Container migration and class deletion (main remaining structural work)
 
-The real unification. Migrates Creature's and Plant's remaining ctors/destructor/makeOffspring into factories, decouples `isAlive`, and eliminates the need for `dynamic_cast<Plant*>` / `dynamic_cast<Creature*>`.
+Splits into three sub-cuts.
 
-**Sub-steps (not sequenced):**
+#### Cut 3a — Container migration (`std::vector<Creature>` → `std::vector<std::unique_ptr<Organism>>`)
 
-1. **Unblock `isAlive()`.** Test-driven: write a test reproducing plants spuriously dying under env stress via `deathCheck`'s `reproduction->mate < DISCOMFORT_POINT` branch. Fix deathCheck so plants don't trip it (condition on `heterotrophy_` presence or equivalent). `Creature::isAlive` override disappears.
-2. **Fold ctors into factories.** Creature's two new-genetics ctors move to `CreatureFactory::create(x, y, genome[, hunger, thirst])`; they attach the creature component set and classify. `PlantFactory` already exists; it absorbs plant ctors.
-3. **Fold destructor into Organism.** Archetype/biome decrement becomes the base-class responsibility. Plant's and Creature's destructors both disappear.
-4. **Move Plant-specific methods.** `getGrowthRate`, `getFruitAppeal`, `getToxicity`, `canSpreadSeeds`, `getScentSignature`, etc. — most belong on `AutotrophyComponent` or `ReproductionComponent`; a few become Organism gene-derived helpers.
-5. **`makeOffspring`.** When ctors live on factories, `makeOffspring` becomes a factory call too. The reproduction pipeline in `Organism` calls a function object / registered factory keyed on component signature, not a virtual method.
-6. **Eliminate `dynamic_cast<Plant*>` / `<Creature*>`.** Once methods live on components or Organism, behaviours operate on `Organism&` alone.
+~15 files touched, mostly mechanical. Key sites:
+
+| File | Kind |
+|---|---|
+| `src/main.cpp` | Game-loop container; ~15 functions take `vector<Creature>&` |
+| `src/testing/headlessSimulation.cpp` | Headless harness; uses `dynamic_cast<Creature*>` on offspring |
+| `src/fileHandling.cpp` | Save/load; iterates vector, returns by-value `Creature` via `CreatureSerialization::fromJson` |
+| `src/testing/test_performance_benchmark.cpp`, `src/testing/test_profile_hotspots.cpp` | Benchmark harnesses |
+| `src/testing/breedingDiagnostic.cpp`, `src/testing/movementDiagnostic.cpp`, `src/testing/simulationDiagnostic.cpp` | Standalone diagnostic binaries |
+| `src/testing/genetics/test_serialization.cpp` | Uses `vector<Creature>` + `Creature::fromJson` return |
+| `src/testing/genetics/test_creature_breeding.cpp` | `dynamic_cast<Creature*>` on offspring |
+| `src/testing/fileTest.cpp` | Save/load round-trip tests |
+| `src/testing/world/test_spatial_index.cpp` | Test creatures in a local vector |
+| `include/objects/creature/creatureContainer.hpp` | Unused wrapper, likely deletable |
+| `src/rendering/backends/{sdl2,ncurses}/*` | Renderers take `const vector<Creature>&`; signatures flip to `const vector<unique_ptr<Organism>>&` once container migrates |
+| `src/statistics/genomeStats.cpp` | `std::vector<Creature>&` parameter |
+
+Also requires:
+- `CreatureFactory::createEcosystemMix` return type → `std::vector<std::unique_ptr<Organism>>`
+- `CreatureSerialization::fromJson` return type → `std::unique_ptr<Organism>` (or have callers call `OrganismFactory::fromGenome` directly)
+- `World::rebuildCreatureIndex` signature update
+- `CoevolutionTracker::recordCreatureGeneration` signature update
+- All `creature.method()` → `creature->method()` at call sites
+- `dynamic_cast<Creature*>` sites go away (no need to downcast when container already holds `unique_ptr<Organism>`)
+
+Expected 2-4 hours of focused work with frequent `cmake --build` + test runs.
+
+#### Cut 3b — Delete Creature class
+
+Once Cut 3a lands, Creature's remaining methods (copy ctor, two new-genetics ctors, `makeOffspring` override) can be replaced with free functions or `OrganismFactory` overloads. Then delete:
+
+- `include/objects/creature/creature.hpp`
+- `src/objects/creature/creature.cpp`
+- `CreatureContainer` header if still around
+
+Forwarder namespaces (`CreatureCombat`, `CreatureScent`, `CreaturePlantInteraction`, `CreatureResourceSearch`, `CreatureSerialization`) keep their names but no longer reference the type.
+
+#### Cut 3c — Delete Plant class
+
+Larger than Creature deletion because of the plant-specific getter surface. Plant-specific methods migrate to:
+
+- `AutotrophyComponent` helpers — `getGrowthRate`, `getFruitAppeal`, `getToxicity`, `canProduceFruit`, `canSpreadSeeds`, `canSpreadVegetatively`, etc.
+- Free functions in an `OrganismAutotrophy` namespace — anything not naturally a component method.
+- `Organism` — `getMaxLifespan` plant override can fold into `Organism::getMaxLifespan` once plant genomes seed `UniversalGenes::LIFESPAN` (currently they use `PlantGenes::LIFESPAN`).
+
+`Plant::update(EnvironmentState)` folds into `PlantLifecycleTick` (ideally split per Cut 2 first). Then delete `include/genetics/organisms/Plant.hpp` and `src/genetics/organisms/Plant.cpp`.
+
+`dynamic_cast<Plant*>(&organism)` in `PlantLifecycleTick` goes away — the tick is already attached only on autotrophs via the factory, so component presence is the gate.
+
+### Cut 3d (cleanup) — `makeOffspring` overrides deletion
+
+Once Creature and Plant are gone, their `makeOffspring` overrides go with them. `Organism::makeOffspring` default (already `OrganismFactory::fromGenome`-based) becomes the only path. A creature's offspring whose genes evolved photosynthesis above threshold would, starting with that reproduction event, carry `AutotrophyComponent`. **This is the point of the whole refactor.**
+
+### Adjacent — not part of this plan but calling it out
+
+**`Plant::consumeEnergy()` is not wired to `FeedingInteraction`.** Plants have an `EnergyState` (`currentEnergy`, `maxEnergy`, `maintenanceCost`) and `getNutrientValue()` size-scales a gene, but never deducts from `currentEnergy` when eaten. Two other plans (`ecosystem-improvements`, `plants/resource-system`) flag this as MVP-blocking — the current extinction trend (50+ starvations per 1000 ticks) is partly because plants are unlimited food. Estimated 1-2 days. Not part of unified-organism work but high-value adjacent work.
 
 ### Adjacent — not part of this plan but calling it out
 
@@ -72,10 +118,14 @@ The real unification. Migrates Creature's and Plant's remaining ctors/destructor
 - **Phase 3 (architectural):** ✅ complete. Full component suite on Organism base; Creature per-instance state fully migrated.
 - **Phase 3 (reproduction unified):** ✅ complete (`076da56`). Sexual/asexual pipelines on Organism; subclasses supply only `makeOffspring`.
 - **Phase 3 (Cut 1 — DisplayComponent flyweight):** ✅ complete. `GameObject` deleted; `ArchetypeIdentity` carries display fields; `PlantTaxonomy` classifier added.
-- **Phase 3 (post-Cut-1 cleanup):** ✅ complete. `operator=` folded into Organism; `Creature::toString/toJson/fromJson` member forwarders removed.
-- **Phase 3 (Cut 2 — plant tick split):** 🕒 pending. Low priority.
-- **Phase 3 (Cut 3 — class collapse):** 🕒 pending. Biggest remaining structural work; unblocks Phase 4.
-- **Phase 4 (evolutionary features):** 🕒 not started. Convergence/divergence gameplay — photosynthesising creatures, mobile plants — unblocks once Creature and Plant are the same type. Hybrid archetypes (Phototroph, MobilePlant, SessileCreature) populate here.
+- **Phase 3 (post-Cut-1 cleanup):** ✅ complete. `operator=` folded into Organism; `Creature::toString/toJson/fromJson` member forwarders removed; `isAlive` unified; `~Organism` owns population bookkeeping.
+- **Phase 3 (OrganismFactory + gene-driven construction):** ✅ complete (`bdea841`). `classifyComponentSet`, `attachComponents`, `fromGenome` live. Creature/Plant ctors delegate to factory. `Organism::makeOffspring` default delegates to factory. 14 new tests pin the gene → component mapping. `SpatialIndex` and 3 behaviour-helper namespaces take `Organism&`.
+- **Phase 3 (Cut 2 — plant tick split):** 🕒 pending. Low priority. Can land independently of Cut 3.
+- **Phase 3 (Cut 3a — container migration):** 🕒 pending. `std::vector<Creature>` → `std::vector<std::unique_ptr<Organism>>` across ~15 files. Biggest remaining mechanical chunk.
+- **Phase 3 (Cut 3b — Creature deletion):** 🕒 pending. After Cut 3a.
+- **Phase 3 (Cut 3c — Plant deletion):** 🕒 pending. Requires moving plant-specific getters to `AutotrophyComponent` first.
+- **Phase 3 (Cut 3d — makeOffspring overrides deletion):** 🕒 pending. Trivial once Creature/Plant are gone; unlocks evolved-type offspring.
+- **Phase 4 (evolutionary features):** 🕒 not started. Convergence/divergence gameplay — photosynthesising creatures, mobile plants — unblocks automatically once Cut 3d lands. Hybrid archetypes (Phototroph, MobilePlant, SessileCreature) populate here.
 
 **Scope:** Conceptual design for merging creature and plant gene pools.
 
