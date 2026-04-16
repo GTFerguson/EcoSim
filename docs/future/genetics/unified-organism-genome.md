@@ -2,16 +2,86 @@
 
 **Author:** Gary Ferguson
 **Date:** 2025-12-22
-**Updated:** 2026-04-15
-**Status:** Phase 1 + Phase 2 complete. Phase 3 architecturally complete; mechanical class collapse remains. Phase 4 not started.
-  - **Phase 1:** `UniversalGenes` registry exists and is consumed by all behaviors + expression systems.
-  - **Phase 2:** `IBehavior` + `BehaviorController` + `IPassiveTick` implemented. Seven active behavior components (Feeding, Hunting, Mating, Rest, Thirst, Zoochory, Movement) plus `PlantLifecycleTick` passive-tick wrapper. Behaviors read shared state via `Phenotype::getOrganismState()` (carries `hydration`, `fatigue`, `reproductive_urge`). `BehaviorRegistry::attachBehaviorsFor(controller, phenotype, services)` replaces hardcoded creature-specific behavior lists with gene-threshold-gated attachment — the "capabilities determine active behaviors" vision from Section 3.2 has landed. Architecture decision on component storage grounded in research: see [[../../reference/ecs-vs-oo-for-agent-sims]] — OO composition with `std::unique_ptr<Component>` chosen over archetype ECS for the 1k-100k organism scale.
-  - **Phase 3 (architectural):** `Organism` base owns a full set of optional components: `MobilityComponent`, `HeterotrophyComponent`, `AutotrophyComponent`, `ReproductionComponent`, `CombatComponent`, `ThermalComponent`, `IdentityComponent`, plus `motivation_`/`action_` display-state fields and a shared `BehaviorController`. **All Creature per-instance state has been migrated** — position/direction, hunger/thirst/fatigue/metabolism, mate, combat, gut/burrs, thermal cache, archetype/biome flyweights, sequential ID, motivation/action, behavior controller, speed. Creature's private data section is empty except for static shared services. Plant uses the same `BehaviorController` via a `PlantLifecycleTick` passive tick.
-  - **Phase 3 (class deletion) — substantial progress, ~14 batched commits:** Over 100 methods lifted from `Creature::` to `Organism::`. All simple getters/setters, phenotype-derived getters, taxonomy methods, core simulation helpers, plant-interaction methods, scent methods, static services, string helpers, and most IReproducible/ILifecycle defaults now live on `Organism` base. `Creature` header shrunk from ~920 lines → ~446, cpp from ~1760 → ~1430. Constants extracted to `genetics/core/OrganismConstants.hpp` namespace. Static shared services (gene registry, feeding/seed/perception/combat interactions) moved to `Organism` base. `CreaturePlantInteraction` and `CreatureScent` helpers now take `Organism&` parameters. **Still on Creature:** constructors (4) + destructor, `operator=` (copy + move), `isAlive` (uses `deathCheck`), `checkFitness`/`breedCreature` private impls, `isCompatibleWith`/`reproduce` overrides (dynamic_cast to Creature), `toString` (uses `GameObject::toString`), `getWoundState` (return type alias), 6 enum string converters, `toJson`/`fromJson`. Final deletion requires either (a) resolving the GameObject/Organism inheritance split or (b) factoring the remaining breeding/serialization into free functions — a smaller follow-up session.
-  - **Phase 3 (reproduction pipeline) — verified end-to-end via headless sim:** Pending-offspring channel on Organism (`setPendingOffspring`/`takePendingOffspring`), `MatingBehavior::execute` calls `Organism::reproduce` and stages the result; the headless sim drains pending offspring each tick and pushes them onto the creature vector. Births compound across generations. Bugs fixed during integration: (1) ThirstBehavior was deleted in the reconciliation merge — restored against the new component layout (reads/writes `heterotrophy_->thirst`, drinks adjacent `Tile::isSource()` water, spiral-searches for water otherwise) and re-registered in `BehaviorRegistry`; (2) `MatingBehavior::getPriority` urgency was unnormalised so mating capped at 57.5 and always lost to feeding/thirst at 75 — fixed by mapping `[MATE_THRESHOLD..1]` onto `[0..1]`; (3) creatures spawned with `hunger=thirst=1.0` (10% of `RESOURCE_LIMIT`) — born starving — bumped to full-capacity at construction; (4) the "moving toward mate" branch did nothing — now actually steps toward the partner using LOCOMOTION-derived speed, mirroring ThirstBehavior's pursuit. Population balance still trends to extinction at default settings; that's a tuning concern not a pipeline blocker.
-  - **Phase 3 (plant lifecycle tick split) — deferred until after Creature collapse:** `PlantLifecycleTick` is currently monolithic — it wraps the entire procedural `Plant::update()` (phenotype refresh, environmental stress, growth, fruit timer, photosynthesis, age + death) behind the `IPassiveTick` interface but still calls all the same code. The intended split is `GrowthTick` (unifiable across all organisms — `Organism::grow()` already exists at the base; Plant only differs in nutrition source: autotrophy water/light vs heterotrophy hunger), `FruitMaturationTick` (autotroph-specific, ~30 lines), `PhotosynthesisTick` (autotroph-specific, ~60 lines), with phenotype refresh + age + death already living on `Organism`. Estimated as a focused session of work, not days. Sequenced after Creature class collapse so it can drop onto a single unified type instead of being written against `Plant` and re-examined later.
-  - **Phase 4 (evolutionary features):** not started.
-**Scope:** Conceptual design for merging creature and plant gene pools
+**Updated:** 2026-04-16
+**Status:** Phase 1 + Phase 2 complete. Phase 3 nearly there — reproduction pipeline unified on Organism; ~7 methods left on Creature behind GameObject inheritance + ctors. Phase 4 not started.
+
+## Current State Summary (2026-04-16)
+
+**What works end-to-end:**
+
+- All creature per-instance state lives in components (`MobilityComponent`, `HeterotrophyComponent`, `AutotrophyComponent`, `ReproductionComponent`, `CombatComponent`, `ThermalComponent`, `IdentityComponent`) attached via `std::unique_ptr` to the `Organism` base.
+- `BehaviorController` + seven active behaviors (Feeding, Hunting, Mating, Rest, **Thirst**, Zoochory, Movement) + `PlantLifecycleTick` passive tick. Gene-threshold-gated attachment via `BehaviorRegistry::attachBehaviorsFor(controller, phenotype, services)`.
+- **Reproduction pipeline unified on Organism** (commit `076da56`). `Organism::sexualBreed` / `asexualBreed` / `reproduce` / `isCompatibleWith` now hold the shared body. Subclasses only supply a `makeOffspring(genome, x, y)` factory hook. `ReproductionMode`-based dispatch prevents creatures from cloning on null partner.
+- Headless sim produces **compounding births** across generations; reproduction, feeding, thirst, hunting, death tracking all functional.
+- 672/672 tests green at checkpoint.
+
+**What's left on Creature** (~7 methods + 4 ctors):
+
+| Method | Blocked by |
+|---|---|
+| 4 constructors + destructor | Specific component-set attachment (`mobility+heterotrophy+combat+thermal+identity`). Naturally lives as the "creature factory". |
+| `operator=` ×2 | Rule of Five — handles `GameObject` base + component fields. |
+| `isAlive` | Plants spuriously trip `deathCheck`'s `reproduction->mate < DISCOMFORT_POINT` under stress; Organism's default can't safely fold in deathCheck until plant-deathCheck is decoupled. |
+| `makeOffspring` | Intrinsic factory hook — stays as long as Creature is a distinct type. |
+| `toString` | Uses `GameObject::toString`. |
+| `toJson` / `fromJson` | Thin forwarders to `CreatureSerialization`; 8 callers via OO syntax. |
+
+`creature.hpp` is now 430 lines (was ~920); `creature.cpp` is 1284 lines (was ~1760).
+
+**Research grounding:** [[../../reference/ecs-vs-oo-for-agent-sims]] — OO composition with `std::unique_ptr<Component>` chosen over archetype ECS for the 1k-100k organism scale.
+
+## Next Session: The Two Remaining Structural Cuts
+
+Before continuing, a reminder of **why** the last two cuts are needed: both Plant and Creature should collapse to a single `Organism` class so that gene expression — not class identity — determines what an organism is and does. Every residual type distinction (`GameObject` inheritance, `Plant` vs `Creature` dynamic_casts, Plant's monolithic `update()`) perpetuates the "kingdom is hard-coded" assumption the whole plan aims to dismantle.
+
+### Cut 1 — DisplayComponent via ArchetypeIdentity flyweight (HIGH priority)
+
+**Goal:** eliminate `GameObject` inheritance from `Creature`. This is the single biggest remaining blocker to full Organism unification.
+
+**Approach — flyweight, not per-instance:** EcoSim already has `ArchetypeIdentity` (Meyer's singleton, 11 archetype flyweights: ApexPredator, PackHunter, etc.) holding `id`, `label`, `renderChar`, atomic `population_`. `IdentityComponent` already holds a `const ArchetypeIdentity*` pointer. The existing comment in `IdentityComponent.hpp` literally says *"Visual character and name live on the GameObject base class and are accessed via getChar() / getName() — not duplicated here."* — we just need to move the display fields **into** the flyweight.
+
+**Steps:**
+
+1. Extend `ArchetypeIdentity` with `entityType`, `desc`, `passable` (alongside existing `id`, `label`, `renderChar`). All immutable per-archetype. ~11 factory methods need one extra line each.
+2. Add plant archetypes to `ArchetypeIdentity` (moss, cactus, vine, etc. — or a parallel `PlantArchetype` flyweight; (a) preferred for consistency with the unified-organism direction).
+3. Per-instance `IdentityComponent` keeps just the flyweight pointer (8 bytes) + optional `custom_name` for individually-named creatures. Default display falls through to the archetype.
+4. Add Organism-level getters: `getName()`, `getChar()`, `getEntityType()`, `getPassable()`, `getDesc()`, `toString()`. Each reads the flyweight via `identity_->archetype->...`, fallback to sensible defaults if no archetype attached.
+5. Delete `class GameObject` entirely. Update ~56 call sites (mostly no-op — getter signatures preserved). Renderers (SDL2Renderer 7, NCursesRenderer 15) get the bulk of the updates.
+6. `toString` moves to Organism; JSON forwarders can collapse into `OrganismSerialization`.
+
+**Memory payoff at 100k organisms:** per-instance `_name` strings alone ~4MB → 800KB flyweight pointers (80% reduction on that field; full display struct is ~5-10× that).
+
+**Blast radius:** ~56 call sites enumerated via `Grep 'getChar\(\)|getName\(\)|getColour\(\)|getEntityType\(\)|getPassable\(\)|getDesc\(\)'` → SDL2Renderer 7, NCursesRenderer 15, tests ~15, misc ~19.
+
+**User direction (2026-04-16):** "fuck backwards compat, we need to commit to the migration to organism" — no compromises to preserve Creature-specific APIs; Organism is the authoritative API.
+
+### Cut 2 — Plant lifecycle tick split (LOW priority, after Cut 1)
+
+`PlantLifecycleTick` is currently monolithic — wraps the entire `Plant::update()` (phenotype refresh, environmental stress, growth, fruit timer, photosynthesis, age + death) behind the `IPassiveTick` interface but still calls the same code.
+
+**Intended split:**
+- `GrowthTick` — unifiable across all organisms (`Organism::grow()` already exists; Plant only differs in nutrition source: autotrophy water/light vs heterotrophy hunger)
+- `FruitMaturationTick` — autotroph-specific, ~30 lines
+- `PhotosynthesisTick` — autotroph-specific, ~60 lines
+- Phenotype refresh + age + death already live on Organism
+
+Sequenced after Cut 1 so the ticks land on a single unified type instead of being written against `Plant` and re-examined later. Focused session of work, not days.
+
+### Adjacent — not part of this plan but calling it out
+
+**`Plant::consumeEnergy()` is not wired to `FeedingInteraction`.** Plants have an `EnergyState` (`currentEnergy`, `maxEnergy`, `maintenanceCost`) and `getNutrientValue()` size-scales a gene, but never deducts from `currentEnergy` when eaten. Two other plans (`ecosystem-improvements`, `plants/resource-system`) flag this as MVP-blocking and explain why: the current extinction trend in the headless sim (50+ starvations per 1000 ticks) is partly because plants are unlimited food that creatures overshoot on. Estimated 1-2 days. Not part of unified-organism work but high-value adjacent work.
+
+## Phase Status (condensed)
+
+- **Phase 1 (universal gene registry):** ✅ complete. `UniversalGenes` registry consumed by all behaviors + expression systems.
+- **Phase 2 (behavior system):** ✅ complete. `IBehavior` + `BehaviorController` + `IPassiveTick`. Seven active behaviors + one passive tick. Gene-gated attachment via `BehaviorRegistry`.
+- **Phase 3 (architectural):** ✅ complete. Full component suite on Organism base; Creature per-instance state fully migrated.
+- **Phase 3 (reproduction unified):** ✅ complete (commit `076da56`). Sexual/asexual pipelines on Organism; subclasses supply only `makeOffspring`.
+- **Phase 3 (Creature class deletion):** 🔄 in progress. ~100 methods migrated; ~7 remain. **Cut 1 (DisplayComponent) is the next unblocker.**
+- **Phase 3 (Plant tick split):** 🕒 deferred. After Cut 1.
+- **Phase 4 (evolutionary features):** 🕒 not started. Convergence/divergence gameplay — photosynthesising creatures, mobile plants — unblocks once Creature and Plant are the same type.
+
+**Scope:** Conceptual design for merging creature and plant gene pools.
 
 ---
 

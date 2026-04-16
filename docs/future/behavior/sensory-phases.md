@@ -1,10 +1,12 @@
 # Future Sensory System Development Phases
 
-**Status:** Deferred — post Genesis MVP  
-**Last Updated:** 2026-04-14  
+**Status:** Deferred — post Genesis MVP
+**Last Updated:** 2026-04-16
 
 > [!NOTE]
-> Auditory, exploration memory, full mating integration, and predator-prey sensory phases are **not on the Genesis MVP critical path**. Phase 1 (scent) has already shipped — see `docs/technical/systems/scent-system.md`. The phases described below are genuinely valuable engine extensions but should be scheduled after MVP ships. This doc is the consolidated surviving plan for sensory expansion; the earlier `mating-behavior-system-design.md` (1706 lines) was largely duplicative and has been removed in favour of this shorter version.
+> **Phases 1 & 2 shipped** — olfactory system (sparse `ScentLayer`, 8D genetic signatures via `CreatureScent`) and olfactory genes (`scent_production`, `scent_signature_variance`, `olfactory_acuity`, `scent_masking`) are live. See `docs/technical/systems/scent-system.md` (496 lines) for the reference implementation.
+>
+> Phases 3–6 below (auditory, exploration memory, full mating sensory integration, predator-prey dynamics) are **not on the Genesis MVP critical path** and are genuinely future work. This doc is the consolidated surviving plan; the earlier `mating-behavior-system-design.md` (1706 lines) was largely duplicative and has been removed in favour of this shorter version.
 
 ---
 
@@ -12,7 +14,7 @@
 
 This document describes planned expansions to the sensory system beyond the currently implemented olfactory (scent) system. These phases will add auditory capabilities, spatial memory, and advanced predator-prey dynamics.
 
-> **Note:** Phase 1 (Olfactory/Scent System) and Phase 2 (Olfactory Genes) are **already implemented**. See `docs/technical/genetics/scent-system.md` for current implementation details.
+> **Phase 1 (Olfactory/Scent System) and Phase 2 (Olfactory Genes): shipped.** See `docs/technical/systems/scent-system.md` for current implementation details.
 
 ---
 

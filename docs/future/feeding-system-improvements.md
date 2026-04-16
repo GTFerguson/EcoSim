@@ -1,12 +1,29 @@
 ---
 title: Feeding System Improvements
 created: 2025-12-26
-updated: 2025-12-26
-status: needs-review
+updated: 2026-04-16
+status: partially-shipped
 tags: [feeding, herbivore, balance]
 ---
 
 # Feeding System Improvements
+
+> [!NOTE]
+> **Update 2026-04-16 — plan audit.** The critical blocking issues flagged here are resolved (see "Resolved" section below). Remaining items are design-level concerns — threshold consolidation, gene-driven constants, template value verification — not correctness bugs.
+
+## Resolved (2026-04-16)
+
+- ✅ **Plant-finding was stubbed** — `FeedingBehavior::findNearestEdiblePlant` now queries `PlantManager::queryPlantsInRadius` (triggers spatial-index rebuild if dirty). Fixed in commit `baa0a76`.
+- ✅ **Nutrition gain was being discarded** — `updateWithBehaviors` dropped negative `energyCost`; now applies `BASE_ENERGY_COST - feedingResult.nutritionGained` correctly. Fixed in commit `baa0a76`.
+- ✅ **Herbivore detection bonus** — `plantDigestion * 0.3f` bonus is live in `FeedingInteraction.cpp`.
+
+## Remaining (as of audit)
+
+- **Issue 2 (template values)** — factory template values (0.85–0.95) may not propagate to creatures (observed ~0.20–0.24 at runtime). Verify genome expression pathway.
+- **Issue 3 (overlapping thresholds)** — 5 independent gates per feeding attempt. Candidate for consolidation.
+- **Issue 4 (magic numbers)** — hardcoded constants in `FeedingBehavior.hpp` that should become gene-driven.
+
+**Adjacent blocker:** `Plant::consumeEnergy()` not wired into `FeedingInteraction` — plants currently serve unlimited food. See `docs/future/plants/resource-system.md`.
 
 > [!WARNING]
 > The feeding interaction system has accumulated significant complexity and may need a comprehensive review or simplification in the future.

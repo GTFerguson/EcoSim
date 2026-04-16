@@ -1,8 +1,8 @@
 ---
 title: Plant Resource Depletion System - Implementation Plan
 created: 2025-12-26
-updated: 2026-04-14
-status: partially-implemented
+updated: 2026-04-16
+status: blocked-awaiting-hookup
 priority: critical
 tags: [design, plants, ecosystem-balance, resources, growth-phases]
 ---
@@ -10,7 +10,17 @@ tags: [design, plants, ecosystem-balance, resources, growth-phases]
 # Plant Resource Depletion System
 
 > [!IMPORTANT]
-> **Status update 2026-04-14:** The underlying infrastructure for this plan is **already built** via the unified-organism-genome migration work, under different naming than the plan proposed. The only remaining gap is hooking feeding to the energy drain. See §"What's already shipped" below for the concept-match audit. The full plan (tissue types, growth phases, root/leaf/stem differentiation, targeted feeding by creature adaptation) remains proposed as a post-MVP enhancement.
+> **Status 2026-04-16:** 95% of the infrastructure is shipped and verified (see §"What's already shipped"). One concrete missing link blocks MVP:
+>
+> - `Plant::getNutrientValue()` returns a gene-derived value size-scaled by `currentSize_/maxSize`, but **never deducts from `energyState_.currentEnergy`** when the plant is eaten.
+> - `FeedingInteraction::attemptToEatPlant()` reads the nutrient value but calls no drain/consume method.
+> - No `Plant::consumeEnergy(float)` method exists yet.
+>
+> **Impact:** Plants are effectively unlimited food to herbivores. This is visible in the headless sim as creature starvation outpacing births (50+ starvations per 1000 ticks even with feeding otherwise working) — creatures overshoot carrying capacity because there's no feedback from plant depletion.
+>
+> **Estimated work:** 1–2 days. Route `getNutrientValue()` through `energyState_.currentEnergy` cap → add `consumeEnergy(amount)` → call from `FeedingInteraction` on successful bite → add dormancy/death threshold when `currentEnergy < X`.
+>
+> The full plan (tissue types, growth phases, root/leaf/stem differentiation, targeted feeding by creature adaptation) remains proposed as a post-MVP enhancement.
 
 ## What's already shipped (concept-match audit, 2026-04-14)
 

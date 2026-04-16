@@ -1,7 +1,7 @@
 ---
 title: Ecosystem & Creature Behavior Improvements
 created: 2025-12-24
-updated: 2026-04-14
+updated: 2026-04-16
 status: partially-shipped
 tags: [ecosystem, creatures, behavior, world, future]
 ---
@@ -29,19 +29,11 @@ Critical for meaningful simulation dynamics.
 
 ### Resource Management
 
-- [ ] **Connect feeding to plant energy drain** (MVP-blocking) — The `EnergyBudget` / `PlantEnergyCalculator` / `energyState_` plumbing is already built via the unified-organism migration. What's missing is routing `Plant::getNutrientValue()` through `energyState_.currentEnergy` and having `FeedingInteraction` call a new `Plant::consumeEnergy()` method. This is the minimal fix for the "unlimited plant food" issue, probably 1-2 days of work rather than the multi-week scope in the full plan. **Full concept-match audit and minimal fix:** [[../plants/resource-system#whats-already-shipped-concept-match-audit-2026-04-14]]
+- [ ] **Connect feeding to plant energy drain** (MVP-blocking, 1–2 days) — All infrastructure shipped; one missing hookup. `Plant::getNutrientValue()` needs to be routed through `energyState_.currentEnergy` and `FeedingInteraction` needs to call a new `Plant::consumeEnergy()`. Without this, plants are unlimited food and creature populations starve after overshooting carrying capacity (visible in headless sim as 50+ starvations / 1000 ticks). **Flagged as the single highest-leverage unblocking task as of 2026-04-16.** See [[../plants/resource-system]].
 
-- [ ] **Tissue-type resource differentiation** (post-MVP) — Full plan proposes per-tissue resource pools (leaves, fruit, stems, seeds, roots), each with different energy density, defense, regeneration, and creature-adaptation access requirements. This is the richer plant economy enhancement layered on top of the minimal MVP fix. Not required for Genesis MVP. **Full design document:** [[../plants/resource-system]]
+- [ ] **Tissue-type resource differentiation** (post-MVP) — Full plan proposes per-tissue resource pools (leaves, fruit, stems, seeds, roots), each with different energy density, defense, regeneration, and creature-adaptation access requirements. Richer plant economy layered on top of the MVP fix. **Full design document:** [[../plants/resource-system]]
 
-- [ ] **Unified propagule gene system** - Fruit/seed genes are artificially separated
-  - Single `wrapper_investment` gene creates spectrum: seeds → nuts → drupes → berries
-  - Eating wrapper disperses seeds; eating seeds destroys them
-  - **Full design document:** [[../plants/propagule-genes]]
-
-- [ ] **Unified propagule gene system** - Fruit/seed genes are artificially separated
-  - Single `wrapper_investment` gene creates spectrum: seeds → nuts → drupes → berries
-  - Eating wrapper disperses seeds; eating seeds destroys them
-  - **Full design document:** [[plants/propagule-genes]]
+- [ ] **Unified propagule gene system** — Fruit/seed genes are artificially separated. Single `wrapper_investment` gene creates spectrum: seeds → nuts → drupes → berries. Eating wrapper disperses seeds; eating seeds destroys them. **Full design document:** [[../plants/propagule-genes]]
 
 ---
 
