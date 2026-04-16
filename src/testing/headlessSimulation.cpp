@@ -312,21 +312,33 @@ void populateWorldByBiome(World& w, std::vector<Creature>& creatures,
         unsigned herbivoreCount = static_cast<unsigned>(count * 0.70f);
         unsigned carnivoreCount = count - herbivoreCount;
         
+        // Spawn as mature adults with some mate drive so the reproduction
+        // loop has a fighting chance within a short test run. Without this,
+        // creatures take ~266 ticks to grow and ~700 ticks to accumulate
+        // mating drive — longer than most headless test runs.
+        auto primeAdult = [](Creature& c) {
+            c.setCurrentSize(c.getMaxSize());
+            c.setMature(true);
+            c.setMate(5.0f);
+        };
+
         for (unsigned i = 0; i < herbivoreCount && !positions.empty(); ++i) {
             size_t idx = posDist(rng);
             auto [x, y] = positions[idx];
             Creature creature = createHerbivore(x, y);
             creature.setXY(x, y);
             creature.setWorldPosition(static_cast<float>(x) + 0.5f, static_cast<float>(y) + 0.5f);
+            primeAdult(creature);
             creatures.push_back(std::move(creature));
         }
-        
+
         for (unsigned i = 0; i < carnivoreCount && !positions.empty(); ++i) {
             size_t idx = posDist(rng);
             auto [x, y] = positions[idx];
             Creature creature = createCarnivore(x, y);
             creature.setXY(x, y);
             creature.setWorldPosition(static_cast<float>(x) + 0.5f, static_cast<float>(y) + 0.5f);
+            primeAdult(creature);
             creatures.push_back(std::move(creature));
         }
     };
@@ -484,10 +496,27 @@ void advanceSimulation(World& w, std::vector<Creature>& c, GeneralStats& gs,
     // count deaths. Skipping dead creatures here causes silent death
     // removal without category counting.
     g_lastAction = "processing creature turns";
-    for (size_t i = 0; i < c.size(); ++i) {
+    const size_t preTickCount = c.size();
+    for (size_t i = 0; i < preTickCount; ++i) {
         takeTurn(w, gs, c, static_cast<unsigned int>(i), config);
     }
-    
+
+    // Drain any pending offspring produced during this tick's mating.
+    g_lastAction = "collecting offspring";
+    for (size_t i = 0; i < preTickCount; ++i) {
+        if (i >= c.size()) break;
+        if (!c[i].hasPendingOffspring()) continue;
+        auto offspring = c[i].takePendingOffspring();
+        if (!offspring) continue;
+        // Offspring are returned as unique_ptr<Organism> for the unified
+        // interface. Until Plant/Creature are merged we still have to
+        // recover the concrete Creature value to push onto the vector.
+        if (Creature* ptr = dynamic_cast<Creature*>(offspring.get())) {
+            c.push_back(std::move(*ptr));
+            gs.births++;
+        }
+    }
+
     // Remove dead creatures
     g_lastAction = "removing dead creatures";
     c.erase(

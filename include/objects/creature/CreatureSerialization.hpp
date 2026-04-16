@@ -12,19 +12,18 @@
 #include <string>
 #include <nlohmann/json.hpp>
 
-// Direction / Motivation / Action now live in the Genetics namespace;
-// include the canonical headers rather than forward-declaring.
+// Direction / Motivation / Action / WoundState now live in the Genetics
+// namespace; include the canonical headers rather than forward-declaring.
 #include "genetics/components/MobilityComponent.hpp"
 #include "genetics/core/MotivationAction.hpp"
+#include "genetics/systems/HealthSystem.hpp"
 using Direction  = EcoSim::Genetics::Direction;
 using Motivation = EcoSim::Genetics::Motivation;
 using Action     = EcoSim::Genetics::Action;
+using WoundState = EcoSim::Genetics::WoundState;
 
 namespace EcoSim { namespace Genetics { class Organism; } }
 class Creature;
-
-// Forward declare enums that are still Creature-defined
-enum class WoundState;
 
 namespace CreatureSerialization {
 

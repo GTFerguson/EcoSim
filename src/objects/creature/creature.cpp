@@ -314,9 +314,10 @@ void EcoSim::Genetics::Organism::setWorldY(float y) { if (mobility_) mobility_->
 //  ILifecycle Interface Implementation
 //================================================================================
 // getMaxLifespan, getAgeNormalized, age — Organism defaults handle these.
-// isAlive stays on Creature because it uses deathCheck() which includes
-// environmental death triggers (starvation, dehydration, discomfort)
-// that the Organism base's simpler alive_ flag doesn't capture.
+// isAlive stays on Creature because plants spuriously fail deathCheck's
+// reproduction.mate < DISCOMFORT_POINT branch under environmental stress
+// (passive ticks let the field drift). Untangle by giving plants a
+// separate "alive" pathway later.
 bool Creature::isAlive() const {
     return deathCheck() == 0;
 }
@@ -465,6 +466,12 @@ void EcoSim::Genetics::Organism::updatePhenotypeContext(const EcoSim::Genetics::
     orgState.age_normalized = (lifespan > 0) ? static_cast<float>(age_) / static_cast<float>(lifespan) : 0.0f;
     if (heterotrophy_) {
         orgState.energy_level = std::max(0.0f, std::min(1.0f, heterotrophy_->hunger / Constants::RESOURCE_LIMIT));
+    }
+    if (reproduction_) {
+        // Normalise mate (0-RESOURCE_LIMIT) into reproductive_urge (0-1)
+        // so MatingBehavior::getMateValue reads the right scale.
+        orgState.reproductive_urge = std::max(0.0f,
+            std::min(1.0f, reproduction_->mate / Constants::RESOURCE_LIMIT));
     }
     orgState.health = 1.0f;
     phenotype_.updateContext(env, orgState);
@@ -668,10 +675,13 @@ float Creature::checkFitness (const Creature &c2) const {
  *  @return     Offspring created from the parents combined DNA.
  */
 Creature Creature::breedCreature (Creature &mate) {
-  //  Charge the cost to breed to parents
-  heterotrophy_->hunger -= Creature::BREED_COST; heterotrophy_->thirst -= Creature::BREED_COST;
-  mate.setHunger (mate.getHunger() - Creature::BREED_COST);
-  mate.setThirst (mate.getThirst() - Creature::BREED_COST);
+  //  Charge the cost to breed to parents. Use a fractional cost so
+  //  creatures hovering near minimum resources can still reproduce
+  //  without immediately starving post-breed.
+  const float breedCost = Creature::BREED_COST * 0.3f;  // ~0.9 per parent per resource
+  heterotrophy_->hunger -= breedCost; heterotrophy_->thirst -= breedCost;
+  mate.setHunger (mate.getHunger() - breedCost);
+  mate.setThirst (mate.getThirst() - breedCost);
 
   //  Give the offspring a quarter of each parents resources
   float hunger = shareFood(RESOURCE_SHARED)  + mate.shareFood(RESOURCE_SHARED);
@@ -1043,15 +1053,12 @@ float EcoSim::Genetics::Organism::getHealthPercent() const {
     return std::max(0.0f, std::min(1.0f, getHealth() / maxHealth));
 }
 
-// getWoundState stays on Creature for now — its return type is
-// ::WoundState (global alias) and the Organism signature uses
-// EcoSim::Genetics::WoundState. Untangling that is a separate step.
-WoundState Creature::getWoundState() const {
+EcoSim::Genetics::WoundState EcoSim::Genetics::Organism::getWoundState() const {
     float percent = getHealthPercent();
     if (percent > 0.75f) return WoundState::Healthy;
     if (percent > 0.50f) return WoundState::Injured;
     if (percent > 0.25f) return WoundState::Wounded;
-    if (percent > 0.0f) return WoundState::Critical;
+    if (percent > 0.0f)  return WoundState::Critical;
     return WoundState::Dead;
 }
 
@@ -1129,9 +1136,11 @@ Creature::Creature(int x, int y, std::unique_ptr<EcoSim::Genetics::Genome> genom
     attachIdentity(std::make_unique<EcoSim::Genetics::IdentityComponent>());
     identity_->sequentialId = nextCreatureId_++;
 
-    // Initialise needs
-    heterotrophy_->hunger  = 1.0f;
-    heterotrophy_->thirst  = 1.0f;
+    // Initialise needs at full capacity. Spawning at 1.0 (10% on the
+    // 0-RESOURCE_LIMIT scale) effectively means creatures are born
+    // starving and dying — they rarely live long enough to reproduce.
+    heterotrophy_->hunger  = EcoSim::Genetics::Constants::RESOURCE_LIMIT;
+    heterotrophy_->thirst  = EcoSim::Genetics::Constants::RESOURCE_LIMIT;
     heterotrophy_->fatigue = INIT_FATIGUE;
     reproduction_->mate    = 0.0f;
 
@@ -1141,6 +1150,10 @@ Creature::Creature(int x, int y, std::unique_ptr<EcoSim::Genetics::Genome> genom
     } else {
         heterotrophy_->metabolism = 0.001f;
     }
+
+    // Keep maxSize_ = 1.0 (Organism default) — gene-driven scaling causes
+    // growth/metabolism imbalance. Just ensure juveniles start small.
+    currentSize_ = 0.1f;
 
     // Classify archetype from genome (after phenotype is ready)
     identity_->archetype = EcoSim::Genetics::CreatureTaxonomy::classifyArchetype(genome_);
@@ -1197,6 +1210,9 @@ Creature::Creature(int x, int y, float hunger, float thirst,
     } else {
         heterotrophy_->metabolism = 0.001f;
     }
+
+    // Keep maxSize_ = 1.0 default. Juveniles start small.
+    currentSize_ = 0.1f;
 
     // Classify archetype from genome (after phenotype is ready)
     identity_->archetype = EcoSim::Genetics::CreatureTaxonomy::classifyArchetype(genome_);
@@ -1380,11 +1396,23 @@ EcoSim::Genetics::BehaviorResult EcoSim::Genetics::Organism::updateWithBehaviors
             takeDamage(damage);
         }
 
-        // Reproductive drive adjustment
-        if (motivation_ == Motivation::Hungry || motivation_ == Motivation::Thirsty) {
-            reproduction_->mate -= getComfDec() * 0.3f;
-        } else if (motivation_ == Motivation::Content) {
-            reproduction_->mate += getComfInc();
+        // Reproductive drive: slow passive accumulation scaled by well-being.
+        // Hungry creatures gain drive slowly; well-fed ones gain faster.
+        // Starving creatures lose drive. Cap at RESOURCE_LIMIT so urge
+        // saturates at the max mating readiness.
+        if (reproduction_) {
+            float wellbeing = 0.5f;  // neutral default
+            if (heterotrophy_) {
+                wellbeing = std::clamp(
+                    heterotrophy_->hunger / Constants::RESOURCE_LIMIT, -0.5f, 1.0f);
+            }
+            // 0.05/tick baseline — a fed creature reaches the mating
+            // threshold (mate=7) in ~140 ticks. Low enough that starving
+            // creatures still deprioritise mating, high enough that healthy
+            // populations produce offspring within a reasonable sim window.
+            float rate = 0.05f * wellbeing;
+            reproduction_->mate = std::clamp(
+                reproduction_->mate + rate, -3.0f, Constants::RESOURCE_LIMIT);
         }
 
         ++age_;
@@ -1394,35 +1422,9 @@ EcoSim::Genetics::BehaviorResult EcoSim::Genetics::Organism::updateWithBehaviors
 }
 
 //================================================================================
-//  Enum Conversion Helpers (for serialization)
-//================================================================================
-
-std::string Creature::woundStateToString(WoundState state) {
-    return CreatureSerialization::woundStateToString(state);
-}
-
-WoundState Creature::stringToWoundState(const std::string& str) {
-    return CreatureSerialization::stringToWoundState(str);
-}
-
-std::string Creature::motivationToString(Motivation m) {
-    return CreatureSerialization::motivationToString(m);
-}
-
-Motivation Creature::stringToMotivation(const std::string& str) {
-    return CreatureSerialization::stringToMotivation(str);
-}
-
-std::string Creature::actionToString(Action a) {
-    return CreatureSerialization::actionToString(a);
-}
-
-Action Creature::stringToAction(const std::string& str) {
-    return CreatureSerialization::stringToAction(str);
-}
-
-//================================================================================
 //  JSON Serialization
+//  (Enum<->string converters live in CreatureSerialization; the Creature::
+//  forwarders had no callers and were removed during the class collapse.)
 //================================================================================
 
 nlohmann::json Creature::toJson() const {

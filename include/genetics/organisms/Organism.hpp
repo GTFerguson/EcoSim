@@ -282,6 +282,17 @@ public:
     }
     bool hasOrganismBehaviorController() const { return organismBehaviorController_ != nullptr; }
 
+    // Pending offspring — MatingBehavior stashes new offspring here when
+    // reproduction succeeds. The sim main loop drains this field after
+    // each tick and moves offspring into the creature vector.
+    std::unique_ptr<Organism> takePendingOffspring() {
+        return std::move(pendingOffspring_);
+    }
+    bool hasPendingOffspring() const { return pendingOffspring_ != nullptr; }
+    void setPendingOffspring(std::unique_ptr<Organism> offspring) {
+        pendingOffspring_ = std::move(offspring);
+    }
+
     // Position (tile coordinates)
     int x_;
     int y_;
@@ -335,6 +346,7 @@ public:
     float getWoundSeverity() const;
     float getHealingRate() const;
     void  takeDamage(float amount);
+    WoundState getWoundState() const;
 
     // Combat state setters/getters (delegate to CombatComponent)
     void setInCombat(bool combat);
@@ -467,6 +479,10 @@ public:
     // shadowing Creature's legacy _behaviorController during the transition;
     // merged into the sole controller once Creature/Plant are collapsed.
     std::unique_ptr<BehaviorController> organismBehaviorController_;
+
+    // Offspring produced by this organism during the current tick,
+    // waiting to be added to the simulation by the main loop.
+    std::unique_ptr<Organism> pendingOffspring_;
 };
 
 } // namespace Genetics

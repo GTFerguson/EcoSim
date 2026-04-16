@@ -6,6 +6,7 @@
 #include "genetics/behaviors/MatingBehavior.hpp"
 #include "genetics/behaviors/MovementBehavior.hpp"
 #include "genetics/behaviors/RestBehavior.hpp"
+#include "genetics/behaviors/ThirstBehavior.hpp"
 #include "genetics/behaviors/ZoochoryBehavior.hpp"
 #include "genetics/defaults/UniversalGenes.hpp"
 #include "genetics/expression/Phenotype.hpp"
@@ -43,6 +44,14 @@ bool expressesMating(const Phenotype& p) {
     return getTraitSafe(p, UniversalGenes::MATE_THRESHOLD, 0.0f) > 0.0f;
 }
 
+bool expressesThirst(const Phenotype& p) {
+    // Anything heterotrophic that moves needs to drink. Use the same
+    // mobility + hunger gate as RestBehavior — water-seeking is only
+    // meaningful for animals.
+    return expressesMobility(p) &&
+           getTraitSafe(p, UniversalGenes::HUNGER_THRESHOLD, 0.0f) > 0.0f;
+}
+
 bool expressesZoochory(const Phenotype& p) {
     // Seed dispersal via digestion requires both mobility and plant-eating.
     return expressesPlantFeeding(p);
@@ -68,6 +77,12 @@ void BehaviorRegistry::attachBehaviorsFor(BehaviorController& controller,
     if (expressesPlantFeeding(phenotype) && services.feeding && services.perception) {
         controller.addBehavior(std::make_unique<FeedingBehavior>(
             *services.feeding, *services.perception));
+    }
+
+    // ThirstBehavior — NORMAL priority, urgency-scaled, for any mobile animal.
+    // Without it, hydration drains until canReproduce() always fails.
+    if (expressesThirst(phenotype)) {
+        controller.addBehavior(std::make_unique<ThirstBehavior>());
     }
 
     // MatingBehavior — NORMAL priority when ready to mate.

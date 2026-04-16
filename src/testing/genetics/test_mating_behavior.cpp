@@ -145,6 +145,10 @@ private:
 
 void setupMatureOrganism(MockMatingOrganism& organism) {
     organism.setAgeNormalized(0.5f);
+    // Size-based maturity (MatingBehavior::isMature uses Organism::isMature)
+    organism.setMaxSize(1.0f);
+    organism.setCurrentSize(0.8f);
+    organism.setMature(true);
     organism.setGene(UniversalGenes::MATE_THRESHOLD, 3.0f);
     organism.setGene(UniversalGenes::HUNGER_THRESHOLD, 10.0f);
     organism.setGene(UniversalGenes::LIFESPAN, 500000.0f);
@@ -346,15 +350,16 @@ void test_priority_increasesWithMateValue() {
     PerceptionSystem perception;
     MatingBehavior mating(perception, registry);
 
+    // reproductive_urge is normalised to [0,1] in production (mate /
+    // RESOURCE_LIMIT). Use values inside that band so the mock matches
+    // what the real organism would feed the priority function.
     MockMatingOrganism lowMateOrganism(registry);
     setupMatureOrganism(lowMateOrganism);
-    // Set a low reproductive urge (just above MATE_THRESHOLD of 0.7)
-    lowMateOrganism.setMate(1.0f);
+    lowMateOrganism.setMate(0.75f);  // just above MATE_THRESHOLD (0.7)
 
     MockMatingOrganism highMateOrganism(registry);
     setupMatureOrganism(highMateOrganism);
-    // Set a high reproductive urge
-    highMateOrganism.setMate(5.0f);
+    highMateOrganism.setMate(0.95f);  // near saturation
 
     float lowPriority = mating.getPriority(lowMateOrganism);
     float highPriority = mating.getPriority(highMateOrganism);

@@ -44,6 +44,7 @@
 #include "genetics/behaviors/BehaviorController.hpp"
 #include "genetics/behaviors/BehaviorContext.hpp"
 #include "genetics/systems/PerceptionSystem.hpp"
+#include "genetics/systems/HealthSystem.hpp"   // canonical WoundState
 #include "genetics/interactions/CombatInteraction.hpp"
 
 // Environmental stress system
@@ -81,8 +82,10 @@ using Direction = EcoSim::Genetics::Direction;
 using Motivation = EcoSim::Genetics::Motivation;
 using Action     = EcoSim::Genetics::Action;
 
-//  Wound state enum for health system
-enum class WoundState { Healthy, Injured, Wounded, Critical, Dead };
+//  Canonical WoundState lives in genetics/systems/HealthSystem.hpp.
+//  Alias it into the global namespace so existing unqualified callers
+//  (renderer overlay, serialisation) keep working unchanged.
+using WoundState = EcoSim::Genetics::WoundState;
 
 
 /**
@@ -277,10 +280,12 @@ class Creature: public GameObject,
     //============================================================================
     //  ILifecycle overrides
     //  getMaxLifespan, age, getAgeNormalized now use Organism defaults.
-    //  isAlive overridden here because it needs deathCheck().
+    //  isAlive overridden here because it needs deathCheck() — Organism's
+    //  base impl can't fold deathCheck globally because plants spuriously
+    //  trip the reproduction.mate < DISCOMFORT_POINT branch under stress.
     //============================================================================
     bool isAlive() const override;
-    
+
     //============================================================================
     //  IGenetic overrides
     //============================================================================
@@ -347,12 +352,9 @@ class Creature: public GameObject,
     //  inherited from Organism/ILifecycle base. Trivial forwarders removed.
     //============================================================================
 
-    // getWoundState remains here because its return type uses the
-    // global Direction/WoundState alias and Organism's signature uses
-    // EcoSim::Genetics::WoundState — they're the same type via alias
-    // but the declaration syntax differs; untangled later.
-    WoundState getWoundState() const;
-    
+    // getWoundState now on Organism base — global WoundState is an alias
+    // for EcoSim::Genetics::WoundState, so the unqualified name still works.
+
     /**
      * @brief Get current environmental stress state.
      * @return Reference to current temperature stress for UI/debugging
@@ -432,15 +434,8 @@ public:
      */
     static Creature fromJson(const nlohmann::json& j, int mapWidth, int mapHeight);
     
-    //============================================================================
-    //  Enum Conversion Helpers (for serialization)
-    //============================================================================
-    static std::string woundStateToString(WoundState state);
-    static WoundState stringToWoundState(const std::string& str);
-    static std::string motivationToString(Motivation m);
-    static Motivation stringToMotivation(const std::string& str);
-    static std::string actionToString(Action a);
-    static Action stringToAction(const std::string& str);
+    //  Enum<->string converters live in CreatureSerialization (free
+    //  functions); the previous Creature:: static forwarders were unused.
 };
 
 #endif

@@ -60,6 +60,7 @@ Organism::Organism(Organism&& other) noexcept
     , thermal_(std::move(other.thermal_))
     , identity_(std::move(other.identity_))
     , organismBehaviorController_(std::move(other.organismBehaviorController_))
+    , pendingOffspring_(std::move(other.pendingOffspring_))
 {
     // Rebind phenotype to point to THIS organism's genome
     rebindPhenotypeGenome();
@@ -93,6 +94,7 @@ Organism& Organism::operator=(Organism&& other) noexcept {
         thermal_      = std::move(other.thermal_);
         identity_     = std::move(other.identity_);
         organismBehaviorController_ = std::move(other.organismBehaviorController_);
+        pendingOffspring_ = std::move(other.pendingOffspring_);
 
         // Rebind phenotype to point to THIS organism's genome
         rebindPhenotypeGenome();
@@ -133,9 +135,16 @@ unsigned int Organism::getMaxLifespan() const {
 
 bool Organism::canReproduce() const {
     if (!heterotrophy_) return false;
-    bool hasResources = heterotrophy_->hunger > Constants::BREED_COST && heterotrophy_->thirst > Constants::BREED_COST;
+    // Minimum resources to bear the cost of reproduction. Relaxed from
+    // strict BREED_COST (3.0) — creatures with ~30% hunger can still
+    // reproduce, at the expense of post-breed starvation risk.
+    const float minEnergy = Constants::BREED_COST * 0.5f;
+    bool hasResources = heterotrophy_->hunger  > minEnergy
+                     && heterotrophy_->thirst > minEnergy;
     bool isHealthy = health_ > getMaxHealth() * 0.25f;
-    return isMature() && hasResources && isHealthy && motivation_ == Motivation::Amorous;
+    // Reproductive urge (mate accumulator) must be positive.
+    bool hasUrge = !reproduction_ || reproduction_->mate > 0.0f;
+    return isMature() && hasResources && isHealthy && hasUrge;
 }
 
 float Organism::getReproductiveUrge() const {
@@ -160,9 +169,13 @@ void Organism::setWorldPosition(float x, float y) {
 
 void Organism::grow() {
     if (mature_) return;
-    float nutritionFactor = 1.0f;
+    float nutritionFactor = 0.5f;  // baseline for unfed organisms
     if (heterotrophy_) {
-        nutritionFactor = std::clamp(heterotrophy_->hunger / 100.0f, 0.1f, 1.5f);
+        // Hunger is on 0-RESOURCE_LIMIT (0-10) scale. Normalise against
+        // RESOURCE_LIMIT to get a 0-1 nutrition factor (prior code used
+        // /100 which always clamped to minimum).
+        nutritionFactor = std::clamp(
+            heterotrophy_->hunger / Constants::RESOURCE_LIMIT, 0.2f, 1.5f);
     }
     float baseGrowthRate = 0.001f;
     float ageFactor = (age_ < 1000) ? 1.5f : 1.0f;
