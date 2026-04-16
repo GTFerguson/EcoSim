@@ -109,18 +109,18 @@ class GenomeStats {
     /// Helper to update minimum value during min/max scanning (float version)
     void checkMinValue  (float &current,        const float &value);
     /// Scan creature for maximum trait values
-    void checkMaxValues (const Creature &c);
+    void checkMaxValues (const EcoSim::Genetics::Organism &c);
     /// Scan creature for minimum trait values
-    void checkMinValues (const Creature &c);
+    void checkMinValues (const EcoSim::Genetics::Organism &c);
     /// Calculate mean values from accumulated sums
     void setMeans       (const SGenome &sums, const size_t &size);
     /// Calculate standard deviations from variances
     void setStdDev      (const size_t &size);
     /// Calculate variances using two-pass algorithm
-    void setVariances   (const std::vector<Creature> &c,
+    void setVariances   (const std::vector<EcoSim::Genetics::OrganismPtr> &c,
                          const SGenome &sums, const size_t &size);
     /// Add creature trait values to running sums
-    void accumulateSum  (SGenome &sums, const Creature &c);
+    void accumulateSum  (SGenome &sums, const EcoSim::Genetics::Organism &c);
 
   public:
     /**
@@ -133,7 +133,7 @@ class GenomeStats {
      *
      * @note If population is empty, all statistics will remain at default values.
      */
-    GenomeStats (const std::vector<Creature> &c, const unsigned int &time);
+    GenomeStats (const std::vector<EcoSim::Genetics::OrganismPtr> &c, const unsigned int &time);
     
     /**
      * @brief Exports genome statistics as CSV format.

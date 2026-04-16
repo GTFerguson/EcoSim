@@ -405,55 +405,44 @@ void SDL2Renderer::renderTile(const Tile& tile, int screenX, int screenY) {
     }
 }
 
-void SDL2Renderer::renderCreatures(const std::vector<Creature>& creatures,
+void SDL2Renderer::renderCreatures(const std::vector<std::unique_ptr<EcoSim::Genetics::Organism>>& creatures,
                                    const Viewport& viewport) {
     if (!_initialized) {
         return;
     }
-    
-    // Store reference to creatures for ImGui overlay
+
     _currentCreatures = &creatures;
-    
-    // Calculate boundaries (in tile units for visibility check)
+
     int xRange = viewport.originX + viewport.width;
     int yRange = viewport.originY + viewport.height;
-    // Convert from tile units to pixels (same as renderWorld)
     int baseScreenX = static_cast<int>(viewport.screenX) * _tileSize;
     int baseScreenY = static_cast<int>(viewport.screenY) * _tileSize;
-    
-    // Check if ImGui has a selected creature - highlight it
+
     int selectedId = -1;
 #ifdef ECOSIM_HAS_IMGUI
     if (_imguiOverlay != nullptr) {
         selectedId = _imguiOverlay->getSelectedCreatureId();
     }
 #endif
-    
+
     for (size_t idx = 0; idx < creatures.size(); idx++) {
-        const Creature& creature = creatures[idx];
-        
-        // Use float world coordinates for smooth sub-tile rendering
+        const EcoSim::Genetics::Organism& creature = *creatures[idx];
+
         float worldX = creature.getWorldX();
         float worldY = creature.getWorldY();
         int tileX = static_cast<int>(worldX);
         int tileY = static_cast<int>(worldY);
-        
-        // Check if creature is within the shown area of the map (use tile coords for bounds check)
+
         if (tileX >= viewport.originX && tileX < xRange &&
             tileY >= viewport.originY && tileY < yRange) {
-            
-            // Calculate screen position using float world coordinates for sub-tile positioning
-            // This allows creatures to render at positions between tiles
+
             float screenX = baseScreenX + (worldX - viewport.originX) * _tileSize;
             float screenY = baseScreenY + (worldY - viewport.originY) * _tileSize;
-            
-            // Convert to int for SDL rendering (SDL2 still uses integer pixels)
+
             int pixelX = static_cast<int>(screenX);
             int pixelY = static_cast<int>(screenY);
-            
-            // Special rendering for selected creature
-            // Use creature-specific ID (not organism ID which is shared with plants)
-            if (creature.getCreatureId() == selectedId) {
+
+            if (creature.getSequentialId() == selectedId) {
                 renderSelectedCreature(creature, pixelX, pixelY);
             } else {
                 renderCreature(creature, pixelX, pixelY);
@@ -462,7 +451,7 @@ void SDL2Renderer::renderCreatures(const std::vector<Creature>& creatures,
     }
 }
 
-void SDL2Renderer::renderCreature(const Creature& creature, int screenX, int screenY) {
+void SDL2Renderer::renderCreature(const EcoSim::Genetics::Organism& creature, int screenX, int screenY) {
     if (!_initialized) {
         return;
     }
@@ -488,7 +477,7 @@ void SDL2Renderer::renderCreature(const Creature& creature, int screenX, int scr
             outlineColor);
 }
 
-void SDL2Renderer::renderSelectedCreature(const Creature& creature, int screenX, int screenY) {
+void SDL2Renderer::renderSelectedCreature(const EcoSim::Genetics::Organism& creature, int screenX, int screenY) {
     if (!_initialized) {
         return;
     }
@@ -1404,7 +1393,7 @@ SDL_Color SDL2Renderer::getProfileColor(BehaviorProfile profile) const {
     return SDL2ColorMapper::profileToColor(profile);
 }
 
-SDL_Color SDL2Renderer::getProfileColor(const Creature& creature) const {
+SDL_Color SDL2Renderer::getProfileColor(const EcoSim::Genetics::Organism& creature) const {
     return SDL2ColorMapper::creatureProfileToColor(creature);
 }
 

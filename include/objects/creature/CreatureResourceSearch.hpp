@@ -9,12 +9,12 @@
  * Part of Phase 1e creature decomposition to improve maintainability.
  */
 
+#include <memory>
 #include <vector>
 #include <optional>
 #include <utility>
 
 // Forward declarations
-class Creature;
 class World;
 class Tile;
 
@@ -28,6 +28,7 @@ class Organism;
 namespace CreatureResourceSearch {
 
 using Organism = EcoSim::Genetics::Organism;
+using OrganismPtr = std::unique_ptr<Organism>;
 
 //============================================================================
 //  Water Finding
@@ -110,9 +111,9 @@ bool findGeneticsPlants(
  * @param creatures Vector of all creatures in the world
  * @return Pointer to best mate, or nullptr if none found
  */
-Creature* findBestMate(
+Organism* findBestMate(
     const Organism& creature,
-    std::vector<Creature>& creatures);
+    std::vector<OrganismPtr>& creatures);
 
 /**
  * @brief Navigate toward a mate or return true if adjacent.

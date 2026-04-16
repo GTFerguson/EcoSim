@@ -103,7 +103,7 @@ public:
      * - Elevated metabolism (1.6) for heat generation
      * - Cold tolerance: -35°C to +15°C
      */
-    Creature createArcticWolf(int x, int y);
+    OrganismPtr createArcticWolf(int x, int y);
 
     /**
      * @brief Create Woolly Mammoth (Tundra Herbivore)
@@ -118,7 +118,7 @@ public:
      * - Elevated metabolism (1.4) for constant heat
      * - Cold tolerance: -40°C to +10°C
      */
-    Creature createWoollyMammoth(int x, int y);
+    OrganismPtr createWoollyMammoth(int x, int y);
 
     /**
      * @brief Create Tundra Moss (Tundra Plant)
@@ -151,7 +151,7 @@ public:
      * - Reduced metabolism (0.70) for energy conservation
      * - Heat tolerance: +5°C to +50°C
      */
-    Creature createDesertFennec(int x, int y);
+    OrganismPtr createDesertFennec(int x, int y);
 
     /**
      * @brief Create Desert Camel (Desert Herbivore)
@@ -166,7 +166,7 @@ public:
      * - Reduced metabolism (0.75) for water conservation
      * - Heat tolerance: +0°C to +55°C
      */
-    Creature createDesertCamel(int x, int y);
+    OrganismPtr createDesertCamel(int x, int y);
 
     /**
      * @brief Create Desert Cactus (Desert Plant)
@@ -199,7 +199,7 @@ public:
      * - Slightly reduced metabolism (0.85)
      * - Heat tolerance: +15°C to +45°C
      */
-    Creature createTropicalJaguar(int x, int y);
+    OrganismPtr createTropicalJaguar(int x, int y);
 
     /**
      * @brief Create Jungle Elephant (Tropical Herbivore)
@@ -214,7 +214,7 @@ public:
      * - Standard metabolism (0.95)
      * - Heat tolerance: +10°C to +45°C
      */
-    Creature createJungleElephant(int x, int y);
+    OrganismPtr createJungleElephant(int x, int y);
 
     /**
      * @brief Create Rainforest Vine (Tropical Plant)
@@ -273,7 +273,7 @@ private:
      * @param tempMin Minimum survivable temperature
      * @param tempMax Maximum survivable temperature
      */
-    void applyThermalOverrides(Creature& creature, float furDensity, float fatLayer,
+    void applyThermalOverrides(Organism& creature, float furDensity, float fatLayer,
                                float metabolism, float tempMin, float tempMax);
 
     /**

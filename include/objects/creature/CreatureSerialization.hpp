@@ -9,6 +9,7 @@
  * Part of Phase 1d creature decomposition to improve maintainability.
  */
 
+#include <memory>
 #include <string>
 #include <nlohmann/json.hpp>
 
@@ -23,7 +24,6 @@ using Action     = EcoSim::Genetics::Action;
 using WoundState = EcoSim::Genetics::WoundState;
 
 namespace EcoSim { namespace Genetics { class Organism; } }
-class Creature;
 
 namespace CreatureSerialization {
 
@@ -40,7 +40,7 @@ namespace CreatureSerialization {
  * @param creature The creature to serialize
  * @return String representation of creature state
  */
-std::string toString(const Creature& creature);
+std::string toString(const EcoSim::Genetics::Organism& creature);
 
 /**
  * @brief Convert direction enum to string.
@@ -121,7 +121,7 @@ Action stringToAction(const std::string& str);
  * @param creature The creature to serialize
  * @return JSON object containing creature state
  */
-nlohmann::json toJson(const Creature& creature);
+nlohmann::json toJson(const EcoSim::Genetics::Organism& creature);
 
 /**
  * @brief Deserialize creature from JSON.
@@ -138,7 +138,7 @@ nlohmann::json toJson(const Creature& creature);
  * @return Reconstructed Creature object
  * @throws std::runtime_error if required fields are missing
  */
-Creature fromJson(const nlohmann::json& j, int mapWidth, int mapHeight);
+std::unique_ptr<EcoSim::Genetics::Organism> fromJson(const nlohmann::json& j, int mapWidth, int mapHeight);
 
 } // namespace CreatureSerialization
 

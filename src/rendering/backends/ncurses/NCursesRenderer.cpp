@@ -221,28 +221,27 @@ void NCursesRenderer::renderTile(const Tile& tile, int screenX, int screenY) {
     }
 }
 
-void NCursesRenderer::renderCreatures(const std::vector<Creature>& creatures, 
+void NCursesRenderer::renderCreatures(const std::vector<std::unique_ptr<EcoSim::Genetics::Organism>>& creatures,
                                       const Viewport& viewport) {
     if (!_initialized) {
         return;
     }
-    
-    // Calculate boundaries
+
     int xRange = viewport.originX + viewport.width;
     int yRange = viewport.originY + viewport.height;
     int xScreen = static_cast<int>(viewport.screenX) - viewport.originX;
     int yScreen = static_cast<int>(viewport.screenY) - viewport.originY;
-    
-    for (const Creature& creature : creatures) {
+
+    for (const auto& creaturePtr : creatures) {
+        const auto& creature = *creaturePtr;
         int cX = creature.getX();
         int cY = creature.getY();
-        
-        // Check if creature is within the shown area of the map
+
         if (cX >= viewport.originX && cX < xRange &&
             cY >= viewport.originY && cY < yRange) {
-            
+
             int cColor = getColorPairForProfile(creature);
-            
+
             attron(COLOR_PAIR(cColor));
             mvaddch(yScreen + cY, xScreen + cX, creature.getChar());
             attroff(COLOR_PAIR(cColor));
@@ -250,14 +249,14 @@ void NCursesRenderer::renderCreatures(const std::vector<Creature>& creatures,
     }
 }
 
-void NCursesRenderer::renderCreature(const Creature& creature, 
+void NCursesRenderer::renderCreature(const EcoSim::Genetics::Organism& creature,
                                     int screenX, int screenY) {
     if (!_initialized) {
         return;
     }
-    
+
     int cColor = getColorPairForProfile(creature);
-    
+
     attron(COLOR_PAIR(cColor));
     mvaddch(screenY, screenX, creature.getChar());
     attroff(COLOR_PAIR(cColor));
@@ -459,7 +458,7 @@ void NCursesRenderer::printCentered(const std::string& str, int y) {
     mvprintw(y, x, "%s", str.c_str());
 }
 
-int NCursesRenderer::getColorPairForProfile(const Creature& creature) const {
+int NCursesRenderer::getColorPairForProfile(const EcoSim::Genetics::Organism& creature) const {
     // Map from the Motivation enum to color pairs
     switch (creature.getMotivation()) {
         case Motivation::Hungry:   return HUNGRY_PAIR;

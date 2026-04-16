@@ -66,8 +66,8 @@ void test_apex_predator_has_thermal_genes() {
     CreatureFactory factory(registry);
     factory.registerDefaultTemplates();
     
-    Creature apex = factory.createApexPredator(0, 0);
-    const Genome& genome = apex.getGenome();
+    auto apex = factory.createApexPredator(0, 0);
+    const Genome& genome = apex->getGenome();
     
     std::cout << "    Checking Apex Predator thermal genes..." << std::endl;
     
@@ -86,8 +86,8 @@ void test_pack_hunter_has_thermal_genes() {
     CreatureFactory factory(registry);
     factory.registerDefaultTemplates();
     
-    Creature hunter = factory.createPackHunter(0, 0);
-    const Genome& genome = hunter.getGenome();
+    auto hunter = factory.createPackHunter(0, 0);
+    const Genome& genome = hunter->getGenome();
     
     std::cout << "    Checking Pack Hunter thermal genes..." << std::endl;
     
@@ -101,8 +101,8 @@ void test_tank_herbivore_has_thermal_genes() {
     CreatureFactory factory(registry);
     factory.registerDefaultTemplates();
     
-    Creature tank = factory.createTankHerbivore(0, 0);
-    const Genome& genome = tank.getGenome();
+    auto tank = factory.createTankHerbivore(0, 0);
+    const Genome& genome = tank->getGenome();
     
     std::cout << "    Checking Tank Herbivore thermal genes..." << std::endl;
     
@@ -121,8 +121,8 @@ void test_all_archetypes_have_thermal_genes() {
     std::cout << "    Checking " << archetypes.size() << " archetypes for thermal genes..." << std::endl;
     
     for (const auto& name : archetypes) {
-        Creature c = factory.createFromTemplate(name, 0, 0);
-        const Genome& genome = c.getGenome();
+        auto c = factory.createFromTemplate(name, 0, 0);
+        const Genome& genome = c->getGenome();
         
         bool hasThermal = genome.hasGene(UniversalGenes::TEMP_TOLERANCE_LOW) &&
                           genome.hasGene(UniversalGenes::TEMP_TOLERANCE_HIGH) &&
@@ -241,8 +241,8 @@ void test_arctic_wolf_thermal_adaptations() {
     auto registry = createRegistry();
     BiomeVariantFactory factory(registry);
     
-    Creature wolf = factory.createArcticWolf(0, 0);
-    const Genome& genome = wolf.getGenome();
+    auto wolf = factory.createArcticWolf(0, 0);
+    const Genome& genome = wolf->getGenome();
     
     std::cout << "    Checking Arctic Wolf adaptations..." << std::endl;
     
@@ -269,8 +269,8 @@ void test_arctic_wolf_survives_cold() {
     auto registry = createRegistry();
     BiomeVariantFactory factory(registry);
     
-    Creature wolf = factory.createArcticWolf(0, 0);
-    const Genome& genome = wolf.getGenome();
+    auto wolf = factory.createArcticWolf(0, 0);
+    const Genome& genome = wolf->getGenome();
     
     float tempMin = getGeneValue(genome, UniversalGenes::TEMP_TOLERANCE_LOW);
     float tempMax = getGeneValue(genome, UniversalGenes::TEMP_TOLERANCE_HIGH);
@@ -296,8 +296,8 @@ void test_arctic_wolf_struggles_in_heat() {
     auto registry = createRegistry();
     BiomeVariantFactory factory(registry);
     
-    Creature wolf = factory.createArcticWolf(0, 0);
-    const Genome& genome = wolf.getGenome();
+    auto wolf = factory.createArcticWolf(0, 0);
+    const Genome& genome = wolf->getGenome();
     
     float tempMin = getGeneValue(genome, UniversalGenes::TEMP_TOLERANCE_LOW);
     float tempMax = getGeneValue(genome, UniversalGenes::TEMP_TOLERANCE_HIGH);
@@ -328,8 +328,8 @@ void test_desert_fennec_thermal_adaptations() {
     auto registry = createRegistry();
     BiomeVariantFactory factory(registry);
     
-    Creature fennec = factory.createDesertFennec(0, 0);
-    const Genome& genome = fennec.getGenome();
+    auto fennec = factory.createDesertFennec(0, 0);
+    const Genome& genome = fennec->getGenome();
     
     std::cout << "    Checking Desert Fennec adaptations..." << std::endl;
     
@@ -355,8 +355,8 @@ void test_desert_fennec_survives_heat() {
     auto registry = createRegistry();
     BiomeVariantFactory factory(registry);
     
-    Creature fennec = factory.createDesertFennec(0, 0);
-    const Genome& genome = fennec.getGenome();
+    auto fennec = factory.createDesertFennec(0, 0);
+    const Genome& genome = fennec->getGenome();
     
     float tempMin = getGeneValue(genome, UniversalGenes::TEMP_TOLERANCE_LOW);
     float tempMax = getGeneValue(genome, UniversalGenes::TEMP_TOLERANCE_HIGH);
@@ -382,8 +382,8 @@ void test_desert_fennec_struggles_in_cold() {
     auto registry = createRegistry();
     BiomeVariantFactory factory(registry);
     
-    Creature fennec = factory.createDesertFennec(0, 0);
-    const Genome& genome = fennec.getGenome();
+    auto fennec = factory.createDesertFennec(0, 0);
+    const Genome& genome = fennec->getGenome();
     
     float tempMin = getGeneValue(genome, UniversalGenes::TEMP_TOLERANCE_LOW);
     float tempMax = getGeneValue(genome, UniversalGenes::TEMP_TOLERANCE_HIGH);
@@ -414,8 +414,8 @@ void test_woolly_mammoth_thermal_adaptations() {
     auto registry = createRegistry();
     BiomeVariantFactory factory(registry);
     
-    Creature mammoth = factory.createWoollyMammoth(0, 0);
-    const Genome& genome = mammoth.getGenome();
+    auto mammoth = factory.createWoollyMammoth(0, 0);
+    const Genome& genome = mammoth->getGenome();
     
     std::cout << "    Checking Woolly Mammoth adaptations (Tundra Herbivore)..." << std::endl;
     
@@ -445,8 +445,8 @@ void test_desert_camel_thermal_adaptations() {
     auto registry = createRegistry();
     BiomeVariantFactory factory(registry);
     
-    Creature camel = factory.createDesertCamel(0, 0);
-    const Genome& genome = camel.getGenome();
+    auto camel = factory.createDesertCamel(0, 0);
+    const Genome& genome = camel->getGenome();
     
     std::cout << "    Checking Desert Camel adaptations (Desert Herbivore)..." << std::endl;
     
@@ -476,8 +476,8 @@ void test_jungle_elephant_thermal_adaptations() {
     auto registry = createRegistry();
     BiomeVariantFactory factory(registry);
     
-    Creature elephant = factory.createJungleElephant(0, 0);
-    const Genome& genome = elephant.getGenome();
+    auto elephant = factory.createJungleElephant(0, 0);
+    const Genome& genome = elephant->getGenome();
     
     std::cout << "    Checking Jungle Elephant adaptations (Tropical Herbivore)..." << std::endl;
     
@@ -507,8 +507,8 @@ void test_tropical_jaguar_thermal_adaptations() {
     auto registry = createRegistry();
     BiomeVariantFactory factory(registry);
     
-    Creature jaguar = factory.createTropicalJaguar(0, 0);
-    const Genome& genome = jaguar.getGenome();
+    auto jaguar = factory.createTropicalJaguar(0, 0);
+    const Genome& genome = jaguar->getGenome();
     
     std::cout << "    Checking Tropical Jaguar adaptations (Tropical Carnivore)..." << std::endl;
     
@@ -543,19 +543,19 @@ void test_tundra_food_chain_exists() {
     std::cout << "      ✓ Tundra Moss (Plant)" << std::endl;
     
     // Primary consumer (herbivore)
-    Creature mammoth = factory.createWoollyMammoth(0, 0);
-    TEST_ASSERT(mammoth.getGenome().hasGene(UniversalGenes::TEMP_TOLERANCE_LOW));
+    auto mammoth = factory.createWoollyMammoth(0, 0);
+    TEST_ASSERT(mammoth->getGenome().hasGene(UniversalGenes::TEMP_TOLERANCE_LOW));
     std::cout << "      ✓ Woolly Mammoth (Herbivore)" << std::endl;
     
     // Secondary consumer (carnivore)
-    Creature wolf = factory.createArcticWolf(0, 0);
-    TEST_ASSERT(wolf.getGenome().hasGene(UniversalGenes::TEMP_TOLERANCE_LOW));
+    auto wolf = factory.createArcticWolf(0, 0);
+    TEST_ASSERT(wolf->getGenome().hasGene(UniversalGenes::TEMP_TOLERANCE_LOW));
     std::cout << "      ✓ Arctic Wolf (Carnivore)" << std::endl;
     
     // Verify all share same biome temperature tolerance
     float mossMin = getGeneValue(moss.getGenome(), UniversalGenes::TEMP_TOLERANCE_LOW);
-    float mammothMin = getGeneValue(mammoth.getGenome(), UniversalGenes::TEMP_TOLERANCE_LOW);
-    float wolfMin = getGeneValue(wolf.getGenome(), UniversalGenes::TEMP_TOLERANCE_LOW);
+    float mammothMin = getGeneValue(mammoth->getGenome(), UniversalGenes::TEMP_TOLERANCE_LOW);
+    float wolfMin = getGeneValue(wolf->getGenome(), UniversalGenes::TEMP_TOLERANCE_LOW);
     
     // All should tolerate very cold temperatures (below -30°C)
     TEST_ASSERT_LT(mossMin, -30.0f);
@@ -577,19 +577,19 @@ void test_desert_food_chain_exists() {
     std::cout << "      ✓ Desert Cactus (Plant)" << std::endl;
     
     // Primary consumer (herbivore)
-    Creature camel = factory.createDesertCamel(0, 0);
-    TEST_ASSERT(camel.getGenome().hasGene(UniversalGenes::TEMP_TOLERANCE_HIGH));
+    auto camel = factory.createDesertCamel(0, 0);
+    TEST_ASSERT(camel->getGenome().hasGene(UniversalGenes::TEMP_TOLERANCE_HIGH));
     std::cout << "      ✓ Desert Camel (Herbivore)" << std::endl;
     
     // Secondary consumer (carnivore)
-    Creature fennec = factory.createDesertFennec(0, 0);
-    TEST_ASSERT(fennec.getGenome().hasGene(UniversalGenes::TEMP_TOLERANCE_HIGH));
+    auto fennec = factory.createDesertFennec(0, 0);
+    TEST_ASSERT(fennec->getGenome().hasGene(UniversalGenes::TEMP_TOLERANCE_HIGH));
     std::cout << "      ✓ Desert Fennec (Carnivore)" << std::endl;
     
     // Verify all share same biome temperature tolerance
     float cactusMax = getGeneValue(cactus.getGenome(), UniversalGenes::TEMP_TOLERANCE_HIGH);
-    float camelMax = getGeneValue(camel.getGenome(), UniversalGenes::TEMP_TOLERANCE_HIGH);
-    float fennecMax = getGeneValue(fennec.getGenome(), UniversalGenes::TEMP_TOLERANCE_HIGH);
+    float camelMax = getGeneValue(camel->getGenome(), UniversalGenes::TEMP_TOLERANCE_HIGH);
+    float fennecMax = getGeneValue(fennec->getGenome(), UniversalGenes::TEMP_TOLERANCE_HIGH);
     
     // All should tolerate very high temperatures (above 45°C)
     TEST_ASSERT_GT(cactusMax, 45.0f);
@@ -611,19 +611,19 @@ void test_tropical_food_chain_exists() {
     std::cout << "      ✓ Rainforest Vine (Plant)" << std::endl;
     
     // Primary consumer (herbivore)
-    Creature elephant = factory.createJungleElephant(0, 0);
-    TEST_ASSERT(elephant.getGenome().hasGene(UniversalGenes::TEMP_TOLERANCE_LOW));
+    auto elephant = factory.createJungleElephant(0, 0);
+    TEST_ASSERT(elephant->getGenome().hasGene(UniversalGenes::TEMP_TOLERANCE_LOW));
     std::cout << "      ✓ Jungle Elephant (Herbivore)" << std::endl;
     
     // Secondary consumer (carnivore)
-    Creature jaguar = factory.createTropicalJaguar(0, 0);
-    TEST_ASSERT(jaguar.getGenome().hasGene(UniversalGenes::TEMP_TOLERANCE_LOW));
+    auto jaguar = factory.createTropicalJaguar(0, 0);
+    TEST_ASSERT(jaguar->getGenome().hasGene(UniversalGenes::TEMP_TOLERANCE_LOW));
     std::cout << "      ✓ Tropical Jaguar (Carnivore)" << std::endl;
     
     // Verify all share same biome temperature tolerance
     float vineMin = getGeneValue(vine.getGenome(), UniversalGenes::TEMP_TOLERANCE_LOW);
-    float elephantMin = getGeneValue(elephant.getGenome(), UniversalGenes::TEMP_TOLERANCE_LOW);
-    float jaguarMin = getGeneValue(jaguar.getGenome(), UniversalGenes::TEMP_TOLERANCE_LOW);
+    float elephantMin = getGeneValue(elephant->getGenome(), UniversalGenes::TEMP_TOLERANCE_LOW);
+    float jaguarMin = getGeneValue(jaguar->getGenome(), UniversalGenes::TEMP_TOLERANCE_LOW);
     
     // All should have warm minimum tolerance (above 5°C)
     TEST_ASSERT_GT(vineMin, 5.0f);
@@ -748,8 +748,8 @@ void test_apply_biome_adaptation_tundra() {
     creatureFactory.registerDefaultTemplates();
     
     // Create a creature and get a mutable copy of its genome
-    Creature creature = creatureFactory.createApexPredator(0, 0);
-    Genome& genome = creature.getGenomeMutable();
+    auto creature = creatureFactory.createApexPredator(0, 0);
+    Genome& genome = creature->getGenomeMutable();
     
     std::cout << "    Applying tundra adaptation..." << std::endl;
     
@@ -769,8 +769,8 @@ void test_apply_biome_adaptation_desert() {
     creatureFactory.registerDefaultTemplates();
     
     // Create a creature and get a mutable copy of its genome
-    Creature creature = creatureFactory.createApexPredator(0, 0);
-    Genome& genome = creature.getGenomeMutable();
+    auto creature = creatureFactory.createApexPredator(0, 0);
+    Genome& genome = creature->getGenomeMutable();
     
     std::cout << "    Applying desert adaptation..." << std::endl;
     
@@ -792,33 +792,33 @@ void test_arctic_vs_desert_in_cold() {
     auto registry = createRegistry();
     BiomeVariantFactory factory(registry);
     
-    Creature arctic = factory.createArcticWolf(0, 0);
-    Creature desert = factory.createDesertFennec(0, 0);
+    auto arctic = factory.createArcticWolf(0, 0);
+    auto desert = factory.createDesertFennec(0, 0);
     
     // Build adaptations
     ThermalAdaptations arcticAdapt;
-    arcticAdapt.furDensity = getGeneValue(arctic.getGenome(), UniversalGenes::FUR_DENSITY);
-    arcticAdapt.fatLayerThickness = getGeneValue(arctic.getGenome(), UniversalGenes::FAT_LAYER_THICKNESS);
-    arcticAdapt.metabolismRate = getGeneValue(arctic.getGenome(), UniversalGenes::METABOLISM_RATE);
+    arcticAdapt.furDensity = getGeneValue(arctic->getGenome(), UniversalGenes::FUR_DENSITY);
+    arcticAdapt.fatLayerThickness = getGeneValue(arctic->getGenome(), UniversalGenes::FAT_LAYER_THICKNESS);
+    arcticAdapt.metabolismRate = getGeneValue(arctic->getGenome(), UniversalGenes::METABOLISM_RATE);
     
     ThermalAdaptations desertAdapt;
-    desertAdapt.furDensity = getGeneValue(desert.getGenome(), UniversalGenes::FUR_DENSITY);
-    desertAdapt.fatLayerThickness = getGeneValue(desert.getGenome(), UniversalGenes::FAT_LAYER_THICKNESS);
-    desertAdapt.metabolismRate = getGeneValue(desert.getGenome(), UniversalGenes::METABOLISM_RATE);
+    desertAdapt.furDensity = getGeneValue(desert->getGenome(), UniversalGenes::FUR_DENSITY);
+    desertAdapt.fatLayerThickness = getGeneValue(desert->getGenome(), UniversalGenes::FAT_LAYER_THICKNESS);
+    desertAdapt.metabolismRate = getGeneValue(desert->getGenome(), UniversalGenes::METABOLISM_RATE);
     
     // Test at -15°C
     float coldTemp = -15.0f;
     
     auto arcticStress = EnvironmentalStressCalculator::calculateTemperatureStress(
         coldTemp,
-        getGeneValue(arctic.getGenome(), UniversalGenes::TEMP_TOLERANCE_LOW),
-        getGeneValue(arctic.getGenome(), UniversalGenes::TEMP_TOLERANCE_HIGH),
+        getGeneValue(arctic->getGenome(), UniversalGenes::TEMP_TOLERANCE_LOW),
+        getGeneValue(arctic->getGenome(), UniversalGenes::TEMP_TOLERANCE_HIGH),
         arcticAdapt);
     
     auto desertStress = EnvironmentalStressCalculator::calculateTemperatureStress(
         coldTemp,
-        getGeneValue(desert.getGenome(), UniversalGenes::TEMP_TOLERANCE_LOW),
-        getGeneValue(desert.getGenome(), UniversalGenes::TEMP_TOLERANCE_HIGH),
+        getGeneValue(desert->getGenome(), UniversalGenes::TEMP_TOLERANCE_LOW),
+        getGeneValue(desert->getGenome(), UniversalGenes::TEMP_TOLERANCE_HIGH),
         desertAdapt);
     
     std::cout << "    At -15°C:" << std::endl;
@@ -833,18 +833,18 @@ void test_arctic_vs_desert_in_heat() {
     auto registry = createRegistry();
     BiomeVariantFactory factory(registry);
     
-    Creature arctic = factory.createArcticWolf(0, 0);
-    Creature desert = factory.createDesertFennec(0, 0);
+    auto arctic = factory.createArcticWolf(0, 0);
+    auto desert = factory.createDesertFennec(0, 0);
     
     ThermalAdaptations arcticAdapt;
-    arcticAdapt.furDensity = getGeneValue(arctic.getGenome(), UniversalGenes::FUR_DENSITY);
-    arcticAdapt.fatLayerThickness = getGeneValue(arctic.getGenome(), UniversalGenes::FAT_LAYER_THICKNESS);
-    arcticAdapt.metabolismRate = getGeneValue(arctic.getGenome(), UniversalGenes::METABOLISM_RATE);
+    arcticAdapt.furDensity = getGeneValue(arctic->getGenome(), UniversalGenes::FUR_DENSITY);
+    arcticAdapt.fatLayerThickness = getGeneValue(arctic->getGenome(), UniversalGenes::FAT_LAYER_THICKNESS);
+    arcticAdapt.metabolismRate = getGeneValue(arctic->getGenome(), UniversalGenes::METABOLISM_RATE);
     
     ThermalAdaptations desertAdapt;
-    desertAdapt.furDensity = getGeneValue(desert.getGenome(), UniversalGenes::FUR_DENSITY);
-    desertAdapt.fatLayerThickness = getGeneValue(desert.getGenome(), UniversalGenes::FAT_LAYER_THICKNESS);
-    desertAdapt.metabolismRate = getGeneValue(desert.getGenome(), UniversalGenes::METABOLISM_RATE);
+    desertAdapt.furDensity = getGeneValue(desert->getGenome(), UniversalGenes::FUR_DENSITY);
+    desertAdapt.fatLayerThickness = getGeneValue(desert->getGenome(), UniversalGenes::FAT_LAYER_THICKNESS);
+    desertAdapt.metabolismRate = getGeneValue(desert->getGenome(), UniversalGenes::METABOLISM_RATE);
     desertAdapt.thermoregulation = 0.7f;
     
     // Test at 35°C
@@ -852,14 +852,14 @@ void test_arctic_vs_desert_in_heat() {
     
     auto arcticStress = EnvironmentalStressCalculator::calculateTemperatureStress(
         hotTemp,
-        getGeneValue(arctic.getGenome(), UniversalGenes::TEMP_TOLERANCE_LOW),
-        getGeneValue(arctic.getGenome(), UniversalGenes::TEMP_TOLERANCE_HIGH),
+        getGeneValue(arctic->getGenome(), UniversalGenes::TEMP_TOLERANCE_LOW),
+        getGeneValue(arctic->getGenome(), UniversalGenes::TEMP_TOLERANCE_HIGH),
         arcticAdapt);
     
     auto desertStress = EnvironmentalStressCalculator::calculateTemperatureStress(
         hotTemp,
-        getGeneValue(desert.getGenome(), UniversalGenes::TEMP_TOLERANCE_LOW),
-        getGeneValue(desert.getGenome(), UniversalGenes::TEMP_TOLERANCE_HIGH),
+        getGeneValue(desert->getGenome(), UniversalGenes::TEMP_TOLERANCE_LOW),
+        getGeneValue(desert->getGenome(), UniversalGenes::TEMP_TOLERANCE_HIGH),
         desertAdapt);
     
     std::cout << "    At 35°C:" << std::endl;

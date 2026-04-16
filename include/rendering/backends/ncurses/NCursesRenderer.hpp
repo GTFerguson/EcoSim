@@ -19,6 +19,7 @@
 // Forward declarations
 class World;
 class Creature;
+namespace EcoSim { namespace Genetics { class Organism; } }
 class Tile;
 class Calendar;
 
@@ -111,7 +112,7 @@ public:
      * @param creatures Vector of creatures
      * @param viewport The viewport configuration
      */
-    void renderCreatures(const std::vector<Creature>& creatures, 
+    void renderCreatures(const std::vector<std::unique_ptr<EcoSim::Genetics::Organism>>& creatures,
                         const Viewport& viewport) override;
     
     /**
@@ -121,7 +122,7 @@ public:
      * @param screenX Screen X coordinate
      * @param screenY Screen Y coordinate
      */
-    void renderCreature(const Creature& creature, 
+    void renderCreature(const EcoSim::Genetics::Organism& creature,
                        int screenX, int screenY) override;
 
     //==========================================================================
@@ -249,7 +250,7 @@ private:
     
     // Helper methods
     void printCentered(const std::string& str, int y);
-    int getColorPairForProfile(const Creature& creature) const;
+    int getColorPairForProfile(const EcoSim::Genetics::Organism& creature) const;
 };
 
 #endif // ECOSIM_NCURSES_RENDERER_HPP

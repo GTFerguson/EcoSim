@@ -20,15 +20,15 @@ using std::ostringstream;
 using std::endl;
 using std::sqrt;
 
-GenomeStats::GenomeStats (const vector<Creature> &c, const unsigned int &t) : time(t) {
+GenomeStats::GenomeStats (const vector<EcoSim::Genetics::OrganismPtr> &c, const unsigned int &t) : time(t) {
   SGenome sumValues;
 
   size_t cSize = c.size ();
-  
+
   if (cSize == 0) return;
 
   for (size_t i = 0; i < cSize; i++) {
-    const Creature& creature = c.at(i);
+    const EcoSim::Genetics::Organism& creature = *c.at(i);
 
     checkMaxValues  (creature);
     checkMinValues  (creature);
@@ -56,7 +56,7 @@ void GenomeStats::checkMinValue (float &current, const float &value) {
   if (value < current) current = value;
 }
 
-void GenomeStats::checkMaxValues (const Creature &c) {
+void GenomeStats::checkMaxValues (const EcoSim::Genetics::Organism &c) {
   checkMaxValue (lifespan.max, c.getLifespan());
   checkMaxValue (sight.max,    c.getSightRange());
   checkMaxValue (flee.max,     c.getFlee());
@@ -68,7 +68,7 @@ void GenomeStats::checkMaxValues (const Creature &c) {
   checkMaxValue (comfDec.max,  c.getComfDec());
 }
 
-void GenomeStats::checkMinValues (const Creature &c) {
+void GenomeStats::checkMinValues (const EcoSim::Genetics::Organism &c) {
   checkMinValue (lifespan.min, c.getLifespan());
   checkMinValue (sight.min,    c.getSightRange());
   checkMinValue (flee.min,     c.getFlee());
@@ -80,7 +80,7 @@ void GenomeStats::checkMinValues (const Creature &c) {
   checkMinValue (comfDec.min,  c.getComfDec());
 }
 
-void GenomeStats::accumulateSum (SGenome &sums, const Creature &c) {
+void GenomeStats::accumulateSum (SGenome &sums, const EcoSim::Genetics::Organism &c) {
   sums.lifespan += c.getLifespan();
   sums.sight    += c.getSightRange();
   sums.flee     += c.getFlee();
@@ -104,10 +104,10 @@ void GenomeStats::setMeans (const SGenome &sums, const size_t &size) {
   comfDec.mean   = sums.comfDec  / size;
 }
 
-void GenomeStats::setVariances (const std::vector<Creature> &c,
+void GenomeStats::setVariances (const std::vector<EcoSim::Genetics::OrganismPtr> &c,
                                 const SGenome &sums, const size_t &size) {
   for (size_t i = 0; i < c.size(); i++) {
-    const Creature& creature = c.at(i);
+    const EcoSim::Genetics::Organism& creature = *c.at(i);
 
     // Variance = sum of squared differences from mean
     float lifespanDiff = creature.getLifespan() - lifespan.mean;

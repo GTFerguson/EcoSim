@@ -13,6 +13,7 @@
 #define ECOSIM_IMGUI_OVERLAY_HPP
 
 #include <SDL.h>
+#include <memory>
 #include <vector>
 #include <string>
 #include <functional>
@@ -26,6 +27,7 @@ struct SaveFileInfo; // Defined in IRenderer.hpp
 
 namespace EcoSim {
 namespace Genetics {
+    class Organism;
     class Plant;
     enum class DietType;
 }
@@ -108,7 +110,7 @@ public:
      */
     void render(const HUDData& hudData,
                 const World* world = nullptr,
-                const std::vector<Creature>* creatures = nullptr);
+                const std::vector<std::unique_ptr<EcoSim::Genetics::Organism>>* creatures = nullptr);
     
     /**
      * @brief End ImGui frame and render draw data
@@ -519,7 +521,7 @@ private:
      * @param world World pointer (can be null)
      * @param creatures Creatures pointer for population stats
      */
-    void renderWorldInfoWindow(const World* world, const std::vector<Creature>* creatures = nullptr);
+    void renderWorldInfoWindow(const World* world, const std::vector<std::unique_ptr<EcoSim::Genetics::Organism>>* creatures = nullptr);
     
     /**
      * @brief Render the performance metrics window
@@ -530,13 +532,13 @@ private:
      * @brief Render the creature list window
      * @param creatures Pointer to creatures vector
      */
-    void renderCreatureListWindow(const std::vector<Creature>* creatures);
+    void renderCreatureListWindow(const std::vector<std::unique_ptr<EcoSim::Genetics::Organism>>* creatures);
     
     /**
      * @brief Render the creature inspector window
      * @param creature Pointer to the selected creature
      */
-    void renderCreatureInspectorWindow(const Creature* creature);
+    void renderCreatureInspectorWindow(const EcoSim::Genetics::Organism* creature);
     
     /**
      * @brief Render the controls panel

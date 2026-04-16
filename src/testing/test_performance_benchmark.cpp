@@ -140,7 +140,7 @@ void addPlants(World& w) {
 /**
  * Spawn a specified number of creatures
  */
-void spawnCreatures(World& w, std::vector<Creature>& creatures, unsigned count) {
+void spawnCreatures(World& w, std::vector<EcoSim::Genetics::OrganismPtr>& creatures, unsigned count) {
     std::uniform_int_distribution<int> colDis(0, MAP_COLS - 1);
     std::uniform_int_distribution<int> rowDis(0, MAP_ROWS - 1);
     const unsigned MAX_ATTEMPTS = 10000;
@@ -164,8 +164,7 @@ void spawnCreatures(World& w, std::vector<Creature>& creatures, unsigned count) 
         } while (!w.getGrid().at(x).at(y).isPassable());
         
         std::string templateName = templates[i % templates.size()];
-        Creature newC = factory.createFromTemplate(templateName, x, y);
-        creatures.push_back(std::move(newC));
+        creatures.push_back(factory.createFromTemplate(templateName, x, y));
     }
 }
 
@@ -176,22 +175,20 @@ void spawnCreatures(World& w, std::vector<Creature>& creatures, unsigned count) 
 /**
  * Execute one simulation tick (simplified for benchmarking)
  */
-void executeTick(World& w, std::vector<Creature>& creatures, GeneralStats& gs) {
+void executeTick(World& w, std::vector<EcoSim::Genetics::OrganismPtr>& creatures, GeneralStats& gs) {
     // Update world objects
     w.updateAllObjects();
     
     // Process creatures in reverse order (for safe removal)
     for (int i = static_cast<int>(creatures.size()) - 1; i >= 0; i--) {
-        Creature* activeC = &creatures[i];
-        
-        // Death check
+        auto* activeC = creatures[i].get();
+
         short dc = activeC->deathCheck();
         if (dc != 0) {
             creatures.erase(creatures.begin() + i);
             continue;
         }
-        
-        // Update phenotype context and execute behavior via BehaviorController
+
         auto localEnv = w.environment().getEnvironmentStateAt(
             static_cast<int>(activeC->getWorldX()),
             static_cast<int>(activeC->getWorldY()));
@@ -240,7 +237,7 @@ BenchmarkResult runBenchmark(unsigned creatureCount, int warmupTicks, int benchm
     result.plantCount = 0;
     
     // Spawn creatures
-    std::vector<Creature> creatures;
+    std::vector<EcoSim::Genetics::OrganismPtr> creatures;
     spawnCreatures(w, creatures, creatureCount);
     
     // Create stats

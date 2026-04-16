@@ -49,6 +49,8 @@
 #include <chrono>
 
 using namespace std;
+using EcoSim::Genetics::Organism;
+using EcoSim::Genetics::OrganismPtr;
 
 //================================================================================
 //  General simulation constants
@@ -194,7 +196,7 @@ double randSeed () {
  *  @param viewport   The viewport configuration.
  */
 void renderWorldAndCreatures(const World& world,
-                             const vector<Creature>& creatures,
+                             const vector<OrganismPtr>& creatures,
                              const Viewport& viewport) {
   IRenderer& renderer = RenderSystem::getInstance().getRenderer();
   
@@ -228,7 +230,7 @@ void renderWorldDetailsOverlay(const World& world) {
  */
 void renderHUDDisplay(const Calendar& calendar,
                       const GeneralStats& gs,
-                      const vector<Creature>& creatures,
+                      const vector<OrganismPtr>& creatures,
                       const Viewport& viewport,
                       bool paused) {
   IRenderer& renderer = RenderSystem::getInstance().getRenderer();
@@ -267,9 +269,9 @@ void renderHUDDisplay(const Calendar& calendar,
  *	@param cIndex	  Current creature acting.
  *	@return		      True if creature died and should be removed.
  */
-bool takeTurn (World &w, GeneralStats &gs, vector<Creature> &c,
+bool takeTurn (World &w, GeneralStats &gs, vector<OrganismPtr> &c,
                const unsigned int &cIndex) {
-  Creature *activeC = &c.at(cIndex);
+  Organism *activeC = c.at(cIndex).get();
 
   short dc = activeC->deathCheck();
   if (dc != 0) {
@@ -336,7 +338,7 @@ bool takeTurn (World &w, GeneralStats &gs, vector<Creature> &c,
  *  @param w The world object.
  *  @param c A vector of creature objects.
  */
-void advanceSimulation (World &w, vector<Creature> &c, GeneralStats &gs) {
+void advanceSimulation (World &w, vector<OrganismPtr> &c, GeneralStats &gs) {
   //  Update environment tick cache before processing any organisms
   //  This pre-computes expensive calculations like light level (sin-based day/night cycle)
   unsigned int currentTick = w.getCurrentTick();
@@ -360,26 +362,19 @@ void advanceSimulation (World &w, vector<Creature> &c, GeneralStats &gs) {
   // (Phase 2: Gradient Navigation)
   // (currentTick already retrieved above for updateTickCache)
   for (auto& creature : c) {
-    if (creature.getMotivation() == Motivation::Amorous) {
-      creature.depositBreedingScent(w.getScentLayer(), currentTick);
+    if (creature->getMotivation() == Motivation::Amorous) {
+      creature->depositBreedingScent(w.getScentLayer(), currentTick);
     }
   }
-  
-  // DEFERRED REMOVAL: Process all creature turns first, then remove dead ones
-  // This prevents spatial index pointer invalidation during the tick.
-  // When creatures die, they're marked dead via die() but not removed until
-  // the end of the tick, keeping all vector pointers stable.
+
   for (size_t i = 0; i < c.size(); ++i) {
-    // Skip already-dead creatures (could have been killed by another creature this tick)
-    if (!c[i].isAlive()) continue;
+    if (!c[i]->isAlive()) continue;
     takeTurn(w, gs, c, static_cast<unsigned int>(i));
   }
-  
-  // Remove all dead creatures at the end of the tick (stable erase)
-  // Use erase-remove idiom for efficient O(n) removal
+
   c.erase(
     std::remove_if(c.begin(), c.end(),
-      [](const Creature& creature) { return !creature.isAlive(); }),
+      [](const OrganismPtr& creature) { return !creature->isAlive(); }),
     c.end()
   );
 
@@ -412,7 +407,7 @@ void advanceSimulation (World &w, vector<Creature> &c, GeneralStats &gs) {
  * @param c       A vector containing all of the creatures.
  * @param amount  The amount of creatures to be added.
  */
-void populateWorld (World &w, vector<Creature> &c, unsigned amount) {
+void populateWorld (World &w, vector<OrganismPtr> &c, unsigned amount) {
   // Create creature factory with gene registry
   auto registry = std::make_shared<EcoSim::Genetics::GeneRegistry>();
   EcoSim::Genetics::CreatureFactory factory(registry);
@@ -422,7 +417,7 @@ void populateWorld (World &w, vector<Creature> &c, unsigned amount) {
   std::cout << "  Distribution: 60% Herbivores, 25% Predators, 15% Opportunists" << std::endl;
   
   // Use the balanced ecosystem mix for combat-focused archetypes
-  std::vector<Creature> newCreatures = factory.createEcosystemMix(amount, MAP_COLS, MAP_ROWS);
+  std::vector<OrganismPtr> newCreatures = factory.createEcosystemMix(amount, MAP_COLS, MAP_ROWS);
   
   // Verify positions are passable, relocate if needed
   uniform_int_distribution<int> colDis(0, MAP_COLS-1);
@@ -431,10 +426,9 @@ void populateWorld (World &w, vector<Creature> &c, unsigned amount) {
   RandomGenerator& rng = RandomGenerator::instance();
   
   for (auto& creature : newCreatures) {
-    int x = creature.getX();
-    int y = creature.getY();
-    
-    // Check if position is passable, if not find a new one
+    int x = creature->getX();
+    int y = creature->getY();
+
     if (!w.getGrid().at(x).at(y).isPassable()) {
       unsigned attempts = 0;
       do {
@@ -445,11 +439,11 @@ void populateWorld (World &w, vector<Creature> &c, unsigned amount) {
           continue;
         }
       } while (!w.getGrid().at(x).at(y).isPassable());
-      
-      creature.setXY(x, y);
-      creature.setWorldPosition(static_cast<float>(x) + 0.5f, static_cast<float>(y) + 0.5f);
+
+      creature->setXY(x, y);
+      creature->setWorldPosition(static_cast<float>(x) + 0.5f, static_cast<float>(y) + 0.5f);
     }
-    
+
     c.push_back(std::move(creature));
   }
   
@@ -470,7 +464,7 @@ void populateWorld (World &w, vector<Creature> &c, unsigned amount) {
  * @param c       Vector of creatures to populate
  * @param amount  Target total number of creatures
  */
-void populateWorldByBiome(World& w, vector<Creature>& c, unsigned amount) {
+void populateWorldByBiome(World& w, vector<OrganismPtr>& c, unsigned amount) {
   using namespace EcoSim;
   using namespace EcoSim::Genetics;
   
@@ -607,32 +601,31 @@ void populateWorldByBiome(World& w, vector<Creature>& c, unsigned amount) {
   auto spawnInBiome = [&](
       std::vector<std::pair<int, int>>& positions,
       unsigned count,
-      std::function<Creature(int, int)> createHerbivore,
-      std::function<Creature(int, int)> createCarnivore) {
-    
+      std::function<OrganismPtr(int, int)> createHerbivore,
+      std::function<OrganismPtr(int, int)> createCarnivore) {
+
     if (positions.empty() || count == 0) return;
-    
+
     std::uniform_int_distribution<size_t> posDist(0, positions.size() - 1);
-    
-    // 70% herbivores, 30% carnivores for balance
+
     unsigned herbivoreCount = static_cast<unsigned>(count * 0.70f);
     unsigned carnivoreCount = count - herbivoreCount;
-    
+
     for (unsigned i = 0; i < herbivoreCount && !positions.empty(); ++i) {
       size_t idx = rng.generate(posDist);
       auto [x, y] = positions[idx];
-      Creature creature = createHerbivore(x, y);
-      creature.setXY(x, y);
-      creature.setWorldPosition(static_cast<float>(x) + 0.5f, static_cast<float>(y) + 0.5f);
+      OrganismPtr creature = createHerbivore(x, y);
+      creature->setXY(x, y);
+      creature->setWorldPosition(static_cast<float>(x) + 0.5f, static_cast<float>(y) + 0.5f);
       c.push_back(std::move(creature));
     }
-    
+
     for (unsigned i = 0; i < carnivoreCount && !positions.empty(); ++i) {
       size_t idx = rng.generate(posDist);
       auto [x, y] = positions[idx];
-      Creature creature = createCarnivore(x, y);
-      creature.setXY(x, y);
-      creature.setWorldPosition(static_cast<float>(x) + 0.5f, static_cast<float>(y) + 0.5f);
+      OrganismPtr creature = createCarnivore(x, y);
+      creature->setXY(x, y);
+      creature->setWorldPosition(static_cast<float>(x) + 0.5f, static_cast<float>(y) + 0.5f);
       c.push_back(std::move(creature));
     }
   };
@@ -657,14 +650,14 @@ void populateWorldByBiome(World& w, vector<Creature>& c, unsigned amount) {
     std::uniform_int_distribution<size_t> posDist(0, temperatePositions.size() - 1);
     
     // Use ecosystem mix for temperate zones - diverse population
-    std::vector<Creature> tempCreatures = standardFactory.createEcosystemMix(
+    std::vector<OrganismPtr> tempCreatures = standardFactory.createEcosystemMix(
         temperateCount, MAP_COLS, MAP_ROWS);
     
     for (auto& creature : tempCreatures) {
       size_t idx = rng.generate(posDist);
       auto [x, y] = temperatePositions[idx];
-      creature.setXY(x, y);
-      creature.setWorldPosition(static_cast<float>(x) + 0.5f, static_cast<float>(y) + 0.5f);
+      creature->setXY(x, y);
+      creature->setWorldPosition(static_cast<float>(x) + 0.5f, static_cast<float>(y) + 0.5f);
       c.push_back(std::move(creature));
     }
   }
@@ -690,7 +683,7 @@ void populateWorldByBiome(World& w, vector<Creature>& c, unsigned amount) {
  *	@param mapWidth		Width of the world map.
  */
 void takeInput(World& w,
-               vector<Creature>& c,
+               vector<OrganismPtr>& c,
                Calendar& calendar,
                Statistics& stats,
                FileHandling& file,
@@ -1046,7 +1039,7 @@ World initializeWorld () {
  *  Runs the world editor loop for creating/editing a new world.
  *  Uses the RenderSystem interface.
  */
-void runWorldEditor(World& w, vector<Creature>& creatures,
+void runWorldEditor(World& w, vector<OrganismPtr>& creatures,
                     int& xOrigin, int& yOrigin) {
   IRenderer& renderer = RenderSystem::getInstance().getRenderer();
   
@@ -1125,7 +1118,7 @@ void addGeneticsPlants(World& w) {
  *  Handles the New World menu option.
  *  Uses the RenderSystem interface.
  */
-void handleNewWorld(World& w, vector<Creature>& creatures,
+void handleNewWorld(World& w, vector<OrganismPtr>& creatures,
                     FileHandling& file, int& xOrigin, int& yOrigin) {
   IRenderer& renderer = RenderSystem::getInstance().getRenderer();
   
@@ -1212,7 +1205,7 @@ void handleNewWorld(World& w, vector<Creature>& creatures,
  *  Uses the RenderSystem interface.
  *  @return True if load was successful, false otherwise.
  */
-bool handleLoadWorld(World& w, vector<Creature>& creatures,
+bool handleLoadWorld(World& w, vector<OrganismPtr>& creatures,
                      Calendar& calendar, Statistics& stats,
                      FileHandling& file, int& xOrigin, int& yOrigin) {
   IRenderer& renderer = RenderSystem::getInstance().getRenderer();
@@ -1242,7 +1235,7 @@ bool handleLoadWorld(World& w, vector<Creature>& creatures,
  *  Processes statistics at the end of each simulation tick.
  */
 void processStatistics (Statistics &stats, Calendar &calendar,
-                        FileHandling &file, vector<Creature> &creatures,
+                        FileHandling &file, vector<OrganismPtr> &creatures,
                         const GeneralStats &gs) {
   stats.addRecord (gs);
   
@@ -1273,7 +1266,7 @@ void processStatistics (Statistics &stats, Calendar &calendar,
  *
  *  @see include/timing.hpp for timing utilities and constants
  */
-void runGameLoop(World& w, vector<Creature>& creatures,
+void runGameLoop(World& w, vector<OrganismPtr>& creatures,
                  Calendar& calendar, Statistics& stats, FileHandling& file,
                  int& xOrigin, int& yOrigin, Settings& settings) {
   IRenderer& renderer = RenderSystem::getInstance().getRenderer();
@@ -1427,11 +1420,11 @@ void runGameLoop(World& w, vector<Creature>& creatures,
         int maxId = 0;
         int maxCreatureId = 0;
         for (const auto& creature : creatures) {
-          if (creature.getId() > maxId) {
-            maxId = creature.getId();
+          if (creature->getId() > maxId) {
+            maxId = creature->getId();
           }
-          if (creature.getCreatureId() > maxCreatureId) {
-            maxCreatureId = creature.getCreatureId();
+          if (creature->getSequentialId() > maxCreatureId) {
+            maxCreatureId = creature->getSequentialId();
           }
         }
         Creature::resetIdCounter(maxId + 1);
@@ -1601,7 +1594,7 @@ int main() {
   
   World w = initializeWorld();
 
-  std::vector<Creature> creatures;
+  std::vector<OrganismPtr> creatures;
   Calendar calendar;
   Statistics stats;
   FileHandling file(SAVE_FILES.at(1));
@@ -1713,15 +1706,14 @@ int main() {
     if (success) {
       std::cout << "[Load] Loaded game from '" << filename << ".json'" << std::endl;
       
-      // Reset creature ID counters to avoid ID conflicts with new creatures
       int maxId = 0;
       int maxCreatureId = 0;
       for (const auto& creature : creatures) {
-        if (creature.getId() > maxId) {
-          maxId = creature.getId();
+        if (creature->getId() > maxId) {
+          maxId = creature->getId();
         }
-        if (creature.getCreatureId() > maxCreatureId) {
-          maxCreatureId = creature.getCreatureId();
+        if (creature->getSequentialId() > maxCreatureId) {
+          maxCreatureId = creature->getSequentialId();
         }
       }
       Creature::resetIdCounter(maxId + 1);

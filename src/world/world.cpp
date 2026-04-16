@@ -119,7 +119,7 @@ const EcoSim::SpatialIndex* World::getCreatureIndex() const {
     return _creatureIndex.get();
 }
 
-void World::rebuildCreatureIndex(std::vector<Creature>& creatures) {
+void World::rebuildCreatureIndex(std::vector<std::unique_ptr<EcoSim::Genetics::Organism>>& creatures) {
     if (!_creatureIndex) {
         initializeCreatureIndex();
     }

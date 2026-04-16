@@ -59,7 +59,7 @@ class FileHandling {
     //============================================================================
     std::vector<std::string> parseCsvLine (const std::string &line);
     bool loadWorld     (World &w, Calendar &calendar);
-    bool loadCreatures (std::vector<Creature> &c);
+    bool loadCreatures (std::vector<EcoSim::Genetics::OrganismPtr> &c);
     bool loadStats     (Statistics &stats);
 
   public:
@@ -112,14 +112,14 @@ class FileHandling {
     bool saveStatsHeader ();
     bool appendStats (const std::string &str);
     bool saveGenomes (const std::string &filename,
-                      const std::vector<Creature> &creatures);
+                      const std::vector<EcoSim::Genetics::OrganismPtr> &creatures);
     
     //============================================================================
     //  Saving - Legacy CSV (deprecated)
     //============================================================================
     [[deprecated("Use saveGameJson() instead")]]
     bool saveState   (const World &w,
-                      const std::vector<Creature> &c,
+                      const std::vector<EcoSim::Genetics::OrganismPtr> &c,
                       const Calendar &calendar,
                       const Statistics &stats);
     
@@ -143,7 +143,7 @@ class FileHandling {
      */
     bool saveGameJson(
         const std::string& filepath,
-        const std::vector<Creature>& creatures,
+        const std::vector<EcoSim::Genetics::OrganismPtr>& creatures,
         const World& world,
         const Calendar& calendar,
         unsigned currentTick,
@@ -158,7 +158,7 @@ class FileHandling {
     Calendar   loadCalendar    (const std::vector<std::string> &str, unsigned &start);
     [[deprecated("Use loadGameJson() instead")]]
     bool       loadState       (World &w,
-                                std::vector<Creature> &c,
+                                std::vector<EcoSim::Genetics::OrganismPtr> &c,
                                 Calendar &calendar,
                                 Statistics &stats);
     
@@ -179,7 +179,7 @@ class FileHandling {
      */
     bool loadGameJson(
         const std::string& filepath,
-        std::vector<Creature>& creatures,
+        std::vector<EcoSim::Genetics::OrganismPtr>& creatures,
         World& world,
         Calendar& calendar,
         unsigned& currentTick,

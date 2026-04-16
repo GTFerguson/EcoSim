@@ -149,8 +149,7 @@ SDL_Color SDL2ColorMapper::profileToColor(BehaviorProfile profile) {
     }
 }
 
-SDL_Color SDL2ColorMapper::creatureProfileToColor(const Creature& creature) {
-    // Map creature's Motivation enum to color
+SDL_Color SDL2ColorMapper::creatureProfileToColor(const EcoSim::Genetics::Organism& creature) {
     return motivationToColor(creature.getMotivation());
 }
 

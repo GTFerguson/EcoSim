@@ -21,6 +21,7 @@
 // Forward declarations
 class World;
 class Creature;
+namespace EcoSim { namespace Genetics { class Organism; } }
 class Tile;
 class Calendar;
 class ImGuiOverlay;
@@ -115,7 +116,7 @@ public:
      * @param creatures Vector of creatures
      * @param viewport The viewport configuration
      */
-    void renderCreatures(const std::vector<Creature>& creatures, 
+    void renderCreatures(const std::vector<std::unique_ptr<EcoSim::Genetics::Organism>>& creatures,
                         const Viewport& viewport) override;
     
     /**
@@ -125,7 +126,7 @@ public:
      * @param screenX Screen X coordinate (pixels)
      * @param screenY Screen Y coordinate (pixels)
      */
-    void renderCreature(const Creature& creature, 
+    void renderCreature(const EcoSim::Genetics::Organism& creature,
                        int screenX, int screenY) override;
 
     //==========================================================================
@@ -462,7 +463,7 @@ public:
      * @param screenX Screen X coordinate (pixels)
      * @param screenY Screen Y coordinate (pixels)
      */
-    void renderSelectedCreature(const Creature& creature,
+    void renderSelectedCreature(const EcoSim::Genetics::Organism& creature,
                                int screenX, int screenY);
     
     /**
@@ -484,7 +485,7 @@ private:
     ImGuiOverlay* _imguiOverlay;
     
     // Current creatures reference for ImGui
-    const std::vector<Creature>* _currentCreatures;
+    const std::vector<std::unique_ptr<EcoSim::Genetics::Organism>>* _currentCreatures;
     
     // Current world reference for ImGui
     const World* _currentWorld;
@@ -512,7 +513,7 @@ private:
     // Color helper methods
     SDL_Color getTerrainColor(TerrainType terrain) const;
     SDL_Color getProfileColor(BehaviorProfile profile) const;
-    SDL_Color getProfileColor(const Creature& creature) const;
+    SDL_Color getProfileColor(const EcoSim::Genetics::Organism& creature) const;
     SDL_Color getEntityColor(EntityType entity) const;
 };
 

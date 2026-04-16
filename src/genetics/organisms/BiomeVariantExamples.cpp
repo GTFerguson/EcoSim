@@ -45,7 +45,7 @@ BiomeVariantFactory::BiomeVariantFactory(std::shared_ptr<GeneRegistry> registry,
 // Private Helpers
 // ============================================================================
 
-void BiomeVariantFactory::applyThermalOverrides(Creature& creature, float furDensity,
+void BiomeVariantFactory::applyThermalOverrides(Organism& creature, float furDensity,
                                                  float fatLayer, float metabolism,
                                                  float tempMin, float tempMax) {
     Genome& genome = creature.getGenomeMutable();
@@ -88,42 +88,34 @@ void BiomeVariantFactory::applyThermalOverrides(Plant& plant, float waterStorage
 // Tundra Variants
 // ============================================================================
 
-Creature BiomeVariantFactory::createArcticWolf(int x, int y) {
-    // Start with Pack Hunter archetype (coordinated group hunters)
-    Creature wolf = creatureFactory_->createPackHunter(x, y);
+OrganismPtr BiomeVariantFactory::createArcticWolf(int x, int y) {
+    OrganismPtr wolf = creatureFactory_->createPackHunter(x, y);
 
-    // Apply arctic thermal adaptations
-    // Very high insulation for -40°C survival
-    applyThermalOverrides(wolf,
-        0.90f,   // furDensity - thick double coat
-        0.85f,   // fatLayer - substantial reserves
-        1.6f,    // metabolism - elevated for heat generation
-        -35.0f,  // tempMin - arctic winter
-        15.0f    // tempMax - struggles in warmth
+    applyThermalOverrides(*wolf,
+        0.90f,
+        0.85f,
+        1.6f,
+        -35.0f,
+        15.0f
     );
 
-    // Reclassify biome adaptation after thermal gene changes
-    wolf.reclassifyBiomeAdaptation();
+    wolf->reclassifyBiomeAdaptation();
 
     return wolf;
 }
 
-Creature BiomeVariantFactory::createWoollyMammoth(int x, int y) {
-    // Start with Tank Herbivore archetype (large, armored)
-    Creature mammoth = creatureFactory_->createTankHerbivore(x, y);
+OrganismPtr BiomeVariantFactory::createWoollyMammoth(int x, int y) {
+    OrganismPtr mammoth = creatureFactory_->createTankHerbivore(x, y);
 
-    // Apply extreme cold adaptations
-    // Maximum insulation for ice age survival
-    applyThermalOverrides(mammoth,
-        0.95f,   // furDensity - maximum woolly coat
-        0.90f,   // fatLayer - extreme cold reserves
-        1.4f,    // metabolism - constant heat generation
-        -40.0f,  // tempMin - extreme cold tolerance
-        10.0f    // tempMax - overheats easily
+    applyThermalOverrides(*mammoth,
+        0.95f,
+        0.90f,
+        1.4f,
+        -40.0f,
+        10.0f
     );
 
-    // Reclassify biome adaptation after thermal gene changes
-    mammoth.reclassifyBiomeAdaptation();
+    mammoth->reclassifyBiomeAdaptation();
 
     return mammoth;
 }
@@ -153,42 +145,34 @@ Plant BiomeVariantFactory::createTundraMoss(int x, int y) {
 // Desert Variants
 // ============================================================================
 
-Creature BiomeVariantFactory::createDesertFennec(int x, int y) {
-    // Start with Ambush Predator (patient, efficient hunter)
-    Creature fennec = creatureFactory_->createAmbushPredator(x, y);
+OrganismPtr BiomeVariantFactory::createDesertFennec(int x, int y) {
+    OrganismPtr fennec = creatureFactory_->createAmbushPredator(x, y);
 
-    // Apply desert thermal adaptations
-    // Minimal insulation, heat dissipation focus
-    applyThermalOverrides(fennec,
-        0.10f,   // furDensity - minimal, just sun protection
-        0.15f,   // fatLayer - lean body dissipates heat
-        0.70f,   // metabolism - reduced for water conservation
-        5.0f,    // tempMin - struggles in cold
-        50.0f    // tempMax - extreme heat tolerance
+    applyThermalOverrides(*fennec,
+        0.10f,
+        0.15f,
+        0.70f,
+        5.0f,
+        50.0f
     );
 
-    // Reclassify biome adaptation after thermal gene changes
-    fennec.reclassifyBiomeAdaptation();
+    fennec->reclassifyBiomeAdaptation();
 
     return fennec;
 }
 
-Creature BiomeVariantFactory::createDesertCamel(int x, int y) {
-    // Start with Tank Herbivore archetype
-    Creature camel = creatureFactory_->createTankHerbivore(x, y);
+OrganismPtr BiomeVariantFactory::createDesertCamel(int x, int y) {
+    OrganismPtr camel = creatureFactory_->createTankHerbivore(x, y);
 
-    // Apply desert adaptations
-    // Specialized for water conservation and heat tolerance
-    applyThermalOverrides(camel,
-        0.20f,   // furDensity - light coat reflects sun
-        0.80f,   // fatLayer - stored in hump for energy, not insulation
-        0.75f,   // metabolism - reduced for water conservation
-        0.0f,    // tempMin - tolerates cold desert nights
-        55.0f    // tempMax - extreme heat tolerance
+    applyThermalOverrides(*camel,
+        0.20f,
+        0.80f,
+        0.75f,
+        0.0f,
+        55.0f
     );
 
-    // Reclassify biome adaptation after thermal gene changes
-    camel.reclassifyBiomeAdaptation();
+    camel->reclassifyBiomeAdaptation();
 
     return camel;
 }
@@ -218,42 +202,34 @@ Plant BiomeVariantFactory::createDesertCactus(int x, int y) {
 // Tropical Variants
 // ============================================================================
 
-Creature BiomeVariantFactory::createTropicalJaguar(int x, int y) {
-    // Start with Ambush Predator archetype (patient, powerful)
-    Creature jaguar = creatureFactory_->createAmbushPredator(x, y);
+OrganismPtr BiomeVariantFactory::createTropicalJaguar(int x, int y) {
+    OrganismPtr jaguar = creatureFactory_->createAmbushPredator(x, y);
 
-    // Apply tropical thermal adaptations
-    // Minimal insulation, adapted to constant warmth
-    applyThermalOverrides(jaguar,
-        0.15f,   // furDensity - short coat for heat dissipation
-        0.20f,   // fatLayer - minimal, no cold stress
-        0.85f,   // metabolism - slightly reduced
-        15.0f,   // tempMin - struggles in cold
-        45.0f    // tempMax - high heat tolerance
+    applyThermalOverrides(*jaguar,
+        0.15f,
+        0.20f,
+        0.85f,
+        15.0f,
+        45.0f
     );
 
-    // Reclassify biome adaptation after thermal gene changes
-    jaguar.reclassifyBiomeAdaptation();
+    jaguar->reclassifyBiomeAdaptation();
 
     return jaguar;
 }
 
-Creature BiomeVariantFactory::createJungleElephant(int x, int y) {
-    // Start with Tank Herbivore archetype
-    Creature elephant = creatureFactory_->createTankHerbivore(x, y);
+OrganismPtr BiomeVariantFactory::createJungleElephant(int x, int y) {
+    OrganismPtr elephant = creatureFactory_->createTankHerbivore(x, y);
 
-    // Apply tropical adaptations
-    // Large body, minimal insulation, uses ears for cooling
-    applyThermalOverrides(elephant,
-        0.10f,   // furDensity - nearly hairless
-        0.25f,   // fatLayer - minimal for tropical climate
-        0.95f,   // metabolism - near standard
-        10.0f,   // tempMin - some cold tolerance
-        45.0f    // tempMax - good heat tolerance
+    applyThermalOverrides(*elephant,
+        0.10f,
+        0.25f,
+        0.95f,
+        10.0f,
+        45.0f
     );
 
-    // Reclassify biome adaptation after thermal gene changes
-    elephant.reclassifyBiomeAdaptation();
+    elephant->reclassifyBiomeAdaptation();
 
     return elephant;
 }

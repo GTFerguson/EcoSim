@@ -46,81 +46,68 @@ std::unique_ptr<Genome> CreatureFactory::createGenomeFromTemplate(const Creature
     return genome;
 }
 
-Creature CreatureFactory::createFromTemplate(const std::string& templateName, int x, int y) const {
+OrganismPtr CreatureFactory::createFromTemplate(const std::string& templateName, int x, int y) const {
     const CreatureTemplate* tmpl = getTemplate(templateName);
-    
+
     if (!tmpl) {
-        // Template not found - create with default genome and dynamic classification
         auto genome = std::make_unique<Genome>(UniversalGenes::createCreatureGenome(*registry_));
-        // Use the new simplified constructor - phenotype and identity set in constructor
-        return Creature(x, y, std::move(genome));
+        return std::make_unique<Creature>(x, y, std::move(genome));
     }
-    
-    // Create genome directly from template using new simplified approach
-    // This replaces the complex 5-step legacy process:
-    //   OLD: createLegacyGenome → Creature(legacy) → enableNewGenetics → applyTemplate → rebuildPhenotype → updateIdentity
-    //   NEW: createGenomeFromTemplate → Creature(genome) - done! (phenotype + identity set in constructor)
+
     auto genome = createGenomeFromTemplate(*tmpl);
-    
-    // Use the new simplified constructor
-    // Constructor handles: phenotype creation, health initialization, identity update
-    return Creature(x, y, std::move(genome));
+    return std::make_unique<Creature>(x, y, std::move(genome));
 }
 
-Creature CreatureFactory::createRandom(int x, int y) const {
-    // Create random genome using the utility method
+OrganismPtr CreatureFactory::createRandom(int x, int y) const {
     auto genome = std::make_unique<Genome>(UniversalGenes::createRandomGenome(*registry_));
-    
-    // Use the new simplified constructor
-    // Dynamic classification based on randomly generated genes happens in constructor
-    return Creature(x, y, std::move(genome));
+    return std::make_unique<Creature>(x, y, std::move(genome));
 }
 
 // ============================================================================
 // Creature Creation - Specific Archetypes
 // ============================================================================
 
-Creature CreatureFactory::createApexPredator(int x, int y) const {
+OrganismPtr CreatureFactory::createApexPredator(int x, int y) const {
     return createFromTemplate("apex_predator", x, y);
 }
 
-Creature CreatureFactory::createPackHunter(int x, int y) const {
+OrganismPtr CreatureFactory::createPackHunter(int x, int y) const {
     return createFromTemplate("pack_hunter", x, y);
 }
 
-Creature CreatureFactory::createAmbushPredator(int x, int y) const {
+OrganismPtr CreatureFactory::createAmbushPredator(int x, int y) const {
     return createFromTemplate("ambush_predator", x, y);
 }
 
-Creature CreatureFactory::createPursuitHunter(int x, int y) const {
+OrganismPtr CreatureFactory::createPursuitHunter(int x, int y) const {
     return createFromTemplate("pursuit_hunter", x, y);
 }
 
-Creature CreatureFactory::createTankHerbivore(int x, int y) const {
+OrganismPtr CreatureFactory::createTankHerbivore(int x, int y) const {
     return createFromTemplate("tank_herbivore", x, y);
 }
 
-Creature CreatureFactory::createArmoredGrazer(int x, int y) const {
+OrganismPtr CreatureFactory::createArmoredGrazer(int x, int y) const {
     return createFromTemplate("armored_grazer", x, y);
 }
 
-Creature CreatureFactory::createFleetRunner(int x, int y) const {
+OrganismPtr CreatureFactory::createFleetRunner(int x, int y) const {
     return createFromTemplate("fleet_runner", x, y);
 }
 
-Creature CreatureFactory::createSpikyDefender(int x, int y) const {
+OrganismPtr CreatureFactory::createSpikyDefender(int x, int y) const {
     return createFromTemplate("spiky_defender", x, y);
 }
 
-Creature CreatureFactory::createCanopyForager(int x, int y) const {
+OrganismPtr CreatureFactory::createCanopyForager(int x, int y) const {
     return createFromTemplate("canopy_forager", x, y);
 }
 
-Creature CreatureFactory::createCarrionStalker(int x, int y) const {
+OrganismPtr CreatureFactory::createCarrionStalker(int x, int y) const {
     return createFromTemplate("carrion_stalker", x, y);
 }
 
-Creature CreatureFactory::createOmnivoreGeneralist(int x, int y) const {
+OrganismPtr CreatureFactory::createOmnivoreGeneralist(int x, int y) const {
     return createFromTemplate("omnivore_generalist", x, y);
 }
 
@@ -128,8 +115,7 @@ Creature CreatureFactory::createOmnivoreGeneralist(int x, int y) const {
 // Creature Creation - Category-based
 // ============================================================================
 
-Creature CreatureFactory::createPredator(int x, int y) const {
-    // Randomly select from predator archetypes
+OrganismPtr CreatureFactory::createPredator(int x, int y) const {
     int choice = randomIntInRange(0, 3);
     switch (choice) {
         case 0: return createApexPredator(x, y);
@@ -140,8 +126,7 @@ Creature CreatureFactory::createPredator(int x, int y) const {
     }
 }
 
-Creature CreatureFactory::createHerbivore(int x, int y) const {
-    // Randomly select from herbivore archetypes (including canopy forager)
+OrganismPtr CreatureFactory::createHerbivore(int x, int y) const {
     int choice = randomIntInRange(0, 4);
     switch (choice) {
         case 0: return createTankHerbivore(x, y);
@@ -153,8 +138,7 @@ Creature CreatureFactory::createHerbivore(int x, int y) const {
     }
 }
 
-Creature CreatureFactory::createOpportunist(int x, int y) const {
-    // Randomly select from opportunist archetypes
+OrganismPtr CreatureFactory::createOpportunist(int x, int y) const {
     int choice = randomIntInRange(0, 1);
     switch (choice) {
         case 0: return createCarrionStalker(x, y);
@@ -167,36 +151,32 @@ Creature CreatureFactory::createOpportunist(int x, int y) const {
 // Ecosystem Mix Creation
 // ============================================================================
 
-std::vector<Creature> CreatureFactory::createEcosystemMix(int count, int worldWidth, int worldHeight) const {
-    std::vector<Creature> creatures;
+std::vector<OrganismPtr> CreatureFactory::createEcosystemMix(int count, int worldWidth, int worldHeight) const {
+    std::vector<OrganismPtr> creatures;
     creatures.reserve(count);
-    
-    // Distribution: 60% herbivores, 25% predators, 15% opportunists
+
     int herbivoreCount = static_cast<int>(count * 0.60f);
     int predatorCount = static_cast<int>(count * 0.25f);
     int opportunistCount = count - herbivoreCount - predatorCount;
-    
-    // Create herbivores (60%)
+
     for (int i = 0; i < herbivoreCount; ++i) {
         int x = randomIntInRange(0, worldWidth - 1);
         int y = randomIntInRange(0, worldHeight - 1);
         creatures.push_back(createHerbivore(x, y));
     }
-    
-    // Create predators (25%)
+
     for (int i = 0; i < predatorCount; ++i) {
         int x = randomIntInRange(0, worldWidth - 1);
         int y = randomIntInRange(0, worldHeight - 1);
         creatures.push_back(createPredator(x, y));
     }
-    
-    // Create opportunists (15%)
+
     for (int i = 0; i < opportunistCount; ++i) {
         int x = randomIntInRange(0, worldWidth - 1);
         int y = randomIntInRange(0, worldHeight - 1);
         creatures.push_back(createOpportunist(x, y));
     }
-    
+
     return creatures;
 }
 

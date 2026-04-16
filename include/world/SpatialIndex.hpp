@@ -2,10 +2,9 @@
 #define ECOSIM_WORLD_SPATIAL_INDEX_HPP
 
 #include <vector>
+#include <memory>
 #include <unordered_map>
 #include <functional>
-
-class Creature;
 
 namespace EcoSim {
 namespace Genetics { class Organism; }
@@ -71,7 +70,7 @@ public:
      * 
      * @param creatures Vector of all creatures
      */
-    void rebuild(std::vector<Creature>& creatures);
+    void rebuild(std::vector<std::unique_ptr<EcoSim::Genetics::Organism>>& creatures);
     
     //==========================================================================
     // Query Operations

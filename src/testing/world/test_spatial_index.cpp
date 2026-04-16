@@ -33,25 +33,18 @@ namespace {
 std::unique_ptr<EcoSim::Genetics::CreatureFactory> g_testFactory;
 
 // Helper to create a creature at a specific position for testing
-std::unique_ptr<Creature> createTestCreature(float x, float y) {
-    // Ensure registry is initialized
+EcoSim::Genetics::OrganismPtr createTestCreature(float x, float y) {
     Creature::initializeGeneRegistry();
-    
-    // Lazy-initialize the factory
+
     if (!g_testFactory) {
         auto& registry = Creature::getGeneRegistry();
         g_testFactory = std::make_unique<EcoSim::Genetics::CreatureFactory>(
             std::shared_ptr<EcoSim::Genetics::GeneRegistry>(&registry, [](auto*){}));
         g_testFactory->registerDefaultTemplates();
     }
-    
-    // Create a fleet runner (herbivore) - lightweight for testing
-    auto creature = std::make_unique<Creature>(
-        g_testFactory->createFleetRunner(static_cast<int>(x), static_cast<int>(y)));
-    
-    // Set precise world position
+
+    auto creature = g_testFactory->createFleetRunner(static_cast<int>(x), static_cast<int>(y));
     creature->setWorldPosition(x, y);
-    
     return creature;
 }
 
@@ -86,7 +79,7 @@ void test_insert_single() {
 
 void test_insert_multiple() {
     SpatialIndex index(100, 100, 10);
-    std::vector<std::unique_ptr<Creature>> creatures;
+    std::vector<EcoSim::Genetics::OrganismPtr> creatures;
     
     for (int i = 0; i < 10; ++i) {
         creatures.push_back(createTestCreature(i * 10.0f, i * 10.0f));
@@ -110,7 +103,7 @@ void test_remove() {
 
 void test_clear() {
     SpatialIndex index(100, 100, 10);
-    std::vector<std::unique_ptr<Creature>> creatures;
+    std::vector<EcoSim::Genetics::OrganismPtr> creatures;
     
     for (int i = 0; i < 5; ++i) {
         creatures.push_back(createTestCreature(i * 20.0f, i * 20.0f));
@@ -215,7 +208,7 @@ void test_queryRadius_single_outside() {
 
 void test_queryRadius_multiple() {
     SpatialIndex index(100, 100, 10);
-    std::vector<std::unique_ptr<Creature>> creatures;
+    std::vector<EcoSim::Genetics::OrganismPtr> creatures;
     
     // Create 4 creatures in a 2x2 pattern around center
     creatures.push_back(createTestCreature(48.0f, 48.0f));
@@ -357,7 +350,7 @@ void test_sight_range_simulation() {
     float observerX = 250.0f;
     float observerY = 250.0f;
     
-    std::vector<std::unique_ptr<Creature>> creatures;
+    std::vector<EcoSim::Genetics::OrganismPtr> creatures;
     
     // Place creatures at various distances
     std::vector<std::pair<float, bool>> testCases = {
@@ -394,7 +387,7 @@ void test_sight_across_cell_boundaries() {
     float observerY = 100.0f;
     float sightRange = 100.0f;
     
-    std::vector<std::unique_ptr<Creature>> creatures;
+    std::vector<EcoSim::Genetics::OrganismPtr> creatures;
     
     // Creature in same cell
     creatures.push_back(createTestCreature(110.0f, 110.0f));
@@ -439,7 +432,7 @@ void test_queryCell_basic() {
 
 void test_queryNearbyCells() {
     SpatialIndex index(100, 100, 10);
-    std::vector<std::unique_ptr<Creature>> creatures;
+    std::vector<EcoSim::Genetics::OrganismPtr> creatures;
     
     // Create creatures in a 3x3 cell area
     for (int cy = 0; cy < 3; ++cy) {
@@ -524,7 +517,7 @@ void test_update_to_boundary() {
 
 void test_findNearest_basic() {
     SpatialIndex index(100, 100, 10);
-    std::vector<std::unique_ptr<Creature>> creatures;
+    std::vector<EcoSim::Genetics::OrganismPtr> creatures;
     
     creatures.push_back(createTestCreature(55.0f, 50.0f));  // 5 units away
     creatures.push_back(createTestCreature(60.0f, 50.0f));  // 10 units away
@@ -543,7 +536,7 @@ void test_findNearest_basic() {
 
 void test_findNearest_with_predicate() {
     SpatialIndex index(100, 100, 10);
-    std::vector<std::unique_ptr<Creature>> creatures;
+    std::vector<EcoSim::Genetics::OrganismPtr> creatures;
     
     creatures.push_back(createTestCreature(55.0f, 50.0f));  // Closest
     creatures.push_back(createTestCreature(60.0f, 50.0f));  // Second closest
@@ -606,7 +599,7 @@ void test_findNearest_boundary_precision() {
 
 void test_queryWithFilter_basic() {
     SpatialIndex index(100, 100, 10);
-    std::vector<std::unique_ptr<Creature>> creatures;
+    std::vector<EcoSim::Genetics::OrganismPtr> creatures;
     
     for (int i = 0; i < 5; ++i) {
         creatures.push_back(createTestCreature(50.0f + i * 2.0f, 50.0f));
@@ -628,7 +621,7 @@ void test_queryWithFilter_basic() {
 
 void test_world_corner_positions() {
     SpatialIndex index(100, 100, 10);
-    std::vector<std::unique_ptr<Creature>> creatures;
+    std::vector<EcoSim::Genetics::OrganismPtr> creatures;
     
     // Corners
     creatures.push_back(createTestCreature(0.0f, 0.0f));
@@ -649,7 +642,7 @@ void test_world_corner_positions() {
 
 void test_many_creatures_same_cell() {
     SpatialIndex index(100, 100, 10);
-    std::vector<std::unique_ptr<Creature>> creatures;
+    std::vector<EcoSim::Genetics::OrganismPtr> creatures;
     
     // 100 creatures in same cell
     for (int i = 0; i < 100; ++i) {
@@ -667,10 +660,9 @@ void test_many_creatures_same_cell() {
 
 void test_rebuild() {
     SpatialIndex index(100, 100, 10);
-    std::vector<Creature> creatures;
+    std::vector<EcoSim::Genetics::OrganismPtr> creatures;
     creatures.reserve(10);
-    
-    // Initialize gene registry and factory
+
     Creature::initializeGeneRegistry();
     if (!g_testFactory) {
         auto& registry = Creature::getGeneRegistry();
@@ -692,7 +684,7 @@ void test_rebuild() {
 
 void test_large_radius_query() {
     SpatialIndex index(500, 500, 32);
-    std::vector<std::unique_ptr<Creature>> creatures;
+    std::vector<EcoSim::Genetics::OrganismPtr> creatures;
     
     // Scatter creatures across world
     for (int i = 0; i < 50; ++i) {

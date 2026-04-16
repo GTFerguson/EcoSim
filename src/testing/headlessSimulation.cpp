@@ -213,7 +213,7 @@ World initializeWorld(const SimulationConfig& config) {
 //================================================================================
 // Creature Population (biome-based)
 //================================================================================
-void populateWorldByBiome(World& w, std::vector<Creature>& creatures, 
+void populateWorldByBiome(World& w, std::vector<EcoSim::Genetics::OrganismPtr>& creatures, 
                           unsigned amount, const SimulationConfig& config) {
     using namespace EcoSim;
     using namespace EcoSim::Genetics;
@@ -302,8 +302,8 @@ void populateWorldByBiome(World& w, std::vector<Creature>& creatures,
     auto spawnInBiome = [&](
             std::vector<std::pair<int, int>>& positions,
             unsigned count,
-            std::function<Creature(int, int)> createHerbivore,
-            std::function<Creature(int, int)> createCarnivore) {
+            std::function<EcoSim::Genetics::OrganismPtr(int, int)> createHerbivore,
+            std::function<EcoSim::Genetics::OrganismPtr(int, int)> createCarnivore) {
         
         if (positions.empty() || count == 0) return;
         
@@ -316,7 +316,7 @@ void populateWorldByBiome(World& w, std::vector<Creature>& creatures,
         // loop has a fighting chance within a short test run. Without this,
         // creatures take ~266 ticks to grow and ~700 ticks to accumulate
         // mating drive — longer than most headless test runs.
-        auto primeAdult = [](Creature& c) {
+        auto primeAdult = [](EcoSim::Genetics::Organism& c) {
             c.setCurrentSize(c.getMaxSize());
             c.setMature(true);
             c.setMate(5.0f);
@@ -325,20 +325,20 @@ void populateWorldByBiome(World& w, std::vector<Creature>& creatures,
         for (unsigned i = 0; i < herbivoreCount && !positions.empty(); ++i) {
             size_t idx = posDist(rng);
             auto [x, y] = positions[idx];
-            Creature creature = createHerbivore(x, y);
-            creature.setXY(x, y);
-            creature.setWorldPosition(static_cast<float>(x) + 0.5f, static_cast<float>(y) + 0.5f);
-            primeAdult(creature);
+            auto creature = createHerbivore(x, y);
+            creature->setXY(x, y);
+            creature->setWorldPosition(static_cast<float>(x) + 0.5f, static_cast<float>(y) + 0.5f);
+            primeAdult(*creature);
             creatures.push_back(std::move(creature));
         }
 
         for (unsigned i = 0; i < carnivoreCount && !positions.empty(); ++i) {
             size_t idx = posDist(rng);
             auto [x, y] = positions[idx];
-            Creature creature = createCarnivore(x, y);
-            creature.setXY(x, y);
-            creature.setWorldPosition(static_cast<float>(x) + 0.5f, static_cast<float>(y) + 0.5f);
-            primeAdult(creature);
+            auto creature = createCarnivore(x, y);
+            creature->setXY(x, y);
+            creature->setWorldPosition(static_cast<float>(x) + 0.5f, static_cast<float>(y) + 0.5f);
+            primeAdult(*creature);
             creatures.push_back(std::move(creature));
         }
     };
@@ -359,14 +359,14 @@ void populateWorldByBiome(World& w, std::vector<Creature>& creatures,
     // Temperate uses standard archetypes
     if (!temperatePositions.empty() && temperateCount > 0) {
         std::uniform_int_distribution<size_t> posDist(0, temperatePositions.size() - 1);
-        std::vector<Creature> tempCreatures = standardFactory.createEcosystemMix(
+        std::vector<EcoSim::Genetics::OrganismPtr> tempCreatures = standardFactory.createEcosystemMix(
             temperateCount, config.mapWidth, config.mapHeight);
         
         for (auto& creature : tempCreatures) {
             size_t idx = posDist(rng);
             auto [x, y] = temperatePositions[idx];
-            creature.setXY(x, y);
-            creature.setWorldPosition(static_cast<float>(x) + 0.5f, static_cast<float>(y) + 0.5f);
+            creature->setXY(x, y);
+            creature->setWorldPosition(static_cast<float>(x) + 0.5f, static_cast<float>(y) + 0.5f);
             creatures.push_back(std::move(creature));
         }
     }
@@ -388,9 +388,9 @@ void addGeneticsPlants(World& w) {
 //================================================================================
 // Simulation Tick (from main.cpp takeTurn logic)
 //================================================================================
-bool takeTurn(World& w, GeneralStats& gs, std::vector<Creature>& c, 
+bool takeTurn(World& w, GeneralStats& gs, std::vector<EcoSim::Genetics::OrganismPtr>& c, 
               unsigned int cIndex, const SimulationConfig& config) {
-    Creature* activeC = &c.at(cIndex);
+    auto* activeC = c.at(cIndex).get();
     
     g_lastAction = "checking death for creature " + std::to_string(activeC->getId());
     
@@ -466,7 +466,7 @@ bool takeTurn(World& w, GeneralStats& gs, std::vector<Creature>& c,
     }
 }
 
-void advanceSimulation(World& w, std::vector<Creature>& c, GeneralStats& gs,
+void advanceSimulation(World& w, std::vector<EcoSim::Genetics::OrganismPtr>& c, GeneralStats& gs,
                        const SimulationConfig& config) {
     g_lastAction = "updating environment tick cache";
     unsigned int currentTick = w.getCurrentTick();
@@ -487,8 +487,8 @@ void advanceSimulation(World& w, std::vector<Creature>& c, GeneralStats& gs,
     // Pre-pass: deposit breeding scents
     g_lastAction = "depositing breeding scents";
     for (auto& creature : c) {
-        if (creature.getMotivation() == Motivation::Amorous) {
-            creature.depositBreedingScent(w.getScentLayer(), currentTick);
+        if (creature->getMotivation() == Motivation::Amorous) {
+            creature->depositBreedingScent(w.getScentLayer(), currentTick);
         }
     }
     
@@ -505,23 +505,18 @@ void advanceSimulation(World& w, std::vector<Creature>& c, GeneralStats& gs,
     g_lastAction = "collecting offspring";
     for (size_t i = 0; i < preTickCount; ++i) {
         if (i >= c.size()) break;
-        if (!c[i].hasPendingOffspring()) continue;
-        auto offspring = c[i].takePendingOffspring();
+        if (!c[i]->hasPendingOffspring()) continue;
+        auto offspring = c[i]->takePendingOffspring();
         if (!offspring) continue;
-        // Offspring are returned as unique_ptr<Organism> for the unified
-        // interface. Until Plant/Creature are merged we still have to
-        // recover the concrete Creature value to push onto the vector.
-        if (Creature* ptr = dynamic_cast<Creature*>(offspring.get())) {
-            c.push_back(std::move(*ptr));
-            gs.births++;
-        }
+        c.push_back(std::move(offspring));
+        gs.births++;
     }
 
     // Remove dead creatures
     g_lastAction = "removing dead creatures";
     c.erase(
         std::remove_if(c.begin(), c.end(),
-            [](const Creature& creature) { return !creature.isAlive(); }),
+            [](const EcoSim::Genetics::OrganismPtr& creature) { return !creature->isAlive(); }),
         c.end()
     );
     
@@ -532,15 +527,14 @@ void advanceSimulation(World& w, std::vector<Creature>& c, GeneralStats& gs,
 //================================================================================
 // Status Reporting
 //================================================================================
-void printStatus(int tick, const std::vector<Creature>& creatures, const GeneralStats& gs,
+void printStatus(int tick, const std::vector<EcoSim::Genetics::OrganismPtr>& creatures, const GeneralStats& gs,
                  const SimulationConfig& config) {
     // Count motivations
     std::map<Motivation, int> motivationCounts;
     int stuckCount = 0;
     
     for (const auto& c : creatures) {
-        motivationCounts[c.getMotivation()]++;
-        // A creature might be "stuck" if it hasn't moved recently (heuristic)
+        motivationCounts[c->getMotivation()]++;
     }
     
     std::cout << "[Tick " << std::setw(5) << tick << "] "
@@ -623,7 +617,7 @@ int main(int argc, char* argv[]) {
     }
     
     // Spawn creatures
-    std::vector<Creature> creatures;
+    std::vector<EcoSim::Genetics::OrganismPtr> creatures;
     Calendar calendar;
     std::cout << "[Headless] Populating world with " << config.population << " creatures...\n";
     g_lastAction = "populating world";
@@ -705,9 +699,9 @@ int main(int argc, char* argv[]) {
         float avgHunger = 0, avgThirst = 0, avgFatigue = 0;
         if (!creatures.empty()) {
             for (const auto& c : creatures) {
-                avgHunger += c.getHunger();
-                avgThirst += c.getThirst();
-                avgFatigue += c.getFatigue();
+                avgHunger += c->getHunger();
+                avgThirst += c->getThirst();
+                avgFatigue += c->getFatigue();
             }
             float n = static_cast<float>(creatures.size());
             avgHunger /= n;

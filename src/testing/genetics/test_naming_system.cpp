@@ -21,22 +21,16 @@ using namespace EcoSim::Genetics;
 
 // Helper to create a test creature with specific gene values
 // NOTE: This function is deprecated - use CreatureFactory templates instead
-static Creature createTestCreatureWithGenes(
+static OrganismPtr createTestCreatureWithGenes(
     std::shared_ptr<GeneRegistry> registry,
-    float meatDig, float plantDig, float size, float locomotion,
-    float aggression, float packCoord, float scentMasking,
-    float huntInstinct, float toxinTol, float hide, float scales,
-    float hornLen, float bodySpines, float tailSpines, float retreat
+    float, float, float, float,
+    float, float, float,
+    float, float, float, float,
+    float, float, float, float
 ) {
-    // Use CreatureFactory to create creatures with the new genetics system
     CreatureFactory factory(registry);
     factory.registerDefaultTemplates();
-    
-    // Create a basic creature using the factory
-    // For custom gene values, the recommended approach is to create a custom template
-    Creature creature = factory.createOmnivoreGeneralist(0, 0);
-    
-    return creature;
+    return factory.createOmnivoreGeneralist(0, 0);
 }
 
 // ============================================================================
@@ -51,11 +45,9 @@ void test_classify_apex_predator() {
     factory.registerDefaultTemplates();
     
     // Create an apex predator using template
-    Creature apex = factory.createApexPredator(0, 0);
-    
-    // The apex predator template has high meat digestion, large size, high aggression
-    // After updateIdentity(), it should be classified as ApexPredator or similar
-    const ArchetypeIdentity* identity = CreatureTaxonomy::classifyArchetype(apex.getGenome());
+    auto apex = factory.createApexPredator(0, 0);
+
+    const ArchetypeIdentity* identity = CreatureTaxonomy::classifyArchetype(apex->getGenome());
     
     // Check that it's a predator type (comparing flyweight pointers)
     TEST_ASSERT(identity == ArchetypeIdentity::ApexPredator() ||
@@ -69,8 +61,8 @@ void test_classify_pack_hunter() {
     CreatureFactory factory(registry);
     factory.registerDefaultTemplates();
     
-    Creature packHunter = factory.createPackHunter(0, 0);
-    const ArchetypeIdentity* identity = CreatureTaxonomy::classifyArchetype(packHunter.getGenome());
+    auto packHunter = factory.createPackHunter(0, 0);
+    const ArchetypeIdentity* identity = CreatureTaxonomy::classifyArchetype(packHunter->getGenome());
     
     // Pack hunters are characterized by high pack coordination and smaller size
     TEST_ASSERT(identity == ArchetypeIdentity::PackHunter() ||
@@ -83,8 +75,8 @@ void test_classify_scavenger() {
     CreatureFactory factory(registry);
     factory.registerDefaultTemplates();
     
-    Creature scavenger = factory.createCarrionStalker(0, 0);
-    const ArchetypeIdentity* identity = CreatureTaxonomy::classifyArchetype(scavenger.getGenome());
+    auto scavenger = factory.createCarrionStalker(0, 0);
+    const ArchetypeIdentity* identity = CreatureTaxonomy::classifyArchetype(scavenger->getGenome());
     
     // Scavengers have low hunt instinct and high toxin tolerance
     TEST_ASSERT(identity == ArchetypeIdentity::Scavenger() ||
@@ -97,8 +89,8 @@ void test_classify_fleet_runner() {
     CreatureFactory factory(registry);
     factory.registerDefaultTemplates();
     
-    Creature runner = factory.createFleetRunner(0, 0);
-    const ArchetypeIdentity* identity = CreatureTaxonomy::classifyArchetype(runner.getGenome());
+    auto runner = factory.createFleetRunner(0, 0);
+    const ArchetypeIdentity* identity = CreatureTaxonomy::classifyArchetype(runner->getGenome());
     
     // Fleet runners are fast herbivores with high retreat threshold
     TEST_ASSERT(identity == ArchetypeIdentity::FleetRunner() ||
@@ -111,8 +103,8 @@ void test_classify_tank_herbivore() {
     CreatureFactory factory(registry);
     factory.registerDefaultTemplates();
     
-    Creature tank = factory.createTankHerbivore(0, 0);
-    const ArchetypeIdentity* identity = CreatureTaxonomy::classifyArchetype(tank.getGenome());
+    auto tank = factory.createTankHerbivore(0, 0);
+    const ArchetypeIdentity* identity = CreatureTaxonomy::classifyArchetype(tank->getGenome());
     
     // Tank herbivores are large, armored, with horns
     TEST_ASSERT(identity == ArchetypeIdentity::TankHerbivore() ||
@@ -129,9 +121,9 @@ void test_scientific_name_carnivore_prefix() {
     CreatureFactory factory(registry);
     factory.registerDefaultTemplates();
     
-    Creature apex = factory.createApexPredator(0, 0);
-    std::string name = apex.getScientificName();
-    
+    auto apex = factory.createApexPredator(0, 0);
+    std::string name = apex->getScientificName();
+
     // Carnivore names should contain carnivore-related prefix/genus
     // Valid prefixes: "Carno" (carnivore), "Necro" (scavenger), or predator genus names
     // from template-based naming like "Carnotitan", "Insidiatitan", "Velocipraeda"
@@ -151,8 +143,8 @@ void test_scientific_name_herbivore_prefix() {
     CreatureFactory factory(registry);
     factory.registerDefaultTemplates();
     
-    Creature tank = factory.createTankHerbivore(0, 0);
-    std::string name = tank.getScientificName();
+    auto tank = factory.createTankHerbivore(0, 0);
+    std::string name = tank->getScientificName();
     
     // Herbivore names should contain herbivore-related prefix/genus
     // Valid prefixes: "Herbo" (herbivore), "Omni" (omnivore), or herbivore genus names
@@ -173,8 +165,8 @@ void test_scientific_name_scavenger_prefix() {
     CreatureFactory factory(registry);
     factory.registerDefaultTemplates();
     
-    Creature scavenger = factory.createCarrionStalker(0, 0);
-    std::string name = scavenger.getScientificName();
+    auto scavenger = factory.createCarrionStalker(0, 0);
+    std::string name = scavenger->getScientificName();
     
     // Scavenger names should start with "Necro"
     TEST_ASSERT(name.find("Necro") != std::string::npos ||
@@ -188,13 +180,11 @@ void test_scientific_name_size_species() {
     CreatureFactory factory(registry);
     factory.registerDefaultTemplates();
     
-    // Tank herbivore is large (size > 2.5), should get "titan" or "grandis"
-    Creature tank = factory.createTankHerbivore(0, 0);
-    std::string tankName = tank.getScientificName();
-    
-    // Fleet runner is small, should get "minor" or "minimus"
-    Creature runner = factory.createFleetRunner(0, 0);
-    std::string runnerName = runner.getScientificName();
+    auto tank = factory.createTankHerbivore(0, 0);
+    std::string tankName = tank->getScientificName();
+
+    auto runner = factory.createFleetRunner(0, 0);
+    std::string runnerName = runner->getScientificName();
     
     // Verify names exist and are different
     TEST_ASSERT(!tankName.empty());
@@ -212,9 +202,8 @@ void test_scientific_name_teeth_epithet() {
     CreatureFactory factory(registry);
     factory.registerDefaultTemplates();
     
-    // Apex predator has high teeth sharpness
-    Creature apex = factory.createApexPredator(0, 0);
-    std::string name = apex.getScientificName();
+    auto apex = factory.createApexPredator(0, 0);
+    std::string name = apex->getScientificName();
     
     // Should get teeth-related epithet like "dentatus" or other relevant trait
     TEST_ASSERT(!name.empty());
@@ -232,9 +221,8 @@ void test_scientific_name_scaled_epithet() {
     CreatureFactory factory(registry);
     factory.registerDefaultTemplates();
     
-    // Armored grazer has high scale coverage
-    Creature armored = factory.createArmoredGrazer(0, 0);
-    std::string name = armored.getScientificName();
+    auto armored = factory.createArmoredGrazer(0, 0);
+    std::string name = armored->getScientificName();
     
     // Should get armor/scale-related epithet like "squamatus" or "armatus"
     TEST_ASSERT(!name.empty());
@@ -254,10 +242,9 @@ void test_update_identity_sets_category() {
     CreatureFactory factory(registry);
     factory.registerDefaultTemplates();
     
-    Creature creature = factory.createPredator(0, 0);
-    
-    // Category should be set after factory creation (which calls updateIdentity)
-    const ArchetypeIdentity* identity = CreatureTaxonomy::classifyArchetype(creature.getGenome());
+    auto creature = factory.createPredator(0, 0);
+
+    const ArchetypeIdentity* identity = CreatureTaxonomy::classifyArchetype(creature->getGenome());
     
     // Should return a valid identity pointer (never null)
     TEST_ASSERT(identity != nullptr);
@@ -270,9 +257,9 @@ void test_update_identity_sets_archetype_label() {
     CreatureFactory factory(registry);
     factory.registerDefaultTemplates();
     
-    Creature creature = factory.createApexPredator(0, 0);
-    
-    std::string label = creature.getArchetypeLabel();
+    auto creature = factory.createApexPredator(0, 0);
+
+    std::string label = creature->getArchetypeLabel();
     TEST_ASSERT(!label.empty());
     TEST_ASSERT(label != "Unknown");
 }
@@ -283,9 +270,9 @@ void test_update_identity_sets_scientific_name() {
     CreatureFactory factory(registry);
     factory.registerDefaultTemplates();
     
-    Creature creature = factory.createOmnivoreGeneralist(0, 0);
-    
-    std::string scientificName = creature.getScientificName();
+    auto creature = factory.createOmnivoreGeneralist(0, 0);
+
+    std::string scientificName = creature->getScientificName();
     TEST_ASSERT(!scientificName.empty());
     TEST_ASSERT(scientificName.length() > 5);  // Should be at least "X Y" format
 }
@@ -297,13 +284,12 @@ void test_update_identity_updates_all_fields() {
     factory.registerDefaultTemplates();
     
     // Create creature and verify all three identity fields are populated
-    Creature creature = factory.createHerbivore(0, 0);
-    
-    // All fields should be set
-    const ArchetypeIdentity* identity = CreatureTaxonomy::classifyArchetype(creature.getGenome());
+    auto creature = factory.createHerbivore(0, 0);
+
+    const ArchetypeIdentity* identity = CreatureTaxonomy::classifyArchetype(creature->getGenome());
     TEST_ASSERT(identity != nullptr);
-    TEST_ASSERT(!creature.getArchetypeLabel().empty());
-    TEST_ASSERT(!creature.getScientificName().empty());
+    TEST_ASSERT(!creature->getArchetypeLabel().empty());
+    TEST_ASSERT(!creature->getScientificName().empty());
 }
 
 // ============================================================================
@@ -316,27 +302,20 @@ void test_creature_classification_matches_archetype() {
     CreatureFactory factory(registry);
     factory.registerDefaultTemplates();
     
-    // Test each archetype
-    struct TestCase {
-        Creature creature;
-        std::string expectedType;
-    };
-    
-    // Create each type and check it gets an appropriate classification
-    Creature apex = factory.createApexPredator(0, 0);
-    const ArchetypeIdentity* apexId = CreatureTaxonomy::classifyArchetype(apex.getGenome());
+    auto apex = factory.createApexPredator(0, 0);
+    const ArchetypeIdentity* apexId = CreatureTaxonomy::classifyArchetype(apex->getGenome());
     TEST_ASSERT(apexId == ArchetypeIdentity::ApexPredator() ||
                 apexId == ArchetypeIdentity::PursuitHunter() ||
                 apexId == ArchetypeIdentity::AmbushPredator());
-    
-    Creature tank = factory.createTankHerbivore(0, 0);
-    const ArchetypeIdentity* tankId = CreatureTaxonomy::classifyArchetype(tank.getGenome());
+
+    auto tank = factory.createTankHerbivore(0, 0);
+    const ArchetypeIdentity* tankId = CreatureTaxonomy::classifyArchetype(tank->getGenome());
     TEST_ASSERT(tankId == ArchetypeIdentity::TankHerbivore() ||
                 tankId == ArchetypeIdentity::ArmoredGrazer() ||
                 tankId == ArchetypeIdentity::OmnivoreGeneralist());
-    
-    Creature spiky = factory.createSpikyDefender(0, 0);
-    const ArchetypeIdentity* spikyId = CreatureTaxonomy::classifyArchetype(spiky.getGenome());
+
+    auto spiky = factory.createSpikyDefender(0, 0);
+    const ArchetypeIdentity* spikyId = CreatureTaxonomy::classifyArchetype(spiky->getGenome());
     TEST_ASSERT(spikyId == ArchetypeIdentity::SpikyDefender() ||
                 spikyId == ArchetypeIdentity::OmnivoreGeneralist());
 }
@@ -347,12 +326,10 @@ void test_random_creature_gets_classification() {
     CreatureFactory factory(registry);
     factory.registerDefaultTemplates();
     
-    // Create random creature
-    Creature random = factory.createRandom(0, 0);
-    
-    // Should still get valid classification and name
-    TEST_ASSERT(!random.getArchetypeLabel().empty());
-    TEST_ASSERT(!random.getScientificName().empty());
+    auto random = factory.createRandom(0, 0);
+
+    TEST_ASSERT(!random->getArchetypeLabel().empty());
+    TEST_ASSERT(!random->getScientificName().empty());
 }
 
 void test_ecosystem_mix_all_get_names() {
@@ -361,13 +338,11 @@ void test_ecosystem_mix_all_get_names() {
     CreatureFactory factory(registry);
     factory.registerDefaultTemplates();
     
-    // Create ecosystem mix
-    std::vector<Creature> creatures = factory.createEcosystemMix(10, 100, 100);
-    
-    // All creatures should have valid names
+    auto creatures = factory.createEcosystemMix(10, 100, 100);
+
     for (const auto& creature : creatures) {
-        TEST_ASSERT(!creature.getScientificName().empty());
-        TEST_ASSERT(!creature.getArchetypeLabel().empty());
+        TEST_ASSERT(!creature->getScientificName().empty());
+        TEST_ASSERT(!creature->getArchetypeLabel().empty());
     }
 }
 

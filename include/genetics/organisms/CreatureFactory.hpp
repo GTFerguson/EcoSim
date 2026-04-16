@@ -18,6 +18,7 @@
 #include "genetics/core/GeneRegistry.hpp"
 #include "genetics/core/Genome.hpp"
 #include "genetics/defaults/UniversalGenes.hpp"
+#include "genetics/organisms/OrganismFactory.hpp"
 #include "objects/creature/creature.hpp"
 #include <memory>
 #include <unordered_map>
@@ -142,7 +143,7 @@ public:
      * The created creature will have gene values randomly selected from
      * the template's defined ranges.
      */
-    Creature createFromTemplate(const std::string& templateName, int x, int y) const;
+    OrganismPtr createFromTemplate(const std::string& templateName, int x, int y) const;
     
     /**
      * @brief Create a random creature (no template, full genome randomization)
@@ -150,7 +151,7 @@ public:
      * @param y Y position in world
      * @return New Creature instance with random genes
      */
-    Creature createRandom(int x, int y) const;
+    OrganismPtr createRandom(int x, int y) const;
     
     // ========================================================================
     // Creature Creation - Specific Archetypes
@@ -162,7 +163,7 @@ public:
      * @param y Y position in world
      * @return New Apex Predator creature
      */
-    Creature createApexPredator(int x, int y) const;
+    OrganismPtr createApexPredator(int x, int y) const;
     
     /**
      * @brief Create Pack Hunter (Carnosocialis) - Coordinated group hunters
@@ -170,7 +171,7 @@ public:
      * @param y Y position in world
      * @return New Pack Hunter creature
      */
-    Creature createPackHunter(int x, int y) const;
+    OrganismPtr createPackHunter(int x, int y) const;
     
     /**
      * @brief Create Ambush Predator (Insidiatitan) - Patient opportunistic
@@ -178,7 +179,7 @@ public:
      * @param y Y position in world
      * @return New Ambush Predator creature
      */
-    Creature createAmbushPredator(int x, int y) const;
+    OrganismPtr createAmbushPredator(int x, int y) const;
     
     /**
      * @brief Create Pursuit Hunter (Velocipraeda) - Speed-based chasers
@@ -186,7 +187,7 @@ public:
      * @param y Y position in world
      * @return New Pursuit Hunter creature
      */
-    Creature createPursuitHunter(int x, int y) const;
+    OrganismPtr createPursuitHunter(int x, int y) const;
     
     /**
      * @brief Create Tank Herbivore (Herbotitan) - Large armored defensive
@@ -194,7 +195,7 @@ public:
      * @param y Y position in world
      * @return New Tank Herbivore creature
      */
-    Creature createTankHerbivore(int x, int y) const;
+    OrganismPtr createTankHerbivore(int x, int y) const;
     
     /**
      * @brief Create Armored Grazer - Scaled with tail defense (Ankylosaurus-like)
@@ -202,7 +203,7 @@ public:
      * @param y Y position in world
      * @return New Armored Grazer creature
      */
-    Creature createArmoredGrazer(int x, int y) const;
+    OrganismPtr createArmoredGrazer(int x, int y) const;
     
     /**
      * @brief Create Fleet Runner (Herbocursus) - Speed-based escape
@@ -210,7 +211,7 @@ public:
      * @param y Y position in world
      * @return New Fleet Runner creature
      */
-    Creature createFleetRunner(int x, int y) const;
+    OrganismPtr createFleetRunner(int x, int y) const;
     
     /**
      * @brief Create Spiky Defender (Spinosus) - Counter-attack spines
@@ -218,7 +219,7 @@ public:
      * @param y Y position in world
      * @return New Spiky Defender creature
      */
-    Creature createSpikyDefender(int x, int y) const;
+    OrganismPtr createSpikyDefender(int x, int y) const;
     
     /**
      * @brief Create Canopy Forager - Fruit-eating arboreal specialist
@@ -226,7 +227,7 @@ public:
      * @param y Y position in world
      * @return New Canopy Forager creature
      */
-    Creature createCanopyForager(int x, int y) const;
+    OrganismPtr createCanopyForager(int x, int y) const;
     
     /**
      * @brief Create Carrion Stalker (Necrophagus) - Corpse-feeders
@@ -234,7 +235,7 @@ public:
      * @param y Y position in world
      * @return New Carrion Stalker creature
      */
-    Creature createCarrionStalker(int x, int y) const;
+    OrganismPtr createCarrionStalker(int x, int y) const;
     
     /**
      * @brief Create Omnivore Generalist (Omniflexus) - Adaptable
@@ -242,7 +243,7 @@ public:
      * @param y Y position in world
      * @return New Omnivore Generalist creature
      */
-    Creature createOmnivoreGeneralist(int x, int y) const;
+    OrganismPtr createOmnivoreGeneralist(int x, int y) const;
     
     // ========================================================================
     // Creature Creation - Category-based
@@ -254,7 +255,7 @@ public:
      * @param y Y position in world
      * @return New predator creature
      */
-    Creature createPredator(int x, int y) const;
+    OrganismPtr createPredator(int x, int y) const;
     
     /**
      * @brief Create random herbivore (any herbivore archetype)
@@ -262,7 +263,7 @@ public:
      * @param y Y position in world
      * @return New herbivore creature
      */
-    Creature createHerbivore(int x, int y) const;
+    OrganismPtr createHerbivore(int x, int y) const;
     
     /**
      * @brief Create random opportunist (carrion stalker or omnivore)
@@ -270,7 +271,7 @@ public:
      * @param y Y position in world
      * @return New opportunist creature
      */
-    Creature createOpportunist(int x, int y) const;
+    OrganismPtr createOpportunist(int x, int y) const;
     
     // ========================================================================
     // Ecosystem Mix Creation
@@ -285,7 +286,7 @@ public:
      *
      * Distribution: 60% herbivores, 25% predators, 15% opportunists
      */
-    std::vector<Creature> createEcosystemMix(int count, int worldWidth, int worldHeight) const;
+    std::vector<OrganismPtr> createEcosystemMix(int count, int worldWidth, int worldHeight) const;
     
     // ========================================================================
     // Template Management

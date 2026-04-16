@@ -199,7 +199,7 @@ void ImGuiOverlay::beginFrame() {
 }
 
 void ImGuiOverlay::render(const HUDData& hudData, const World* world,
-                         const std::vector<Creature>* creatures) {
+                         const std::vector<std::unique_ptr<EcoSim::Genetics::Organism>>* creatures) {
     if (!_initialized) {
         return;
     }
@@ -232,12 +232,11 @@ void ImGuiOverlay::render(const HUDData& hudData, const World* world,
         
         // Find and render selected creature inspector
         if (_showCreatureInspector && creatures && _selectedCreatureId >= 0) {
-            const Creature* selectedCreature = nullptr;
-            
-            // Find creature by creature-specific ID (not vector index or organism ID)
+            const EcoSim::Genetics::Organism* selectedCreature = nullptr;
+
             for (const auto& c : *creatures) {
-                if (c.getCreatureId() == _selectedCreatureId) {
-                    selectedCreature = &c;
+                if (c->getSequentialId() == _selectedCreatureId) {
+                    selectedCreature = c.get();
                     break;
                 }
             }
@@ -505,7 +504,7 @@ void ImGuiOverlay::renderStatisticsWindow(const HUDData& hudData) {
     ImGui::End();
 }
 
-void ImGuiOverlay::renderWorldInfoWindow(const World* world, const std::vector<Creature>* creatures) {
+void ImGuiOverlay::renderWorldInfoWindow(const World* world, const std::vector<std::unique_ptr<EcoSim::Genetics::Organism>>* creatures) {
     // Calculate right-side position dynamically based on window size
     ImGuiIO& io = ImGui::GetIO();
     const float rightMargin = 10.0f;
@@ -630,7 +629,7 @@ void ImGuiOverlay::renderPerformanceWindow() {
     ImGui::End();
 }
 
-void ImGuiOverlay::renderCreatureListWindow(const std::vector<Creature>* creatures) {
+void ImGuiOverlay::renderCreatureListWindow(const std::vector<std::unique_ptr<EcoSim::Genetics::Organism>>* creatures) {
     // Calculate right-side position dynamically based on window size
     ImGuiIO& io = ImGui::GetIO();
     const float rightMargin = 10.0f;
@@ -654,30 +653,24 @@ void ImGuiOverlay::renderCreatureListWindow(const std::vector<Creature>* creatur
         // H=Herbivore, F=Frugivore, O=Omnivore, C=Carnivore, N=Necrovore
         int herbivores = 0, frugivores = 0, omnivores = 0, carnivores = 0, necrovores = 0;
         for (const auto& c : *creatures) {
-            if (true) {
-                // Use emergent diet calculation from new genetics system
-                EcoSim::Genetics::DietType diet = c.getPhenotype().calculateDietType();
-                switch (diet) {
-                    case EcoSim::Genetics::DietType::HERBIVORE:
-                        herbivores++;
-                        break;
-                    case EcoSim::Genetics::DietType::FRUGIVORE:
-                        frugivores++;
-                        break;
-                    case EcoSim::Genetics::DietType::CARNIVORE:
-                        carnivores++;
-                        break;
-                    case EcoSim::Genetics::DietType::NECROVORE:
-                        necrovores++;
-                        break;
-                    case EcoSim::Genetics::DietType::OMNIVORE:
-                    default:
-                        omnivores++;
-                        break;
-                }
-            } else {
-                // Fallback for any legacy creatures (should not exist after migration)
-                omnivores++;
+            EcoSim::Genetics::DietType diet = c->getPhenotype().calculateDietType();
+            switch (diet) {
+                case EcoSim::Genetics::DietType::HERBIVORE:
+                    herbivores++;
+                    break;
+                case EcoSim::Genetics::DietType::FRUGIVORE:
+                    frugivores++;
+                    break;
+                case EcoSim::Genetics::DietType::CARNIVORE:
+                    carnivores++;
+                    break;
+                case EcoSim::Genetics::DietType::NECROVORE:
+                    necrovores++;
+                    break;
+                case EcoSim::Genetics::DietType::OMNIVORE:
+                default:
+                    omnivores++;
+                    break;
             }
         }
         ImGui::Text("H:%d F:%d O:%d C:%d N:%d", herbivores, frugivores, omnivores, carnivores, necrovores);
@@ -710,39 +703,38 @@ void ImGuiOverlay::renderCreatureListWindow(const std::vector<Creature>* creatur
                 sortedIndices.push_back(i);
             }
             
-            // Sort based on selected mode
             switch (_creatureSortMode) {
                 case 1: // Age
                     std::sort(sortedIndices.begin(), sortedIndices.end(),
                         [creatures](size_t a, size_t b) {
-                            return (*creatures)[a].getAge() > (*creatures)[b].getAge();
+                            return (*creatures)[a]->getAge() > (*creatures)[b]->getAge();
                         });
                     break;
-                case 2: // Hunger (lower = more hungry)
+                case 2: // Hunger
                     std::sort(sortedIndices.begin(), sortedIndices.end(),
                         [creatures](size_t a, size_t b) {
-                            return (*creatures)[a].getHunger() < (*creatures)[b].getHunger();
+                            return (*creatures)[a]->getHunger() < (*creatures)[b]->getHunger();
                         });
                     break;
                 case 3: // Thirst
                     std::sort(sortedIndices.begin(), sortedIndices.end(),
                         [creatures](size_t a, size_t b) {
-                            return (*creatures)[a].getThirst() < (*creatures)[b].getThirst();
+                            return (*creatures)[a]->getThirst() < (*creatures)[b]->getThirst();
                         });
                     break;
                 case 4: // Fatigue
                     std::sort(sortedIndices.begin(), sortedIndices.end(),
                         [creatures](size_t a, size_t b) {
-                            return (*creatures)[a].getFatigue() > (*creatures)[b].getFatigue();
+                            return (*creatures)[a]->getFatigue() > (*creatures)[b]->getFatigue();
                         });
                     break;
-                default: // Index (no sort needed)
+                default:
                     break;
             }
-            
+
             for (size_t idx : sortedIndices) {
-                const Creature& creature = (*creatures)[idx];
-                int creatureId = creature.getCreatureId();
+                const EcoSim::Genetics::Organism& creature = *(*creatures)[idx];
+                int creatureId = creature.getSequentialId();
                 
                 // Filter check - allow filtering by creature ID or position
                 if (std::strlen(_creatureFilterText) > 0) {
@@ -842,7 +834,7 @@ void ImGuiOverlay::renderCreatureListWindow(const std::vector<Creature>* creatur
 // Creature Inspector Window - New Design with 5 Tabs + Genetics Sub-Tabs
 //==============================================================================
 
-void ImGuiOverlay::renderCreatureInspectorWindow(const Creature* creature) {
+void ImGuiOverlay::renderCreatureInspectorWindow(const EcoSim::Genetics::Organism* creature) {
     // Calculate bottom-right position dynamically based on window size
     ImGuiIO& io = ImGui::GetIO();
     const float rightMargin = 10.0f;
@@ -873,7 +865,7 @@ void ImGuiOverlay::renderCreatureInspectorWindow(const Creature* creature) {
         ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.9f, 1.0f), "%s", creature->getScientificName().c_str());
         
         // ID and Age
-        ImGui::Text("ID: #%d  Age: %d/%d", creature->getCreatureId(),
+        ImGui::Text("ID: #%d  Age: %d/%d", creature->getSequentialId(),
                     creature->getAge(), creature->getLifespan());
         ImGui::Separator();
         

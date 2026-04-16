@@ -57,7 +57,7 @@ float getGeneValue(const Genome& genome, const std::string& geneId) {
 }
 
 // Helper to build thermal adaptations from a creature's genome
-ThermalAdaptations extractAdaptations(const Creature& creature) {
+ThermalAdaptations extractAdaptations(const EcoSim::Genetics::Organism& creature) {
     const Genome& genome = creature.getGenome();
     ThermalAdaptations adapt;
     adapt.furDensity = getGeneValue(genome, UniversalGenes::FUR_DENSITY);
@@ -69,7 +69,7 @@ ThermalAdaptations extractAdaptations(const Creature& creature) {
 }
 
 // Helper to calculate creature's temperature stress
-TemperatureStress calculateCreatureStress(const Creature& creature, float temperature) {
+TemperatureStress calculateCreatureStress(const EcoSim::Genetics::Organism& creature, float temperature) {
     const Genome& genome = creature.getGenome();
     float tempMin = getGeneValue(genome, UniversalGenes::TEMP_TOLERANCE_LOW);
     float tempMax = getGeneValue(genome, UniversalGenes::TEMP_TOLERANCE_HIGH);
@@ -221,10 +221,10 @@ void test_environmental_stress_arctic_in_cold() {
     auto registry = createTestRegistry();
     BiomeVariantFactory factory(registry);
     
-    Creature arcticWolf = factory.createArcticWolf(0, 0);
+    auto arcticWolf = factory.createArcticWolf(0, 0);
     
     // Test at cold temperature (-20°C)
-    auto stress = calculateCreatureStress(arcticWolf, -20.0f);
+    auto stress = calculateCreatureStress(*arcticWolf, -20.0f);
     
     std::cout << "      Arctic Wolf at -20°C:" << std::endl;
     std::cout << "        Stress severity: " << EnvironmentalStressCalculator::stressLevelToString(stress.severity) << std::endl;
@@ -244,10 +244,10 @@ void test_environmental_stress_arctic_in_hot() {
     auto registry = createTestRegistry();
     BiomeVariantFactory factory(registry);
     
-    Creature arcticWolf = factory.createArcticWolf(0, 0);
+    auto arcticWolf = factory.createArcticWolf(0, 0);
     
     // Test at hot temperature (40°C)
-    auto stress = calculateCreatureStress(arcticWolf, 40.0f);
+    auto stress = calculateCreatureStress(*arcticWolf, 40.0f);
     
     std::cout << "      Arctic Wolf at 40°C:" << std::endl;
     std::cout << "        Stress severity: " << EnvironmentalStressCalculator::stressLevelToString(stress.severity) << std::endl;
@@ -270,13 +270,13 @@ void test_environmental_stress_desert_in_hot() {
     auto registry = createTestRegistry();
     BiomeVariantFactory factory(registry);
     
-    Creature desertFennec = factory.createDesertFennec(0, 0);
+    auto desertFennec = factory.createDesertFennec(0, 0);
     
     // Test at hot temperature (40°C)
-    ThermalAdaptations adapt = extractAdaptations(desertFennec);
+    ThermalAdaptations adapt = extractAdaptations(*desertFennec);
     adapt.thermoregulation = 0.7f; // Desert creatures have good thermoregulation
     
-    const Genome& genome = desertFennec.getGenome();
+    const Genome& genome = desertFennec->getGenome();
     float tempMin = getGeneValue(genome, UniversalGenes::TEMP_TOLERANCE_LOW);
     float tempMax = getGeneValue(genome, UniversalGenes::TEMP_TOLERANCE_HIGH);
     
@@ -299,10 +299,10 @@ void test_environmental_stress_desert_in_cold() {
     auto registry = createTestRegistry();
     BiomeVariantFactory factory(registry);
     
-    Creature desertFennec = factory.createDesertFennec(0, 0);
+    auto desertFennec = factory.createDesertFennec(0, 0);
     
     // Test at cold temperature (-10°C)
-    auto stress = calculateCreatureStress(desertFennec, -10.0f);
+    auto stress = calculateCreatureStress(*desertFennec, -10.0f);
     
     std::cout << "      Desert Fennec at -10°C:" << std::endl;
     std::cout << "        Stress severity: " << EnvironmentalStressCalculator::stressLevelToString(stress.severity) << std::endl;
@@ -324,7 +324,7 @@ void test_environmental_stress_gradual_decline() {
     CreatureFactory factory(registry);
     factory.registerDefaultTemplates();
     
-    Creature temperateCreature = factory.createApexPredator(0, 0);
+    auto temperateCreature = factory.createApexPredator(0, 0);
     
     // Test stress at various temperatures starting from temperate to extreme
     std::vector<float> temps = {25.0f, 30.0f, 35.0f, 40.0f, 45.0f, 50.0f};
@@ -333,7 +333,7 @@ void test_environmental_stress_gradual_decline() {
     std::cout << "      Stress progression as temperature increases:" << std::endl;
     
     for (float temp : temps) {
-        auto stress = calculateCreatureStress(temperateCreature, temp);
+        auto stress = calculateCreatureStress(*temperateCreature, temp);
         stressLevels.push_back(stress.stressLevel);
         std::cout << "        " << temp << "°C: "
                   << EnvironmentalStressCalculator::stressLevelToString(stress.severity)
@@ -365,7 +365,7 @@ void test_stress_survival_arctic_in_desert() {
     auto registry = createTestRegistry();
     BiomeVariantFactory factory(registry);
     
-    Creature arcticWolf = factory.createArcticWolf(0, 0);
+    auto arcticWolf = factory.createArcticWolf(0, 0);
     
     // Simulate arctic creature in hot desert (45°C)
     const float desertTemp = 45.0f;
@@ -378,7 +378,7 @@ void test_stress_survival_arctic_in_desert() {
     std::cout << "      Arctic Wolf in 45°C desert environment:" << std::endl;
     
     for (int tick = 0; tick < maxTicks && health > 0.0f; ++tick) {
-        auto stress = calculateCreatureStress(arcticWolf, desertTemp);
+        auto stress = calculateCreatureStress(*arcticWolf, desertTemp);
         
         // Apply stress effects
         float energyDrain = 0.01f * stress.energyDrainMultiplier; // Base drain * multiplier
@@ -426,12 +426,12 @@ void test_stress_survival_energy_drain_tracking() {
     auto registry = createTestRegistry();
     BiomeVariantFactory factory(registry);
     
-    Creature arcticWolf = factory.createArcticWolf(0, 0);
+    auto arcticWolf = factory.createArcticWolf(0, 0);
     
     // Compare energy drain at different stress levels
-    auto lowStress = calculateCreatureStress(arcticWolf, -10.0f);  // Comfortable
-    auto medStress = calculateCreatureStress(arcticWolf, 25.0f);   // Moderate stress
-    auto highStress = calculateCreatureStress(arcticWolf, 40.0f);  // Severe stress
+    auto lowStress = calculateCreatureStress(*arcticWolf, -10.0f);  // Comfortable
+    auto medStress = calculateCreatureStress(*arcticWolf, 25.0f);   // Moderate stress
+    auto highStress = calculateCreatureStress(*arcticWolf, 40.0f);  // Severe stress
     
     std::cout << "      Energy drain multipliers:" << std::endl;
     std::cout << "        At -10°C (comfortable): " << lowStress.energyDrainMultiplier << "x" << std::endl;
@@ -455,7 +455,7 @@ void test_biome_appropriate_arctic_wolf_in_tundra() {
     auto registry = createTestRegistry();
     BiomeVariantFactory factory(registry);
     
-    Creature arcticWolf = factory.createArcticWolf(0, 0);
+    auto arcticWolf = factory.createArcticWolf(0, 0);
     
     // Simulate 200 ticks in appropriate biome (-15°C)
     const float tundraTemp = -15.0f;
@@ -465,7 +465,7 @@ void test_biome_appropriate_arctic_wolf_in_tundra() {
     float health = 1.0f;
     
     for (int tick = 0; tick < ticks; ++tick) {
-        auto stress = calculateCreatureStress(arcticWolf, tundraTemp);
+        auto stress = calculateCreatureStress(*arcticWolf, tundraTemp);
         float healthDamage = stress.healthDamageRate;
         health -= healthDamage;
         metrics.recordTick(stress, stress.energyDrainMultiplier * 0.01f, healthDamage);
@@ -488,16 +488,16 @@ void test_biome_appropriate_desert_fennec_in_desert() {
     auto registry = createTestRegistry();
     BiomeVariantFactory factory(registry);
     
-    Creature desertFennec = factory.createDesertFennec(0, 0);
+    auto desertFennec = factory.createDesertFennec(0, 0);
     
     // Simulate 200 ticks in appropriate biome (35°C with thermoregulation)
     const float desertTemp = 35.0f;
     const int ticks = 200;
     
-    ThermalAdaptations adapt = extractAdaptations(desertFennec);
+    ThermalAdaptations adapt = extractAdaptations(*desertFennec);
     adapt.thermoregulation = 0.7f;
     
-    const Genome& genome = desertFennec.getGenome();
+    const Genome& genome = desertFennec->getGenome();
     float tempMin = getGeneValue(genome, UniversalGenes::TEMP_TOLERANCE_LOW);
     float tempMax = getGeneValue(genome, UniversalGenes::TEMP_TOLERANCE_HIGH);
     
@@ -528,7 +528,7 @@ void test_biome_appropriate_tropical_jaguar_in_tropical() {
     auto registry = createTestRegistry();
     BiomeVariantFactory factory(registry);
     
-    Creature tropicalJaguar = factory.createTropicalJaguar(0, 0);
+    auto tropicalJaguar = factory.createTropicalJaguar(0, 0);
     
     // Simulate 200 ticks in appropriate biome (28°C)
     const float tropicalTemp = 28.0f;
@@ -538,7 +538,7 @@ void test_biome_appropriate_tropical_jaguar_in_tropical() {
     float health = 1.0f;
     
     for (int tick = 0; tick < ticks; ++tick) {
-        auto stress = calculateCreatureStress(tropicalJaguar, tropicalTemp);
+        auto stress = calculateCreatureStress(*tropicalJaguar, tropicalTemp);
         float healthDamage = stress.healthDamageRate;
         health -= healthDamage;
         metrics.recordTick(stress, stress.energyDrainMultiplier * 0.01f, healthDamage);
@@ -566,7 +566,7 @@ void test_cross_biome_migration_stress_detection() {
     // Create a temperate creature
     CreatureFactory creatureFactory(registry);
     creatureFactory.registerDefaultTemplates();
-    Creature temperateCreature = creatureFactory.createApexPredator(0, 0);
+    auto temperateCreature = creatureFactory.createApexPredator(0, 0);
     
     // Test stress at different temperatures (simulating migration)
     std::vector<float> migrationPath = {15.0f, 20.0f, 25.0f, 30.0f, 35.0f, 40.0f};
@@ -576,7 +576,7 @@ void test_cross_biome_migration_stress_detection() {
     float lastStress = 0.0f;
     
     for (float temp : migrationPath) {
-        auto stress = calculateCreatureStress(temperateCreature, temp);
+        auto stress = calculateCreatureStress(*temperateCreature, temp);
         std::cout << "        At " << temp << "°C: " 
                   << EnvironmentalStressCalculator::stressLevelToString(stress.severity)
                   << " (level: " << stress.stressLevel << ")" << std::endl;
@@ -596,14 +596,14 @@ void test_cross_biome_recovery_in_home_biome() {
     auto registry = createTestRegistry();
     BiomeVariantFactory factory(registry);
     
-    Creature arcticWolf = factory.createArcticWolf(0, 0);
+    auto arcticWolf = factory.createArcticWolf(0, 0);
     
     // Simulate excursion: home (cold) → hostile (hot) → home (cold)
     float health = 1.0f;
     
     std::cout << "      Phase 1: 50 ticks in home biome (-15°C):" << std::endl;
     for (int i = 0; i < 50; ++i) {
-        auto stress = calculateCreatureStress(arcticWolf, -15.0f);
+        auto stress = calculateCreatureStress(*arcticWolf, -15.0f);
         health -= stress.healthDamageRate;
     }
     float healthAfterHome1 = health;
@@ -611,7 +611,7 @@ void test_cross_biome_recovery_in_home_biome() {
     
     std::cout << "      Phase 2: 30 ticks in hostile biome (35°C):" << std::endl;
     for (int i = 0; i < 30; ++i) {
-        auto stress = calculateCreatureStress(arcticWolf, 35.0f);
+        auto stress = calculateCreatureStress(*arcticWolf, 35.0f);
         health -= stress.healthDamageRate;
     }
     float healthAfterHostile = health;
@@ -621,7 +621,7 @@ void test_cross_biome_recovery_in_home_biome() {
     TEST_ASSERT_LT(healthAfterHostile, healthAfterHome1);
     
     std::cout << "      Phase 3: Return to home biome (stress stops):" << std::endl;
-    auto finalStress = calculateCreatureStress(arcticWolf, -15.0f);
+    auto finalStress = calculateCreatureStress(*arcticWolf, -15.0f);
     std::cout << "        Stress level after return: " 
               << EnvironmentalStressCalculator::stressLevelToString(finalStress.severity) << std::endl;
     
@@ -770,8 +770,8 @@ void test_population_stability_simple_ecosystem() {
     arcticWolf.name = "Arctic Wolf";
     
     Plant moss = factory.createTundraMoss(0, 0);
-    Creature mamm = factory.createWoollyMammoth(0, 0);
-    Creature wolf = factory.createArcticWolf(0, 0);
+    auto mamm = factory.createWoollyMammoth(0, 0);
+    auto wolf = factory.createArcticWolf(0, 0);
     
     const float tundraTemp = -15.0f;
     const int ticks = 500;
@@ -792,14 +792,14 @@ void test_population_stability_simple_ecosystem() {
         
         // Update mammoth
         if (mammoth.alive) {
-            auto stress = calculateCreatureStress(mamm, tundraTemp);
+            auto stress = calculateCreatureStress(*mamm, tundraTemp);
             mammoth.health -= stress.healthDamageRate;
             if (mammoth.health <= 0.0f) mammoth.alive = false;
         }
         
         // Update wolf
         if (arcticWolf.alive) {
-            auto stress = calculateCreatureStress(wolf, tundraTemp);
+            auto stress = calculateCreatureStress(*wolf, tundraTemp);
             arcticWolf.health -= stress.healthDamageRate;
             if (arcticWolf.health <= 0.0f) arcticWolf.alive = false;
         }
@@ -830,7 +830,7 @@ void test_population_stability_no_instant_death() {
     BiomeVariantFactory factory(registry);
     
     // Place arctic creature in EXTREMELY hostile environment
-    Creature arcticWolf = factory.createArcticWolf(0, 0);
+    auto arcticWolf = factory.createArcticWolf(0, 0);
     
     // Even at 50°C, should survive at least a few ticks
     const float extremeTemp = 50.0f;
@@ -838,7 +838,7 @@ void test_population_stability_no_instant_death() {
     int ticksSurvived = 0;
     
     while (health > 0.0f && ticksSurvived < 100) {
-        auto stress = calculateCreatureStress(arcticWolf, extremeTemp);
+        auto stress = calculateCreatureStress(*arcticWolf, extremeTemp);
         health -= stress.healthDamageRate;
         ticksSurvived++;
     }
@@ -896,9 +896,9 @@ void test_edge_case_exact_tolerance_boundary() {
     auto registry = createTestRegistry();
     BiomeVariantFactory factory(registry);
     
-    Creature desertFennec = factory.createDesertFennec(0, 0);
+    auto desertFennec = factory.createDesertFennec(0, 0);
     
-    const Genome& genome = desertFennec.getGenome();
+    const Genome& genome = desertFennec->getGenome();
     float tempMin = getGeneValue(genome, UniversalGenes::TEMP_TOLERANCE_LOW);
     float tempMax = getGeneValue(genome, UniversalGenes::TEMP_TOLERANCE_HIGH);
     
@@ -906,13 +906,13 @@ void test_edge_case_exact_tolerance_boundary() {
     
     // Test within comfortable range (well inside tolerance)
     float comfortTemp = (tempMin + tempMax) / 2.0f;
-    auto stressComfortable = calculateCreatureStress(desertFennec, comfortTemp);
+    auto stressComfortable = calculateCreatureStress(*desertFennec, comfortTemp);
     
     // Test at upper boundary
-    auto stressAtUpperBoundary = calculateCreatureStress(desertFennec, tempMax);
+    auto stressAtUpperBoundary = calculateCreatureStress(*desertFennec, tempMax);
     
     // Test well outside boundary
-    auto stressWellOutside = calculateCreatureStress(desertFennec, tempMax + 20.0f);
+    auto stressWellOutside = calculateCreatureStress(*desertFennec, tempMax + 20.0f);
     
     std::cout << "        At " << comfortTemp << "°C (comfortable): "
               << EnvironmentalStressCalculator::stressLevelToString(stressComfortable.severity) << std::endl;
@@ -938,11 +938,11 @@ void test_edge_case_extreme_climate() {
     CreatureFactory factory(registry);
     factory.registerDefaultTemplates();
     
-    Creature temperateCreature = factory.createApexPredator(0, 0);
+    auto temperateCreature = factory.createApexPredator(0, 0);
     
     // Test at physical extremes - well beyond any reasonable tolerance
-    auto stressExtremeCold = calculateCreatureStress(temperateCreature, -50.0f);
-    auto stressExtremeHot = calculateCreatureStress(temperateCreature, 70.0f);
+    auto stressExtremeCold = calculateCreatureStress(*temperateCreature, -50.0f);
+    auto stressExtremeHot = calculateCreatureStress(*temperateCreature, 70.0f);
     
     std::cout << "      Extreme climate tests (temperate creature):" << std::endl;
     std::cout << "        At -50°C: " << EnvironmentalStressCalculator::stressLevelToString(stressExtremeCold.severity)

@@ -78,25 +78,24 @@ void CoevolutionTracker::initializeDefaultPairs() {
 // Population Recording
 // ============================================================================
 
-void CoevolutionTracker::recordCreatureGeneration(const std::vector<Creature>& creatures) {
+void CoevolutionTracker::recordCreatureGeneration(const std::vector<OrganismPtr>& creatures) {
     currentCreatureData_ = GeneFrequencyRecord();
     currentCreatureData_.generation = currentGeneration_;
-    
+
     if (creatures.empty()) {
         return;
     }
-    
+
     // Collect values for each tracked creature gene
     std::map<std::string, std::vector<float>> geneValues;
-    
+
     for (const auto& pair : config_.trackedPairs) {
         geneValues[pair.first] = std::vector<float>();
     }
-    
+
     // Extract gene values from each creature
     for (const auto& creature : creatures) {
-        // Get phenotype from creature's new genetics system
-        const Phenotype& phenotype = creature.getPhenotype();
+        const Phenotype& phenotype = creature->getPhenotype();
         
         for (const auto& pair : config_.trackedPairs) {
             const std::string& geneName = pair.first;

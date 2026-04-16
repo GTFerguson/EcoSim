@@ -88,10 +88,10 @@ void SpatialIndex::clear() {
     creatureCount_ = 0;
 }
 
-void SpatialIndex::rebuild(std::vector<Creature>& creatures) {
+void SpatialIndex::rebuild(std::vector<std::unique_ptr<EcoSim::Genetics::Organism>>& creatures) {
     clear();
-    for (Creature& c : creatures) {
-        insert(&c);
+    for (auto& c : creatures) {
+        insert(c.get());
     }
 }
 

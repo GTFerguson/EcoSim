@@ -16,6 +16,7 @@
 
 // Forward declarations
 class Creature;
+namespace EcoSim { namespace Genetics { class Organism; } }
 
 #include "genetics/core/MotivationAction.hpp"
 using Motivation = EcoSim::Genetics::Motivation;
@@ -90,7 +91,7 @@ public:
      * @param creature The creature to get color for
      * @return SDL_Color based on creature's current profile
      */
-    static SDL_Color creatureProfileToColor(const Creature& creature);
+    static SDL_Color creatureProfileToColor(const EcoSim::Genetics::Organism& creature);
     
     /**
      * @brief Convert Motivation enum to SDL_Color

@@ -133,7 +133,7 @@ public:
      * Call after loading saves or major population changes.
      * @param creatures Vector of all creatures
      */
-    void rebuildCreatureIndex(std::vector<Creature>& creatures);
+    void rebuildCreatureIndex(std::vector<std::unique_ptr<EcoSim::Genetics::Organism>>& creatures);
     
     //============================================================================
     // Terrain Generation Configuration

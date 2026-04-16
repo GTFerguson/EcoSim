@@ -442,15 +442,15 @@ void testCreatureRoundtrip() {
     json j = CreatureSerialization::toJson(*creature);
     
     // Deserialize
-    Creature restored = CreatureSerialization::fromJson(j, 200, 200);
+    auto restored = CreatureSerialization::fromJson(j, 200, 200);
     
     // Verify state
-    TEST_ASSERT_EQ(creature->getX(), restored.getX());
-    TEST_ASSERT_EQ(creature->getY(), restored.getY());
-    TEST_ASSERT_NEAR(creature->getHunger(), restored.getHunger(), 0.01f);
-    TEST_ASSERT_NEAR(creature->getThirst(), restored.getThirst(), 0.01f);
-    TEST_ASSERT_NEAR(creature->getFatigue(), restored.getFatigue(), 0.01f);
-    TEST_ASSERT_EQ(creature->getAge(), restored.getAge());
+    TEST_ASSERT_EQ(creature->getX(), restored->getX());
+    TEST_ASSERT_EQ(creature->getY(), restored->getY());
+    TEST_ASSERT_NEAR(creature->getHunger(), restored->getHunger(), 0.01f);
+    TEST_ASSERT_NEAR(creature->getThirst(), restored->getThirst(), 0.01f);
+    TEST_ASSERT_NEAR(creature->getFatigue(), restored->getFatigue(), 0.01f);
+    TEST_ASSERT_EQ(creature->getAge(), restored->getAge());
 }
 
 void testCreaturePositionBounds() {
@@ -462,13 +462,13 @@ void testCreaturePositionBounds() {
     json j = CreatureSerialization::toJson(*creature);
     
     // Load with smaller map - position should be clamped
-    Creature restored = CreatureSerialization::fromJson(j, 100, 100);
+    auto restored = CreatureSerialization::fromJson(j, 100, 100);
     
     // Position should be clamped to map bounds
-    TEST_ASSERT_LT(restored.getX(), 100);
-    TEST_ASSERT_LT(restored.getY(), 100);
-    TEST_ASSERT_GE(restored.getX(), 0);
-    TEST_ASSERT_GE(restored.getY(), 0);
+    TEST_ASSERT_LT(restored->getX(), 100);
+    TEST_ASSERT_LT(restored->getY(), 100);
+    TEST_ASSERT_GE(restored->getX(), 0);
+    TEST_ASSERT_GE(restored->getY(), 0);
 }
 
 void testCreatureWithCombatState() {
@@ -481,12 +481,12 @@ void testCreatureWithCombatState() {
     creature->setFleeing(true);
     
     json j = CreatureSerialization::toJson(*creature);
-    Creature restored = CreatureSerialization::fromJson(j, 100, 100);
+    auto restored = CreatureSerialization::fromJson(j, 100, 100);
     
-    TEST_ASSERT(restored.isInCombat());
-    TEST_ASSERT_EQ(42, restored.getTargetId());
-    TEST_ASSERT_EQ(5, restored.getCombatCooldown());
-    TEST_ASSERT(restored.isFleeing());
+    TEST_ASSERT(restored->isInCombat());
+    TEST_ASSERT_EQ(42, restored->getTargetId());
+    TEST_ASSERT_EQ(5, restored->getCombatCooldown());
+    TEST_ASSERT(restored->isFleeing());
 }
 
 void testCreatureWithDamage() {
@@ -497,11 +497,11 @@ void testCreatureWithDamage() {
     creature->takeDamage(maxHealth * 0.3f);  // 30% damage
     
     json j = CreatureSerialization::toJson(*creature);
-    Creature restored = CreatureSerialization::fromJson(j, 100, 100);
+    auto restored = CreatureSerialization::fromJson(j, 100, 100);
     
     // Health should be restored
-    TEST_ASSERT_NEAR(creature->getHealth(), restored.getHealth(), 0.1f);
-    TEST_ASSERT_LT(restored.getHealth(), maxHealth);
+    TEST_ASSERT_NEAR(creature->getHealth(), restored->getHealth(), 0.1f);
+    TEST_ASSERT_LT(restored->getHealth(), maxHealth);
 }
 
 void testCreaturePhenotypeRegenerated() {
@@ -510,13 +510,13 @@ void testCreaturePhenotypeRegenerated() {
     auto creature = createTestCreature(10, 10, 0.5f, 0.5f);
     
     json j = CreatureSerialization::toJson(*creature);
-    Creature restored = CreatureSerialization::fromJson(j, 100, 100);
+    auto restored = CreatureSerialization::fromJson(j, 100, 100);
     
     // Phenotype should be regenerated and functional
-    const auto& phenotype = restored.getPhenotype();
-    
-    // Should have trait values (phenotype regenerated from genome)
-    float sightRange = restored.getSightRange();
+    const auto& phenotype = restored->getPhenotype();
+    (void)phenotype;
+
+    float sightRange = restored->getSightRange();
     TEST_ASSERT_GT(sightRange, 0.0f);
 }
 
@@ -527,11 +527,11 @@ void testCreatureWorldPosition() {
     creature->setWorldPosition(10.5f, 10.7f);
     
     json j = CreatureSerialization::toJson(*creature);
-    Creature restored = CreatureSerialization::fromJson(j, 100, 100);
+    auto restored = CreatureSerialization::fromJson(j, 100, 100);
     
     // World position should be preserved
-    TEST_ASSERT_NEAR(creature->getWorldX(), restored.getWorldX(), 0.01f);
-    TEST_ASSERT_NEAR(creature->getWorldY(), restored.getWorldY(), 0.01f);
+    TEST_ASSERT_NEAR(creature->getWorldX(), restored->getWorldX(), 0.01f);
+    TEST_ASSERT_NEAR(creature->getWorldY(), restored->getWorldY(), 0.01f);
 }
 
 // ============================================================================
@@ -668,7 +668,7 @@ void testSaveLoadEmptyWorld() {
     
     FileHandling fh(TEST_SAVE_DIR);
     
-    std::vector<Creature> creatures;
+    std::vector<G::OrganismPtr> creatures;
     Calendar calendar;
     unsigned tick = 0;
     
@@ -680,7 +680,7 @@ void testSaveLoadEmptyWorld() {
     TEST_ASSERT(saveResult);
     
     // Load
-    std::vector<Creature> loadedCreatures;
+    std::vector<G::OrganismPtr> loadedCreatures;
     Calendar loadedCalendar;
     unsigned loadedTick = 0;
     
@@ -699,12 +699,12 @@ void testSaveLoadWithCreatures() {
     
     FileHandling fh(TEST_SAVE_DIR);
     
-    std::vector<Creature> creatures;
+    std::vector<G::OrganismPtr> creatures;
     
     // Create test creatures
     for (int i = 0; i < 5; i++) {
         auto c = createTestCreature(10 + i * 5, 10 + i * 3, 0.5f, 0.5f);
-        creatures.push_back(std::move(*c));
+        creatures.push_back(std::move(c));
     }
     
     Calendar calendar;
@@ -718,7 +718,7 @@ void testSaveLoadWithCreatures() {
     TEST_ASSERT(saveResult);
     
     // Load
-    std::vector<Creature> loadedCreatures;
+    std::vector<G::OrganismPtr> loadedCreatures;
     Calendar loadedCalendar;
     unsigned loadedTick = 0;
     
@@ -736,7 +736,7 @@ void testCalendarStatePreserved() {
     
     FileHandling fh(TEST_SAVE_DIR);
     
-    std::vector<Creature> creatures;
+    std::vector<G::OrganismPtr> creatures;
     
     // Set specific calendar state
     Time time;
@@ -754,7 +754,7 @@ void testCalendarStatePreserved() {
     bool saveResult = fh.saveGameJson("test_calendar.json", creatures, world, calendar, tick, 50, 50);
     TEST_ASSERT(saveResult);
     
-    std::vector<Creature> loadedCreatures;
+    std::vector<G::OrganismPtr> loadedCreatures;
     Calendar loadedCalendar;
     unsigned loadedTick = 0;
     
@@ -775,7 +775,7 @@ void testTickCountPreserved() {
     
     FileHandling fh(TEST_SAVE_DIR);
     
-    std::vector<Creature> creatures;
+    std::vector<G::OrganismPtr> creatures;
     Calendar calendar;
     unsigned tick = 123456;
     World world = createTestWorld(50, 50);
@@ -783,7 +783,7 @@ void testTickCountPreserved() {
     bool saveResult = fh.saveGameJson("test_tick.json", creatures, world, calendar, tick, 50, 50);
     TEST_ASSERT(saveResult);
     
-    std::vector<Creature> loadedCreatures;
+    std::vector<G::OrganismPtr> loadedCreatures;
     Calendar loadedCalendar;
     unsigned loadedTick = 0;
     
@@ -807,7 +807,7 @@ void testInvalidJsonHandling() {
     file << "{ invalid json content";
     file.close();
     
-    std::vector<Creature> creatures;
+    std::vector<G::OrganismPtr> creatures;
     Calendar calendar;
     unsigned tick = 0;
     World world = createTestWorld(50, 50);
@@ -823,7 +823,7 @@ void testFileNotFoundHandling() {
     
     FileHandling fh(TEST_SAVE_DIR);
     
-    std::vector<Creature> creatures;
+    std::vector<G::OrganismPtr> creatures;
     Calendar calendar;
     unsigned tick = 0;
     World world = createTestWorld(50, 50);
@@ -853,7 +853,7 @@ void testVersionMismatchHandling() {
     file << j.dump(2);
     file.close();
     
-    std::vector<Creature> creatures;
+    std::vector<G::OrganismPtr> creatures;
     Calendar calendar;
     unsigned tick = 0;
     World world = createTestWorld(50, 50);
@@ -871,9 +871,9 @@ void testMapDimensionMismatch() {
     FileHandling fh(TEST_SAVE_DIR);
     
     // Create and save with 100x100 map
-    std::vector<Creature> creatures;
+    std::vector<G::OrganismPtr> creatures;
     auto c = createTestCreature(80, 90, 0.5f, 0.5f);
-    creatures.push_back(std::move(*c));
+    creatures.push_back(std::move(c));
     
     Calendar calendar;
     unsigned tick = 100;
@@ -883,7 +883,7 @@ void testMapDimensionMismatch() {
     TEST_ASSERT(saveResult);
     
     // Load with 50x50 map
-    std::vector<Creature> loadedCreatures;
+    std::vector<G::OrganismPtr> loadedCreatures;
     Calendar loadedCalendar;
     unsigned loadedTick = 0;
     World smallWorld = createTestWorld(50, 50);
@@ -894,8 +894,8 @@ void testMapDimensionMismatch() {
     
     // Creature should be loaded with clamped position
     TEST_ASSERT_EQ(1u, loadedCreatures.size());
-    TEST_ASSERT_LT(loadedCreatures[0].getX(), 50);
-    TEST_ASSERT_LT(loadedCreatures[0].getY(), 50);
+    TEST_ASSERT_LT(loadedCreatures[0]->getX(), 50);
+    TEST_ASSERT_LT(loadedCreatures[0]->getY(), 50);
     
     cleanupTestDir();
 }
@@ -934,7 +934,7 @@ void testWorldGenerationParametersPreserved() {
     unsigned elev2 = gridBefore[25][25].getElevation();
     unsigned elev3 = gridBefore[40][40].getElevation();
     
-    std::vector<Creature> creatures;
+    std::vector<G::OrganismPtr> creatures;
     Calendar calendar;
     unsigned tick = 500;
     
@@ -957,7 +957,7 @@ void testWorldGenerationParametersPreserved() {
     TEST_ASSERT(newWorld.getSeed() != customMapGen.seed);
     
     // Load the saved game
-    std::vector<Creature> loadedCreatures;
+    std::vector<G::OrganismPtr> loadedCreatures;
     Calendar loadedCalendar;
     unsigned loadedTick = 0;
     
@@ -1003,10 +1003,10 @@ void testGetSaveMetadataValid() {
     FileHandling fh(TEST_SAVE_DIR);
     
     // Create save with specific counts
-    std::vector<Creature> creatures;
+    std::vector<G::OrganismPtr> creatures;
     for (int i = 0; i < 10; i++) {
         auto c = createTestCreature(10 + i, 10 + i, 0.5f, 0.5f);
-        creatures.push_back(std::move(*c));
+        creatures.push_back(std::move(c));
     }
     
     Calendar calendar;

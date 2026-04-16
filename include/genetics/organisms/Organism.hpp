@@ -564,5 +564,13 @@ public:
     std::unique_ptr<Organism> pendingOffspring_;
 };
 
+/**
+ * @brief Canonical owning pointer for Organism instances.
+ *
+ * Collections, factory returns, and offspring slots throughout the sim
+ * share this alias so call sites don't spell the full unique_ptr type.
+ */
+using OrganismPtr = std::unique_ptr<Organism>;
+
 } // namespace Genetics
 } // namespace EcoSim

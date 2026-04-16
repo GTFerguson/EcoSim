@@ -9,9 +9,9 @@
  * Part of Phase 1a creature decomposition to improve maintainability.
  */
 
+#include <memory>
 #include <vector>
 
-class Creature;
 class World;
 class Tile;
 struct GeneralStats;
@@ -25,6 +25,7 @@ class Organism;
 namespace CreatureCombat {
 
 using Organism = EcoSim::Genetics::Organism;
+using OrganismPtr = std::unique_ptr<Organism>;
 
 //============================================================================
 //  Combat Hunting
@@ -49,7 +50,7 @@ bool findPrey(Organism& creature,
               std::vector<std::vector<Tile>>& map,
               const int& rows,
               const int& cols,
-              std::vector<Creature>& creatures,
+              std::vector<OrganismPtr>& creatures,
               unsigned& preyAte);
 
 //============================================================================

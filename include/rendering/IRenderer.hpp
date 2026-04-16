@@ -14,6 +14,7 @@
 #define ECOSIM_IRENDERER_HPP
 
 #include "RenderTypes.hpp"
+#include <memory>
 #include <string>
 #include <vector>
 #include <utility>    // for std::pair
@@ -22,6 +23,7 @@
 // Forward declarations to minimize include dependencies
 class World;
 class Creature;
+namespace EcoSim { namespace Genetics { class Organism; } }
 class Tile;
 class Calendar;
 
@@ -141,7 +143,7 @@ public:
      * @param creatures Vector of creatures to consider for rendering
      * @param viewport The viewport configuration for culling
      */
-    virtual void renderCreatures(const std::vector<Creature>& creatures, 
+    virtual void renderCreatures(const std::vector<std::unique_ptr<EcoSim::Genetics::Organism>>& creatures,
                                  const Viewport& viewport) = 0;
     
     /**
@@ -151,7 +153,7 @@ public:
      * @param screenX Screen X coordinate
      * @param screenY Screen Y coordinate
      */
-    virtual void renderCreature(const Creature& creature, 
+    virtual void renderCreature(const EcoSim::Genetics::Organism& creature,
                                 int screenX, int screenY) = 0;
 
     //==========================================================================

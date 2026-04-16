@@ -196,28 +196,26 @@ bool FileHandling::appendStats (const string &stats) {
  *  @return   If the genomes were successfully saved.
  */
 bool FileHandling::saveGenomes (const string &filename,
-                                const vector<Creature> &creatures) {
+                                const vector<EcoSim::Genetics::OrganismPtr> &creatures) {
   const string filepath = genomeDir + filename;
   ofstream file (filepath);
 
   if (file.is_open()) {
     file << genomeHeader << endl;
 
-    for (const Creature & creature : creatures) {
-      // Use new genetics system - output genome chromosome data
-      // Output basic genome stats for analysis
-      file << creature.getLifespan() << ","
-           << creature.getTHunger() << ","
-           << creature.getTThirst() << ","
-           << creature.getTFatigue() << ","
-           << creature.getTMate() << ","
-           << creature.getComfInc() << ","
-           << creature.getComfDec() << ","
-           << creature.getSightRange() << ","
-           << static_cast<int>(creature.getDietType()) << ","
-           << (creature.ifFlocks() ? 1 : 0) << ","
-           << creature.getFlee() << ","
-           << creature.getPursue() << endl;
+    for (const auto& creature : creatures) {
+      file << creature->getLifespan() << ","
+           << creature->getTHunger() << ","
+           << creature->getTThirst() << ","
+           << creature->getTFatigue() << ","
+           << creature->getTMate() << ","
+           << creature->getComfInc() << ","
+           << creature->getComfDec() << ","
+           << creature->getSightRange() << ","
+           << static_cast<int>(creature->getDietType()) << ","
+           << (creature->ifFlocks() ? 1 : 0) << ","
+           << creature->getFlee() << ","
+           << creature->getPursue() << endl;
     }
 
     file.close();
@@ -243,7 +241,7 @@ bool FileHandling::saveGenomes (const string &filename,
  *  @deprecated Use saveGameJson() instead for new save/load functionality.
  */
 bool FileHandling::saveState (const World &w,
-                              const vector<Creature> &creatures,
+                              const vector<EcoSim::Genetics::OrganismPtr> &creatures,
                               const Calendar &calendar,
                               const Statistics &stats) {
   //  Define temporary file paths
@@ -264,9 +262,10 @@ bool FileHandling::saveState (const World &w,
   //  Save creature data to temporary file
   file.open (creaturesTemp);
   if (file.is_open()) {
-    vector<Creature>::const_iterator it = creatures.begin();
+    auto it = creatures.begin();
     while (it != creatures.end()) {
-      file << CreatureSerialization::toString(*it++);
+      file << CreatureSerialization::toString(**it);
+      ++it;
       if (it != creatures.end()) file << endl;
     }
     file.close ();
@@ -310,7 +309,7 @@ bool FileHandling::saveState (const World &w,
 //================================================================================
 bool FileHandling::saveGameJson(
     const std::string& filepath,
-    const std::vector<Creature>& creatures,
+    const std::vector<EcoSim::Genetics::OrganismPtr>& creatures,
     const World& world,
     const Calendar& calendar,
     unsigned currentTick,
@@ -376,10 +375,9 @@ bool FileHandling::saveGameJson(
       {"year", calendar.getYear()}
     };
     
-    // Serialize all creatures
     json creaturesArray = json::array();
     for (const auto& creature : creatures) {
-      creaturesArray.push_back(CreatureSerialization::toJson(creature));
+      creaturesArray.push_back(CreatureSerialization::toJson(*creature));
     }
     saveData["creatures"] = creaturesArray;
     
@@ -534,20 +532,19 @@ bool FileHandling::loadWorld (World &w, Calendar &calendar) {
  *
  *  @deprecated Use loadGameJson() instead.
  */
-bool FileHandling::loadCreatures (vector<Creature> &c) {
+bool FileHandling::loadCreatures (vector<EcoSim::Genetics::OrganismPtr> &c) {
   ifstream file (saveDir + CREATURES_FILEPATH);
-  
+
   if (!file.is_open()) {
     return false;
   }
-  
-  // Ensure gene registry is initialized
+
   Creature::initializeGeneRegistry();
   auto& registry = Creature::getGeneRegistry();
-  
+  (void)registry;
+
   string line;
   while (getline(file, line)) {
-    //  Remove newline at end of string
     line.erase(remove(line.begin(), line.end(), '\n'), line.end());
 
     if (!line.empty()) {
@@ -556,7 +553,7 @@ bool FileHandling::loadCreatures (vector<Creature> &c) {
       if (result.size() == CREATURE_FIELDS) {
         unsigned int index = 0;
 
-        index += 5;  // skip legacy name, desc, char, colour, passable fields
+        index += 5;
 
         int       x           = stoi  (result.at(index++));
         int       y           = stoi  (result.at(index++));
@@ -570,12 +567,8 @@ bool FileHandling::loadCreatures (vector<Creature> &c) {
         [[maybe_unused]] float     metabolism  = stof  (result.at(index++));
         [[maybe_unused]] unsigned  speed       = stoul (result.at(index++));
 
-        // Skip legacy genome fields - they're no longer used
-        // Create creature with new genetics system
         auto genome = std::make_unique<EcoSim::Genetics::Genome>();
-        Creature newC(x, y, hunger, thirst, std::move(genome));
-
-        c.push_back(std::move(newC));
+        c.push_back(std::make_unique<Creature>(x, y, hunger, thirst, std::move(genome)));
       }
     }
   }
@@ -642,7 +635,7 @@ bool FileHandling::loadStats (Statistics &stats) {
  *  @deprecated Use loadGameJson() instead.
  */
 bool FileHandling::loadState (World &w,
-                              std::vector<Creature> &c,
+                              std::vector<EcoSim::Genetics::OrganismPtr> &c,
                               Calendar &calendar,
                               Statistics &stats) {
   //  Load world data first
@@ -668,7 +661,7 @@ bool FileHandling::loadState (World &w,
 //================================================================================
 bool FileHandling::loadGameJson(
     const std::string& filepath,
-    std::vector<Creature>& creatures,
+    std::vector<EcoSim::Genetics::OrganismPtr>& creatures,
     World& world,
     Calendar& calendar,
     unsigned& currentTick,
@@ -815,15 +808,12 @@ bool FileHandling::loadGameJson(
     // Ensure gene registry is initialized
     Creature::initializeGeneRegistry();
     
-    // Load creatures
     const auto& creaturesArray = saveData["creatures"];
     for (const auto& creatureJson : creaturesArray) {
       try {
-        Creature creature = CreatureSerialization::fromJson(creatureJson, mapWidth, mapHeight);
-        creatures.push_back(std::move(creature));
+        creatures.push_back(CreatureSerialization::fromJson(creatureJson, mapWidth, mapHeight));
       } catch (const std::exception& e) {
         std::cerr << "Warning: Failed to load creature: " << e.what() << std::endl;
-        // Continue loading other creatures
       }
     }
     

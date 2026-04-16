@@ -223,7 +223,7 @@ void addPlants(World& w) {
                          BERRY_SPAWN_RATE, "berry_bush");
 }
 
-void spawnCreatures(World& w, std::vector<Creature>& creatures, unsigned count) {
+void spawnCreatures(World& w, std::vector<EcoSim::Genetics::OrganismPtr>& creatures, unsigned count) {
     std::uniform_int_distribution<int> colDis(0, MAP_COLS - 1);
     std::uniform_int_distribution<int> rowDis(0, MAP_ROWS - 1);
     const unsigned MAX_ATTEMPTS = 10000;
@@ -247,8 +247,7 @@ void spawnCreatures(World& w, std::vector<Creature>& creatures, unsigned count) 
         } while (!w.getGrid().at(x).at(y).isPassable());
         
         std::string templateName = templates[i % templates.size()];
-        Creature newC = factory.createFromTemplate(templateName, x, y);
-        creatures.push_back(std::move(newC));
+        creatures.push_back(factory.createFromTemplate(templateName, x, y));
     }
 }
 
@@ -256,7 +255,7 @@ void spawnCreatures(World& w, std::vector<Creature>& creatures, unsigned count) 
 // Profiled Simulation Tick
 //============================================================================
 
-PhaseTimings executeProfiledTick(World& w, std::vector<Creature>& creatures, 
+PhaseTimings executeProfiledTick(World& w, std::vector<EcoSim::Genetics::OrganismPtr>& creatures, 
                                  GeneralStats& gs, unsigned tick) {
     PhaseTimings timings;
     timings.reset();
@@ -297,8 +296,8 @@ PhaseTimings executeProfiledTick(World& w, std::vector<Creature>& creatures,
     {
         TIME_PHASE(timings.scentDeposit);
         for (auto& creature : creatures) {
-            if (creature.getMotivation() == Motivation::Amorous) {
-                creature.depositBreedingScent(w.getScentLayer(), tick);
+            if (creature->getMotivation() == Motivation::Amorous) {
+                creature->depositBreedingScent(w.getScentLayer(), tick);
             }
         }
     }
@@ -307,7 +306,7 @@ PhaseTimings executeProfiledTick(World& w, std::vector<Creature>& creatures,
     timings.creatureCount = creatures.size();
     
     for (size_t i = 0; i < creatures.size(); ++i) {
-        Creature* activeC = &creatures[i];
+        auto* activeC = creatures[i].get();
         
         if (!activeC->isAlive()) continue;
         
@@ -356,7 +355,7 @@ PhaseTimings executeProfiledTick(World& w, std::vector<Creature>& creatures,
         TIME_PHASE(timings.creatureRemoval);
         creatures.erase(
             std::remove_if(creatures.begin(), creatures.end(),
-                [](const Creature& c) { return !c.isAlive(); }),
+                [](const EcoSim::Genetics::OrganismPtr& c) { return !c->isAlive(); }),
             creatures.end()
         );
     }
@@ -551,7 +550,7 @@ int main(int argc, char* argv[]) {
     
     // Spawn creatures
     std::cout << "Spawning " << creatureCount << " creatures..." << std::endl;
-    std::vector<Creature> creatures;
+    std::vector<EcoSim::Genetics::OrganismPtr> creatures;
     spawnCreatures(w, creatures, creatureCount);
     
     // Stats

@@ -122,7 +122,7 @@ public:
      * 
      * @param creatures Vector of all creatures in the population
      */
-    void recordCreatureGeneration(const std::vector<Creature>& creatures);
+    void recordCreatureGeneration(const std::vector<OrganismPtr>& creatures);
     
     /**
      * @brief Record gene frequencies from current plant population

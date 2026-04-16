@@ -22,9 +22,9 @@ namespace CreatureSerialization {
 //  String Serialization
 //============================================================================
 
-std::string toString(const Creature& creature) {
+std::string toString(const EcoSim::Genetics::Organism& creature) {
     std::ostringstream ss;
-    ss  << creature.Organism::toString()    << ","
+    ss  << creature.EcoSim::Genetics::Organism::toString() << ","
         << creature.tileX() << "," << creature.tileY() << "," << creature.getAge() << ","
         << directionToString(creature.getDirection()) << ","
         << motivationToString(creature.getMotivation()) << ","
@@ -165,12 +165,12 @@ Action stringToAction(const std::string& str) {
 //  JSON Serialization
 //============================================================================
 
-nlohmann::json toJson(const Creature& creature) {
+nlohmann::json toJson(const EcoSim::Genetics::Organism& creature) {
     nlohmann::json j;
-    
+
     // Identity
     j["id"] = creature.getId();
-    j["creatureId"] = creature.getCreatureId();  // Creature-specific sequential ID
+    j["creatureId"] = creature.getSequentialId();
     j["archetypeLabel"] = creature.getArchetypeLabel();
     j["scientificName"] = creature.getScientificName();
     
@@ -227,111 +227,92 @@ nlohmann::json toJson(const Creature& creature) {
     return j;
 }
 
-Creature fromJson(const nlohmann::json& j, int mapWidth, int mapHeight) {
-    // Validate required fields
+std::unique_ptr<EcoSim::Genetics::Organism> fromJson(const nlohmann::json& j, int mapWidth, int mapHeight) {
     if (!j.contains("genome")) {
         throw std::runtime_error("Creature::fromJson: missing required field 'genome'");
     }
-    
-    // Load genome first
+
     auto genome = std::make_unique<EcoSim::Genetics::Genome>(
         EcoSim::Genetics::Genome::fromJson(j.at("genome"))
     );
-    
-    // Get position with bounds checking
+
     float worldX = 0.0f, worldY = 0.0f;
     if (j.contains("position")) {
         const auto& pos = j.at("position");
         worldX = pos.value("worldX", 0.0f);
         worldY = pos.value("worldY", 0.0f);
-        
-        // Clamp to world bounds
+
         worldX = std::max(0.0f, std::min(worldX, static_cast<float>(mapWidth - 1)));
         worldY = std::max(0.0f, std::min(worldY, static_cast<float>(mapHeight - 1)));
     }
-    
-    // Get initial state values - use RESOURCE_LIMIT from Creature class
-    float hunger = Creature::RESOURCE_LIMIT / 2.0f;  // Default to half
+
+    float hunger = Creature::RESOURCE_LIMIT / 2.0f;
     float thirst = Creature::RESOURCE_LIMIT / 2.0f;
     if (j.contains("state")) {
         const auto& state = j.at("state");
         hunger = state.value("hunger", hunger);
         thirst = state.value("thirst", thirst);
     }
-    
-    // Create creature with genome and position
-    Creature creature(
+
+    auto creature = std::make_unique<Creature>(
         static_cast<int>(worldX),
         static_cast<int>(worldY),
         hunger,
         thirst,
         std::move(genome)
     );
-    
-    // Restore precise world position
-    creature.setWorldPosition(worldX, worldY);
-    
-    // Restore state
+
+    creature->setWorldPosition(worldX, worldY);
+
     if (j.contains("state")) {
         const auto& state = j.at("state");
-        creature.setFatigue(state.value("fatigue", 0.0f));
-        creature.setMate(state.value("mate", 0.0f));
-        creature.setAge(state.value("age", 0u));
+        creature->setFatigue(state.value("fatigue", 0.0f));
+        creature->setMate(state.value("mate", 0.0f));
+        creature->setAge(state.value("age", 0u));
     }
-    
-    // Restore health - need direct member access, use takeDamage/heal approach
+
     if (j.contains("health")) {
         const auto& health = j.at("health");
-        float targetHealth = health.value("current", creature.getMaxHealth());
-        // Heal or damage to reach target health
-        float delta = targetHealth - creature.getHealth();
+        float targetHealth = health.value("current", creature->getMaxHealth());
+        float delta = targetHealth - creature->getHealth();
         if (delta > 0) {
-            creature.heal(delta);
+            creature->heal(delta);
         } else if (delta < 0) {
-            creature.takeDamage(-delta);
+            creature->takeDamage(-delta);
         }
     }
-    
-    // Restore combat state
+
     if (j.contains("combat")) {
         const auto& combat = j.at("combat");
-        creature.setTargetId(combat.value("targetId", -1));
-        creature.setInCombat(combat.value("inCombat", false));
-        creature.setFleeing(combat.value("isFleeing", false));
-        creature.setCombatCooldown(combat.value("cooldown", 0));
+        creature->setTargetId(combat.value("targetId", -1));
+        creature->setInCombat(combat.value("inCombat", false));
+        creature->setFleeing(combat.value("isFleeing", false));
+        creature->setCombatCooldown(combat.value("cooldown", 0));
     }
-    
-    // Restore behavior state
+
     if (j.contains("behavior")) {
         const auto& behavior = j.at("behavior");
         if (behavior.contains("motivation")) {
-            creature.setMotivation(stringToMotivation(behavior.at("motivation").get<std::string>()));
+            creature->setMotivation(stringToMotivation(behavior.at("motivation").get<std::string>()));
         }
         if (behavior.contains("action")) {
-            creature.setAction(stringToAction(behavior.at("action").get<std::string>()));
+            creature->setAction(stringToAction(behavior.at("action").get<std::string>()));
         }
     }
-    
-    // Restore growth state (with backward compatibility defaults)
+
     if (j.contains("growth")) {
         const auto& growth = j.at("growth");
-        // Must set maxSize first so setCurrentSize can compute mature_ correctly
-        creature.setMaxSize(growth.value("maxSize", creature.getMaxSize()));
-        creature.setCurrentSize(growth.value("currentSize", 0.1f));
-        // Override mature if explicitly set (backward compatibility)
+        creature->setMaxSize(growth.value("maxSize", creature->getMaxSize()));
+        creature->setCurrentSize(growth.value("currentSize", 0.1f));
         if (growth.contains("mature")) {
-            creature.setMature(growth.at("mature").get<bool>());
+            creature->setMature(growth.at("mature").get<bool>());
         }
     }
-    
-    // Restore the saved creature ID (overwrite the auto-generated one)
+
     if (j.contains("creatureId")) {
-        creature.setCreatureId(j.at("creatureId").get<int>());
+        creature->setCreatureId(j.at("creatureId").get<int>());
     }
-    
-    // Archetype is reclassified from genome in constructor
-    // Phenotype is regenerated from genome in constructor
-    
+
     return creature;
 }
 
