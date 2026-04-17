@@ -52,6 +52,10 @@ using namespace std;
 using EcoSim::Genetics::Organism;
 using EcoSim::Genetics::OrganismPtr;
 
+// Set by main() when --new-world is passed. Makes runWorldEditor skip its
+// input loop (auto-confirm) so the sim can iterate without user clicks.
+static bool g_autoNewWorld = false;
+
 //================================================================================
 //  General simulation constants
 //================================================================================
@@ -343,17 +347,17 @@ void advanceSimulation (World &w, vector<OrganismPtr> &c, GeneralStats &gs) {
   //  This pre-computes expensive calculations like light level (sin-based day/night cycle)
   unsigned int currentTick = w.getCurrentTick();
   w.environment().updateTickCache(static_cast<int>(currentTick));
-  
+
   //  Rebuild spatial index for O(1) neighbor queries (Phase 3 optimization)
   //  This is called once per tick - O(n) rebuild cost enables O(1) queries
   w.rebuildCreatureIndex(c);
-  
+
   //  Push simulation forward
   w.updateAllObjects ();
-  
+
   // Update scent layer for pheromone decay (Phase 2: Sensory System)
   w.updateScentLayer();
-  
+
   // Update corpses (decay, remove fully decayed)
   w.tickCorpses();
   
@@ -1051,7 +1055,11 @@ void runWorldEditor(World& w, vector<OrganismPtr>& creatures,
   
   bool inWorldEdit = true;
   unsigned trnSelector = 0;
-  
+
+  if (g_autoNewWorld) {
+    return;  // auto-confirm the generated world, skip the interactive editor
+  }
+
   while (inWorldEdit) {
     unsigned mapHeight = renderer.getViewportMaxHeight();
     unsigned mapWidth = renderer.getViewportMaxWidth();
@@ -1540,8 +1548,12 @@ void runGameLoop(World& w, vector<OrganismPtr>& creatures,
  *	@return 0 is returned if program was successfully ran,
  *			    1 is returned if the program was terminated with an error.
  */
-int main() {
-  // Initialize the render system
+int main(int argc, char** argv) {
+  // --new-world : skip the start menu + world editor, jump straight to sim
+  for (int i = 1; i < argc; ++i) {
+    if (std::string(argv[i]) == "--new-world") g_autoNewWorld = true;
+  }
+
   RenderConfig config;
   config.backend = RenderBackend::BACKEND_AUTO;
   // Note: inputDelayMs is no longer used for simulation timing.
@@ -1602,6 +1614,17 @@ int main() {
 
   // Origin coordinates for drawing world map.
   int xOrigin = 0, yOrigin = 0;
+
+  if (g_autoNewWorld) {
+    renderer.hideMenu();
+    // Prime the ImGui frame so handleNewWorld's first endFrame has a matching NewFrame.
+    // The normal flow gets this "for free" from the start menu loop's last iteration.
+    renderer.beginFrame();
+    handleNewWorld(w, creatures, file, xOrigin, yOrigin);
+    runGameLoop(w, creatures, calendar, stats, file, xOrigin, yOrigin, settings);
+    RenderSystem::shutdown();
+    return 0;
+  }
 
   // =========================================================================
   // ImGui Start Menu - Unified menu system

@@ -4,11 +4,14 @@
  */
 
 #include "world/PlantManager.hpp"
+#include "world/PlantSpatialIndex.hpp"
 #include "world/WorldGrid.hpp"
 #include "world/ScentLayer.hpp"
 #include "genetics/organisms/Plant.hpp"
 #include "genetics/organisms/PlantFactory.hpp"
 #include "../genetics/test_framework.hpp"
+
+#include <unordered_set>
 
 using namespace EcoSim;
 using namespace EcoSim::Testing;
@@ -228,6 +231,169 @@ void test_factory_can_create_plants() {
     TEST_ASSERT_EQ(plant.getY(), 10);
 }
 
+//=============================================================================
+// Tests: Spatial Index Integrity
+//
+// The PlantSpatialIndex stores raw Plant* grouped by cell. Those pointers are
+// owned by the tile's shared_ptr<Plant>. If a plant's shared_ptr is destroyed
+// without the index being updated, queryRadius walks a dangling pointer and
+// segfaults. These tests pin the invariant: every pointer in the index must
+// address a currently-alive plant that lives in some tile.
+//=============================================================================
+
+// Collect all raw Plant* currently held by any tile. Used as the "truth set"
+// to check the index against.
+static std::unordered_set<const G::Plant*> collectLivePlantPointers(WorldGrid& grid) {
+    std::unordered_set<const G::Plant*> live;
+    for (unsigned x = 0; x < grid.width(); ++x) {
+        for (unsigned y = 0; y < grid.height(); ++y) {
+            for (const auto& p : grid(x, y).getPlants()) {
+                if (p) live.insert(p.get());
+            }
+        }
+    }
+    return live;
+}
+
+// Walk the spatial index and verify every pointer is in the live set.
+// Returns number of dangling entries found.
+static int countDanglingIndexEntries(PlantManager& manager, WorldGrid& grid) {
+    auto live = collectLivePlantPointers(grid);
+    int dangling = 0;
+    const PlantSpatialIndex* idx = manager.getPlantIndex();
+    if (!idx) return 0;
+
+    for (unsigned cx = 0; cx * 32u < grid.width() + 32; ++cx) {
+        for (unsigned cy = 0; cy * 32u < grid.height() + 32; ++cy) {
+            auto cellPlants = idx->queryCell(static_cast<int>(cx), static_cast<int>(cy));
+            for (const G::Plant* p : cellPlants) {
+                if (p && live.find(p) == live.end()) {
+                    ++dangling;
+                }
+            }
+        }
+    }
+    return dangling;
+}
+
+void test_index_clean_after_add_and_query() {
+    Tile passableTile(100, '.', 1, true, false, 180, TerrainType::PLAINS);
+    WorldGrid grid(64, 64, passableTile);
+    ScentLayer scents(64, 64);
+
+    PlantManager manager(grid, scents);
+    manager.initialize();
+    manager.addPlants(150, 200, 30, "grass");
+
+    // Force a rebuild via query.
+    auto results = manager.queryPlantsInRadius(32, 32, 10.0f);
+    (void)results;
+
+    TEST_ASSERT_EQ(0, countDanglingIndexEntries(manager, grid));
+}
+
+void test_index_clean_after_plant_deaths_via_takeDamage() {
+    Tile passableTile(100, '.', 1, true, false, 180, TerrainType::PLAINS);
+    WorldGrid grid(64, 64, passableTile);
+    ScentLayer scents(64, 64);
+
+    PlantManager manager(grid, scents);
+    manager.initialize();
+    manager.addPlants(150, 200, 50, "grass");
+
+    // Prime the index.
+    manager.queryPlantsInRadius(32, 32, 10.0f);
+
+    // Kill every plant via takeDamage (mimics FeedingBehavior eating to death).
+    for (unsigned x = 0; x < grid.width(); ++x) {
+        for (unsigned y = 0; y < grid.height(); ++y) {
+            for (auto& p : grid(x, y).getPlants()) {
+                if (p) p->takeDamage(1e6f);  // overkill damage
+            }
+        }
+    }
+
+    // Tick PlantManager — this should detect dead plants and clean them from
+    // both the tile and the spatial index.
+    manager.tick(1);
+
+    // Any stale Plant* in the index here is a bug.
+    int dangling = countDanglingIndexEntries(manager, grid);
+    TEST_ASSERT_EQ(0, dangling);
+}
+
+// Dispersal-path invariant: if the target tile rejects the offspring
+// (e.g. tile is already occupied), the spatial index must not retain a
+// pointer to the destroyed plant. PlantManager's dispersal code must
+// addPlant-first, insert-second — never insert a pointer it doesn't
+// know will survive.
+void test_dispersal_into_full_tile_does_not_leak_stale_pointer() {
+    Tile passableTile(100, '.', 1, true, false, 180, TerrainType::PLAINS);
+    WorldGrid grid(64, 64, passableTile);
+    ScentLayer scents(64, 64);
+
+    PlantManager manager(grid, scents);
+    manager.initialize();
+
+    // Occupy the target tile so any would-be dispersed plant is rejected.
+    manager.addPlant(32, 32, "grass");
+    TEST_ASSERT_EQ(size_t{1}, grid(32, 32).getPlants().size());
+    TEST_ASSERT(grid(32, 32).getPlants()[0]->isAlive());
+
+    // Prime index (rebuilds, registers the one plant).
+    manager.queryPlantsInRadius(32, 32, 5.0f);
+
+    // Mirror the dispersal code's (post-fix) order: addPlant first, only
+    // insert into the index if addPlant accepted the plant. Rejected
+    // plants let their local shared_ptr drop and never enter the index.
+    {
+        auto p = manager.factory()->createFromTemplate("grass", 32, 32);
+        auto pPtr = std::make_shared<G::Plant>(std::move(p));
+        bool added = grid(32, 32).addPlant(pPtr);
+        TEST_ASSERT(!added);  // rejected because tile already has a plant
+        if (added) {
+            const_cast<PlantSpatialIndex*>(manager.getPlantIndex())->insert(
+                pPtr.get(), 32, 32);
+        }
+    }  // pPtr dies here — but index never got the pointer.
+
+    int dangling = countDanglingIndexEntries(manager, grid);
+    TEST_ASSERT_EQ(0, dangling);
+}
+
+void test_index_query_after_deaths_does_not_return_stale_pointers() {
+    Tile passableTile(100, '.', 1, true, false, 180, TerrainType::PLAINS);
+    WorldGrid grid(64, 64, passableTile);
+    ScentLayer scents(64, 64);
+
+    PlantManager manager(grid, scents);
+    manager.initialize();
+    manager.addPlants(150, 200, 50, "grass");
+
+    // Prime the index.
+    manager.queryPlantsInRadius(32, 32, 10.0f);
+    auto liveBefore = collectLivePlantPointers(grid);
+
+    // Kill every plant.
+    for (unsigned x = 0; x < grid.width(); ++x) {
+        for (unsigned y = 0; y < grid.height(); ++y) {
+            for (auto& p : grid(x, y).getPlants()) {
+                if (p) p->takeDamage(1e6f);
+            }
+        }
+    }
+    manager.tick(1);
+
+    // Plants that are still in tiles (shouldn't be any, but just in case).
+    auto liveAfter = collectLivePlantPointers(grid);
+
+    // Every pointer the query returns must point into liveAfter.
+    auto results = manager.queryPlantsInRadius(32, 32, 100.0f);
+    for (const G::Plant* p : results) {
+        TEST_ASSERT(liveAfter.find(p) != liveAfter.end());
+    }
+}
+
 } // anonymous namespace
 
 //=============================================================================
@@ -258,5 +424,12 @@ void runPlantManagerTests() {
     
     BEGIN_TEST_GROUP("PlantManager - Factory Access");
     RUN_TEST(test_factory_can_create_plants);
+    END_TEST_GROUP();
+
+    BEGIN_TEST_GROUP("PlantManager - Spatial Index Integrity");
+    RUN_TEST(test_index_clean_after_add_and_query);
+    RUN_TEST(test_index_clean_after_plant_deaths_via_takeDamage);
+    RUN_TEST(test_dispersal_into_full_tile_does_not_leak_stale_pointer);
+    RUN_TEST(test_index_query_after_deaths_does_not_return_stale_pointers);
     END_TEST_GROUP();
 }

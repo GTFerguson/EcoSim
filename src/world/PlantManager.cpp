@@ -472,10 +472,20 @@ void PlantManager::tick(unsigned currentTick) {
             *parentPlant, *parentPlant,
             event.targetX, event.targetY
         );
-        
+
         auto offspringPtr = std::make_shared<Plant>(std::move(offspring));
-        
-        // Add to spatial index incrementally if index is valid
+
+        // Let the tile accept or reject the plant first. addPlant rejects
+        // when the tile already hosts a living plant (the "1 plant per tile"
+        // rule) or when its object limit is hit. If we inserted into the
+        // spatial index before addPlant and addPlant then rejected, the
+        // local shared_ptr would drop and destroy the plant — leaving the
+        // raw Plant* in the index as a dangling pointer that later crashes
+        // queryRadius.
+        if (!targetTile.addPlant(offspringPtr)) {
+            continue;
+        }
+
         if (_plantSpatialIndex && !_spatialIndexDirty) {
             _plantSpatialIndex->insert(
                 offspringPtr.get(),
@@ -483,8 +493,6 @@ void PlantManager::tick(unsigned currentTick) {
                 event.targetY
             );
         }
-        
-        targetTile.addPlant(offspringPtr);
     }
     
     // No need to mark dirty - we updated incrementally
