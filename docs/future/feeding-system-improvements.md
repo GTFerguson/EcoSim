@@ -17,6 +17,10 @@ tags: [feeding, herbivore, balance]
 - ✅ **Nutrition gain was being discarded** — `updateWithBehaviors` dropped negative `energyCost`; now applies `BASE_ENERGY_COST - feedingResult.nutritionGained` correctly. Fixed in commit `baa0a76`.
 - ✅ **Herbivore detection bonus** — `plantDigestion * 0.3f` bonus is live in `FeedingInteraction.cpp`.
 
+## Resolved (2026-04-17)
+
+- ✅ **Plant spatial-index stale-pointer crash** — `PlantManager` dispersal was inserting the offspring's raw `Plant*` into `PlantSpatialIndex` *before* calling `targetTile.addPlant(offspringPtr)`. When the tile rejected the plant (1-plant-per-tile rule or object-limit hit) the local `shared_ptr` dropped and destroyed the plant, leaving the index with a dangling pointer that `queryRadius` later dereferenced. Fixed in commit `21ae353` by reordering to addPlant-first, insert-second. Regression covered by new `PlantManager - Spatial Index Integrity` test group.
+
 ## Remaining (as of audit)
 
 - **Issue 2 (template values)** — factory template values (0.85–0.95) may not propagate to creatures (observed ~0.20–0.24 at runtime). Verify genome expression pathway.

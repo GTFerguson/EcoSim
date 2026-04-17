@@ -2,10 +2,10 @@
 
 **Author:** Gary Ferguson
 **Date:** 2025-12-22
-**Updated:** 2026-04-16
-**Status:** `OrganismFactory` lives and gates component attachment on gene expression (commit `bdea841`). Creature and Plant ctors both route through it; `Organism::makeOffspring` default delegates to it. `GameObject` deleted; `isAlive` unified; `~Organism` owns population bookkeeping; SpatialIndex and four behaviour-helper namespaces take `Organism&`. Remaining work: `std::vector<Creature>` → `std::vector<std::unique_ptr<Organism>>`, then delete the Creature and Plant classes and drop their `makeOffspring` overrides.
+**Updated:** 2026-04-17
+**Status:** `OrganismFactory` lives and gates component attachment on gene expression. Creature and Plant ctors both route through it; `Organism::makeOffspring` default delegates to it. `GameObject` deleted; `isAlive` unified; `~Organism` owns population bookkeeping; SpatialIndex and four behaviour-helper namespaces take `Organism&`. **Cut 3a landed (`3f5c7a9`):** every `std::vector<Creature>` in the sim is now `std::vector<std::unique_ptr<Organism>>`. Remaining work: delete the Creature and Plant classes (Cut 3b/3c) and drop their `makeOffspring` overrides (Cut 3d).
 
-## Current State Summary (2026-04-16, post-factory)
+## Current State Summary (2026-04-17, post-container-migration)
 
 **What works end-to-end:**
 
@@ -19,10 +19,11 @@
 - **`isAlive` unified** on Organism as `alive_ && deathCheck() == 0`. `deathCheck` branch 4 (discomfort) gated on `heterotrophy_` presence; branch 1 (old age) uses virtual `getMaxLifespan` so Plant's override takes effect.
 - **Serialization collapsed.** `Creature::toString / toJson / fromJson` member forwarders removed; callers invoke `CreatureSerialization::` free functions directly.
 - **`SpatialIndex` holds `Organism*`** (not Creature*). `CreatureCombat`, `Navigator`, `CreatureResourceSearch` signatures migrated to `Organism&`.
+- **Containers hold `std::unique_ptr<Organism>`** (Cut 3a, `3f5c7a9`). Main loop, save/load, renderers (SDL2 + ncurses + ImGui overlay), `World::rebuildCreatureIndex`, `CoevolutionTracker`, `GenomeStats`, all diagnostic binaries, and every test harness now use `vector<OrganismPtr>`. `CreatureFactory` archetype builders return `OrganismPtr`; `CreatureSerialization::fromJson` returns `unique_ptr<Organism>`. `BiomeVariantFactory` creature builders likewise. `creatureContainer.hpp` deleted. The `OrganismPtr` alias lives in `Organism.hpp` so forward-declare sites don't need the factory header.
 - **Pre-existing `PlantGenes::createRandomGenome` bug fixed:** it used a naive `"plant_"` prefix match that accidentally pulled `UniversalGenes::PLANT_DIGESTION_EFFICIENCY` (a heterotrophy trait) into plant genomes. Replaced with an explicit whitelist.
 - Headless sim produces **compounding births** across generations (11–16 births per 1000 ticks at last checks). 688 tests green.
 
-**What's left on Creature** (the class itself): copy ctor, two new-genetics ctors, `makeOffspring` override. Copy ctor constructs components via the factory; ctors are thin wrappers around `classifyComponentSet` + `attachComponents` plus `sequentialId++`. `creature.hpp` now ~394 lines (was ~920 pre-Phase-3); `creature.cpp` ~1147 lines.
+**What's left on Creature** (the class itself): two new-genetics ctors and a `makeOffspring` override. Both ctors are thin wrappers around `classifyComponentSet` + `attachComponents` plus `sequentialId++`. The copy ctor concern from the old container design is gone now that the sim holds `unique_ptr<Organism>` — no in-vector copies to route through the factory. `creature.hpp` ~394 lines; `creature.cpp` ~1147 lines.
 
 **What's left on Plant** (the class itself): copy ctor, two new-genetics ctors (random / templated genome), `makeOffspring` override, plant-specific getters (`getGrowthRate`, `getFruitAppeal`, `getToxicity`, `canSpreadSeeds`, `getScentSignature`, etc.) that haven't migrated to `AutotrophyComponent` yet, `Plant::toJson / fromJson` on the class, `Plant::update` + `checkDeathConditions` env-driven lifecycle. Plant is chunkier than Creature because it hasn't had the same level of trimming.
 
@@ -121,7 +122,7 @@ Once Creature and Plant are gone, their `makeOffspring` overrides go with them. 
 - **Phase 3 (post-Cut-1 cleanup):** ✅ complete. `operator=` folded into Organism; `Creature::toString/toJson/fromJson` member forwarders removed; `isAlive` unified; `~Organism` owns population bookkeeping.
 - **Phase 3 (OrganismFactory + gene-driven construction):** ✅ complete (`bdea841`). `classifyComponentSet`, `attachComponents`, `fromGenome` live. Creature/Plant ctors delegate to factory. `Organism::makeOffspring` default delegates to factory. 14 new tests pin the gene → component mapping. `SpatialIndex` and 3 behaviour-helper namespaces take `Organism&`.
 - **Phase 3 (Cut 2 — plant tick split):** 🕒 pending. Low priority. Can land independently of Cut 3.
-- **Phase 3 (Cut 3a — container migration):** 🕒 pending. `std::vector<Creature>` → `std::vector<std::unique_ptr<Organism>>` across ~15 files. Biggest remaining mechanical chunk.
+- **Phase 3 (Cut 3a — container migration):** ✅ complete (`3f5c7a9`). Every `std::vector<Creature>` flipped to `std::vector<std::unique_ptr<Organism>>` across main, renderers, save/load, world index, stats, coevolution, all test harnesses (38 files). 692 tests green; headless produces births; SDL2 run survives past the crash point that triggered the incremental bugfix (`21ae353`) in `PlantManager` dispersal.
 - **Phase 3 (Cut 3b — Creature deletion):** 🕒 pending. After Cut 3a.
 - **Phase 3 (Cut 3c — Plant deletion):** 🕒 pending. Requires moving plant-specific getters to `AutotrophyComponent` first.
 - **Phase 3 (Cut 3d — makeOffspring overrides deletion):** 🕒 pending. Trivial once Creature/Plant are gone; unlocks evolved-type offspring.
