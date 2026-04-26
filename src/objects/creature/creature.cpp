@@ -221,14 +221,6 @@ float EcoSim::Genetics::Organism::getMovementSpeed() const {
 }
 Direction EcoSim::Genetics::Organism::getDirection  () const { return mobility_ ? mobility_->direction : Direction::none; }
 
-// getLifespan moved to Organism.cpp (needed by Organism::getMaxLifespan which
-// lives in the genetics library).
-unsigned EcoSim::Genetics::Organism::getSightRange() const {
-    if (phenotype_.hasTrait(UniversalGenes::SIGHT_RANGE)) {
-        return static_cast<unsigned>(phenotype_.getTrait(UniversalGenes::SIGHT_RANGE));
-    }
-    return 100;
-}
 
 float EcoSim::Genetics::Organism::getTHunger() const {
     if (phenotype_.hasTrait(UniversalGenes::HUNGER_THRESHOLD)) {
@@ -272,30 +264,6 @@ float EcoSim::Genetics::Organism::getComfDec() const {
     return 0.01f;
 }
 
-DietType EcoSim::Genetics::Organism::getDietType() const {
-    return phenotype_.calculateDietType();
-}
-
-bool EcoSim::Genetics::Organism::ifFlocks() const {
-    if (phenotype_.hasTrait(UniversalGenes::HUNT_INSTINCT)) {
-        return phenotype_.getTrait(UniversalGenes::HUNT_INSTINCT) < 0.5f;
-    }
-    return true;
-}
-
-unsigned EcoSim::Genetics::Organism::getFlee() const {
-    if (phenotype_.hasTrait(UniversalGenes::FLEE_THRESHOLD)) {
-        return static_cast<unsigned>(phenotype_.getTrait(UniversalGenes::FLEE_THRESHOLD));
-    }
-    return 10;
-}
-
-unsigned EcoSim::Genetics::Organism::getPursue() const {
-    if (phenotype_.hasTrait(UniversalGenes::PURSUE_THRESHOLD)) {
-        return static_cast<unsigned>(phenotype_.getTrait(UniversalGenes::PURSUE_THRESHOLD));
-    }
-    return 20;
-}
 
 //================================================================================
 //  New Genetics System - Static Methods (M5)
@@ -322,33 +290,6 @@ EcoSim::Genetics::GeneRegistry& EcoSim::Genetics::Organism::getGeneRegistry() {
 //  New Genetics System - Instance Methods
 //================================================================================
 
-/**
- * Update phenotype context with current environment and organism state.
- * Should be called each tick or when environment changes significantly.
- */
-void EcoSim::Genetics::Organism::updatePhenotypeContext(const EcoSim::Genetics::EnvironmentState& env) {
-    EcoSim::Genetics::OrganismState orgState;
-    unsigned lifespan = getLifespan();
-    orgState.age_normalized = (lifespan > 0) ? static_cast<float>(age_) / static_cast<float>(lifespan) : 0.0f;
-    if (heterotrophy_) {
-        orgState.energy_level = std::max(0.0f, std::min(1.0f, heterotrophy_->hunger / Constants::RESOURCE_LIMIT));
-    }
-    if (reproduction_) {
-        // Normalise mate (0-RESOURCE_LIMIT) into reproductive_urge (0-1)
-        // so MatingBehavior::getMateValue reads the right scale.
-        orgState.reproductive_urge = std::max(0.0f,
-            std::min(1.0f, reproduction_->mate / Constants::RESOURCE_LIMIT));
-    }
-    orgState.health = 1.0f;
-    phenotype_.updateContext(env, orgState);
-
-    if (thermal_) thermal_->cacheDirty = true;
-
-    float maxHP = getMaxHealth();
-    if (health_ > maxHP) {
-        health_ = maxHP;
-    }
-}
 
 void EcoSim::Genetics::Organism::updateThermalCache() {
     if (!thermal_) return;
@@ -372,38 +313,6 @@ void EcoSim::Genetics::Organism::updateThermalCache() {
 
 // grow() moved to Organism base. Plant keeps its own (plant-specific logic).
 
-/**
- *  This method checks the relevant values of a creature to determine
- *  whether it is dead or not. A creature can die of old age, starvation,
- *  dehydration, and of discomfort.
- *
- *  @param c The creature being checked.
- *  @return  Returns 0 if the creature is not dead.
- *            1 - Old age
- *            2 - Starvation
- *            3 - Dehydration
- *            4 - Discomfort
- */
-short EcoSim::Genetics::Organism::deathCheck () const {
-  using namespace EcoSim::Genetics::Constants;
-
-  // getMaxLifespan is virtual — Plant overrides to read PlantGenes::LIFESPAN
-  // when the universal gene isn't present in the genome. getLifespan reads
-  // only the universal trait, which returns the 500000 fallback for plants
-  // and breaks plant old-age death. deathCheck must use the virtual form.
-  if (age_ > getMaxLifespan())                                         return 1;
-  if (heterotrophy_ && heterotrophy_->hunger  < STARVATION_POINT)      return 2;
-  if (heterotrophy_ && heterotrophy_->thirst  < DEHYDRATION_POINT)     return 3;
-  // Discomfort is a heterotroph-specific cause: reproductive drive
-  // collapsing alongside starvation/dehydration. Plants also carry a
-  // ReproductionComponent (for maturity / fruit-timer bookkeeping) but
-  // their `mate` field has no analogous semantics — it may legally sit
-  // negative without meaning the plant is dying.
-  if (heterotrophy_ && reproduction_
-      && reproduction_->mate < DISCOMFORT_POINT)                       return 4;
-  if (health_ <= 0.0f)                                                 return 5;
-  return 0;
-}
 
 // shareResource / shareFood / shareWater moved to Organism.cpp so the
 // genetics library can link sexualBreed without depending on ecosim_core.
@@ -632,54 +541,6 @@ char EcoSim::Genetics::Organism::generateChar () {
   return getDietInfo(getDietType()).character;
 }
 
-/**
- *  This method generates a species name for a specimen based on their genetics.
- *  Not only does this provide some interesting flavour text to the simulation,
- *  it also gives something that is a lot quicker to examine to see if certain
- *  subspecies have become dominant.
- *  DRY refactoring: Diet prefix now uses centralized DietInfo lookup table.
- *
- *  @return The creatures species name.
- */
-std::string EcoSim::Genetics::Organism::generateName () {
-  string name = getDietInfo(getDietType()).namePrefix;
-
-  if (ifFlocks()) {
-    unsigned  flee      = getFlee ();
-    int       diffFlock = flee - getPursue();
-
-    //  Fleeing behaviour
-    if (diffFlock > 0) {
-      if (flee < 10)  name += "tim";  
-      else            name += "gax";
-
-    //  Flocking behaviour
-    } else {
-      if      (flee < 10) name += "milia";
-      else if (flee < 20) name += "micus";
-      else                name += "verec";
-    }
-
-  //  Independant behaviour
-  } else {
-    name += "mita";
-  }
-
-  name += " ";
-
-  unsigned lifespan = getLifespan ();
-  if      (lifespan < 250000) name += "Brevi";
-  else if (lifespan < 500000) name += "Aevi";
-  else if (lifespan < 750000) name += "Diu";
-  else                        name += "Perti";
-
-  unsigned sight = getSightRange ();
-  if      (sight < 60)  name += "caecus";
-  else if (sight < 120) name += "visus";
-  else                  name += "sensus";
-
-  return name;
-}
 
 //================================================================================
 //  To String

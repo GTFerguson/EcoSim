@@ -13,6 +13,26 @@
 #include <algorithm>
 #include <cmath>
 #include <sstream>
+#include <string>
+#include <unordered_map>
+
+namespace {
+struct DietInfo { std::string namePrefix; };
+static const DietInfo& getDietInfo(EcoSim::Genetics::DietType diet) {
+    using DietType = EcoSim::Genetics::DietType;
+    static const std::unordered_map<DietType, DietInfo> map = {
+        { DietType::HERBIVORE, { "Her" } },
+        { DietType::FRUGIVORE, { "Fru" } },
+        { DietType::OMNIVORE,  { "Omn" } },
+        { DietType::CARNIVORE, { "Car" } },
+        { DietType::NECROVORE, { "Nec" } },
+    };
+    auto it = map.find(diet);
+    if (it != map.end()) return it->second;
+    static DietInfo defaultInfo = { "Omn" };
+    return defaultInfo;
+}
+} // anonymous namespace
 
 namespace EcoSim {
 namespace Genetics {
@@ -343,6 +363,34 @@ void Organism::grow() {
     }
 }
 
+unsigned Organism::getSightRange() const {
+    if (phenotype_.hasTrait(UniversalGenes::SIGHT_RANGE))
+        return static_cast<unsigned>(phenotype_.getTrait(UniversalGenes::SIGHT_RANGE));
+    return 100;
+}
+
+DietType Organism::getDietType() const {
+    return phenotype_.calculateDietType();
+}
+
+bool Organism::ifFlocks() const {
+    if (phenotype_.hasTrait(UniversalGenes::HUNT_INSTINCT))
+        return phenotype_.getTrait(UniversalGenes::HUNT_INSTINCT) < 0.5f;
+    return true;
+}
+
+unsigned Organism::getFlee() const {
+    if (phenotype_.hasTrait(UniversalGenes::FLEE_THRESHOLD))
+        return static_cast<unsigned>(phenotype_.getTrait(UniversalGenes::FLEE_THRESHOLD));
+    return 10;
+}
+
+unsigned Organism::getPursue() const {
+    if (phenotype_.hasTrait(UniversalGenes::PURSUE_THRESHOLD))
+        return static_cast<unsigned>(phenotype_.getTrait(UniversalGenes::PURSUE_THRESHOLD));
+    return 20;
+}
+
 unsigned Organism::getLifespan() const {
     if (phenotype_.hasTrait(UniversalGenes::LIFESPAN)) {
         return static_cast<unsigned>(phenotype_.getTrait(UniversalGenes::LIFESPAN));
@@ -439,6 +487,87 @@ std::string Organism::toString() const {
         << getColour()   << ","
         << getPassable();
     return ss.str();
+}
+
+
+void Organism::updatePhenotypeContext(const EnvironmentState& env) {
+    OrganismState orgState;
+    unsigned lifespan = getLifespan();
+    orgState.age_normalized = (lifespan > 0) ? static_cast<float>(age_) / static_cast<float>(lifespan) : 0.0f;
+    if (heterotrophy_) {
+        orgState.energy_level = std::max(0.0f, std::min(1.0f, heterotrophy_->hunger / Constants::RESOURCE_LIMIT));
+    }
+    if (reproduction_) {
+        // Normalise mate (0-RESOURCE_LIMIT) into reproductive_urge (0-1)
+        // so MatingBehavior::getMateValue reads the right scale.
+        orgState.reproductive_urge = std::max(0.0f,
+            std::min(1.0f, reproduction_->mate / Constants::RESOURCE_LIMIT));
+    }
+    orgState.health = 1.0f;
+    phenotype_.updateContext(env, orgState);
+
+    if (thermal_) thermal_->cacheDirty = true;
+
+    float maxHP = getMaxHealth();
+    if (health_ > maxHP) {
+        health_ = maxHP;
+    }
+}
+
+short Organism::deathCheck() const {
+    using namespace Constants;
+
+    // getMaxLifespan is virtual — Plant overrides to read PlantGenes::LIFESPAN
+    // when the universal gene isn't present in the genome. getLifespan reads
+    // only the universal trait, which returns the 500000 fallback for plants
+    // and breaks plant old-age death. deathCheck must use the virtual form.
+    if (age_ > getMaxLifespan())                                         return 1;
+    if (heterotrophy_ && heterotrophy_->hunger  < STARVATION_POINT)      return 2;
+    if (heterotrophy_ && heterotrophy_->thirst  < DEHYDRATION_POINT)     return 3;
+    // Discomfort is a heterotroph-specific cause: reproductive drive
+    // collapsing alongside starvation/dehydration. Plants also carry a
+    // ReproductionComponent (for maturity / fruit-timer bookkeeping) but
+    // their `mate` field has no analogous semantics — it may legally sit
+    // negative without meaning the plant is dying.
+    if (heterotrophy_ && reproduction_
+        && reproduction_->mate < DISCOMFORT_POINT)                       return 4;
+    if (health_ <= 0.0f)                                                 return 5;
+    return 0;
+}
+
+std::string Organism::generateName() {
+    std::string name = getDietInfo(getDietType()).namePrefix;
+
+    if (ifFlocks()) {
+        unsigned flee      = getFlee();
+        int      diffFlock = flee - getPursue();
+
+        if (diffFlock > 0) {
+            if (flee < 10) name += "tim";
+            else           name += "gax";
+        } else {
+            if      (flee < 10) name += "milia";
+            else if (flee < 20) name += "micus";
+            else                name += "verec";
+        }
+    } else {
+        name += "mita";
+    }
+
+    name += " ";
+
+    unsigned lifespan = getLifespan();
+    if      (lifespan < 250000) name += "Brevi";
+    else if (lifespan < 500000) name += "Aevi";
+    else if (lifespan < 750000) name += "Diu";
+    else                        name += "Perti";
+
+    unsigned sight = getSightRange();
+    if      (sight < 60)  name += "caecus";
+    else if (sight < 120) name += "visus";
+    else                  name += "sensus";
+
+    return name;
 }
 
 } // namespace Genetics
