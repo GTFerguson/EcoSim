@@ -25,8 +25,10 @@ option(ECOSIM_BUILD_TESTS "Build test suite" ON)
 option(ECOSIM_USE_SDL2 "Build with SDL2/ImGui support" ON)
 option(ECOSIM_USE_NCURSES "Build with NCurses support" ON)
 
-# Include helper modules
-list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
+# Include helper modules. Use CMAKE_CURRENT_SOURCE_DIR (not CMAKE_SOURCE_DIR)
+# so the path resolves correctly whether EcoSim is the root project or is
+# consumed as a subdirectory by another build (e.g. padarax/engine).
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 include(CompilerWarnings)
 
 # Find dependencies
