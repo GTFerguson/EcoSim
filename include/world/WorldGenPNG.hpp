@@ -26,6 +26,7 @@ struct PNGExportConfig {
     bool includeMoisture = true;
     bool includeBiomes = true;
     bool includeComposite = true;
+    bool includeTerrain = true;  ///< Game-style render via TerrainType colours
 };
 
 /**
@@ -113,13 +114,32 @@ public:
      */
     static bool exportComposite(const ClimateWorldGenerator& generator,
                                 const std::string& filename);
-    
+
+    /**
+     * @brief Export a game-style terrain render to PNG
+     *
+     * Walks the climate map, maps each biome to its BiomeProperties.terrainType,
+     * and writes the corresponding game-palette colour (the same vivid greens,
+     * blues, sands the SDL2 renderer uses, see SDL2ColorMapper.hpp). Closer
+     * to "what the game looks like" than the Whittaker biome export.
+     */
+    static bool exportTerrain(const ClimateWorldGenerator& generator,
+                              const std::string& filename);
+
     /**
      * @brief Get color for a specific biome type
      * @param biome The biome type
      * @return RGB color for that biome
      */
     static RGB getBiomeColor(Biome biome);
+
+    /**
+     * @brief Get game-palette colour for a TerrainType
+     *
+     * Mirrors SDL2ColorMapper's terrain colour table. Update both together
+     * if the game palette changes.
+     */
+    static RGB getTerrainColor(TerrainType terrain);
     
     /**
      * @brief Get blended color for a BiomeBlend (ecotone transitions)

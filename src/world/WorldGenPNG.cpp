@@ -88,6 +88,55 @@ RGB WorldGenPNG::getBiomeColor(Biome biome) {
     return RGB(128, 128, 128);  // Gray for unknown
 }
 
+//=============================================================================
+// Terrain Color Table (mirrors SDL2ColorMapper.hpp game palette)
+//=============================================================================
+
+static const RGB TERRAIN_COLORS[] = {
+    // DEEP_WATER
+    RGB(0, 30, 100),
+    // WATER
+    RGB(52, 101, 164),
+    // SHALLOW_WATER
+    RGB(85, 150, 200),
+    // SHALLOW_WATER_2
+    RGB(120, 180, 210),
+    // SAND
+    RGB(255, 255, 150),
+    // DESERT_SAND
+    RGB(255, 255, 190),
+    // PLAINS
+    RGB(78, 154, 6),
+    // SAVANNA
+    RGB(100, 180, 30),
+    // SHORT_GRASS
+    RGB(50, 150, 50),
+    // LONG_GRASS
+    RGB(34, 120, 34),
+    // FOREST
+    RGB(34, 139, 34),
+    // TREES
+    RGB(0, 100, 0),
+    // MOUNTAIN
+    RGB(128, 128, 128),
+    // MOUNTAIN_2
+    RGB(110, 110, 110),
+    // MOUNTAIN_3
+    RGB(80, 80, 80),
+    // SNOW
+    RGB(255, 250, 250),
+    // PEAKS
+    RGB(240, 240, 255)
+};
+
+RGB WorldGenPNG::getTerrainColor(TerrainType terrain) {
+    int index = static_cast<int>(terrain);
+    if (index >= 0 && index < static_cast<int>(TerrainType::COUNT)) {
+        return TERRAIN_COLORS[index];
+    }
+    return RGB(128, 128, 128);
+}
+
 RGB WorldGenPNG::getBlendedBiomeColor(const BiomeBlend& blend) {
     // Blend colors based on biome weights
     float r = 0.0f, g = 0.0f, b = 0.0f;
@@ -295,7 +344,17 @@ bool WorldGenPNG::exportAll(const ClimateWorldGenerator& generator,
             std::cout << "Exported: " << filename << std::endl;
         }
     }
-    
+
+    if (config.includeTerrain) {
+        std::string filename = basePath + "_terrain.png";
+        if (!exportTerrain(generator, filename)) {
+            std::cerr << "Failed to export terrain: " << filename << std::endl;
+            success = false;
+        } else {
+            std::cout << "Exported: " << filename << std::endl;
+        }
+    }
+
     return success;
 }
 
@@ -412,6 +471,49 @@ bool WorldGenPNG::exportBiomes(const ClimateWorldGenerator& generator,
         }
     }
     
+    return writePNG(filename, data.data(), width, height);
+}
+
+bool WorldGenPNG::exportTerrain(const ClimateWorldGenerator& generator,
+                                const std::string& filename) {
+    const auto& climateMap = generator.getClimateMap();
+    if (climateMap.empty()) return false;
+
+    unsigned int width  = static_cast<unsigned int>(climateMap.size());
+    unsigned int height = static_cast<unsigned int>(climateMap[0].size());
+
+    std::vector<uint8_t> data(width * height * 3);
+
+    for (unsigned int y = 0; y < height; ++y) {
+        for (unsigned int x = 0; x < width; ++x) {
+            const TileClimate& climate = climateMap[x][y];
+
+            TerrainType terrain =
+                ClimateWorldGenerator::biomeToTerrainType(climate.biome());
+            RGB color = getTerrainColor(terrain);
+
+            // Water features punch through with the game's bright water
+            // palette so rivers and lakes stay legible on the land mass.
+            if (climate.feature == TerrainFeature::RIVER) {
+                float flow = climate.waterLevel;
+                color = RGB::lerp(
+                    RGB(100, 180, 220),
+                    RGB(30, 100, 200),
+                    flow
+                );
+            } else if (climate.feature == TerrainFeature::LAKE) {
+                color = RGB(50, 140, 210);
+            } else if (climate.feature == TerrainFeature::BEACH) {
+                color = getTerrainColor(TerrainType::SAND);
+            }
+
+            size_t idx = (y * width + x) * 3;
+            data[idx + 0] = color.r;
+            data[idx + 1] = color.g;
+            data[idx + 2] = color.b;
+        }
+    }
+
     return writePNG(filename, data.data(), width, height);
 }
 
