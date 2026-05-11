@@ -303,10 +303,14 @@ void ClimateWorldGenerator::generateContinentMap() {
             // Apply island mode falloff
             if (_config.isIsland) {
                 float edgeDist = distanceToEdge(x, y);
-                // Use a blend approach: boost center, sink edges
+                // Center boost ramps up with edgeDist (0 at boundary, full
+                // inside islandFalloff). Edge sink does the inverse: full
+                // at the boundary, fading to 0 by half-falloff. Prior
+                // versions had edgeSink polarity inverted, which left the
+                // outer band with no sink and produced land in the corners.
                 float centerBoost = smoothstep(0.0f, _config.islandFalloff, edgeDist);
-                float edgeSink = 1.0f - smoothstep(_config.islandFalloff * 0.5f, 0.0f, edgeDist);
-                
+                float edgeSink    = 1.0f - smoothstep(0.0f, _config.islandFalloff * 0.5f, edgeDist);
+
                 // Center has noise boosted, edges sink below sea level
                 noise = noise * 0.7f + centerBoost * 0.5f - edgeSink * 0.3f;
             }
@@ -1637,9 +1641,11 @@ bool ClimateWorldGenerator::inBounds(int x, int y) const {
 float ClimateWorldGenerator::distanceToEdge(int x, int y) const {
     float dx = static_cast<float>(x) / _config.width - 0.5f;
     float dy = static_cast<float>(y) / _config.height - 0.5f;
-    
-    // Use maximum of normalized distances (square falloff)
-    return 0.5f - std::max(std::abs(dx), std::abs(dy));
+
+    // Radial falloff: positive at the inscribed-circle interior, negative
+    // outside it. The smoothstep clamp downstream collapses the negative
+    // band into "full edge sink," giving square maps a circular landmass.
+    return 0.5f - std::sqrt(dx * dx + dy * dy);
 }
 
 float ClimateWorldGenerator::smoothstep(float edge0, float edge1, float x) const {
